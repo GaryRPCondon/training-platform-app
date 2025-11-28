@@ -194,6 +194,47 @@ export default function MCPTestPage() {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Database Panel */}
+            <Card className="border-destructive/50">
+                <CardHeader>
+                    <div className="flex items-center gap-2">
+                        <AlertCircle className="h-5 w-5 text-destructive" />
+                        <CardTitle>Database Management</CardTitle>
+                    </div>
+                    <CardDescription>Dangerous operations - use with caution</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-md">
+                        <h3 className="font-semibold text-sm mb-2">Erase All Activities</h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                            This will permanently delete all activities from the database. This action cannot be undone.
+                        </p>
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={async () => {
+                                if (!confirm('Are you sure you want to delete ALL activities? This cannot be undone!')) {
+                                    return
+                                }
+                                try {
+                                    const res = await fetch('/api/activities/delete-all', { method: 'DELETE' })
+                                    const data = await res.json()
+                                    if (data.success) {
+                                        alert(`Successfully deleted ${data.count} activities`)
+                                    } else {
+                                        alert(`Error: ${data.error}`)
+                                    }
+                                } catch (error) {
+                                    alert(`Error: ${error}`)
+                                }
+                            }}
+                        >
+                            Erase All Activities
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
         </div>
     )
 }

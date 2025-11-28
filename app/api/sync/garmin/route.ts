@@ -13,8 +13,9 @@ export async function POST(request: Request) {
         }
 
         const body = await request.json()
-        const startDate = body.startDate || format(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
+        const startDate = body.startDate || format(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
         const endDate = body.endDate || format(new Date(), 'yyyy-MM-dd')
+        const limit = body.limit // Optional limit for number of activities
 
         // Ensure athlete record exists - check by ID first
         let { data: athlete } = await supabase
@@ -103,13 +104,41 @@ export async function POST(request: Request) {
             })
         }
 
-        for (const activity of garminActivities) {
+        console.log(`Processing ${garminActivities.length} activities...`)
+
+        // Apply limit if specified
+        const activitiesToProcess = limit ? garminActivities.slice(0, limit) : garminActivities
+        console.log(`Processing ${activitiesToProcess.length} activities (limit: ${limit || 'none'})...`)
+
+        for (const activity of activitiesToProcess) {
+            // Extract datetime from nested startTimeLocal object
+            const startTime = typeof activity.startTimeLocal === 'object'
+                ? activity.startTimeLocal?.datetime || activity.startTimeLocal?.date
+                : activity.startTimeLocal
+
+            // Extract numeric values from nested objects
+            const distanceMeters = typeof activity.distance === 'object'
+                ? activity.distance?.meters
+                : activity.distance
+
+            const durationSeconds = typeof activity.duration === 'object'
+                ? activity.duration?.seconds
+                : activity.duration
+
             const newActivity = {
-                start_time: activity.startTimeLocal,
-                duration_seconds: activity.duration,
-                distance_meters: activity.distance,
+                start_time: startTime,
+                duration_seconds: durationSeconds,
+                distance_meters: distanceMeters,
                 source: 'garmin'
             }
+
+            console.log('Processing Garmin activity:', {
+                id: activity.activityId,
+                name: activity.activityName,
+                startTime,
+                durationSeconds,
+                distanceMeters
+            })
 
             // Check for merge candidates
             const mergeCandidate = findMergeCandidates(newActivity, existingActivities || [])
@@ -139,9 +168,9 @@ export async function POST(request: Request) {
                 source: 'garmin',
                 activity_name: activity.activityName,
                 activity_type: activity.activityType,
-                start_time: activity.startTimeLocal,
-                distance_meters: activity.distance,
-                duration_seconds: activity.duration,
+                start_time: startTime,
+                distance_meters: distanceMeters,
+                duration_seconds: durationSeconds,
                 synced_from_garmin: new Date().toISOString()
             }
 
@@ -163,7 +192,12 @@ export async function POST(request: Request) {
                 .single()
 
             if (error) {
-                console.error('Failed to upsert Garmin activity:', error)
+                console.error('Failed to upsert Garmin activity:', {
+                    error,
+                    activityData,
+                    errorDetails: error.message,
+                    errorCode: error.code
+                })
             } else {
                 console.log('Successfully synced activity:', inserted?.id)
                 syncedCount++

@@ -13,8 +13,9 @@ export async function POST(request: Request) {
         }
 
         const body = await request.json()
-        const startDate = body.startDate || format(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
+        const startDate = body.startDate || format(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
         const endDate = body.endDate || format(new Date(), 'yyyy-MM-dd')
+        const limit = body.limit // Optional limit for number of activities
 
         // Ensure athlete record exists - check by ID first
         let { data: athlete } = await supabase
@@ -100,13 +101,27 @@ export async function POST(request: Request) {
             })
         }
 
-        for (const activity of stravaActivities) {
+        console.log(`Processing ${stravaActivities.length} activities...`)
+
+        // Apply limit if specified
+        const activitiesToProcess = limit ? stravaActivities.slice(0, limit) : stravaActivities
+        console.log(`Processing ${activitiesToProcess.length} activities (limit: ${limit || 'none'})...`)
+
+        for (const activity of activitiesToProcess) {
             const newActivity = {
                 start_time: activity.start_date,
                 duration_seconds: activity.moving_time,
                 distance_meters: activity.distance,
                 source: 'strava'
             }
+
+            console.log('Processing Strava activity:', {
+                id: activity.id,
+                name: activity.name,
+                start_date: activity.start_date,
+                moving_time: activity.moving_time,
+                distance: activity.distance
+            })
 
             // Check for merge candidates
             const mergeCandidate = findMergeCandidates(newActivity, existingActivities || [])
@@ -160,7 +175,12 @@ export async function POST(request: Request) {
                 .single()
 
             if (error) {
-                console.error('Failed to upsert Strava activity:', error)
+                console.error('Failed to upsert Strava activity:', {
+                    error,
+                    activityData,
+                    errorDetails: error.message,
+                    errorCode: error.code
+                })
             } else {
                 console.log('Successfully synced activity:', inserted?.id)
                 syncedCount++

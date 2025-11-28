@@ -33,6 +33,11 @@ const navItems = [
         icon: ClipboardList,
     },
     {
+        title: 'Activity Sync',
+        href: '/dashboard/sync',
+        icon: Activity,
+    },
+    {
         title: 'Coach',
         href: '/dashboard/chat',
         icon: MessageSquare,
@@ -43,7 +48,7 @@ const navItems = [
         icon: User,
     },
     {
-        title: 'MCP Test',
+        title: 'Diagnostics',
         href: '/test-mcp',
         icon: Activity,
     },
