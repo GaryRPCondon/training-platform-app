@@ -49,7 +49,7 @@ const navItems = [
     },
     {
         title: 'Diagnostics',
-        href: '/test-mcp',
+        href: '/dashboard/diagnostics',
         icon: Activity,
     },
 ]

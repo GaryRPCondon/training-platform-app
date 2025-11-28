@@ -1,0 +1,9 @@
+{
+    "name": "mcp-bridges",
+    "version": "1.0.0",
+    "description": "HTTP bridges for Garmin and Strava MCP servers",
+    "type": "module",
+    "dependencies": {
+        "@modelcontextprotocol/sdk": "^1.0.1"
+    }
+}

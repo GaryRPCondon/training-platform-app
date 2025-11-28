@@ -11,20 +11,31 @@ export async function DELETE() {
         }
 
         // Get athlete ID
-        const { data: athlete } = await supabase
+        let { data: athlete } = await supabase
             .from('athletes')
             .select('id')
             .eq('id', user.id)
             .single()
 
         if (!athlete) {
-            return NextResponse.json({ error: 'Athlete not found' }, { status: 404 })
+            // Try looking up by email
+            const { data: athleteByEmail } = await supabase
+                .from('athletes')
+                .select('id')
+                .eq('email', user.email)
+                .single()
+
+            if (athleteByEmail) {
+                athlete = athleteByEmail
+            } else {
+                return NextResponse.json({ error: 'Athlete not found' }, { status: 404 })
+            }
         }
 
         // Delete all activities for this athlete
         const { error, count } = await supabase
             .from('activities')
-            .delete()
+            .delete({ count: 'exact' })
             .eq('athlete_id', athlete.id)
 
         if (error) {
