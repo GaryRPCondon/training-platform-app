@@ -45,12 +45,14 @@ export default function ActivitySyncPage() {
                 end = today
                 break
             case 'week':
-                start = startOfWeek(today, { weekStartsOn: 1 })
-                end = endOfWeek(today, { weekStartsOn: 1 })
+                // Last 7 days
+                start = subDays(today, 7)
+                end = today
                 break
             case 'month':
-                start = startOfMonth(today)
-                end = endOfMonth(today)
+                // Last 4 weeks (28 days)
+                start = subDays(today, 28)
+                end = today
                 break
             case 'year':
                 start = startOfYear(today)
@@ -148,11 +150,11 @@ export default function ActivitySyncPage() {
                         </div>
                         <div className="flex items-center space-x-2">
                             <RadioGroupItem value="week" id="week" />
-                            <Label htmlFor="week">This Week</Label>
+                            <Label htmlFor="week">Last 7 Days</Label>
                         </div>
                         <div className="flex items-center space-x-2">
                             <RadioGroupItem value="month" id="month" />
-                            <Label htmlFor="month">This Month</Label>
+                            <Label htmlFor="month">Last 4 Weeks</Label>
                         </div>
                         <div className="flex items-center space-x-2">
                             <RadioGroupItem value="year" id="year" />

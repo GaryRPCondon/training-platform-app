@@ -104,6 +104,12 @@ function transformGarminResponse(mcpResponse) {
             return [];
         }
 
+        // Check for errors in the response
+        if (data?.error) {
+            console.error('MCP server returned error:', data.error);
+            throw new Error(`Garmin MCP error: ${data.error.message || JSON.stringify(data.error)}`);
+        }
+
         // Extract activities from the response
         const activities = data?.data?.activities || [];
         console.log(`Found ${activities.length} activities in parsed data`);
@@ -116,6 +122,8 @@ function transformGarminResponse(mcpResponse) {
             startTimeLocal: activity.startTimeLocal || activity.start_time || activity.startTime,
             distance: activity.distance || 0,
             duration: activity.duration || activity.movingTime || 0,
+            elapsedDuration: activity.elapsedDuration,    // 👈 ADD THIS LINE
+            movingDuration: activity.movingDuration,      // 👈 ADD THIS LINE
             avgHeartRate: activity.avgHeartRate || activity.averageHeartRate || null,
             calories: activity.calories || null,
             elevationGain: activity.elevationGain || null,
@@ -123,7 +131,7 @@ function transformGarminResponse(mcpResponse) {
         }));
     } catch (error) {
         console.error('Error transforming Garmin response:', error);
-        return [];
+        throw error; // Re-throw so the HTTP handler can return proper error response
     }
 }
 
@@ -148,6 +156,7 @@ const server = http.createServer(async (req, res) => {
             const url = new URL(req.url, `http://localhost:${PORT}`);
             const startDate = url.searchParams.get('startDate');
             const endDate = url.searchParams.get('endDate');
+            const limit = parseInt(url.searchParams.get('limit') || '50', 10);
 
             if (!startDate || !endDate) {
                 res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -161,7 +170,7 @@ const server = http.createServer(async (req, res) => {
             const mcpResponse = await callMCPTool('query_activities', {
                 start_date: startDate,
                 end_date: endDate,
-                limit: 50,
+                limit: limit,
             });
 
             // Transform response to match API format
@@ -171,6 +180,22 @@ const server = http.createServer(async (req, res) => {
             res.end(JSON.stringify(activities));
         } catch (error) {
             console.error('Error fetching activities:', error);
+
+            // Check for rate limit errors
+            const errorMessage = error.message || '';
+            const isRateLimit = errorMessage.includes('429') ||
+                errorMessage.toLowerCase().includes('rate limit') ||
+                errorMessage.toLowerCase().includes('too many requests');
+
+            if (isRateLimit) {
+                res.writeHead(429, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                    error: 'Rate Limit Exceeded',
+                    details: 'Garmin API rate limit reached. Please try again later.'
+                }));
+                return;
+            }
+
             res.writeHead(500, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({
                 error: error.message,

@@ -1,0 +1,76 @@
+
+> training-platform-app@0.1.0 build
+> next build
+
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+   Γû▓ Next.js 16.0.4 (Turbopack)
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+ Γ£ô Compiled successfully in 4.4s
+   Running TypeScript ...
+   Collecting page data using 15 workers ...
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+   Generating static pages using 15 workers (0/35) ...
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+   Generating static pages using 15 workers (8/35) 
+   Generating static pages using 15 workers (17/35) 
+   Generating static pages using 15 workers (26/35) 
+ Γ£ô Generating static pages using 15 workers (35/35) in 1320.7ms
+   Finalizing page optimization ...
+
+Route (app)
+Γöî ╞Æ /
+Γö£ Γùï /_not-found
+Γö£ ╞Æ /api/activities/delete-all
+Γö£ ╞Æ /api/activities/merge/approve
+Γö£ ╞Æ /api/activities/merge/candidates
+Γö£ ╞Æ /api/activities/merge/reject
+Γö£ ╞Æ /api/adjustments/apply
+Γö£ ╞Æ /api/adjustments/reject
+Γö£ ╞Æ /api/agent/chat
+Γö£ ╞Æ /api/agent/chat/history
+Γö£ ╞Æ /api/agent/sessions
+Γö£ ╞Æ /api/observations
+Γö£ ╞Æ /api/settings/get
+Γö£ ╞Æ /api/settings/update
+Γö£ ╞Æ /api/setup/athlete
+Γö£ ╞Æ /api/sync/garmin
+Γö£ ╞Æ /api/sync/strava
+Γö£ ╞Æ /api/workouts/reschedule
+Γö£ ╞Æ /dashboard
+Γö£ Γùï /dashboard/activities/merge
+Γö£ ╞Æ /dashboard/activities/review
+Γö£ Γùï /dashboard/calendar
+Γö£ Γùï /dashboard/chat
+Γö£ Γùï /dashboard/diagnostics
+Γö£ Γùï /dashboard/observations
+Γö£ Γùï /dashboard/plans
+Γö£ Γùï /dashboard/plans/new
+Γö£ Γùï /dashboard/profile
+Γö£ Γùï /dashboard/sync
+Γö£ Γùï /login
+Γö£ Γùï /test-core
+Γö£ Γùï /test-db
+Γöö Γùï /test-sync
+
+
+Γùï  (Static)   prerendered as static content
+╞Æ  (Dynamic)  server-rendered on demand
+

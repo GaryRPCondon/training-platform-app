@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { findMergeCandidates, shouldAutoMerge } from '@/lib/activities/merge-detector'
-import { format } from 'date-fns'
+import { format, subMinutes, addMinutes, subDays, addDays, subHours, addHours, eachMonthOfInterval, startOfMonth, endOfMonth, min, max } from 'date-fns'
 
 export async function POST(request: Request) {
     try {
@@ -63,38 +63,76 @@ export async function POST(request: Request) {
             console.log('Athlete record exists:', athlete.id)
         }
 
+        if (!athlete) {
+            throw new Error('Failed to resolve athlete record')
+        }
+
         // Use the athlete ID for all subsequent operations
         const athleteId = athlete.id
 
-        // Fetch activities from Garmin MCP server
-        const garminResponse = await fetch(
-            `http://localhost:3001/activities?startDate=${startDate}&endDate=${endDate}`
-        )
+        // Fetch activities from Garmin MCP server using monthly chunks to avoid 50-item limit
+        const start = new Date(startDate)
+        const end = new Date(endDate)
 
-        if (!garminResponse.ok) {
-            throw new Error('Failed to fetch from Garmin bridge')
+        // Generate monthly chunks
+        const months = eachMonthOfInterval({
+            start,
+            end
+        })
+
+        let garminActivities: any[] = []
+
+        console.log(`Garmin sync - Splitting range ${startDate} to ${endDate} into ${months.length} chunks`)
+
+        for (const monthStart of months) {
+            // Calculate chunk start and end
+            // For the first chunk, use the requested start date if it's later than the month start
+            // For the last chunk, use the requested end date if it's earlier than the month end
+            const chunkStart = max([start, startOfMonth(monthStart)])
+            const chunkEnd = min([end, endOfMonth(monthStart)])
+
+            const chunkStartDateStr = format(chunkStart, 'yyyy-MM-dd')
+            const chunkEndDateStr = format(chunkEnd, 'yyyy-MM-dd')
+
+            console.log(`Fetching chunk: ${chunkStartDateStr} to ${chunkEndDateStr}`)
+
+            try {
+                const chunkResponse = await fetch(
+                    `http://localhost:3001/activities?startDate=${chunkStartDateStr}&endDate=${chunkEndDateStr}&limit=50`
+                )
+
+                if (!chunkResponse.ok) {
+                    console.error(`Failed to fetch chunk ${chunkStartDateStr} to ${chunkEndDateStr}: ${chunkResponse.statusText}`)
+                    // Continue to next chunk instead of failing entirely
+                    continue
+                }
+
+                const chunkActivities = await chunkResponse.json()
+
+                if (Array.isArray(chunkActivities)) {
+                    console.log(`Chunk ${chunkStartDateStr} to ${chunkEndDateStr}: Found ${chunkActivities.length} activities`)
+                    garminActivities = [...garminActivities, ...chunkActivities]
+                } else {
+                    console.warn(`Chunk ${chunkStartDateStr} to ${chunkEndDateStr}: returned non-array`, chunkActivities)
+                }
+            } catch (chunkError) {
+                console.error(`Error fetching chunk ${chunkStartDateStr} to ${chunkEndDateStr}:`, chunkError)
+                // Continue to next chunk
+            }
         }
 
-        const garminActivities = await garminResponse.json()
-
-        console.log('Garmin sync - Date range:', startDate, 'to', endDate)
-        console.log('Garmin sync - Fetched activities:', garminActivities?.length || 0)
+        console.log('Garmin sync - Total fetched activities:', garminActivities.length)
         console.log('Garmin sync - Sample activity:', garminActivities?.[0])
 
-        // Fetch existing activities for matching
-        const { data: existingActivities } = await supabase
-            .from('activities')
-            .select('*')
-            .eq('athlete_id', athleteId)
-            .gte('start_time', startDate)
-            .lte('start_time', endDate)
+        // Fetch existing activities removed - using database-centric approach
+
 
         let syncedCount = 0
         let mergedCount = 0
         let pendingReviewCount = 0
 
-        if (!garminActivities || !Array.isArray(garminActivities)) {
-            console.error('Invalid response from Garmin bridge:', garminActivities)
+        if (garminActivities.length === 0) {
+            console.log('No activities found in any chunk')
             return NextResponse.json({
                 success: true,
                 message: 'No activities returned from Garmin bridge',
@@ -121,10 +159,15 @@ export async function POST(request: Request) {
                 ? activity.distance?.meters
                 : activity.distance
 
-            const durationSeconds = typeof activity.duration === 'object'
-                ? activity.duration?.seconds
-                : activity.duration
+            const durationSeconds = activity.elapsedDuration ||
+                (typeof activity.duration === 'object' ? activity.duration?.seconds : activity.duration)
 
+            console.log('Duration extraction:', {
+                activityId: activity.activityId,
+                elapsedDuration: activity.elapsedDuration,
+                durationObject: activity.duration,
+                finalValue: durationSeconds
+            })
             const newActivity = {
                 start_time: startTime,
                 duration_seconds: durationSeconds,
@@ -140,28 +183,7 @@ export async function POST(request: Request) {
                 distanceMeters
             })
 
-            // Check for merge candidates
-            const mergeCandidate = findMergeCandidates(newActivity, existingActivities || [])
-
-            if (mergeCandidate && shouldAutoMerge(mergeCandidate)) {
-                // Auto-merge: update existing activity with Garmin ID
-                const { error } = await supabase
-                    .from('activities')
-                    .update({
-                        garmin_id: activity.activityId?.toString(),
-                        synced_from_garmin: new Date().toISOString(),
-                        source: 'merged'
-                    })
-                    .eq('id', mergeCandidate.activity2.id)
-
-                if (!error) {
-                    syncedCount++
-                    mergedCount++
-                }
-                continue
-            }
-
-            // Insert new activity
+            // Insert new activity first
             const activityData: any = {
                 athlete_id: athleteId,
                 garmin_id: activity.activityId?.toString(),
@@ -172,12 +194,6 @@ export async function POST(request: Request) {
                 distance_meters: distanceMeters,
                 duration_seconds: durationSeconds,
                 synced_from_garmin: new Date().toISOString()
-            }
-
-            if (mergeCandidate) {
-                // Medium/low confidence - flag for review
-                activityData.merge_status = 'pending_review'
-                activityData.confidence_score = mergeCandidate.confidenceScore
             }
 
             console.log('Upserting Garmin activity:', activityData)
@@ -198,25 +214,116 @@ export async function POST(request: Request) {
                     errorDetails: error.message,
                     errorCode: error.code
                 })
-            } else {
-                console.log('Successfully synced activity:', inserted?.id)
-                syncedCount++
+                continue
+            }
 
-                if (mergeCandidate && inserted) {
-                    // Create merge flag
-                    await supabase.from('workout_flags').insert({
-                        athlete_id: athleteId,
-                        activity_id: inserted.id,
-                        flag_type: 'merge_candidate',
-                        severity: 'info',
-                        flag_data: {
-                            potential_match_id: mergeCandidate.activity2.id,
-                            confidence: mergeCandidate.confidence,
-                            confidence_score: mergeCandidate.confidenceScore
-                        }
-                    })
-                    pendingReviewCount++
+            console.log('Successfully synced activity:', inserted?.id)
+            syncedCount++
+
+            // Check for merge candidates in the database
+            const searchStartTime = new Date(startTime)
+
+            // We widen the search window to +/- 1 day to catch potential date-only matches from Strava
+            // The merge detector will handle filtering precise vs date-only matches
+            const { data: potentialMatches } = await supabase
+                .from('activities')
+                .select('*')
+                .eq('athlete_id', athleteId)
+                .neq('source', 'garmin')
+                .is('garmin_id', null)
+                .gte('start_time', subHours(searchStartTime, 12).toISOString())
+                .lte('start_time', addHours(searchStartTime, 12).toISOString())
+
+            if (potentialMatches && potentialMatches.length > 0) {
+                console.log(`Found ${potentialMatches.length} potential matches for activity ${inserted.id}`)
+                // We found potential matches, check them
+                // We construct a temporary object for the new activity to use with findMergeCandidates
+                const newActivityObj = {
+                    ...inserted,
+                    start_time: startTime, // Ensure string format if needed
+                    duration_seconds: durationSeconds,
+                    distance_meters: distanceMeters,
+                    source: 'garmin'
                 }
+
+                const mergeCandidate = findMergeCandidates(newActivityObj, potentialMatches)
+
+                if (mergeCandidate) {
+                    console.log(`Merge candidate found: ${mergeCandidate.activity2.id} with confidence ${mergeCandidate.confidence} (score: ${mergeCandidate.confidenceScore})`)
+                    if (shouldAutoMerge(mergeCandidate)) {
+                        // High confidence match
+                        // Tie-breaker: Only merge if the match ID is smaller than the inserted ID
+                        // This prevents double-merging if two syncs run in parallel
+                        console.log(`Checking tie-breaker: Existing ID ${mergeCandidate.activity2.id} < Inserted ID ${inserted.id}? ${mergeCandidate.activity2.id! < inserted.id}`)
+
+                        if (mergeCandidate.activity2.id! < inserted.id) {
+                            console.log(`Merging newly inserted activity ${inserted.id} into existing ${mergeCandidate.activity2.id}`)
+
+                            // Delete the newly inserted activity FIRST to avoid unique constraint violation
+                            // (since we are about to apply its garmin_id to the existing activity)
+                            const { error: deleteError } = await supabase
+                                .from('activities')
+                                .delete()
+                                .eq('id', inserted.id)
+
+                            if (deleteError) {
+                                console.error('Failed to delete duplicate activity before merge:', deleteError)
+                                continue
+                            }
+
+                            // Update the existing activity
+                            const { error: updateError } = await supabase
+                                .from('activities')
+                                .update({
+                                    garmin_id: activity.activityId?.toString(),
+                                    synced_from_garmin: new Date().toISOString(),
+                                    source: 'merged'
+                                })
+                                .eq('id', mergeCandidate.activity2.id)
+
+                            if (!updateError) {
+                                console.log(`Successfully merged ${inserted.id} into ${mergeCandidate.activity2.id}`)
+                                mergedCount++
+                            } else {
+                                console.error('Failed to merge update:', updateError)
+                                // If update fails, we might want to restore the deleted activity? 
+                                // But for now, let's just log the error. The data is technically safe in Garmin.
+                            }
+                        } else {
+                            console.log(`Match found (${mergeCandidate.activity2.id}) but has larger ID than inserted (${inserted.id}). Skipping merge to avoid race condition.`)
+                        }
+                    } else {
+                        console.log(`Merge candidate found but confidence too low: ${mergeCandidate.confidence}`)
+                        // Medium/low confidence - flag for review
+                        // We update the inserted activity with the flag
+                        await supabase.from('workout_flags').insert({
+                            athlete_id: athleteId,
+                            activity_id: inserted.id,
+                            flag_type: 'merge_candidate',
+                            severity: 'info',
+                            flag_data: {
+                                potential_match_id: mergeCandidate.activity2.id,
+                                confidence: mergeCandidate.confidence,
+                                confidence_score: mergeCandidate.confidenceScore
+                            }
+                        })
+
+                        // Also update the activity status
+                        await supabase
+                            .from('activities')
+                            .update({
+                                merge_status: 'pending_review',
+                                confidence_score: mergeCandidate.confidenceScore
+                            })
+                            .eq('id', inserted.id)
+
+                        pendingReviewCount++
+                    }
+                } else {
+                    console.log(`No valid merge candidate found among ${potentialMatches.length} potential matches`)
+                }
+            } else {
+                console.log(`No potential matches found in DB for activity ${inserted.id} (Window: +/- 1 day)`)
             }
         }
 

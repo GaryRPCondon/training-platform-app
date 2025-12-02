@@ -5,6 +5,7 @@ import { getAthleteProfile } from '@/lib/supabase/queries'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AISettingsCard } from '@/components/settings/ai-settings-card'
+import { ConnectionsCard } from '@/components/settings/connections-card'
 
 export default function ProfilePage() {
     const { data: athlete, isLoading, error } = useQuery({
@@ -46,6 +47,10 @@ export default function ProfilePage() {
                 </Card>
 
                 <AISettingsCard />
+                <ConnectionsCard
+                    stravaConnected={!!athlete?.strava_connected}
+                    garminConnected={!!athlete?.garmin_connected}
+                />
             </div>
         </div>
     )
