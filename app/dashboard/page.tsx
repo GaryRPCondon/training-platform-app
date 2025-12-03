@@ -9,20 +9,40 @@ export default async function DashboardPage() {
 
     if (!user) return null
 
+    // Find athlete by ID first, then by email (same as sync routes)
+    let { data: athlete } = await supabase
+        .from('athletes')
+        .select('id')
+        .eq('id', user.id)
+        .single()
+
+    if (!athlete) {
+        const { data: athleteByEmail } = await supabase
+            .from('athletes')
+            .select('id')
+            .eq('email', user.email)
+            .single()
+        athlete = athleteByEmail
+    }
+
+    if (!athlete) return null
+
+    const athleteId = athlete.id
+
     // Fetch total distance (all time)
     const { data: activities } = await supabase
         .from('activities')
         .select('distance_meters')
-        .eq('athlete_id', user.id)
+        .eq('athlete_id', athleteId)  // Use athleteId instead of user.id
 
     const totalDistanceMeters = activities?.reduce((acc: number, curr: { distance_meters: number | null }) => acc + (curr.distance_meters || 0), 0) || 0
     const totalDistanceKm = (totalDistanceMeters / 1000).toFixed(1)
 
-    // Fetch active plan
+    // Fetch active plan (also use athleteId)
     const { data: activePlan } = await supabase
         .from('training_plans')
         .select('name')
-        .eq('athlete_id', user.id)
+        .eq('athlete_id', athleteId)  // Use athleteId here too
         .eq('status', 'active')
         .single()
 

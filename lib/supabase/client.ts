@@ -9,4 +9,9 @@ export function createClient() {
 
 export const supabase = createClient()
 
-export const getCurrentAthleteId = () => process.env.NEXT_PUBLIC_ATHLETE_ID!
+// Get current athlete ID from authenticated session
+export async function getCurrentAthleteId() {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  return user.id
+}

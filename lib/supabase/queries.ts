@@ -2,10 +2,11 @@ import { supabase, getCurrentAthleteId } from './client'
 import { Activity, PlannedWorkout, TrainingPlan, Athlete } from '@/types'
 
 export async function getAthleteProfile() {
+    const athleteId = await getCurrentAthleteId()
     const { data, error } = await supabase
         .from('athletes')
         .select('*')
-        .eq('id', getCurrentAthleteId())
+        .eq('id', athleteId)
         .single()
 
     if (error) throw error
