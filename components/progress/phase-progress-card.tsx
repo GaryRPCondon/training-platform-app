@@ -11,7 +11,10 @@ import { getPhaseProgress } from '@/lib/analysis/phase-progress'
 export function PhaseProgressCard() {
     const { data: progress, isLoading } = useQuery({
         queryKey: ['phase-progress'],
-        queryFn: () => getPhaseProgress(getCurrentAthleteId()),
+        queryFn: async () => {
+            const athleteId = await getCurrentAthleteId()
+            return getPhaseProgress(athleteId)
+        },
     })
 
     if (isLoading || !progress) {

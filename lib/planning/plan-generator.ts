@@ -15,15 +15,18 @@ export interface GeneratedPlan {
     goal: {
         athlete_id: string
         goal_type: string
+        goal_name: string
         target_date: string
-        target_distance_meters: number
-        target_time_seconds: number | null
-        notes: string | null
+        target_value: {
+            distance: number
+            target_time: null
+        }
+        status: string
+        priority: number
     }
     plan: {
         athlete_id: string
         goal_id?: number
-        goal_date: string
         start_date: string
         end_date: string
         plan_type: string
@@ -70,9 +73,8 @@ export async function generateTrainingPlan(params: PlanGenerationParams): Promis
     // Create plan header
     const plan = {
         athlete_id: params.athleteId,
-        goal_date: params.goalDate.toISOString(),
-        start_date: startDate.toISOString(),
-        end_date: params.goalDate.toISOString(),
+        start_date: format(startDate, 'yyyy-MM-dd'),
+        end_date: format(params.goalDate, 'yyyy-MM-dd'),
         plan_type: params.goalType,
         name: `${params.goalType.replace('_', ' ')} Training Plan`,
         status: 'draft' as const
@@ -91,8 +93,8 @@ export async function generateTrainingPlan(params: PlanGenerationParams): Promis
         phases.push({
             phase_name: phaseConfig.name,
             phase_order: i + 1,
-            start_date: currentDate.toISOString(),
-            end_date: phaseEndDate.toISOString(),
+            start_date: format(currentDate, 'yyyy-MM-dd'),
+            end_date: format(phaseEndDate, 'yyyy-MM-dd'),
             weekly_volume_target: Math.round(params.maxWeeklyVolume * phaseConfig.volumeMultiplier),
             max_weekly_volume: params.maxWeeklyVolume,
             description: phaseConfig.description
@@ -166,11 +168,15 @@ export async function generateTrainingPlan(params: PlanGenerationParams): Promis
 
     const goal = {
         athlete_id: params.athleteId,
-        goal_type: params.goalType,
-        target_date: params.goalDate.toISOString(),
-        target_distance_meters: goalDistances[params.goalType],
-        target_time_seconds: null,
-        notes: null
+        goal_type: 'race',  // Changed from params.goalType to match schema enum
+        goal_name: `${params.goalType.replace('_', ' ')} - ${format(params.goalDate, 'MMM d, yyyy')}`,  // ADD THIS
+        target_date: format(params.goalDate, 'yyyy-MM-dd'),  // Change to DATE format, not ISO
+        target_value: {  // Changed from separate fields to JSONB
+            distance: goalDistances[params.goalType],
+            target_time: null
+        },
+        status: 'active',  // ADD THIS
+        priority: 1  // ADD THIS
     }
 
     return {

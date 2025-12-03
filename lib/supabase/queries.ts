@@ -14,10 +14,11 @@ export async function getAthleteProfile() {
 }
 
 export async function getRecentActivities(limit = 5) {
+    const athleteId = await getCurrentAthleteId()
     const { data, error } = await supabase
         .from('activities')
         .select('*')
-        .eq('athlete_id', getCurrentAthleteId())
+        .eq('athlete_id', athleteId)
         .order('start_time', { ascending: false })
         .limit(limit)
 
@@ -26,10 +27,11 @@ export async function getRecentActivities(limit = 5) {
 }
 
 export async function getActiveTrainingPlan() {
+    const athleteId = await getCurrentAthleteId()
     const { data, error } = await supabase
         .from('training_plans')
         .select('*')
-        .eq('athlete_id', getCurrentAthleteId())
+        .eq('athlete_id', athleteId)
         .eq('status', 'active')
         .single()
 
@@ -38,10 +40,11 @@ export async function getActiveTrainingPlan() {
 }
 
 export async function getPlannedWorkoutsForDateRange(startDate: string, endDate: string) {
+    const athleteId = await getCurrentAthleteId()
     const { data, error } = await supabase
         .from('planned_workouts')
         .select('*')
-        .eq('athlete_id', getCurrentAthleteId())
+        .eq('athlete_id', athleteId)
         .gte('scheduled_date', startDate)
         .lte('scheduled_date', endDate)
         .order('scheduled_date', { ascending: true })

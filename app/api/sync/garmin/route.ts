@@ -196,14 +196,23 @@ export async function POST(request: Request) {
                 synced_from_garmin: new Date().toISOString()
             }
 
-            console.log('Upserting Garmin activity:', activityData)
+            // Check if this Garmin activity already exists
+            const { data: existingGarmin } = await supabase
+                .from('activities')
+                .select('id, source')
+                .eq('athlete_id', athleteId)
+                .eq('garmin_id', activity.activityId?.toString())
+                .single()
 
+            if (existingGarmin) {
+                console.log(`Garmin activity ${activity.activityId} already exists (ID: ${existingGarmin.id}, source: ${existingGarmin.source}), skipping`)
+                continue
+            }
+
+            // Insert new activity
             const { data: inserted, error } = await supabase
                 .from('activities')
-                .upsert(activityData, {
-                    onConflict: 'athlete_id,garmin_id',
-                    ignoreDuplicates: false
-                })
+                .insert(activityData)  // Changed from upsert to insert
                 .select()
                 .single()
 

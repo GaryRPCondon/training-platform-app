@@ -4,7 +4,8 @@ import { ensureAthleteExists } from '@/lib/supabase/ensure-athlete'
 
 export async function POST(request: Request) {
     try {
-        const { provider, model } = await request.json()
+        const body = await request.json()
+        const { provider, model, preferred_units, week_starts_on } = body
 
         const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()
@@ -19,12 +20,16 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: athleteError }, { status: 500 })
         }
 
+        // Build update object with only provided fields
+        const updates: any = {}
+        if (provider !== undefined) updates.preferred_llm_provider = provider
+        if (model !== undefined) updates.preferred_llm_model = model || null
+        if (preferred_units !== undefined) updates.preferred_units = preferred_units
+        if (week_starts_on !== undefined) updates.week_starts_on = week_starts_on
+
         const { error } = await supabase
             .from('athletes')
-            .update({
-                preferred_llm_provider: provider,
-                preferred_llm_model: model || null
-            })
+            .update(updates)
             .eq('id', athleteId)
 
         if (error) throw error

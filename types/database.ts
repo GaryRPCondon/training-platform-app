@@ -10,6 +10,7 @@ export interface Athlete {
     threshold_power: number | null // watts
     vo2_max: number | null
     preferred_units: 'metric' | 'imperial'
+    week_starts_on: number | null // 0 = Sunday, 1 = Monday
     timezone: string | null
     garmin_connected: boolean
     strava_connected: boolean

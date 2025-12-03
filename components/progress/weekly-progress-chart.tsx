@@ -10,7 +10,10 @@ import { cn } from '@/lib/utils'
 export function WeeklyProgressChart() {
     const { data: weeklyData, isLoading } = useQuery({
         queryKey: ['weekly-progress'],
-        queryFn: () => getWeeklyProgress(getCurrentAthleteId()),
+        queryFn: async () => {
+            const athleteId = await getCurrentAthleteId()
+            return getWeeklyProgress(athleteId)
+        },
     })
 
     if (isLoading || !weeklyData) return null

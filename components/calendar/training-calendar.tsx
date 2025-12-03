@@ -7,11 +7,11 @@ import moment from 'moment'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getPlannedWorkoutsForDateRange } from '@/lib/supabase/queries'
+import { getPlannedWorkoutsForDateRange, getAthleteProfile } from '@/lib/supabase/queries'
 import { startOfWeek, endOfWeek, format, startOfMonth, endOfMonth, subDays, addDays } from 'date-fns'
 import { Card } from '@/components/ui/card'
 import { WorkoutDetail } from '@/components/workouts/workout-detail'
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 
 const localizer = momentLocalizer(moment)
@@ -24,13 +24,28 @@ export function TrainingCalendar() {
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const queryClient = useQueryClient()
 
+    // Get athlete profile for week start preference
+    const { data: athlete } = useQuery({
+        queryKey: ['athlete'],
+        queryFn: getAthleteProfile,
+    })
+
+    const weekStartsOn = (athlete?.week_starts_on ?? 0) as 0 | 1 | 2 | 3 | 4 | 5 | 6 // Default to Sunday if not set
+
+    // Update moment locale to use the preferred week start day
+    moment.updateLocale('en', {
+        week: {
+            dow: weekStartsOn, // 0 = Sunday, 1 = Monday, etc.
+        }
+    })
+
     const queryStart = view === 'month'
         ? format(subDays(startOfMonth(currentDate), 7), 'yyyy-MM-dd')
-        : format(startOfWeek(currentDate), 'yyyy-MM-dd')
+        : format(startOfWeek(currentDate, { weekStartsOn: weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6 }), 'yyyy-MM-dd')
 
     const queryEnd = view === 'month'
         ? format(addDays(endOfMonth(currentDate), 7), 'yyyy-MM-dd')
-        : format(endOfWeek(currentDate), 'yyyy-MM-dd')
+        : format(endOfWeek(currentDate, { weekStartsOn: weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6 }), 'yyyy-MM-dd')
 
     const { data: workouts, isLoading } = useQuery({
         queryKey: ['workouts', queryStart, queryEnd],
@@ -102,6 +117,11 @@ export function TrainingCalendar() {
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>
+                            {selectedWorkout?.workout_type?.replace(/_/g, ' ').toUpperCase() || 'Workout Details'}
+                        </DialogTitle>
+                    </DialogHeader>
                     {selectedWorkout && (
                         <WorkoutDetail workout={selectedWorkout} />
                     )}

@@ -189,7 +189,20 @@ export async function POST(request: Request) {
 
             const { data: potentialMatches } = await query
 
-            // Insert new activity first
+            // Check if this Strava activity already exists
+            const { data: existingStrava } = await supabase
+                .from('activities')
+                .select('id, source')
+                .eq('athlete_id', athleteId)
+                .eq('strava_id', activity.id?.toString())
+                .single()
+
+            if (existingStrava) {
+                console.log(`Strava activity ${activity.id} already exists (ID: ${existingStrava.id}, source: ${existingStrava.source}), skipping`)
+                continue
+            }
+
+            // Insert new activity
             const activityData: any = {
                 athlete_id: athleteId,
                 strava_id: activity.id?.toString(),
@@ -202,14 +215,11 @@ export async function POST(request: Request) {
                 synced_from_strava: new Date().toISOString()
             }
 
-            console.log('Upserting Strava activity:', activityData)
+            console.log('Inserting Strava activity:', activityData)
 
             const { data: inserted, error } = await supabase
                 .from('activities')
-                .upsert(activityData, {
-                    onConflict: 'athlete_id,strava_id',
-                    ignoreDuplicates: false
-                })
+                .insert(activityData)  // Changed from upsert to insert
                 .select()
                 .single()
 

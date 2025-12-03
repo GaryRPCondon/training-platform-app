@@ -40,3 +40,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# MCP servers (external dependencies)
+garmin-connect-mcp/
+strava-mcp/

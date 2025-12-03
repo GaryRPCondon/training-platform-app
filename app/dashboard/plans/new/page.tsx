@@ -24,9 +24,11 @@ export default function NewPlanPage() {
         setIsSubmitting(true)
 
         try {
+            const athleteId = await getCurrentAthleteId()
+
             // Generate complete plan structure
             const generatedPlan = await generateTrainingPlan({
-                athleteId: getCurrentAthleteId(),
+                athleteId,
                 goalDate: new Date(goalDate),
                 goalType: goalType as any,
                 currentWeeklyVolume: currentVolume,
@@ -36,7 +38,7 @@ export default function NewPlanPage() {
 
             // Save to database
             const { savePlanWithPhases } = await import('@/lib/supabase/plan-queries')
-            const result = await savePlanWithPhases(generatedPlan, getCurrentAthleteId())
+            const result = await savePlanWithPhases(generatedPlan, athleteId)
 
             toast.success('Plan created successfully with all workouts!')
             router.push('/dashboard/plans')

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AISettingsCard } from '@/components/settings/ai-settings-card'
 import { ConnectionsCard } from '@/components/settings/connections-card'
+import { PreferencesCard } from '@/components/settings/preferences-card'
 
 export default function ProfilePage() {
     const { data: athlete, isLoading, error } = useQuery({
@@ -39,13 +40,10 @@ export default function ProfilePage() {
                             <div className="text-sm font-medium text-muted-foreground">Email</div>
                             <div className="text-lg">{athlete?.email}</div>
                         </div>
-                        <div>
-                            <div className="text-sm font-medium text-muted-foreground">Preferred Units</div>
-                            <div className="text-lg capitalize">{athlete?.preferred_units}</div>
-                        </div>
                     </CardContent>
                 </Card>
 
+                <PreferencesCard />
                 <AISettingsCard />
                 <ConnectionsCard
                     stravaConnected={!!athlete?.strava_connected}

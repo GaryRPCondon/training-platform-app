@@ -33,6 +33,11 @@ const navItems = [
         icon: ClipboardList,
     },
     {
+        title: 'Activities',
+        href: '/dashboard/activities',
+        icon: Activity,
+    },
+    {
         title: 'Activity Sync',
         href: '/dashboard/sync',
         icon: Activity,
