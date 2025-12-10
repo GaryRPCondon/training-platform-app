@@ -233,6 +233,35 @@ export default function MCPTestPage() {
                             Erase All Activities
                         </Button>
                     </div>
+
+                    <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-md">
+                        <h3 className="font-semibold text-sm mb-2">Erase All Plans</h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                            This will permanently delete all training plans, phases, weekly plans, and planned workouts. This action cannot be undone.
+                        </p>
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={async () => {
+                                if (!confirm('Are you sure you want to delete ALL plans and workouts? This cannot be undone!')) {
+                                    return
+                                }
+                                try {
+                                    const res = await fetch('/api/plans/delete-all', { method: 'DELETE' })
+                                    const data = await res.json()
+                                    if (data.success) {
+                                        alert(`Successfully deleted ${data.count} plans and all related data`)
+                                    } else {
+                                        alert(`Error: ${data.error}`)
+                                    }
+                                } catch (error) {
+                                    alert(`Error: ${error}`)
+                                }
+                            }}
+                        >
+                            Erase All Plans
+                        </Button>
+                    </div>
                 </CardContent>
             </Card>
         </div>

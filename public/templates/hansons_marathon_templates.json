@@ -1,0 +1,862 @@
+{
+  "templates": [
+    {
+      "template_id": "hansons_just_finish_marathon",
+      "name": "Hansons Just Finish Marathon Program",
+      "author": "Luke Humphrey with Keith and Kevin Hanson",
+      "source": "Hansons Marathon Method",
+      "source_reference": "Pages 112-123, Hansons Just Finish Marathon Program",
+      "description": "Cumulative fatigue-based marathon training with emphasis on something of substance (SOS) workouts. Three workout types: Speed, Strength, and Tempo.",
+      "target_audience": {
+        "experience_level": "beginner",
+        "prerequisites": [
+          "Consistent running base established",
+          "Comfortable with structured training",
+          "Able to run 6 days per week"
+        ],
+        "peak_weekly_mileage": "48.2 miles (78 km)"
+      },
+      "program_structure": {
+        "duration_weeks": 18,
+        "training_philosophy": "Cumulative fatigue approach - teaching body to run on tired legs",
+        "sos_workouts": "Something of Substance workouts 3x per week (Tuesday, Thursday, Saturday/Sunday)",
+        "typical_week": "Speed or Strength on Tuesday, Tempo on Thursday, Long run on Saturday or Sunday"
+      },
+      "philosophy": {
+        "key_principles": [
+          "Cumulative fatigue - train on moderately tired legs to simulate marathon conditions",
+          "Three SOS (Something of Substance) workouts per week",
+          "Long runs capped at 16 miles (not 20+) to allow recovery",
+          "Easy runs are truly easy - conversational pace",
+          "Weekly mileage includes warm-up and cooldown (3-mile total for Speed, Strength, Tempo workouts)",
+          "Rest days are important for adaptation"
+        ],
+        "workout_types": [
+          "Speed: Track intervals at 5K-10K pace (400m-1600m repeats)",
+          "Strength: Longer intervals at 10K-Half Marathon pace (1mi-3mi repeats)",
+          "Tempo: Sustained efforts at Half Marathon-Marathon pace"
+        ]
+      },
+      "pace_guidance": {
+        "easy_runs": "Conversational pace, no specific target",
+        "speed_workouts": "5K-10K race pace (see pace charts pp. 68-74)",
+        "strength_workouts": "10K-Half Marathon race pace (see pace charts pp. 78-81)",
+        "tempo_workouts": "Half Marathon-Marathon race pace (see pace chart p. 86)",
+        "long_runs": "Easy pace, may include marathon pace segments in later weeks"
+      },
+      "workout_notation": {
+        "intervals": "Format '12 \u00d7 400, 400 recovery' means 12 repeats of 400m with 400m recovery jog between",
+        "distances": "All distances in miles unless specified (e.g., 400m, 800m, 1K, 1200m)",
+        "warmup_cooldown": "Weekly mileage includes 1-mile warm-up and 2-mile cooldown for SOS workouts (3-mile total)",
+        "tempo_notation": "Tempo workouts show total distance including warm-up/cooldown (e.g., 'Tempo 9 mi.' = 1mi warm-up + 6mi tempo + 2mi cooldown)",
+        "rest_or_crosstrain": "Optional rest day or light cross-training activity"
+      },
+      "weekly_schedule": [
+        {
+          "week": 1,
+          "phase": "Just Finish",
+          "monday": "Rest or crosstrain",
+          "tuesday": "Easy 2 mi. (3 km)",
+          "wednesday": "Rest or crosstrain",
+          "thursday": "Easy 3 mi. (5 km)",
+          "friday": "Rest or crosstrain",
+          "saturday": "Easy 3 mi. (5 km)",
+          "sunday": "Easy 4 mi. (7 km)",
+          "weekly_total": "12 mi. (20 km)"
+        },
+        {
+          "week": 2,
+          "phase": "Just Finish",
+          "monday": "Rest or crosstrain",
+          "tuesday": "Easy 3 mi. (5 km)",
+          "wednesday": "Rest or crosstrain",
+          "thursday": "Easy 3 mi. (5 km)",
+          "friday": "Rest or crosstrain",
+          "saturday": "Easy 3 mi. (5 km)",
+          "sunday": "Easy 4 mi. (7 km)",
+          "weekly_total": "16 mi. (27 km)"
+        },
+        {
+          "week": 3,
+          "phase": "Just Finish",
+          "monday": "Rest or crosstrain",
+          "tuesday": "Easy 4 mi. (7 km)",
+          "wednesday": "Rest or crosstrain",
+          "thursday": "Easy 4 mi. (7 km)",
+          "friday": "Rest or crosstrain",
+          "saturday": "Easy 4 mi. (7 km)",
+          "sunday": "Easy 5 mi. (8 km)",
+          "weekly_total": "21 mi. (36 km)"
+        },
+        {
+          "week": 4,
+          "phase": "Just Finish",
+          "monday": "Rest or crosstrain",
+          "tuesday": "Easy 5 mi. (8 km)",
+          "wednesday": "Rest or crosstrain",
+          "thursday": "Easy 3 mi. (5 km)",
+          "friday": "Rest or crosstrain",
+          "saturday": "Easy 5 mi. (8 km)",
+          "sunday": "Easy 4 mi. (7 km)",
+          "weekly_total": "20 mi. (33 km)"
+        },
+        {
+          "week": 5,
+          "phase": "Just Finish",
+          "monday": "Rest or crosstrain",
+          "tuesday": "Easy 5 mi. (8 km)",
+          "wednesday": "Rest or crosstrain",
+          "thursday": "Easy 4 mi. (7 km)",
+          "friday": "Rest or crosstrain",
+          "saturday": "Easy 4 mi. (7 km)",
+          "sunday": "Easy 6 mi. (10 km)",
+          "weekly_total": "24 mi. (40 km)"
+        },
+        {
+          "week": 6,
+          "phase": "Just Finish",
+          "monday": "Easy 4 mi. (7 km)",
+          "tuesday": "Easy 5 mi. (8 km)",
+          "wednesday": "Rest or crosstrain",
+          "thursday": "Easy 5 mi. (8 km)",
+          "friday": "Rest or crosstrain",
+          "saturday": "Easy 8 mi. (13 km)",
+          "sunday": "Easy 8 mi. (13 km)",
+          "weekly_total": "34 mi. (56 km)"
+        },
+        {
+          "week": 7,
+          "phase": "Just Finish",
+          "monday": "Easy 4 mi. (7 km)",
+          "tuesday": "Easy 5 mi. (8 km)",
+          "wednesday": "Rest or crosstrain",
+          "thursday": "Easy 5 mi. (8 km)",
+          "friday": "Rest or crosstrain",
+          "saturday": "Easy 6 mi. (10 km)",
+          "sunday": "Long 10 mi. (15 km)",
+          "weekly_total": "34 mi. (55 km)"
+        },
+        {
+          "week": 8,
+          "phase": "Just Finish",
+          "monday": "Easy 6 mi. (10 km)",
+          "tuesday": "Easy 6 mi. (10 km)",
+          "wednesday": "Rest or crosstrain",
+          "thursday": "Easy 6 mi. (10 km)",
+          "friday": "Rest or crosstrain",
+          "saturday": "Easy 6 mi. (10 km)",
+          "sunday": "Long 10 mi. (15 km)",
+          "weekly_total": "39 mi. (63 km)"
+        },
+        {
+          "week": 9,
+          "phase": "Just Finish",
+          "monday": "Easy 5 mi. (8 km)",
+          "tuesday": "Easy 5 mi. (8 km)",
+          "wednesday": "Rest or crosstrain",
+          "thursday": "Easy 5 mi. (8 km)",
+          "friday": "Rest or crosstrain",
+          "saturday": "Easy 5 mi. (8 km)",
+          "sunday": "Long 15 mi. (25 km)",
+          "weekly_total": "41 mi. (67 km)"
+        },
+        {
+          "week": 10,
+          "phase": "Just Finish",
+          "monday": "Easy 7 mi. (12 km)",
+          "tuesday": "Easy 5 mi. (8 km)",
+          "wednesday": "Rest or crosstrain",
+          "thursday": "Easy 6 mi. (10 km)",
+          "friday": "Rest or crosstrain",
+          "saturday": "Easy 8 mi. (13 km)",
+          "sunday": "Long 10 mi. (15 km)",
+          "weekly_total": "41 mi. (66 km)"
+        },
+        {
+          "week": 11,
+          "phase": "Just Finish",
+          "monday": "Easy 5 mi. (8 km)",
+          "tuesday": "Easy 7 mi. (12 km)",
+          "wednesday": "Rest or crosstrain",
+          "thursday": "Easy 5 mi. (8 km)",
+          "friday": "Rest or crosstrain",
+          "saturday": "Easy 8 mi. (13 km)",
+          "sunday": "Long 16 mi. (27 km)",
+          "weekly_total": "47 mi. (78 km)"
+        },
+        {
+          "week": 12,
+          "phase": "Just Finish",
+          "monday": "Easy 5 mi. (8 km)",
+          "tuesday": "Easy 7 mi. (12 km)",
+          "wednesday": "Rest or Crosstrain",
+          "thursday": "Easy 6 mi. (10 km)",
+          "friday": "Rest or crosstrain",
+          "saturday": "Easy 8 mi. (13 km)",
+          "sunday": "Easy 10 mi. (15 km)",
+          "weekly_total": "41 mi. (66 km)"
+        },
+        {
+          "week": 13,
+          "phase": "Just Finish",
+          "monday": "Easy 7 mi. (12 km)",
+          "tuesday": "Easy 5 mi. (8 km)",
+          "wednesday": "Rest or crosstrain",
+          "thursday": "Easy 5 mi. (8 km)",
+          "friday": "Rest or crosstrain",
+          "saturday": "Easy 6 mi. (10 km)",
+          "sunday": "Long 16 mi. (27 km)",
+          "weekly_total": "45 mi. (75 km)"
+        },
+        {
+          "week": 14,
+          "phase": "Just Finish",
+          "monday": "Easy 5 mi. (8 km)",
+          "tuesday": "Easy 7 mi. (12 km)",
+          "wednesday": "Rest or crosstrain",
+          "thursday": "Easy 6 mi. (10 km)",
+          "friday": "Rest or crosstrain",
+          "saturday": "Easy 8 mi. (13 km)",
+          "sunday": "Long 10 mi. (15 km)",
+          "weekly_total": "41 mi. (66 km)"
+        },
+        {
+          "week": 15,
+          "phase": "Just Finish",
+          "monday": "Easy 7 mi. (12 km)",
+          "tuesday": "Easy 5 mi. (8 km)",
+          "wednesday": "Rest or crosstrain",
+          "thursday": "Easy 5 mi. (8 km)",
+          "friday": "Rest or crosstrain",
+          "saturday": "Easy 6 mi. (10 km)",
+          "sunday": "Long 16 mi. (27 km)",
+          "weekly_total": "45 mi. (75 km)"
+        },
+        {
+          "week": 16,
+          "phase": "Just Finish",
+          "monday": "Easy 5 mi. (8 km)",
+          "tuesday": "Easy 5 mi. (8 km)",
+          "wednesday": "Rest or crosstrain",
+          "thursday": "Easy 5 mi. (8 km)",
+          "friday": "Rest or crosstrain",
+          "saturday": "Easy 5 mi. (8 km)",
+          "sunday": "Long 10 mi. (15 km)",
+          "weekly_total": "38 mi. (60 km)"
+        },
+        {
+          "week": 17,
+          "phase": "Just Finish",
+          "monday": "Easy 7 mi. (12 km)",
+          "tuesday": "Easy 5 mi. (8 km)",
+          "wednesday": "Rest or crosstrain",
+          "thursday": "Easy 5 mi. (8 km)",
+          "friday": "Rest or crosstrain",
+          "saturday": "Easy 6 mi. (10 km)",
+          "sunday": "Easy 8 mi. (13 km)",
+          "weekly_total": "37 mi. (61 km)"
+        },
+        {
+          "week": 18,
+          "phase": "Race Week",
+          "monday": "Easy 5 mi. (8 km)",
+          "tuesday": "Easy 5 mi. (8 km)",
+          "wednesday": "Rest",
+          "thursday": "Easy 5 mi. (8 km)",
+          "friday": "Rest or crosstrain",
+          "saturday": "Easy 3 mi. (5 km)",
+          "sunday": "RACE!",
+          "weekly_total": "48.2 mi. (78 km)"
+        }
+      ],
+      "adaptation_guidelines": {
+        "rest_days": "Monday and Wednesday are flexible rest or cross-training days. Listen to your body.",
+        "easy_pace": "All easy runs should be conversational pace. No specific target pace required.",
+        "long_runs": "Capped at 16 miles to allow adequate recovery. This is intentional per Hansons philosophy.",
+        "progression": "Gradual volume build through week 11, then maintenance with strategic cutbacks.",
+        "race_week": "Final week includes race (26.2 miles) in weekly total.",
+        "modifications": "If too fatigued, convert a running day to rest or cross-training. Consistency is more important than hitting every mile."
+      }
+    },
+    {
+      "template_id": "hansons_beginner_marathon",
+      "name": "Hansons Beginner Marathon Program",
+      "author": "Luke Humphrey with Keith and Kevin Hanson",
+      "source": "Hansons Marathon Method",
+      "source_reference": "Pages 116-119, Beginner Program",
+      "description": "Cumulative fatigue-based marathon training with Speed, Strength, and Tempo workouts. Introduces structured interval training with 3 SOS workouts per week.",
+      "target_audience": {
+        "experience_level": "beginner",
+        "prerequisites": [
+          "Well-established running base",
+          "Comfortable with structured training",
+          "Able to run 6 days per week"
+        ],
+        "peak_weekly_mileage": "57 miles (92 km)"
+      },
+      "program_structure": {
+        "duration_weeks": 18,
+        "training_philosophy": "Cumulative fatigue approach - teaching body to run on tired legs",
+        "sos_workouts": "Something of Substance workouts 3x per week (Tuesday, Thursday, Saturday/Sunday)",
+        "typical_week": "Speed or Strength on Tuesday, Tempo on Thursday, Long run on Saturday or Sunday"
+      },
+      "philosophy": {
+        "key_principles": [
+          "Cumulative fatigue - train on moderately tired legs to simulate marathon conditions",
+          "Three SOS (Something of Substance) workouts per week",
+          "Long runs capped at 16 miles (not 20+) to allow recovery",
+          "Easy runs are truly easy - conversational pace",
+          "Weekly mileage includes warm-up and cooldown (3-mile total for Speed, Strength, Tempo workouts)",
+          "Wednesday is always OFF for recovery"
+        ],
+        "workout_types": [
+          "Speed: Track intervals at 5K-10K pace (400m-1600m repeats)",
+          "Strength: Longer intervals at 10K-Half Marathon pace (1mi-3mi repeats)",
+          "Tempo: Sustained efforts at Half Marathon-Marathon pace"
+        ],
+        "progression": [
+          "Weeks 1-5: Base building with easy running only",
+          "Weeks 6-10: Speed workouts introduced (400m-1200m intervals)",
+          "Weeks 11-13: Strength workouts begin (1mi-2mi intervals)",
+          "Weeks 14-17: Peak training with longest intervals",
+          "Week 18: Race week taper"
+        ]
+      },
+      "pace_guidance": {
+        "easy_runs": "Conversational pace, no specific target",
+        "speed_workouts": "5K-10K race pace (see pace charts pp. 68-74)",
+        "strength_workouts": "10K-Half Marathon race pace (see pace charts pp. 78-81)",
+        "tempo_workouts": "Half Marathon-Marathon race pace (see pace chart p. 86)",
+        "long_runs": "Easy pace, may include marathon pace segments in later weeks"
+      },
+      "workout_notation": {
+        "intervals": "Format '12 \u00d7 400, 400 recovery' means 12 repeats of 400m with 400m recovery jog between",
+        "distances": "All distances in miles unless specified (e.g., 400m, 800m, 1K, 1200m)",
+        "warmup_cooldown": "Weekly mileage includes 1-mile warm-up and 2-mile cooldown for SOS workouts",
+        "tempo_notation": "Tempo workouts show total distance including warm-up/cooldown (e.g., 'Tempo 9 mi.' = 1mi warm-up + 6mi tempo + 2mi cooldown)",
+        "strength_notation": "Strength workouts show interval \u00d7 repeats with recovery (e.g., '2 \u00d7 3 mi. with 1 mi. recovery' = warm-up + 3mi + 1mi recovery jog + 3mi + cooldown)"
+      },
+      "weekly_schedule": [
+        {
+          "week": 1,
+          "phase": "Base",
+          "monday": "\u2014",
+          "tuesday": "\u2014",
+          "wednesday": "OFF",
+          "thursday": "Easy 3 mi. (5 km)",
+          "friday": "Easy 3 mi. (5 km)",
+          "saturday": "Easy 3 mi. (5 km)",
+          "sunday": "Easy 4 mi. (7 km)",
+          "weekly_total": "13 mi. (22 km)"
+        },
+        {
+          "week": 2,
+          "phase": "Base",
+          "monday": "OFF",
+          "tuesday": "Easy 2 mi. (3 km)",
+          "wednesday": "OFF",
+          "thursday": "Easy 3 mi. (5 km)",
+          "friday": "Easy 4 mi. (7 km)",
+          "saturday": "Easy 3 mi. (5 km)",
+          "sunday": "Easy 5 mi. (8 km)",
+          "weekly_total": "17 mi. (28 km)"
+        },
+        {
+          "week": 3,
+          "phase": "Base",
+          "monday": "OFF",
+          "tuesday": "Easy 4 mi. (7 km)",
+          "wednesday": "OFF",
+          "thursday": "Easy 4 mi. (7 km)",
+          "friday": "Easy 4 mi. (7 km)",
+          "saturday": "Easy 4 mi. (7 km)",
+          "sunday": "Easy 5 mi. (8 km)",
+          "weekly_total": "21 mi. (35 km)"
+        },
+        {
+          "week": 4,
+          "phase": "Base",
+          "monday": "OFF",
+          "tuesday": "Easy 5 mi. (8 km)",
+          "wednesday": "OFF",
+          "thursday": "Easy 3 mi. (5 km)",
+          "friday": "Easy 5 mi. (8 km)",
+          "saturday": "Easy 5 mi. (8 km)",
+          "sunday": "Easy 6 mi. (10 km)",
+          "weekly_total": "24 mi. (40 km)"
+        },
+        {
+          "week": 5,
+          "phase": "Base",
+          "monday": "OFF",
+          "tuesday": "Easy 5 mi. (8 km)",
+          "wednesday": "OFF",
+          "thursday": "Easy 4 mi. (7 km)",
+          "friday": "Easy 4 mi. (7 km)",
+          "saturday": "Easy 6 mi. (10 km)",
+          "sunday": "Easy 6 mi. (10 km)",
+          "weekly_total": "25 mi. (42 km)"
+        },
+        {
+          "week": 6,
+          "phase": "Speed",
+          "monday": "Easy 4 mi. (7 km)",
+          "tuesday": "Speed: 12 \u00d7 400, 400 recovery",
+          "wednesday": "OFF",
+          "thursday": "Easy 5 mi. (8 km)",
+          "friday": "Easy 5 mi. (8 km)",
+          "saturday": "Easy 5 mi. (8 km)",
+          "sunday": "Long 10 mi. (15 km)",
+          "weekly_total": "35 mi. (55 km)"
+        },
+        {
+          "week": 7,
+          "phase": "Speed",
+          "monday": "Easy 4 mi. (7 km)",
+          "tuesday": "Speed: 8 \u00d7 600, 400 recovery",
+          "wednesday": "OFF",
+          "thursday": "Easy 5 mi. (8 km)",
+          "friday": "Easy 5 mi. (8 km)",
+          "saturday": "Easy 6 mi. (10 km)",
+          "sunday": "Long 10 mi. (15 km)",
+          "weekly_total": "36 mi. (57 km)"
+        },
+        {
+          "week": 8,
+          "phase": "Speed",
+          "monday": "Easy 6 mi. (10 km)",
+          "tuesday": "Speed: 6 \u00d7 800, 400 recovery",
+          "wednesday": "OFF",
+          "thursday": "Easy 7 mi. (12 km)",
+          "friday": "Easy 5 mi. (8 km)",
+          "saturday": "Easy 6 mi. (10 km)",
+          "sunday": "Long 10 mi. (15 km)",
+          "weekly_total": "40 mi. (65 km)"
+        },
+        {
+          "week": 9,
+          "phase": "Speed",
+          "monday": "Easy 5 mi. (8 km)",
+          "tuesday": "Speed: 5 \u00d7 1K, 400 recovery",
+          "wednesday": "OFF",
+          "thursday": "Easy 8 mi. (13 km)",
+          "friday": "Easy 5 mi. (8 km)",
+          "saturday": "Easy 5 mi. (8 km)",
+          "sunday": "Long 16 mi. (27 km)",
+          "weekly_total": "45 mi. (75 km)"
+        },
+        {
+          "week": 10,
+          "phase": "Speed",
+          "monday": "Easy 7 mi. (12 km)",
+          "tuesday": "Speed: 4 \u00d7 1200, 400 recovery",
+          "wednesday": "OFF",
+          "thursday": "Easy 8 mi. (13 km)",
+          "friday": "Easy 5 mi. (8 km)",
+          "saturday": "Easy 8 mi. (13 km)",
+          "sunday": "Long 10 mi. (15 km)",
+          "weekly_total": "45 mi. (73 km)"
+        },
+        {
+          "week": 11,
+          "phase": "Strength",
+          "monday": "Easy 5 mi. (8 km)",
+          "tuesday": "Strength: 6 \u00d7 1 mi., 400 recovery",
+          "wednesday": "OFF",
+          "thursday": "Tempo 9 mi. (14 km)",
+          "friday": "Easy 5 mi. (8 km)",
+          "saturday": "Easy 6 mi. (10 km)",
+          "sunday": "Long 16 mi. (27 km)",
+          "weekly_total": "50 mi. (82 km)"
+        },
+        {
+          "week": 12,
+          "phase": "Strength",
+          "monday": "Easy 5 mi. (8 km)",
+          "tuesday": "Strength: 4 \u00d7 1.5 mi., 800 recovery",
+          "wednesday": "OFF",
+          "thursday": "Tempo 9 mi. (14 km)",
+          "friday": "Easy 5 mi. (8 km)",
+          "saturday": "Easy 8 mi. (13 km)",
+          "sunday": "Long 16 mi. (27 km)",
+          "weekly_total": "53 mi. (87 km)"
+        },
+        {
+          "week": 13,
+          "phase": "Strength",
+          "monday": "Easy 7 mi. (12 km)",
+          "tuesday": "Strength: 3 \u00d7 2 mi., 800 recovery",
+          "wednesday": "OFF",
+          "thursday": "Tempo 9 mi. (14 km)",
+          "friday": "Easy 5 mi. (8 km)",
+          "saturday": "Easy 6 mi. (10 km)",
+          "sunday": "Long 16 mi. (27 km)",
+          "weekly_total": "53 mi. (87 km)"
+        },
+        {
+          "week": 14,
+          "phase": "Strength",
+          "monday": "Easy 5 mi. (8 km)",
+          "tuesday": "Strength: 2 \u00d7 3 mi. with 1 mi. (2 km) recovery",
+          "wednesday": "OFF",
+          "thursday": "Tempo 9 mi. (14 km)",
+          "friday": "Easy 5 mi. (8 km)",
+          "saturday": "Easy 8 mi. (13 km)",
+          "sunday": "Long 10 mi. (15 km)",
+          "weekly_total": "49 mi. (79 km)"
+        },
+        {
+          "week": 15,
+          "phase": "Strength",
+          "monday": "Easy 7 mi. (12 km)",
+          "tuesday": "Strength: 3 \u00d7 2 mi., 800 recovery",
+          "wednesday": "OFF",
+          "thursday": "Tempo 10 mi. (15 km)",
+          "friday": "Easy 5 mi. (8 km)",
+          "saturday": "Easy 6 mi. (10 km)",
+          "sunday": "Long 16 mi. (27 km)",
+          "weekly_total": "54 mi. (89 km)"
+        },
+        {
+          "week": 16,
+          "phase": "Strength",
+          "monday": "Easy 5 mi. (8 km)",
+          "tuesday": "Strength: 4 \u00d7 1.5 mi., 800 recovery",
+          "wednesday": "OFF",
+          "thursday": "Tempo 10 mi. (15 km)",
+          "friday": "Easy 5 mi. (8 km)",
+          "saturday": "Easy 8 mi. (13 km)",
+          "sunday": "Long 16 mi. (27 km)",
+          "weekly_total": "54 mi. (89 km)"
+        },
+        {
+          "week": 17,
+          "phase": "Strength",
+          "monday": "Easy 7 mi. (12 km)",
+          "tuesday": "Strength: 6 \u00d7 1 mi., 400 recovery",
+          "wednesday": "OFF",
+          "thursday": "Tempo 10 mi. (15 km)",
+          "friday": "Easy 5 mi. (8 km)",
+          "saturday": "Easy 6 mi. (10 km)",
+          "sunday": "Easy 10 mi. (15 km)",
+          "weekly_total": "47 mi. (77 km)"
+        },
+        {
+          "week": 18,
+          "phase": "Race Week",
+          "monday": "Easy 5 mi. (8 km)",
+          "tuesday": "Easy 5 mi. (8 km)",
+          "wednesday": "OFF",
+          "thursday": "Easy 6 mi. (10 km)",
+          "friday": "Easy 3 mi. (5 km)",
+          "saturday": "Easy 3 mi. (5 km)",
+          "sunday": "RACE!",
+          "weekly_total": "48.2 mi. (78 km)"
+        }
+      ],
+      "adaptation_guidelines": {
+        "wednesday_off": "Wednesday is always a rest day. This is critical for recovery between SOS workouts.",
+        "easy_pace": "Easy runs should be conversational pace. Resist urge to push these runs.",
+        "speed_workouts": "Start with shorter intervals (400m) and progress to longer (1200m). Includes 1mi warm-up and 2mi cooldown.",
+        "strength_workouts": "Longer intervals at controlled pace. Focus on rhythm and maintaining effort across all repeats.",
+        "tempo_workouts": "Sustained efforts - harder than easy, but controlled. Total distance includes warm-up/cooldown.",
+        "long_runs": "Capped at 16 miles. Some athletes expect 20+ but Hansons philosophy emphasizes cumulative fatigue over single long efforts.",
+        "race_week": "Significant taper with easy running only. Race day = marathon (26.2 miles) included in weekly total.",
+        "modifications": "If struggling, reduce interval count rather than skipping entire workout. Maintain consistency."
+      }
+    },
+    {
+      "template_id": "hansons_advanced_marathon",
+      "name": "Hansons Advanced Marathon Program",
+      "author": "Luke Humphrey with Keith and Kevin Hanson",
+      "source": "Hansons Marathon Method",
+      "source_reference": "Pages 120-123, Advanced Program",
+      "description": "High-volume cumulative fatigue marathon training with aggressive Speed, Strength, and Tempo progression. For experienced marathoners seeking significant improvement.",
+      "target_audience": {
+        "experience_level": "advanced",
+        "prerequisites": [
+          "Multiple marathon completions",
+          "Consistent 50+ miles per week base",
+          "Comfortable with high-intensity workouts",
+          "Able to run 6 days per week",
+          "Strong injury resilience"
+        ],
+        "peak_weekly_mileage": "63 miles (102 km)"
+      },
+      "program_structure": {
+        "duration_weeks": 18,
+        "training_philosophy": "Aggressive cumulative fatigue approach with higher volume and intensity",
+        "sos_workouts": "Something of Substance workouts 3x per week (Tuesday, Thursday, Saturday/Sunday)",
+        "typical_week": "Speed or Strength on Tuesday, Tempo on Thursday, Long run on Saturday or Sunday",
+        "intensity_notes": "Higher starting mileage, more interval volume, faster progression than Beginner plan"
+      },
+      "philosophy": {
+        "key_principles": [
+          "Cumulative fatigue at higher volume - train tired to race strong",
+          "Three SOS workouts per week with aggressive progression",
+          "Long runs capped at 16 miles (maintains Hansons philosophy)",
+          "Easy runs are recovery runs - truly conversational",
+          "Weekly mileage includes warm-up and cooldown (3-mile total for SOS workouts)",
+          "Wednesday is always OFF for recovery",
+          "More interval volume and variety than Beginner plan"
+        ],
+        "workout_types": [
+          "Speed: Track intervals at 5K-10K pace with varied distances and creative formats (pyramids, ladders)",
+          "Strength: Long intervals at 10K-Half Marathon pace (1.5mi-3mi repeats)",
+          "Tempo: Extended sustained efforts at Half Marathon-Marathon pace"
+        ],
+        "progression": [
+          "Week 1: Easy build-in week",
+          "Weeks 2-10: Speed development phase with progressive interval work",
+          "Weeks 11-17: Strength phase with long intervals and sustained tempo efforts",
+          "Week 18: Race week taper"
+        ]
+      },
+      "pace_guidance": {
+        "easy_runs": "Conversational pace, no specific target - true recovery",
+        "speed_workouts": "5K-10K race pace (see pace charts pp. 68-74)",
+        "strength_workouts": "10K-Half Marathon race pace (see pace charts pp. 78-81)",
+        "tempo_workouts": "Half Marathon-Marathon race pace (see pace chart p. 86)",
+        "long_runs": "Easy pace, may include marathon pace segments in later weeks"
+      },
+      "workout_notation": {
+        "intervals": "Format '12 \u00d7 400, 400 recovery' means 12 repeats of 400m with 400m recovery jog between",
+        "pyramid": "Format '400-800-1200-1600-1200-800-400, 400 recovery' means ascending then descending distances with same recovery throughout",
+        "distances": "All distances in miles unless specified (e.g., 400m, 800m, 1K, 1200m, 1600m)",
+        "warmup_cooldown": "Weekly mileage includes 1-mile warm-up and 2-mile cooldown for SOS workouts",
+        "tempo_notation": "Tempo workouts show total distance including warm-up/cooldown",
+        "strength_notation": "Strength workouts show interval \u00d7 repeats with recovery distance"
+      },
+      "weekly_schedule": [
+        {
+          "week": 1,
+          "phase": "Base",
+          "monday": "\u2014",
+          "tuesday": "\u2014",
+          "wednesday": "OFF",
+          "thursday": "Easy 6 mi. (10 km)",
+          "friday": "Easy 6 mi. (10 km)",
+          "saturday": "Easy 5 mi. (8 km)",
+          "sunday": "Easy 6 mi. (10 km)",
+          "weekly_total": "23 mi. (38 km)"
+        },
+        {
+          "week": 2,
+          "phase": "Speed",
+          "monday": "Easy 6 mi. (10 km)",
+          "tuesday": "Speed: 12 \u00d7 400, 400 recovery",
+          "wednesday": "OFF",
+          "thursday": "Easy 6 mi. (10 km)",
+          "friday": "Easy 6 mi. (10 km)",
+          "saturday": "Easy 6 mi. (10 km)",
+          "sunday": "Long 10 mi. (15 km)",
+          "weekly_total": "50 mi. (80 km)"
+        },
+        {
+          "week": 3,
+          "phase": "Speed",
+          "monday": "Easy 6 mi. (10 km)",
+          "tuesday": "Speed: 8 \u00d7 600, 400 recovery",
+          "wednesday": "OFF",
+          "thursday": "Easy 6 mi. (10 km)",
+          "friday": "Easy 6 mi. (10 km)",
+          "saturday": "Easy 6 mi. (10 km)",
+          "sunday": "Long 10 mi. (15 km)",
+          "weekly_total": "46 mi. (73 km)"
+        },
+        {
+          "week": 4,
+          "phase": "Speed",
+          "monday": "Easy 6 mi. (10 km)",
+          "tuesday": "Speed: 6 \u00d7 800, 400 recovery",
+          "wednesday": "OFF",
+          "thursday": "Easy 6 mi. (10 km)",
+          "friday": "Easy 6 mi. (10 km)",
+          "saturday": "Easy 6 mi. (10 km)",
+          "sunday": "Long 10 mi. (15 km)",
+          "weekly_total": "46 mi. (73 km)"
+        },
+        {
+          "week": 5,
+          "phase": "Speed",
+          "monday": "Easy 6 mi. (10 km)",
+          "tuesday": "Speed: 5 \u00d7 1K, 400 recovery",
+          "wednesday": "OFF",
+          "thursday": "Easy 6 mi. (10 km)",
+          "friday": "Easy 6 mi. (10 km)",
+          "saturday": "Easy 6 mi. (10 km)",
+          "sunday": "Long 10 mi. (15 km)",
+          "weekly_total": "45 mi. (72 km)"
+        },
+        {
+          "week": 6,
+          "phase": "Speed",
+          "monday": "Easy 6 mi. (10 km)",
+          "tuesday": "Speed: 4 \u00d7 1200, 400 recovery",
+          "wednesday": "OFF",
+          "thursday": "Easy 7 mi. (12 km)",
+          "friday": "Easy 6 mi. (10 km)",
+          "saturday": "Easy 8 mi. (13 km)",
+          "sunday": "Long 10 mi. (15 km)",
+          "weekly_total": "47 mi. (75 km)"
+        },
+        {
+          "week": 7,
+          "phase": "Speed",
+          "monday": "Easy 6 mi. (10 km)",
+          "tuesday": "Speed: 400-800-1200-1600-1200-800-400, 400 recovery",
+          "wednesday": "OFF",
+          "thursday": "Easy 7 mi. (12 km)",
+          "friday": "Easy 6 mi. (10 km)",
+          "saturday": "Easy 8 mi. (13 km)",
+          "sunday": "Long 10 mi. (15 km)",
+          "weekly_total": "48 mi. (77 km)"
+        },
+        {
+          "week": 8,
+          "phase": "Speed",
+          "monday": "Easy 6 mi. (10 km)",
+          "tuesday": "Speed: 3 \u00d7 1600, 600 recovery",
+          "wednesday": "OFF",
+          "thursday": "Easy 7 mi. (12 km)",
+          "friday": "Easy 6 mi. (10 km)",
+          "saturday": "Easy 8 mi. (13 km)",
+          "sunday": "Long 10 mi. (15 km)",
+          "weekly_total": "47 mi. (76 km)"
+        },
+        {
+          "week": 9,
+          "phase": "Speed",
+          "monday": "Easy 8 mi. (13 km)",
+          "tuesday": "Speed: 6 \u00d7 800, 400 recovery",
+          "wednesday": "OFF",
+          "thursday": "Easy 8 mi. (13 km)",
+          "friday": "Easy 6 mi. (10 km)",
+          "saturday": "Easy 8 mi. (13 km)",
+          "sunday": "Long 16 mi. (27 km)",
+          "weekly_total": "58 mi. (95 km)"
+        },
+        {
+          "week": 10,
+          "phase": "Speed",
+          "monday": "Easy 6 mi. (10 km)",
+          "tuesday": "Speed: 3 \u00d7 1600, 600 recovery",
+          "wednesday": "OFF",
+          "thursday": "Easy 8 mi. (13 km)",
+          "friday": "Easy 6 mi. (10 km)",
+          "saturday": "Easy 8 mi. (13 km)",
+          "sunday": "Long 16 mi. (27 km)",
+          "weekly_total": "54 mi. (88 km)"
+        },
+        {
+          "week": 11,
+          "phase": "Strength",
+          "monday": "Easy 8 mi. (13 km)",
+          "tuesday": "Strength: 6 \u00d7 1 mi., 400 recovery",
+          "wednesday": "OFF",
+          "thursday": "Tempo 8 mi. (13 km)",
+          "friday": "Easy 6 mi. (10 km)",
+          "saturday": "Easy 8 mi. (13 km)",
+          "sunday": "Long 16 mi. (27 km)",
+          "weekly_total": "55 mi. (90 km)"
+        },
+        {
+          "week": 12,
+          "phase": "Strength",
+          "monday": "Easy 6 mi. (10 km)",
+          "tuesday": "Strength: 4 \u00d7 1.5 mi., 800 recovery",
+          "wednesday": "OFF",
+          "thursday": "Tempo 9 mi. (14 km)",
+          "friday": "Easy 6 mi. (10 km)",
+          "saturday": "Easy 8 mi. (13 km)",
+          "sunday": "Long 16 mi. (27 km)",
+          "weekly_total": "56 mi. (92 km)"
+        },
+        {
+          "week": 13,
+          "phase": "Strength",
+          "monday": "Easy 8 mi. (13 km)",
+          "tuesday": "Strength: 3 \u00d7 2 mi., 800 recovery",
+          "wednesday": "OFF",
+          "thursday": "Tempo 9 mi. (14 km)",
+          "friday": "Easy 6 mi. (10 km)",
+          "saturday": "Easy 8 mi. (13 km)",
+          "sunday": "Long 16 mi. (27 km)",
+          "weekly_total": "57 mi. (93 km)"
+        },
+        {
+          "week": 14,
+          "phase": "Strength",
+          "monday": "Easy 6 mi. (10 km)",
+          "tuesday": "Strength: 2 \u00d7 3 mi. (5 km) with 1 mi. (2 km) recovery",
+          "wednesday": "OFF",
+          "thursday": "Tempo 9 mi. (14 km)",
+          "friday": "Easy 6 mi. (10 km)",
+          "saturday": "Easy 8 mi. (13 km)",
+          "sunday": "Long 16 mi. (27 km)",
+          "weekly_total": "58 mi. (95 km)"
+        },
+        {
+          "week": 15,
+          "phase": "Strength",
+          "monday": "Easy 8 mi. (13 km)",
+          "tuesday": "Strength: 3 \u00d7 2 mi., 800 recovery",
+          "wednesday": "OFF",
+          "thursday": "Tempo 10 mi. (15 km)",
+          "friday": "Easy 6 mi. (10 km)",
+          "saturday": "Easy 8 mi. (13 km)",
+          "sunday": "Long 16 mi. (27 km)",
+          "weekly_total": "58 mi. (95 km)"
+        },
+        {
+          "week": 16,
+          "phase": "Strength",
+          "monday": "Easy 6 mi. (10 km)",
+          "tuesday": "Strength: 4 \u00d7 1.5 mi., 800 recovery",
+          "wednesday": "OFF",
+          "thursday": "Tempo 10 mi. (15 km)",
+          "friday": "Easy 6 mi. (10 km)",
+          "saturday": "Easy 8 mi. (13 km)",
+          "sunday": "Long 16 mi. (27 km)",
+          "weekly_total": "57 mi. (94 km)"
+        },
+        {
+          "week": 17,
+          "phase": "Strength",
+          "monday": "Easy 8 mi. (13 km)",
+          "tuesday": "Strength: 6 \u00d7 1 mi., 400 recovery",
+          "wednesday": "OFF",
+          "thursday": "Tempo 10 mi. (15 km)",
+          "friday": "Easy 6 mi. (10 km)",
+          "saturday": "Easy 8 mi. (13 km)",
+          "sunday": "Easy 10 mi. (15 km)",
+          "weekly_total": "51 mi. (83 km)"
+        },
+        {
+          "week": 18,
+          "phase": "Race Week",
+          "monday": "Easy 6 mi. (10 km)",
+          "tuesday": "Easy 5 mi. (8 km)",
+          "wednesday": "OFF",
+          "thursday": "Easy 6 mi. (10 km)",
+          "friday": "Easy 3 mi. (5 km)",
+          "saturday": "Easy 3 mi. (5 km)",
+          "sunday": "RACE!",
+          "weekly_total": "49.2 mi. (79 km)"
+        }
+      ],
+      "adaptation_guidelines": {
+        "volume_demands": "Peak weeks exceed 60 miles. Ensure adequate base before starting this plan.",
+        "wednesday_off": "Wednesday is mandatory rest day. Critical for managing cumulative fatigue at this volume.",
+        "easy_runs": "Easy runs are true recovery - do not push these. Conversational pace only.",
+        "speed_progression": "Creative speed workouts including pyramid (Week 7). Focus on form and rhythm.",
+        "strength_workouts": "Longest intervals in Hansons system - 3 miles at sustained effort. Build mental and physical strength.",
+        "tempo_workouts": "Extended tempo efforts up to 10 miles total. Practice marathon pacing in fatigued state.",
+        "long_runs": "Capped at 16 miles per Hansons philosophy. Trust the cumulative fatigue approach.",
+        "race_week": "Aggressive taper with all easy running. Race day marathon (26.2 miles) included in weekly total.",
+        "injury_prevention": "High volume demands careful attention to recovery, nutrition, sleep, and any warning signs.",
+        "modifications": "If over-reaching, reduce interval count or convert an easy day to OFF. Consistency beats heroics."
+      }
+    }
+  ]
+}

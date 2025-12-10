@@ -1,0 +1,882 @@
+{
+  "catalog_version": "1.0",
+  "last_updated": "2025-12-09",
+  "description": "Master catalog of marathon training plan templates for LLM-powered plan generation",
+  "total_plans": 19,
+  "plans": [
+    {
+      "template_id": "hal_higdon_novice_2_marathon",
+      "name": "Hal Higdon Novice 2 Marathon",
+      "author": "Hal Higdon",
+      "methodology": "Hal",
+      "source_file": "hal_higdon_templates.json",
+      "characteristics": {
+        "duration_weeks": 18,
+        "training_days_per_week": 4,
+        "peak_weekly_mileage": {
+          "miles": 50,
+          "km": 80
+        },
+        "difficulty_score": 2,
+        "structure_type": "moderate"
+      },
+      "target_audience": {
+        "experience_level": "novice_plus",
+        "prerequisites": [
+          "About a year of running background",
+          "Can comfortably run 3-6 miles",
+          "Training 3-5 days/week, averaging 15-25 miles/week",
+          "Have run occasional 5-K or half marathon races"
+        ],
+        "training_commitment": "low"
+      },
+      "philosophy": {
+        "approach": "",
+        "key_features": [],
+        "description_short": "Designed to fit comfortably between Novice 1 and Intermediate 1. For runners who may have run their first marathon and want to add mileage while train..."
+      },
+      "tags": [
+        "beginner",
+        "moderate_mileage",
+        "4_days_week",
+        "first_marathon",
+        "hal"
+      ],
+      "suitable_for": {
+        "good_fit": [
+          "Suitable for novice_plus",
+          "Comfortable with 50 miles/week peak",
+          "Can train 4 days per week"
+        ],
+        "not_recommended": []
+      }
+    },
+    {
+      "template_id": "hal_higdon_intermediate_2_marathon",
+      "name": "Hal Higdon Intermediate 2 Marathon",
+      "author": "Hal Higdon",
+      "methodology": "Hal",
+      "source_file": "hal_higdon_templates.json",
+      "characteristics": {
+        "duration_weeks": 18,
+        "training_days_per_week": 5,
+        "peak_weekly_mileage": {
+          "miles": 50,
+          "km": 80
+        },
+        "difficulty_score": 4,
+        "structure_type": "moderate"
+      },
+      "target_audience": {
+        "experience_level": "intermediate",
+        "prerequisites": [
+          "Previously trained using Novice or Intermediate 1 programs",
+          "Ready to increase mileage and run workouts at faster pace",
+          "Seeking improvement in marathon time"
+        ],
+        "training_commitment": "moderate"
+      },
+      "philosophy": {
+        "approach": "",
+        "key_features": [],
+        "description_short": "A slight jump in difficulty from Intermediate 1. Three 20-milers toward the end instead of two. Higher midweek mileage and more serious weekend runnin..."
+      },
+      "tags": [
+        "moderate_mileage",
+        "intermediate",
+        "5_days_week",
+        "hal"
+      ],
+      "suitable_for": {
+        "good_fit": [
+          "Suitable for intermediate",
+          "Comfortable with 50 miles/week peak",
+          "Can train 5 days per week"
+        ],
+        "not_recommended": []
+      }
+    },
+    {
+      "template_id": "hal_higdon_advanced_1_marathon",
+      "name": "Hal Higdon Advanced 1 Marathon",
+      "author": "Hal Higdon",
+      "methodology": "Hal",
+      "source_file": "hal_higdon_templates.json",
+      "characteristics": {
+        "duration_weeks": 18,
+        "training_days_per_week": 6,
+        "peak_weekly_mileage": {
+          "miles": 50,
+          "km": 80
+        },
+        "difficulty_score": 7,
+        "structure_type": "moderate"
+      },
+      "target_audience": {
+        "experience_level": "advanced",
+        "prerequisites": [
+          "Familiar with speedwork - do NOT begin speedwork in marathon program if never done before",
+          "Background in this type of training",
+          "Advanced attitude and commitment regardless of speed, sex, or age",
+          "Not for first marathon - wait a couple marathons before attempting"
+        ],
+        "training_commitment": "high"
+      },
+      "philosophy": {
+        "approach": "",
+        "key_features": [],
+        "description_short": "Progressive buildup starting at 10 miles, peaking with three 20-milers. Includes one day of speedwork (hill repeats, intervals, tempo runs). Designed ..."
+      },
+      "tags": [
+        "advanced",
+        "moderate_mileage",
+        "hal",
+        "6_days_week"
+      ],
+      "suitable_for": {
+        "good_fit": [
+          "Suitable for advanced",
+          "Comfortable with 50 miles/week peak",
+          "Can train 6 days per week"
+        ],
+        "not_recommended": []
+      }
+    },
+    {
+      "template_id": "hal_higdon_advanced_2_marathon",
+      "name": "Hal Higdon Advanced 2 Marathon",
+      "author": "Hal Higdon",
+      "methodology": "Hal",
+      "source_file": "hal_higdon_templates.json",
+      "characteristics": {
+        "duration_weeks": 18,
+        "training_days_per_week": 6,
+        "peak_weekly_mileage": {
+          "miles": 50,
+          "km": 80
+        },
+        "difficulty_score": 7,
+        "structure_type": "moderate"
+      },
+      "target_audience": {
+        "experience_level": "advanced_elite",
+        "prerequisites": [
+          "Familiar with speedwork - do NOT begin speedwork in marathon program if never done before",
+          "Background in this demanding type of training",
+          "Advanced attitude and commitment",
+          "May not even be suitable for seasoned runners with 10-20 marathons",
+          "Not for first marathon - wait several marathons"
+        ],
+        "training_commitment": "high"
+      },
+      "philosophy": {
+        "approach": "",
+        "key_features": [],
+        "description_short": "The toughest program offered. Progressive buildup starting at 10 miles, three 20-milers, TWO days of speedwork per week. Only for hard-core runners wi..."
+      },
+      "tags": [
+        "advanced",
+        "moderate_mileage",
+        "hal",
+        "6_days_week"
+      ],
+      "suitable_for": {
+        "good_fit": [
+          "Suitable for advanced_elite",
+          "Comfortable with 50 miles/week peak",
+          "Can train 6 days per week"
+        ],
+        "not_recommended": []
+      }
+    },
+    {
+      "template_id": "jack_daniels_2q_up_to_40_miles_marathon",
+      "name": "Jack Daniels 2Q Marathon (Up to 40 miles/week)",
+      "author": "Jack Daniels",
+      "methodology": "Jack",
+      "source_file": "jack_daniels_2q_marathon_templates.json",
+      "characteristics": {
+        "duration_weeks": 18,
+        "training_days_per_week": 5,
+        "peak_weekly_mileage": {
+          "miles": 50,
+          "km": 80
+        },
+        "difficulty_score": 6,
+        "structure_type": "moderate"
+      },
+      "target_audience": {
+        "experience_level": "intermediate_to_advanced",
+        "prerequisites": [
+          "At least 6 weeks of base running",
+          "Comfortable running 6+ days per week",
+          "Familiar with VDOT or pace-based training"
+        ],
+        "training_commitment": "moderate"
+      },
+      "philosophy": {
+        "approach": "",
+        "key_features": [],
+        "description_short": "Two quality sessions per week with flexible easy days to accumulate mileage. VDOT-based pacing system."
+      },
+      "tags": [
+        "jack",
+        "moderate_mileage",
+        "intermediate",
+        "5_days_week"
+      ],
+      "suitable_for": {
+        "good_fit": [
+          "Suitable for intermediate_to_advanced",
+          "Comfortable with 50 miles/week peak",
+          "Can train 5 days per week"
+        ],
+        "not_recommended": []
+      }
+    },
+    {
+      "template_id": "jack_daniels_2q_41_55_miles_marathon",
+      "name": "Jack Daniels 2Q Marathon (41-55 miles/week)",
+      "author": "Jack Daniels",
+      "methodology": "Jack",
+      "source_file": "jack_daniels_2q_marathon_templates.json",
+      "characteristics": {
+        "duration_weeks": 18,
+        "training_days_per_week": 5,
+        "peak_weekly_mileage": {
+          "miles": 50,
+          "km": 80
+        },
+        "difficulty_score": 6,
+        "structure_type": "moderate"
+      },
+      "target_audience": {
+        "experience_level": "intermediate_to_advanced",
+        "prerequisites": [
+          "At least 6 weeks of base running",
+          "Comfortable running 6+ days per week",
+          "Familiar with VDOT or pace-based training"
+        ],
+        "training_commitment": "moderate"
+      },
+      "philosophy": {
+        "approach": "",
+        "key_features": [],
+        "description_short": "Two quality sessions per week with flexible easy days to accumulate mileage. VDOT-based pacing system."
+      },
+      "tags": [
+        "jack",
+        "moderate_mileage",
+        "intermediate",
+        "5_days_week"
+      ],
+      "suitable_for": {
+        "good_fit": [
+          "Suitable for intermediate_to_advanced",
+          "Comfortable with 50 miles/week peak",
+          "Can train 5 days per week"
+        ],
+        "not_recommended": []
+      }
+    },
+    {
+      "template_id": "jack_daniels_2q_56_70_miles_marathon",
+      "name": "Jack Daniels 2Q Marathon (56-70 miles/week)",
+      "author": "Jack Daniels",
+      "methodology": "Jack",
+      "source_file": "jack_daniels_2q_marathon_templates.json",
+      "characteristics": {
+        "duration_weeks": 18,
+        "training_days_per_week": 5,
+        "peak_weekly_mileage": {
+          "miles": 50,
+          "km": 80
+        },
+        "difficulty_score": 6,
+        "structure_type": "moderate"
+      },
+      "target_audience": {
+        "experience_level": "intermediate_to_advanced",
+        "prerequisites": [
+          "At least 6 weeks of base running",
+          "Comfortable running 6+ days per week",
+          "Familiar with VDOT or pace-based training"
+        ],
+        "training_commitment": "moderate"
+      },
+      "philosophy": {
+        "approach": "",
+        "key_features": [],
+        "description_short": "Two quality sessions per week with flexible easy days to accumulate mileage. VDOT-based pacing system."
+      },
+      "tags": [
+        "jack",
+        "moderate_mileage",
+        "intermediate",
+        "5_days_week"
+      ],
+      "suitable_for": {
+        "good_fit": [
+          "Suitable for intermediate_to_advanced",
+          "Comfortable with 50 miles/week peak",
+          "Can train 5 days per week"
+        ],
+        "not_recommended": []
+      }
+    },
+    {
+      "template_id": "jack_daniels_2q_71_85_miles_marathon",
+      "name": "Jack Daniels 2Q Marathon (71-85 miles/week)",
+      "author": "Jack Daniels",
+      "methodology": "Jack",
+      "source_file": "jack_daniels_2q_marathon_templates.json",
+      "characteristics": {
+        "duration_weeks": 18,
+        "training_days_per_week": 5,
+        "peak_weekly_mileage": {
+          "miles": 50,
+          "km": 80
+        },
+        "difficulty_score": 6,
+        "structure_type": "moderate"
+      },
+      "target_audience": {
+        "experience_level": "intermediate_to_advanced",
+        "prerequisites": [
+          "At least 6 weeks of base running",
+          "Comfortable running 6+ days per week",
+          "Familiar with VDOT or pace-based training"
+        ],
+        "training_commitment": "moderate"
+      },
+      "philosophy": {
+        "approach": "",
+        "key_features": [],
+        "description_short": "Two quality sessions per week with flexible easy days to accumulate mileage. VDOT-based pacing system."
+      },
+      "tags": [
+        "jack",
+        "moderate_mileage",
+        "intermediate",
+        "5_days_week"
+      ],
+      "suitable_for": {
+        "good_fit": [
+          "Suitable for intermediate_to_advanced",
+          "Comfortable with 50 miles/week peak",
+          "Can train 5 days per week"
+        ],
+        "not_recommended": []
+      }
+    },
+    {
+      "template_id": "jack_daniels_2q_86_100_miles_marathon",
+      "name": "Jack Daniels 2Q Marathon (86-100 miles/week)",
+      "author": "Jack Daniels",
+      "methodology": "Jack",
+      "source_file": "jack_daniels_2q_marathon_templates.json",
+      "characteristics": {
+        "duration_weeks": 18,
+        "training_days_per_week": 5,
+        "peak_weekly_mileage": {
+          "miles": 50,
+          "km": 80
+        },
+        "difficulty_score": 6,
+        "structure_type": "moderate"
+      },
+      "target_audience": {
+        "experience_level": "intermediate_to_advanced",
+        "prerequisites": [
+          "At least 6 weeks of base running",
+          "Comfortable running 6+ days per week",
+          "Familiar with VDOT or pace-based training"
+        ],
+        "training_commitment": "moderate"
+      },
+      "philosophy": {
+        "approach": "",
+        "key_features": [],
+        "description_short": "Two quality sessions per week with flexible easy days to accumulate mileage. VDOT-based pacing system."
+      },
+      "tags": [
+        "jack",
+        "moderate_mileage",
+        "intermediate",
+        "5_days_week"
+      ],
+      "suitable_for": {
+        "good_fit": [
+          "Suitable for intermediate_to_advanced",
+          "Comfortable with 50 miles/week peak",
+          "Can train 5 days per week"
+        ],
+        "not_recommended": []
+      }
+    },
+    {
+      "template_id": "jack_daniels_2q_101_120_miles_marathon",
+      "name": "Jack Daniels 2Q Marathon (101-120 miles/week)",
+      "author": "Jack Daniels",
+      "methodology": "Jack",
+      "source_file": "jack_daniels_2q_marathon_templates.json",
+      "characteristics": {
+        "duration_weeks": 18,
+        "training_days_per_week": 5,
+        "peak_weekly_mileage": {
+          "miles": 50,
+          "km": 80
+        },
+        "difficulty_score": 6,
+        "structure_type": "moderate"
+      },
+      "target_audience": {
+        "experience_level": "advanced_to_elite",
+        "prerequisites": [
+          "At least 6 weeks of base running",
+          "Comfortable running 6+ days per week",
+          "Familiar with VDOT or pace-based training",
+          "Experienced with high mileage training"
+        ],
+        "training_commitment": "moderate"
+      },
+      "philosophy": {
+        "approach": "",
+        "key_features": [],
+        "description_short": "Two quality sessions per week with flexible easy days to accumulate mileage. VDOT-based pacing system."
+      },
+      "tags": [
+        "advanced",
+        "jack",
+        "moderate_mileage",
+        "5_days_week"
+      ],
+      "suitable_for": {
+        "good_fit": [
+          "Suitable for advanced_to_elite",
+          "Comfortable with 50 miles/week peak",
+          "Can train 5 days per week"
+        ],
+        "not_recommended": []
+      }
+    },
+    {
+      "template_id": "jack_daniels_2q_120_plus_miles_marathon",
+      "name": "Jack Daniels 2Q Marathon (120+ miles/week)",
+      "author": "Jack Daniels",
+      "methodology": "Jack",
+      "source_file": "jack_daniels_2q_marathon_templates.json",
+      "characteristics": {
+        "duration_weeks": 18,
+        "training_days_per_week": 5,
+        "peak_weekly_mileage": {
+          "miles": 50,
+          "km": 80
+        },
+        "difficulty_score": 6,
+        "structure_type": "moderate"
+      },
+      "target_audience": {
+        "experience_level": "advanced_to_elite",
+        "prerequisites": [
+          "At least 6 weeks of base running",
+          "Comfortable running 6+ days per week",
+          "Familiar with VDOT or pace-based training",
+          "Experienced with high mileage training"
+        ],
+        "training_commitment": "moderate"
+      },
+      "philosophy": {
+        "approach": "",
+        "key_features": [],
+        "description_short": "Two quality sessions per week with flexible easy days to accumulate mileage. VDOT-based pacing system."
+      },
+      "tags": [
+        "advanced",
+        "jack",
+        "moderate_mileage",
+        "5_days_week"
+      ],
+      "suitable_for": {
+        "good_fit": [
+          "Suitable for advanced_to_elite",
+          "Comfortable with 50 miles/week peak",
+          "Can train 5 days per week"
+        ],
+        "not_recommended": []
+      }
+    },
+    {
+      "template_id": "steve_magness_marathon",
+      "name": "Steve Magness Marathon Training Plan",
+      "author": "Steve Magness",
+      "methodology": "Steve",
+      "source_file": "steve_magness_marathon_template.json",
+      "characteristics": {
+        "duration_weeks": 21,
+        "training_days_per_week": 7,
+        "peak_weekly_mileage": {
+          "miles": 50,
+          "km": 80
+        },
+        "difficulty_score": 7,
+        "structure_type": "moderate"
+      },
+      "target_audience": {
+        "experience_level": "advanced",
+        "prerequisites": [
+          "Well-trained runner with established base",
+          "Comfortable with high mileage (70-130 mpw)",
+          "Familiar with lactate threshold training",
+          "Experience with hill work and intensity variations"
+        ],
+        "training_commitment": "high"
+      },
+      "philosophy": {
+        "approach": "",
+        "key_features": [],
+        "description_short": "Three-phase marathon training with emphasis on lactate threshold work, hill training, and progressive intensity. Single integrated plan with flexible ..."
+      },
+      "tags": [
+        "steve",
+        "advanced",
+        "7_days_week",
+        "moderate_mileage"
+      ],
+      "suitable_for": {
+        "good_fit": [
+          "Suitable for advanced",
+          "Comfortable with 50 miles/week peak",
+          "Can train 7 days per week"
+        ],
+        "not_recommended": []
+      }
+    },
+    {
+      "template_id": "hansons_just_finish_marathon",
+      "name": "Hansons Just Finish Marathon Program",
+      "author": "Luke Humphrey with Keith and Kevin Hanson",
+      "methodology": "Luke",
+      "source_file": "hansons_marathon_templates.json",
+      "characteristics": {
+        "duration_weeks": 18,
+        "training_days_per_week": 4,
+        "peak_weekly_mileage": {
+          "miles": 2,
+          "km": 78
+        },
+        "difficulty_score": 1,
+        "structure_type": "moderate"
+      },
+      "target_audience": {
+        "experience_level": "beginner",
+        "prerequisites": [
+          "Consistent running base established",
+          "Comfortable with structured training",
+          "Able to run 6 days per week"
+        ],
+        "training_commitment": "low"
+      },
+      "philosophy": {
+        "approach": "",
+        "key_features": [],
+        "description_short": "Cumulative fatigue-based marathon training with emphasis on something of substance (SOS) workouts. Three workout types: Speed, Strength, and Tempo."
+      },
+      "tags": [
+        "beginner",
+        "low_mileage",
+        "luke",
+        "4_days_week",
+        "first_marathon"
+      ],
+      "suitable_for": {
+        "good_fit": [
+          "Suitable for beginner",
+          "Comfortable with 2 miles/week peak",
+          "Can train 4 days per week"
+        ],
+        "not_recommended": []
+      }
+    },
+    {
+      "template_id": "hansons_beginner_marathon",
+      "name": "Hansons Beginner Marathon Program",
+      "author": "Luke Humphrey with Keith and Kevin Hanson",
+      "methodology": "Luke",
+      "source_file": "hansons_marathon_templates.json",
+      "characteristics": {
+        "duration_weeks": 18,
+        "training_days_per_week": 6,
+        "peak_weekly_mileage": {
+          "miles": 57,
+          "km": 92
+        },
+        "difficulty_score": 5,
+        "structure_type": "moderate"
+      },
+      "target_audience": {
+        "experience_level": "beginner",
+        "prerequisites": [
+          "Well-established running base",
+          "Comfortable with structured training",
+          "Able to run 6 days per week"
+        ],
+        "training_commitment": "high"
+      },
+      "philosophy": {
+        "approach": "",
+        "key_features": [],
+        "description_short": "Cumulative fatigue-based marathon training with Speed, Strength, and Tempo workouts. Introduces structured interval training with 3 SOS workouts per w..."
+      },
+      "tags": [
+        "beginner",
+        "6_days_week",
+        "moderate_mileage",
+        "luke",
+        "first_marathon"
+      ],
+      "suitable_for": {
+        "good_fit": [
+          "Suitable for beginner",
+          "Comfortable with 57 miles/week peak",
+          "Can train 6 days per week"
+        ],
+        "not_recommended": []
+      }
+    },
+    {
+      "template_id": "hansons_advanced_marathon",
+      "name": "Hansons Advanced Marathon Program",
+      "author": "Luke Humphrey with Keith and Kevin Hanson",
+      "methodology": "Luke",
+      "source_file": "hansons_marathon_templates.json",
+      "characteristics": {
+        "duration_weeks": 18,
+        "training_days_per_week": 6,
+        "peak_weekly_mileage": {
+          "miles": 63,
+          "km": 102
+        },
+        "difficulty_score": 8,
+        "structure_type": "moderate"
+      },
+      "target_audience": {
+        "experience_level": "advanced",
+        "prerequisites": [
+          "Multiple marathon completions",
+          "Consistent 50+ miles per week base",
+          "Comfortable with high-intensity workouts",
+          "Able to run 6 days per week",
+          "Strong injury resilience"
+        ],
+        "training_commitment": "high"
+      },
+      "philosophy": {
+        "approach": "",
+        "key_features": [],
+        "description_short": "High-volume cumulative fatigue marathon training with aggressive Speed, Strength, and Tempo progression. For experienced marathoners seeking significa..."
+      },
+      "tags": [
+        "advanced",
+        "luke",
+        "moderate_mileage",
+        "6_days_week"
+      ],
+      "suitable_for": {
+        "good_fit": [
+          "Suitable for advanced",
+          "Comfortable with 63 miles/week peak",
+          "Can train 6 days per week"
+        ],
+        "not_recommended": []
+      }
+    },
+    {
+      "template_id": "pfitz_55_marathon",
+      "name": "Pfitzinger/Douglas Up to 55 Miles/Week Marathon Plan",
+      "author": "Pete Pfitzinger and Scott Douglas",
+      "methodology": "Pete",
+      "source_file": "pfitz_marathon_templates.json",
+      "characteristics": {
+        "duration_weeks": 18,
+        "training_days_per_week": 5,
+        "peak_weekly_mileage": {
+          "miles": 45,
+          "km": 73
+        },
+        "difficulty_score": 6,
+        "structure_type": "moderate"
+      },
+      "target_audience": {
+        "experience_level": "intermediate to advanced",
+        "prerequisites": [
+          "Solid aerobic base established",
+          "Comfortable running 6-7 days per week",
+          "Experience with tempo runs and intervals",
+          "Able to handle prescribed weekly mileage"
+        ],
+        "training_commitment": "moderate"
+      },
+      "philosophy": {
+        "approach": "",
+        "key_features": [],
+        "description_short": "Science-based marathon training with periodized mesocycles emphasizing lactate threshold development, VO2max work, and marathon-specific preparation. ..."
+      },
+      "tags": [
+        "pete",
+        "moderate_mileage",
+        "intermediate",
+        "5_days_week"
+      ],
+      "suitable_for": {
+        "good_fit": [
+          "Suitable for intermediate to advanced",
+          "Comfortable with 45 miles/week peak",
+          "Can train 5 days per week"
+        ],
+        "not_recommended": []
+      }
+    },
+    {
+      "template_id": "pfitz_55_70_marathon",
+      "name": "Pfitzinger/Douglas 55-70 Miles/Week Marathon Plan",
+      "author": "Pete Pfitzinger and Scott Douglas",
+      "methodology": "Pete",
+      "source_file": "pfitz_marathon_templates.json",
+      "characteristics": {
+        "duration_weeks": 18,
+        "training_days_per_week": 6,
+        "peak_weekly_mileage": {
+          "miles": 70,
+          "km": 113
+        },
+        "difficulty_score": 8,
+        "structure_type": "moderate"
+      },
+      "target_audience": {
+        "experience_level": "intermediate to advanced",
+        "prerequisites": [
+          "Solid aerobic base established",
+          "Comfortable running 6-7 days per week",
+          "Experience with tempo runs and intervals",
+          "Able to handle prescribed weekly mileage"
+        ],
+        "training_commitment": "high"
+      },
+      "philosophy": {
+        "approach": "",
+        "key_features": [],
+        "description_short": "Science-based marathon training with periodized mesocycles emphasizing lactate threshold development, VO2max work, and marathon-specific preparation. ..."
+      },
+      "tags": [
+        "pete",
+        "6_days_week",
+        "moderate_mileage",
+        "intermediate"
+      ],
+      "suitable_for": {
+        "good_fit": [
+          "Suitable for intermediate to advanced",
+          "Comfortable with 70 miles/week peak",
+          "Can train 6 days per week"
+        ],
+        "not_recommended": []
+      }
+    },
+    {
+      "template_id": "pfitz_70_85_marathon",
+      "name": "Pfitzinger/Douglas 70-85 Miles/Week Marathon Plan",
+      "author": "Pete Pfitzinger and Scott Douglas",
+      "methodology": "Pete",
+      "source_file": "pfitz_marathon_templates.json",
+      "characteristics": {
+        "duration_weeks": 18,
+        "training_days_per_week": 7,
+        "peak_weekly_mileage": {
+          "miles": 85,
+          "km": 137
+        },
+        "difficulty_score": 9,
+        "structure_type": "moderate"
+      },
+      "target_audience": {
+        "experience_level": "advanced",
+        "prerequisites": [
+          "Strong aerobic base with consistent 60+ mile weeks",
+          "Comfortable running 6-7 days per week",
+          "Extensive experience with tempo runs and intervals",
+          "Able to handle high weekly mileage",
+          "Strong injury resistance"
+        ],
+        "training_commitment": "high"
+      },
+      "philosophy": {
+        "approach": "",
+        "key_features": [],
+        "description_short": "Science-based marathon training with periodized mesocycles emphasizing lactate threshold development, VO2max work, and marathon-specific preparation. ..."
+      },
+      "tags": [
+        "pete",
+        "advanced",
+        "high_mileage",
+        "7_days_week"
+      ],
+      "suitable_for": {
+        "good_fit": [
+          "Suitable for advanced",
+          "Comfortable with 85 miles/week peak",
+          "Can train 7 days per week"
+        ],
+        "not_recommended": []
+      }
+    },
+    {
+      "template_id": "pfitz_85_plus_marathon",
+      "name": "Pfitzinger/Douglas 85+ Miles/Week Marathon Plan",
+      "author": "Pete Pfitzinger and Scott Douglas",
+      "methodology": "Pete",
+      "source_file": "pfitz_marathon_templates.json",
+      "characteristics": {
+        "duration_weeks": 18,
+        "training_days_per_week": 7,
+        "peak_weekly_mileage": {
+          "miles": 103,
+          "km": 165
+        },
+        "difficulty_score": 10,
+        "structure_type": "moderate"
+      },
+      "target_audience": {
+        "experience_level": "elite/advanced",
+        "prerequisites": [
+          "Very strong aerobic base with consistent 70+ mile weeks",
+          "Running 6-7 days per week for extended period",
+          "Extensive experience with tempo runs and intervals",
+          "Proven ability to handle very high weekly mileage",
+          "Excellent injury resistance and recovery capacity",
+          "Multiple marathon completions"
+        ],
+        "training_commitment": "high"
+      },
+      "philosophy": {
+        "approach": "",
+        "key_features": [],
+        "description_short": "Elite-level science-based marathon training with periodized mesocycles emphasizing lactate threshold development, VO2max work, and marathon-specific p..."
+      },
+      "tags": [
+        "pete",
+        "advanced",
+        "high_mileage",
+        "7_days_week"
+      ],
+      "suitable_for": {
+        "good_fit": [
+          "Suitable for elite/advanced",
+          "Comfortable with 103 miles/week peak",
+          "Can train 7 days per week"
+        ],
+        "not_recommended": []
+      }
+    }
+  ]
+}

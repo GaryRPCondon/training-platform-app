@@ -1,0 +1,1186 @@
+{
+  "templates": [
+    {
+      "template_id": "pfitz_55_marathon",
+      "name": "Pfitzinger/Douglas Up to 55 Miles/Week Marathon Plan",
+      "author": "Pete Pfitzinger and Scott Douglas",
+      "source": "Advanced Marathoning (2nd Edition)",
+      "source_reference": "Pfitzinger/Douglas Up to 55 Miles/Week Marathon Plan - 18-week schedule",
+      "description": "Science-based marathon training with periodized mesocycles emphasizing lactate threshold development, VO2max work, and marathon-specific preparation. Up to 55 miles/week peak weekly volume.",
+      "target_audience": {
+        "experience_level": "intermediate to advanced",
+        "prerequisites": [
+          "Solid aerobic base established",
+          "Comfortable running 6-7 days per week",
+          "Experience with tempo runs and intervals",
+          "Able to handle prescribed weekly mileage"
+        ],
+        "peak_weekly_mileage": "45 miles (73 km)"
+      },
+      "program_structure": {
+        "duration_weeks": 18,
+        "training_philosophy": "Periodized approach with four distinct mesocycles building aerobic capacity, lactate threshold, and race-specific fitness",
+        "mesocycles": [
+          {
+            "name": "Mesocycle 1 - Endurance",
+            "weeks": "17-13",
+            "duration": "5 weeks",
+            "focus": "Building aerobic base, introducing speedwork with strides and VO2max intervals"
+          },
+          {
+            "name": "Mesocycle 2 - Lactate Threshold + Endurance",
+            "weeks": "12-8",
+            "duration": "5 weeks",
+            "focus": "Developing lactate threshold with sustained tempo efforts at 15K-Half Marathon pace"
+          },
+          {
+            "name": "Mesocycle 3 - Race Preparation",
+            "weeks": "7-2",
+            "duration": "6 weeks",
+            "focus": "Marathon-specific work with long runs including marathon pace segments and dress rehearsals"
+          },
+          {
+            "name": "Mesocycle 4 - Taper and Race",
+            "weeks": "1-0",
+            "duration": "2 weeks",
+            "focus": "Reduced volume with intensity maintenance, final sharpening, and race execution"
+          }
+        ],
+        "typical_week": "7 days structured with 2-3 quality sessions (Tuesday/Thursday), long run Sunday, recovery/aerobic runs filling remaining days"
+      },
+      "philosophy": {
+        "key_principles": [
+          "Progressive overload with strategic recovery weeks",
+          "Lactate threshold development as primary physiological adaptation",
+          "VO2max intervals for speed and running economy",
+          "Marathon-pace segments integrated into long runs",
+          "Undulating volume pattern rather than linear progression",
+          "Recovery runs kept truly easy to enable quality sessions"
+        ],
+        "workout_priorities": [
+          "Long runs (primary weekly stimulus)",
+          "Lactate threshold workouts (tempo runs, cruise intervals)",
+          "VO2max intervals (5K pace work)",
+          "Marathon-pace runs (race-specific preparation)",
+          "General aerobic runs with optional strides",
+          "Recovery runs (active recovery between quality sessions)"
+        ]
+      },
+      "pace_guidance": {
+        "recovery_pace": "Easy conversational effort, comfortable and relaxed",
+        "general_aerobic_pace": "Comfortable aerobic pace, slightly faster than recovery but still conversational",
+        "medium_long_run_pace": "Steady aerobic effort, moderate comfort level",
+        "long_run_pace": "Sustainable aerobic pace with marathon pace segments as prescribed",
+        "lactate_threshold_pace": "15K to Half Marathon race pace - comfortably hard, sustainable for 20-30 minutes",
+        "vo2max_pace": "5K race pace - hard effort, sustainable for 3-5 minute intervals",
+        "marathon_pace": "Goal marathon race pace",
+        "strides": "Fast but controlled, 20-30 seconds at approximately mile race pace"
+      },
+      "workout_notation": {
+        "distance_format": "Total distance includes warm-up/cooldown (e.g., '10 mi (16 km) w/ 5 mi @ LT pace' = warm-up + 5mi tempo + cooldown)",
+        "interval_format": "'5 \u00d7 600 m @ 5K pace, jog 50-90% interval time between' means 5 repeats of 600m at 5K race pace with recovery jog",
+        "pace_references": [
+          "'@ 5K pace' or '@ 5K race pace' = VO2max intensity",
+          "'@ 15K to half marathon pace' = Lactate threshold range",
+          "'@ marathon pace' or '@ marathon race pace' = Goal race pace",
+          "'jog 50 to 90% interval time between' = Recovery as percentage of work interval"
+        ],
+        "strides_notation": "'w/ 8 \u00d7 100 m strides' means 8 repetitions of 100m at fast controlled pace, '+ strides' typically means 4-8 \u00d7 100m",
+        "recovery_format": "Recovery intervals prescribed as percentage of work time (e.g., jog 50-90% of interval duration)"
+      },
+      "weekly_schedule": [
+        {
+          "week": 17,
+          "phase": "Mesocycle 1 - Endurance",
+          "monday": "Rest or cross-training",
+          "tuesday": "Lactate threshold: 8 mi. (13 km) w/ 4 mi. (6 km) @ 15K to half marathon race pace",
+          "wednesday": "Recovery 4 mi. (6 km)",
+          "thursday": "General aerobic: 6 mi. (10 km)",
+          "friday": "Rest or cross-training",
+          "saturday": "Recovery + speed: 5 mi. (8 km) w/ 10 \u00d7 100 m strides",
+          "sunday": "Medium-long run: 12 mi. (19 km)",
+          "weekly_total": "35 mi/53 km"
+        },
+        {
+          "week": 16,
+          "phase": "Mesocycle 1 - Endurance",
+          "monday": "Rest or cross-training",
+          "tuesday": "General aerobic + speed: 8 mi. (13 km) w/ 10 \u00d7 100 m strides",
+          "wednesday": "Recovery 5 mi. (8 km)",
+          "thursday": "Lactate threshold: 8 mi. (14 km) w/ 4 mi. @ 15K to half marathon race pace",
+          "friday": "Rest or cross-training",
+          "saturday": "Recovery 5 mi. (8 km)",
+          "sunday": "Marathon-long run: 13 mi. (21 km)",
+          "weekly_total": "39 mi/63 km"
+        },
+        {
+          "week": 15,
+          "phase": "Mesocycle 1 - Endurance",
+          "monday": "Rest or cross-training",
+          "tuesday": "General aerobic + speed: 8 mi. (13 km) w/ 10 \u00d7 100 m strides",
+          "wednesday": "Medium-long run: 11 mi. (18 km)",
+          "thursday": "Recovery 5 mi. (8 km)",
+          "friday": "General aerobic: 6 mi. (10 km)",
+          "saturday": "Recovery 5 mi. (8 km)",
+          "sunday": "Medium-long run: 14 mi. (23 km)",
+          "weekly_total": "49 mi/80 km"
+        },
+        {
+          "week": 14,
+          "phase": "Mesocycle 1 - Endurance",
+          "monday": "Rest or cross-training",
+          "tuesday": "General aerobic + speed: 8 mi. (13 km) w/ 8 mi. (13 km)",
+          "wednesday": "Recovery 4 mi. (6 km)",
+          "thursday": "Lactate threshold: 10 mi. (16 km) w/ 5 mi. @ 15K to half marathon race pace",
+          "friday": "Rest or cross-training",
+          "saturday": "Recovery 5 mi. (8 km)",
+          "sunday": "Medium-long run: 15 mi. (24 km)",
+          "weekly_total": "42 mi/67 km"
+        },
+        {
+          "week": 13,
+          "phase": "Mesocycle 1 - Endurance",
+          "monday": "Rest or cross-training",
+          "tuesday": "Lactate threshold: 9 mi. (14 km) w/ 5 mi. (8 km) @ 15K to half marathon race pace",
+          "wednesday": "Medium-long run: 12 mi. (19 km)",
+          "thursday": "Recovery 5 mi. (8 km)",
+          "friday": "Rest or cross-training",
+          "saturday": "Recovery 5 mi. (8 km)",
+          "sunday": "Medium-long run: 16 mi. (26 km)",
+          "weekly_total": "45 mi/73 km"
+        },
+        {
+          "week": 12,
+          "phase": "Mesocycle 2 - Lactate Threshold + Endurance",
+          "monday": "Rest or cross-training (Recovery)",
+          "tuesday": "Lactate threshold: 10 mi. (16 km) w/ 6 mi. (10 km) @ 15K to half marathon race pace",
+          "wednesday": "Medium-long run: 11 mi. (18 km)",
+          "thursday": "Recovery 5 mi. (8 km)",
+          "friday": "General aerobic: 6 mi. (10 km)",
+          "saturday": "Rest or cross-training",
+          "sunday": "Medium-long run: 12 mi. (19 km)",
+          "weekly_total": "37 mi/60 km"
+        },
+        {
+          "week": 11,
+          "phase": "Mesocycle 2 - Lactate Threshold + Endurance",
+          "monday": "Rest or cross-training",
+          "tuesday": "Lactate threshold: 10 mi. (16 km) w/ 5 \u00d7 1 mi. (2 km) @ 15K to half marathon pace",
+          "wednesday": "Medium-long run: 12 mi. (19 km)",
+          "thursday": "Recovery 5 mi. (8 km)",
+          "friday": "General aerobic: 7 mi. (12 km)",
+          "saturday": "Recovery 5 mi. (8 km)",
+          "sunday": "Long run: 16 mi. (26 km)",
+          "weekly_total": "50 mi/81 km"
+        },
+        {
+          "week": 10,
+          "phase": "Mesocycle 2 - Lactate Threshold + Endurance",
+          "monday": "Rest or cross-training",
+          "tuesday": "General aerobic + speed: 8 mi. (13 km) w/ 8 \u00d7 100 m strides",
+          "wednesday": "Medium-long run: 12 mi. (19 km)",
+          "thursday": "Recovery 5 mi. (8 km)",
+          "friday": "Medium-long run: 12 mi. (19 km)",
+          "saturday": "Recovery 5 mi. (8 km)",
+          "sunday": "Marathon-long run: 18 mi. (29 km) w/ 10 mi. (16 km) @ marathon pace",
+          "weekly_total": "54 mi/87 km"
+        },
+        {
+          "week": 9,
+          "phase": "Mesocycle 2 - Lactate Threshold + Endurance",
+          "monday": "Rest or cross-training",
+          "tuesday": "Recovery 6 mi. (10 km)",
+          "wednesday": "Medium-long run: 14 mi. (23 km)",
+          "thursday": "Recovery 5 mi. (8 km)",
+          "friday": "General aerobic: 7 mi. (12 km)",
+          "saturday": "Recovery 5 mi. (8 km)",
+          "sunday": "Long run: 20 mi. (32 km)",
+          "weekly_total": "52 mi/84 km"
+        },
+        {
+          "week": 8,
+          "phase": "Mesocycle 2 - Lactate Threshold + Endurance",
+          "monday": "Rest or cross-training",
+          "tuesday": "Lactate threshold: 11 mi. (18 km) w/ 7 mi. (12 km) @ 15K to half marathon race pace",
+          "wednesday": "Medium-long run: 13 mi. (21 km)",
+          "thursday": "Recovery 5 mi. (8 km)",
+          "friday": "General aerobic: 7 mi. (12 km)",
+          "saturday": "Recovery 5 mi. (8 km)",
+          "sunday": "Medium-long run: 16 mi. (26 km)",
+          "weekly_total": "52 mi/84 km"
+        },
+        {
+          "week": 7,
+          "phase": "Mesocycle 3 - Race Preparation",
+          "monday": "Rest or cross-training (Recovery)",
+          "tuesday": "VO2max: 8 mi. (13 km) w/ 5 \u00d7 600 m @ 5K race pace, jog 50 to 90% interval time between",
+          "wednesday": "Medium-long run: 11 mi. (18 km)",
+          "thursday": "Recovery 5 mi. (8 km)",
+          "friday": "General aerobic: 6 mi. (10 km)",
+          "saturday": "Recovery 4 mi. (6 km)",
+          "sunday": "Long run: 18 mi. (29 km)",
+          "weekly_total": "43 mi/70 km"
+        },
+        {
+          "week": 6,
+          "phase": "Mesocycle 3 - Race Preparation",
+          "monday": "Rest or cross-training",
+          "tuesday": "VO2max: 9 mi. (14 km) w/ 5 \u00d7 800 m @ 5K pace, jog 50 to 90% interval time between",
+          "wednesday": "Medium-long run: 14 mi. (23 km)",
+          "thursday": "Recovery 6 mi. (10 km)",
+          "friday": "Medium-long run: 12 mi. (19 km)",
+          "saturday": "Recovery 5 mi. (8 km)",
+          "sunday": "Marathon-pace run: 18 mi. (29 km) w/ 14 mi. (23 km) @ marathon race pace",
+          "weekly_total": "55 mi/89 km"
+        },
+        {
+          "week": 5,
+          "phase": "Mesocycle 3 - Race Preparation",
+          "monday": "Rest or cross-training",
+          "tuesday": "Lactate threshold: 10 mi. (16 km) w/ 5K race pace, jog 50 to 90% interval time between",
+          "wednesday": "Medium-long run: 12 mi. (19 km)",
+          "thursday": "Recovery 5 mi. (8 km)",
+          "friday": "General aerobic: 7 mi. (12 km)",
+          "saturday": "Recovery 4 mi. (6 km)",
+          "sunday": "Long run: 20 mi. (32 km)",
+          "weekly_total": "50 mi/81 km"
+        },
+        {
+          "week": 4,
+          "phase": "Mesocycle 3 - Race Preparation",
+          "monday": "Rest or cross-training",
+          "tuesday": "General aerobic + speed: 8 mi. (13 km) w/ 8 \u00d7 100 m strides",
+          "wednesday": "Medium-long run: 13 mi. (21 km)",
+          "thursday": "Recovery 5 mi. (8 km)",
+          "friday": "Medium-long run: 14 mi. (23 km)",
+          "saturday": "Recovery 5 mi. (8 km)",
+          "sunday": "Marathon-pace run: 19 mi. (31 km) w/ 12 mi. (19 km) @ marathon race pace",
+          "weekly_total": "56 mi/91 km"
+        },
+        {
+          "week": 3,
+          "phase": "Mesocycle 3 - Race Preparation",
+          "monday": "Rest or cross-training",
+          "tuesday": "VO2max: 9 mi. (14 km) w/ 6 \u00d7 600 m @ 5K pace, jog 50 to 90% interval time between",
+          "wednesday": "Medium-long run: 12 mi. (19 km)",
+          "thursday": "Recovery 5 mi. (8 km)",
+          "friday": "General aerobic: 6 mi. (10 km)",
+          "saturday": "Recovery 5 mi. (8 km)",
+          "sunday": "Long run: 12 mi. (19 km)",
+          "weekly_total": "42 mi/68 km"
+        },
+        {
+          "week": 2,
+          "phase": "Mesocycle 3 - Race Preparation",
+          "monday": "Rest or cross-training",
+          "tuesday": "Dress rehearsal: 9 mi. (14 km) w/ 2 mi. (3 km) @ marathon race pace",
+          "wednesday": "Medium-long run: 10 mi. (16 km)",
+          "thursday": "Recovery 5 mi. (8 km)",
+          "friday": "General aerobic: 7 mi. (12 km)",
+          "saturday": "Recovery 5 mi. (8 km)",
+          "sunday": "Marathon-pace run: 13 mi. (21 km) w/ 8 mi. (13 km) @ marathon race pace",
+          "weekly_total": "42 mi/68 km"
+        },
+        {
+          "week": 1,
+          "phase": "Mesocycle 4 - Taper and Race",
+          "monday": "Rest or cross-training (Race week)",
+          "tuesday": "VO2max: 7 mi. (12 km) w/ 5 \u00d7 400 m @ 5K race pace, jog 50 to 90% interval time between",
+          "wednesday": "Recovery 4 mi. (6 km)",
+          "thursday": "Recovery + speed: 5 mi. (8 km) + strides",
+          "friday": "Recovery 4 mi. (6 km)",
+          "saturday": "Recovery 3 mi. (5 km)",
+          "sunday": "Goal marathon",
+          "weekly_total": "49.2 mi. (79 km)"
+        }
+      ]
+    },
+    {
+      "template_id": "pfitz_55_70_marathon",
+      "name": "Pfitzinger/Douglas 55-70 Miles/Week Marathon Plan",
+      "author": "Pete Pfitzinger and Scott Douglas",
+      "source": "Advanced Marathoning (2nd Edition)",
+      "source_reference": "Pfitzinger/Douglas 55-70 Miles/Week Marathon Plan - 18-week schedule",
+      "description": "Science-based marathon training with periodized mesocycles emphasizing lactate threshold development, VO2max work, and marathon-specific preparation. 55-70 miles/week peak weekly volume.",
+      "target_audience": {
+        "experience_level": "intermediate to advanced",
+        "prerequisites": [
+          "Solid aerobic base established",
+          "Comfortable running 6-7 days per week",
+          "Experience with tempo runs and intervals",
+          "Able to handle prescribed weekly mileage"
+        ],
+        "peak_weekly_mileage": "70 miles (113 km)"
+      },
+      "program_structure": {
+        "duration_weeks": 18,
+        "training_philosophy": "Periodized approach with four distinct mesocycles building aerobic capacity, lactate threshold, and race-specific fitness",
+        "mesocycles": [
+          {
+            "name": "Mesocycle 1 - Endurance",
+            "weeks": "17-13",
+            "duration": "5 weeks",
+            "focus": "Building aerobic base, introducing speedwork with strides and VO2max intervals"
+          },
+          {
+            "name": "Mesocycle 2 - Lactate Threshold + Endurance",
+            "weeks": "12-8",
+            "duration": "5 weeks",
+            "focus": "Developing lactate threshold with sustained tempo efforts at 15K-Half Marathon pace"
+          },
+          {
+            "name": "Mesocycle 3 - Race Preparation",
+            "weeks": "7-2",
+            "duration": "6 weeks",
+            "focus": "Marathon-specific work with long runs including marathon pace segments and dress rehearsals"
+          },
+          {
+            "name": "Mesocycle 4 - Taper and Race",
+            "weeks": "1-0",
+            "duration": "2 weeks",
+            "focus": "Reduced volume with intensity maintenance, final sharpening, and race execution"
+          }
+        ],
+        "typical_week": "7 days structured with 2-3 quality sessions (Tuesday/Thursday), long run Sunday, recovery/aerobic runs filling remaining days"
+      },
+      "philosophy": {
+        "key_principles": [
+          "Progressive overload with strategic recovery weeks",
+          "Lactate threshold development as primary physiological adaptation",
+          "VO2max intervals for speed and running economy",
+          "Marathon-pace segments integrated into long runs",
+          "Undulating volume pattern rather than linear progression",
+          "Recovery runs kept truly easy to enable quality sessions"
+        ],
+        "workout_priorities": [
+          "Long runs (primary weekly stimulus)",
+          "Lactate threshold workouts (tempo runs, cruise intervals)",
+          "VO2max intervals (5K pace work)",
+          "Marathon-pace runs (race-specific preparation)",
+          "General aerobic runs with optional strides",
+          "Recovery runs (active recovery between quality sessions)"
+        ]
+      },
+      "pace_guidance": {
+        "recovery_pace": "Easy conversational effort, comfortable and relaxed",
+        "general_aerobic_pace": "Comfortable aerobic pace, slightly faster than recovery but still conversational",
+        "medium_long_run_pace": "Steady aerobic effort, moderate comfort level",
+        "long_run_pace": "Sustainable aerobic pace with marathon pace segments as prescribed",
+        "lactate_threshold_pace": "15K to Half Marathon race pace - comfortably hard, sustainable for 20-30 minutes",
+        "vo2max_pace": "5K race pace - hard effort, sustainable for 3-5 minute intervals",
+        "marathon_pace": "Goal marathon race pace",
+        "strides": "Fast but controlled, 20-30 seconds at approximately mile race pace"
+      },
+      "workout_notation": {
+        "distance_format": "Total distance includes warm-up/cooldown (e.g., '10 mi (16 km) w/ 5 mi @ LT pace' = warm-up + 5mi tempo + cooldown)",
+        "interval_format": "'5 \u00d7 600 m @ 5K pace, jog 50-90% interval time between' means 5 repeats of 600m at 5K race pace with recovery jog",
+        "pace_references": [
+          "'@ 5K pace' or '@ 5K race pace' = VO2max intensity",
+          "'@ 15K to half marathon pace' = Lactate threshold range",
+          "'@ marathon pace' or '@ marathon race pace' = Goal race pace",
+          "'jog 50 to 90% interval time between' = Recovery as percentage of work interval"
+        ],
+        "strides_notation": "'w/ 8 \u00d7 100 m strides' means 8 repetitions of 100m at fast controlled pace, '+ strides' typically means 4-8 \u00d7 100m",
+        "recovery_format": "Recovery intervals prescribed as percentage of work time (e.g., jog 50-90% of interval duration)"
+      },
+      "weekly_schedule": [
+        {
+          "week": 17,
+          "phase": "Mesocycle 1 - Endurance",
+          "monday": "Rest or cross-training",
+          "tuesday": "Lactate threshold: 9 mi. (14 km) w/ 4 mi. @ 15K to half marathon race pace",
+          "wednesday": "Medium-long run: 11 mi. (18 km)",
+          "thursday": "Recovery 5 mi. (8 km)",
+          "friday": "General aerobic: 8 mi. (14 km)",
+          "saturday": "Recovery 5 mi. (8 km)",
+          "sunday": "Medium-long run: 13 mi. (21 km)",
+          "weekly_total": "54 mi/86 km"
+        },
+        {
+          "week": 16,
+          "phase": "Mesocycle 1 - Endurance",
+          "monday": "Rest or cross-training",
+          "tuesday": "General aerobic + speed: 9 mi. (14 km) w/ 10 \u00d7 100 m strides",
+          "wednesday": "Medium-long run: 12 mi. (19 km)",
+          "thursday": "Recovery 5 mi. (8 km)",
+          "friday": "General aerobic: 9 mi. (14 km)",
+          "saturday": "Recovery 5 mi. (8 km)",
+          "sunday": "Marathon-long run: 13 mi. (21 km)",
+          "weekly_total": "54 mi/86 km"
+        },
+        {
+          "week": 15,
+          "phase": "Mesocycle 1 - Endurance",
+          "monday": "Rest or cross-training",
+          "tuesday": "Medium-long run: 13 mi. (18 km)",
+          "wednesday": "Medium-long run: 13 mi. (21 km)",
+          "thursday": "Recovery 5 mi. (8 km)",
+          "friday": "Lactate threshold: 10 mi. (16 km) w/ 5 mi. @ 15K to half marathon race pace",
+          "saturday": "Recovery 5 mi. (8 km)",
+          "sunday": "Medium-long run: 14 mi. (23 km)",
+          "weekly_total": "58 mi/95 km"
+        },
+        {
+          "week": 14,
+          "phase": "Mesocycle 1 - Endurance",
+          "monday": "Rest or cross-training",
+          "tuesday": "General aerobic + speed: 9 mi. (14 km) w/ 8 mi. (13 km)",
+          "wednesday": "Medium-long run: 14 mi. (23 km)",
+          "thursday": "Recovery 5 mi. (8 km)",
+          "friday": "Medium-long run: 14 mi. (23 km)",
+          "saturday": "Recovery 5 mi. (8 km)",
+          "sunday": "Long run: 16 mi. (26 km)",
+          "weekly_total": "62 mi/100 km"
+        },
+        {
+          "week": 13,
+          "phase": "Mesocycle 1 - Endurance",
+          "monday": "Rest or cross-training",
+          "tuesday": "Lactate threshold: 9 mi. (14 km) w/ 5 mi. (8 km) @ 15K to half marathon race pace",
+          "wednesday": "Medium-long run: 12 mi. (19 km)",
+          "thursday": "Recovery 5 mi. (8 km)",
+          "friday": "General aerobic: 8 mi. (13 km)",
+          "saturday": "Recovery 5 mi. (8 km)",
+          "sunday": "Medium-long run: 16 mi. (26 km)",
+          "weekly_total": "55 mi/88 km"
+        },
+        {
+          "week": 12,
+          "phase": "Mesocycle 2 - Lactate Threshold + Endurance",
+          "monday": "Rest or cross-training (Recovery)",
+          "tuesday": "Lactate threshold: 10 mi. (16 km) w/ 6 mi. (10 km) @ 15K to half marathon race pace",
+          "wednesday": "Medium-long run: 12 mi. (19 km)",
+          "thursday": "Recovery 6 mi. (10 km)",
+          "friday": "Medium-long run: 13 mi. (21 km)",
+          "saturday": "Recovery 5 mi. (8 km)",
+          "sunday": "Long run: 15 mi. (24 km)",
+          "weekly_total": "58 mi/93 km"
+        },
+        {
+          "week": 11,
+          "phase": "Mesocycle 2 - Lactate Threshold + Endurance",
+          "monday": "Rest or cross-training",
+          "tuesday": "Lactate threshold: 10 mi. (16 km) w/ 5 \u00d7 1 mi. (2 km) @ 15K to half marathon pace",
+          "wednesday": "Medium-long run: 14 mi. (23 km)",
+          "thursday": "Recovery 6 mi. (10 km)",
+          "friday": "Medium-long run: 14 mi. (23 km)",
+          "saturday": "Recovery + speed: 5 mi. (8 km) @ 10 min. (10 km) + strides",
+          "sunday": "Long run: 20 mi. (32 km)",
+          "weekly_total": "66 mi/107 km"
+        },
+        {
+          "week": 10,
+          "phase": "Mesocycle 2 - Lactate Threshold + Endurance",
+          "monday": "Rest or cross-training",
+          "tuesday": "Medium-long run: 13 mi. (21 km)",
+          "wednesday": "Medium-long run: 14 mi. (23 km)",
+          "thursday": "Recovery 6 mi. (10 km)",
+          "friday": "Medium-long run: 13 mi. (21 km)",
+          "saturday": "Recovery 5 mi. (8 km)",
+          "sunday": "Marathon-pace run: 21 mi. (34 km) w/ 12 mi. (19 km) @ 10 mi. (16 km) marathon pace",
+          "weekly_total": "67 mi/108 km"
+        },
+        {
+          "week": 9,
+          "phase": "Mesocycle 2 - Lactate Threshold + Endurance",
+          "monday": "Rest or cross-training",
+          "tuesday": "Recovery 6 mi. (10 km)",
+          "wednesday": "Medium-long run: 14 mi. (23 km)",
+          "thursday": "Recovery 6 mi. (10 km)",
+          "friday": "Medium-long run: 14 mi. (23 km)",
+          "saturday": "Recovery 5 mi. (8 km)",
+          "sunday": "Long run: 22 mi. (35 km)",
+          "weekly_total": "68 mi/110 km"
+        },
+        {
+          "week": 8,
+          "phase": "Mesocycle 2 - Lactate Threshold + Endurance",
+          "monday": "Rest or cross-training",
+          "tuesday": "Lactate threshold: 12 mi. (19 km) w/ 7 mi. (12 km) @ 15K to half marathon race pace",
+          "wednesday": "Medium-long run: 14 mi. (23 km)",
+          "thursday": "Recovery 6 mi. (10 km)",
+          "friday": "Medium-long run: 14 mi. (23 km)",
+          "saturday": "Recovery 5 mi. (8 km)",
+          "sunday": "Medium-long run: 18 mi. (29 km)",
+          "weekly_total": "70 mi/113 km"
+        },
+        {
+          "week": 7,
+          "phase": "Mesocycle 3 - Race Preparation",
+          "monday": "Rest or cross-training (Recovery)",
+          "tuesday": "Recovery + speed: 6 mi. (10 km) + strides",
+          "wednesday": "Medium-long run: 14 mi. (23 km)",
+          "thursday": "Recovery 6 mi. (10 km)",
+          "friday": "General aerobic: 8 mi. (13 km)",
+          "saturday": "Recovery 4 mi. (6 km)",
+          "sunday": "Long run: 20 mi. (32 km)",
+          "weekly_total": "58 mi/93 km"
+        },
+        {
+          "week": 6,
+          "phase": "Mesocycle 3 - Race Preparation",
+          "monday": "Rest or cross-training",
+          "tuesday": "VO2max: 9 mi. (14 km) w/ 5 \u00d7 800 m @ 5K pace, jog 50 to 90% interval time between",
+          "wednesday": "Medium-long run: 15 mi. (24 km)",
+          "thursday": "Recovery 6 mi. (10 km)",
+          "friday": "Medium-long run: 13 mi. (21 km)",
+          "saturday": "Recovery 5 mi. (8 km)",
+          "sunday": "Marathon-pace run: 20 mi. (32 km) w/ 16 mi. (26 km) @ marathon race pace",
+          "weekly_total": "70 mi/113 km"
+        },
+        {
+          "week": 5,
+          "phase": "Mesocycle 3 - Race Preparation",
+          "monday": "Rest or cross-training",
+          "tuesday": "Lactate threshold: 10 mi. (16 km) w/ 5K race pace, jog 50 to 90% interval time between",
+          "wednesday": "Medium-long run: 12 mi. (19 km)",
+          "thursday": "Recovery 6 mi. (10 km)",
+          "friday": "General aerobic: 8 mi. (13 km)",
+          "saturday": "Recovery 5 mi. (8 km)",
+          "sunday": "Long run: 22 mi. (35 km)",
+          "weekly_total": "60 mi/98 km"
+        },
+        {
+          "week": 4,
+          "phase": "Mesocycle 3 - Race Preparation",
+          "monday": "Rest or cross-training",
+          "tuesday": "General aerobic + speed: 9 mi. (14 km) w/ 8 \u00d7 100 m strides",
+          "wednesday": "Medium-long run: 14 mi. (23 km)",
+          "thursday": "Recovery 6 mi. (10 km)",
+          "friday": "Medium-long run: 14 mi. (23 km)",
+          "saturday": "Recovery 5 mi. (8 km)",
+          "sunday": "Marathon-pace run: 20 mi. (32 km) w/ 14 mi. (23 km) @ marathon race pace",
+          "weekly_total": "69 mi/111 km"
+        },
+        {
+          "week": 3,
+          "phase": "Mesocycle 3 - Race Preparation",
+          "monday": "Rest or cross-training",
+          "tuesday": "VO2max: 9 mi. (14 km) w/ 6 \u00d7 600 m @ 5K pace, jog 50 to 90% interval time between",
+          "wednesday": "Medium-long run: 12 mi. (19 km)",
+          "thursday": "Recovery 6 mi. (10 km)",
+          "friday": "General aerobic: 7 mi. (12 km)",
+          "saturday": "Recovery 5 mi. (8 km)",
+          "sunday": "Long run: 12 mi. (19 km)",
+          "weekly_total": "48 mi/78 km"
+        },
+        {
+          "week": 2,
+          "phase": "Mesocycle 3 - Race Preparation",
+          "monday": "Rest or cross-training",
+          "tuesday": "Dress rehearsal: 9 mi. (14 km) w/ 2 mi. (3 km) @ marathon race pace",
+          "wednesday": "Medium-long run: 12 mi. (19 km)",
+          "thursday": "Recovery 5 mi. (8 km)",
+          "friday": "General aerobic: 8 mi. (13 km)",
+          "saturday": "Recovery 5 mi. (8 km)",
+          "sunday": "Medium-long run: 13 mi. (21 km) w/ 8 mi. (13 km) @ marathon race pace",
+          "weekly_total": "48 mi/78 km"
+        },
+        {
+          "week": 1,
+          "phase": "Mesocycle 4 - Taper and Race",
+          "monday": "Rest or cross-training (Race week)",
+          "tuesday": "VO2max: 7 mi. (12 km) w/ 5 \u00d7 400 m @ 5K race pace, jog 50 to 90% interval time between",
+          "wednesday": "Recovery 4 mi. (6 km)",
+          "thursday": "Recovery + speed: 6 mi. (10 km) + strides",
+          "friday": "Recovery 4 mi. (6 km)",
+          "saturday": "Recovery 3 mi. (5 km)",
+          "sunday": "Goal marathon",
+          "weekly_total": "50.2 mi. (81 km)"
+        }
+      ]
+    },
+    {
+      "template_id": "pfitz_70_85_marathon",
+      "name": "Pfitzinger/Douglas 70-85 Miles/Week Marathon Plan",
+      "author": "Pete Pfitzinger and Scott Douglas",
+      "source": "Advanced Marathoning (2nd Edition)",
+      "source_reference": "Pfitzinger/Douglas 70-85 Miles/Week Marathon Plan - 18-week schedule",
+      "description": "Science-based marathon training with periodized mesocycles emphasizing lactate threshold development, VO2max work, and marathon-specific preparation. 70-85 miles/week peak weekly volume.",
+      "target_audience": {
+        "experience_level": "advanced",
+        "prerequisites": [
+          "Strong aerobic base with consistent 60+ mile weeks",
+          "Comfortable running 6-7 days per week",
+          "Extensive experience with tempo runs and intervals",
+          "Able to handle high weekly mileage",
+          "Strong injury resistance"
+        ],
+        "peak_weekly_mileage": "85 miles (137 km)"
+      },
+      "program_structure": {
+        "duration_weeks": 18,
+        "training_philosophy": "High-volume periodized approach with four distinct mesocycles building aerobic capacity, lactate threshold, and race-specific fitness",
+        "mesocycles": [
+          {
+            "name": "Mesocycle 1 - Endurance",
+            "weeks": "17-13",
+            "duration": "5 weeks",
+            "focus": "Building aerobic base with high volume, introducing speedwork"
+          },
+          {
+            "name": "Mesocycle 2 - Lactate Threshold + Endurance",
+            "weeks": "12-8",
+            "duration": "5 weeks",
+            "focus": "Extensive lactate threshold development with sustained tempo efforts"
+          },
+          {
+            "name": "Mesocycle 3 - Race Preparation",
+            "weeks": "7-2",
+            "duration": "6 weeks",
+            "focus": "Marathon-specific work with long runs including substantial marathon pace segments"
+          },
+          {
+            "name": "Mesocycle 4 - Taper and Race",
+            "weeks": "1-0",
+            "duration": "2 weeks",
+            "focus": "Reduced volume with intensity maintenance, final sharpening, and race execution"
+          }
+        ],
+        "typical_week": "7 days structured with 2-3 quality sessions, long run Sunday, recovery/aerobic runs filling remaining days"
+      },
+      "philosophy": {
+        "key_principles": [
+          "High volume progressive overload with strategic recovery weeks",
+          "Lactate threshold development as primary physiological adaptation",
+          "VO2max intervals for speed and running economy",
+          "Marathon-pace segments integrated into long runs",
+          "Undulating volume pattern rather than linear progression",
+          "Recovery runs kept truly easy to enable quality sessions"
+        ],
+        "workout_priorities": [
+          "Long runs (primary weekly stimulus)",
+          "Lactate threshold workouts (tempo runs, cruise intervals)",
+          "VO2max intervals (5K pace work)",
+          "Marathon-pace runs (race-specific preparation)",
+          "General aerobic runs with optional strides",
+          "Recovery runs (active recovery between quality sessions)"
+        ]
+      },
+      "pace_guidance": {
+        "recovery_pace": "Easy conversational effort, comfortable and relaxed",
+        "general_aerobic_pace": "Comfortable aerobic pace, slightly faster than recovery but still conversational",
+        "medium_long_run_pace": "Steady aerobic effort, moderate comfort level",
+        "long_run_pace": "Sustainable aerobic pace with marathon pace segments as prescribed",
+        "lactate_threshold_pace": "15K to Half Marathon race pace - comfortably hard, sustainable for 20-30 minutes",
+        "vo2max_pace": "5K race pace - hard effort, sustainable for 3-5 minute intervals",
+        "marathon_pace": "Goal marathon race pace",
+        "strides": "Fast but controlled, 20-30 seconds at approximately mile race pace"
+      },
+      "workout_notation": {
+        "distance_format": "Total distance includes warm-up/cooldown",
+        "interval_format": "Recovery prescribed as percentage of work interval time",
+        "pace_references": [
+          "'@ 5K pace' = VO2max intensity",
+          "'@ 15K to half marathon pace' = Lactate threshold range",
+          "'@ marathon pace' = Goal race pace"
+        ],
+        "strides_notation": "'w/ 8 \u00d7 100 m strides' means 8 repetitions of 100m at fast controlled pace",
+        "recovery_format": "'jog 50 to 90% interval time between' = Recovery as percentage of work time"
+      },
+      "weekly_schedule": [
+        {
+          "week": 17,
+          "phase": "Mesocycle 1 - Endurance",
+          "monday": "Recovery 5 mi. (8 km)",
+          "tuesday": "Lactate threshold: 11 mi. (18 km) w/ 4 mi. (6 km) @ 15K to half marathon race pace w/ 4 mi. (6 km) @ 15K to half marathon race pace",
+          "wednesday": "Medium-long run: 13 mi. (21 km)",
+          "thursday": "Recovery 6 mi. (10 km)",
+          "friday": "General aerobic: 9 mi. (14 km)",
+          "saturday": "Recovery 6 mi. (10 km)",
+          "sunday": "Long run: 17 mi. (27 km)",
+          "weekly_total": "67 mi. (109 km)"
+        },
+        {
+          "week": 16,
+          "phase": "Mesocycle 1 - Endurance",
+          "monday": "Recovery 6 mi. (10 km)",
+          "tuesday": "General aerobic + speed: 11 mi. (18 km) w/ 10 \u00d7 100 m strides",
+          "wednesday": "Medium-long run: 14 mi. (23 km)",
+          "thursday": "Recovery 6 mi. (10 km)",
+          "friday": "Medium-long run: 13 mi. (21 km)",
+          "saturday": "Recovery 6 mi. (10 km)",
+          "sunday": "Long run: 14 mi. (23 km)",
+          "weekly_total": "70 mi. (114 km)"
+        },
+        {
+          "week": 15,
+          "phase": "Mesocycle 1 - Endurance",
+          "monday": "Recovery 6 mi. (10 km)",
+          "tuesday": "Lactate threshold: 10 mi. (16 km) w/ 5 mi. @ 15K to half marathon race pace",
+          "wednesday": "Medium-long run: 14 mi. (23 km)",
+          "thursday": "Recovery 6 mi. (10 km)",
+          "friday": "Medium-long run: 14 mi. (23 km)",
+          "saturday": "Recovery 6 mi. (10 km)",
+          "sunday": "Medium-long run: 18 mi. (29 km)",
+          "weekly_total": "74 mi. (120 km)"
+        },
+        {
+          "week": 14,
+          "phase": "Mesocycle 1 - Endurance",
+          "monday": "Recovery 6 mi. (10 km)",
+          "tuesday": "General aerobic + speed: 10 mi. (16 km) w/ 4 mi. (6 km) @ 10 \u00d7 100 m strides",
+          "wednesday": "Medium-long run: 14 mi. (23 km)",
+          "thursday": "Recovery 6 mi. (10 km)",
+          "friday": "Medium-long run: 14 mi. (23 km)",
+          "saturday": "Recovery 6 mi. (10 km)",
+          "sunday": "Long run: 18 mi. (29 km)",
+          "weekly_total": "74 mi. (120 km)"
+        },
+        {
+          "week": 13,
+          "phase": "Mesocycle 1 - Endurance",
+          "monday": "Recovery 6 mi. (10 km)",
+          "tuesday": "Lactate threshold: 10 mi. (16 km) w/ 5 mi. @ 15K to half marathon race pace",
+          "wednesday": "Medium-long run: 14 mi. (23 km)",
+          "thursday": "Recovery 6 mi. (10 km)",
+          "friday": "General aerobic: 9 mi. (14 km)",
+          "saturday": "Recovery 6 mi. (10 km)",
+          "sunday": "Medium-long run: 18 mi. (29 km)",
+          "weekly_total": "69 mi. (112 km)"
+        },
+        {
+          "week": 12,
+          "phase": "Mesocycle 2 - Lactate Threshold + Endurance",
+          "monday": "Recovery 6 mi. (10 km)",
+          "tuesday": "Lactate threshold: 12 mi. (19 km) w/ 6 mi. (10 km) @ 15K to half marathon race pace",
+          "wednesday": "Medium-long run: 14 mi. (23 km)",
+          "thursday": "Recovery 7 mi. (12 km)",
+          "friday": "Medium-long run: 14 mi. (23 km)",
+          "saturday": "Recovery 6 mi. (10 km)",
+          "sunday": "Long run: 18 mi. (29 km)",
+          "weekly_total": "77 mi. (125 km)"
+        },
+        {
+          "week": 11,
+          "phase": "Mesocycle 2 - Lactate Threshold + Endurance",
+          "monday": "Recovery 6 mi. (10 km)",
+          "tuesday": "Lactate threshold: 11 mi. (18 km) w/ 5 \u00d7 1 mi. (2 km) @ 15K to half marathon pace",
+          "wednesday": "Medium-long run: 15 mi. (24 km)",
+          "thursday": "Recovery 7 mi. (12 km)",
+          "friday": "Medium-long run: 14 mi. (23 km)",
+          "saturday": "Recovery 6 mi. (10 km)",
+          "sunday": "Long run: 20 mi. (32 km)",
+          "weekly_total": "80 mi. (130 km)"
+        },
+        {
+          "week": 10,
+          "phase": "Mesocycle 2 - Lactate Threshold + Endurance",
+          "monday": "Recovery 6 mi. (10 km)",
+          "tuesday": "Medium-long run: 15 mi. (24 km)",
+          "wednesday": "Medium-long run: 14 mi. (23 km)",
+          "thursday": "Recovery 7 mi. (12 km)",
+          "friday": "Medium-long run: 14 mi. (23 km)",
+          "saturday": "Recovery 6 mi. (10 km)",
+          "sunday": "Marathon-pace run: 24 mi. (39 km) w/ 16 mi. (26 km) @ marathon race pace",
+          "weekly_total": "87 mi. (140 km)"
+        },
+        {
+          "week": 9,
+          "phase": "Mesocycle 2 - Lactate Threshold + Endurance",
+          "monday": "Recovery 6 mi. (10 km)",
+          "tuesday": "Recovery 7 mi. (12 km)",
+          "wednesday": "Medium-long run: 15 mi. (24 km)",
+          "thursday": "Recovery 6 mi. (10 km)",
+          "friday": "Medium-long run: 14 mi. (23 km)",
+          "saturday": "Recovery 6 mi. (10 km)",
+          "sunday": "Long run: 24 mi. (39 km)",
+          "weekly_total": "80 mi. (130 km)"
+        },
+        {
+          "week": 8,
+          "phase": "Mesocycle 2 - Lactate Threshold + Endurance",
+          "monday": "Recovery 6 mi. (10 km)",
+          "tuesday": "Lactate threshold: 13 mi. (21 km) w/ 8 mi. (13 km) @ 15K to half marathon race pace",
+          "wednesday": "Medium-long run: 15 mi. (24 km)",
+          "thursday": "Recovery 7 mi. (12 km)",
+          "friday": "Medium-long run: 14 mi. (23 km)",
+          "saturday": "Recovery 6 mi. (10 km)",
+          "sunday": "Long run: 20 mi. (32 km)",
+          "weekly_total": "82 mi. (134 km)"
+        },
+        {
+          "week": 7,
+          "phase": "Mesocycle 3 - Race Preparation",
+          "monday": "Recovery 6 mi. (10 km)",
+          "tuesday": "VO2max: 9 mi. (14 km) w/ 5 \u00d7 600 m @ 5K race pace, jog 50 to 90% interval time between",
+          "wednesday": "Medium-long run: 14 mi. (23 km)",
+          "thursday": "Recovery 7 mi. (12 km)",
+          "friday": "General aerobic: 9 mi. (14 km)",
+          "saturday": "Recovery 5 mi. (8 km)",
+          "sunday": "Long run: 20 mi. (32 km)",
+          "weekly_total": "70 mi. (115 km)"
+        },
+        {
+          "week": 6,
+          "phase": "Mesocycle 3 - Race Preparation",
+          "monday": "Recovery 6 mi. (10 km)",
+          "tuesday": "VO2max: 10 mi. (16 km) w/ 5 \u00d7 1,000 m @ 5K pace, jog 50 to 90% interval time between",
+          "wednesday": "Medium-long run: 15 mi. (24 km)",
+          "thursday": "Recovery 7 mi. (12 km)",
+          "friday": "Medium-long run: 15 mi. (24 km)",
+          "saturday": "Recovery 6 mi. (10 km)",
+          "sunday": "Marathon-pace run: 22 mi. (35 km) w/ 18 mi. (29 km) @ marathon race pace",
+          "weekly_total": "82 mi. (134 km)"
+        },
+        {
+          "week": 5,
+          "phase": "Mesocycle 3 - Race Preparation",
+          "monday": "Recovery 6 mi. (10 km)",
+          "tuesday": "Lactate threshold: 11 mi. (18 km) w/ 6 mi. (10 km) @ 15K to half marathon race pace",
+          "wednesday": "Medium-long run: 14 mi. (23 km)",
+          "thursday": "Recovery 7 mi. (12 km)",
+          "friday": "General aerobic: 9 mi. (14 km)",
+          "saturday": "Recovery 5 mi. (8 km)",
+          "sunday": "Long run: 22 mi. (35 km)",
+          "weekly_total": "74 mi. (121 km)"
+        },
+        {
+          "week": 4,
+          "phase": "Mesocycle 3 - Race Preparation",
+          "monday": "Recovery 6 mi. (10 km)",
+          "tuesday": "General aerobic + speed: 10 mi. (16 km) w/ 8 \u00d7 100 m strides",
+          "wednesday": "Medium-long run: 15 mi. (24 km)",
+          "thursday": "Recovery 7 mi. (12 km)",
+          "friday": "Medium-long run: 15 mi. (24 km)",
+          "saturday": "Recovery 6 mi. (10 km)",
+          "sunday": "Marathon-pace run: 22 mi. (35 km) w/ 16 mi. (26 km) @ marathon race pace",
+          "weekly_total": "82 mi. (134 km)"
+        },
+        {
+          "week": 3,
+          "phase": "Mesocycle 3 - Race Preparation",
+          "monday": "Recovery 6 mi. (10 km)",
+          "tuesday": "VO2max: 10 mi. (16 km) w/ 6 \u00d7 800 m @ 5K pace, jog 50 to 90% interval time between",
+          "wednesday": "Medium-long run: 14 mi. (23 km)",
+          "thursday": "Recovery 7 mi. (12 km)",
+          "friday": "General aerobic: 8 mi. (13 km)",
+          "saturday": "Recovery 6 mi. (10 km)",
+          "sunday": "Long run: 14 mi. (23 km)",
+          "weekly_total": "62 mi. (102 km)"
+        },
+        {
+          "week": 2,
+          "phase": "Mesocycle 3 - Race Preparation",
+          "monday": "Recovery 6 mi. (10 km)",
+          "tuesday": "Dress rehearsal: 10 mi. (16 km) w/ 2 mi. (3 km) @ marathon race pace",
+          "wednesday": "Medium-long run: 13 mi. (21 km)",
+          "thursday": "Recovery 6 mi. (10 km)",
+          "friday": "General aerobic: 9 mi. (14 km)",
+          "saturday": "Recovery 6 mi. (10 km)",
+          "sunday": "Medium-long run: 14 mi. (23 km) w/ 8 mi. (13 km) @ marathon race pace",
+          "weekly_total": "54 mi. (87 km)"
+        },
+        {
+          "week": 1,
+          "phase": "Mesocycle 4 - Taper and Race",
+          "monday": "Recovery 6 mi. (10 km)",
+          "tuesday": "VO2max: 8 mi. (13 km) w/ 5 \u00d7 400 m @ 5K race pace, jog 50 to 90% interval time between",
+          "wednesday": "Recovery 5 mi. (8 km)",
+          "thursday": "Recovery + speed: 6 mi. (10 km) + strides",
+          "friday": "Recovery 4 mi. (6 km)",
+          "saturday": "Recovery 3 mi. (5 km)",
+          "sunday": "Goal marathon",
+          "weekly_total": "58.2 mi. (94 km)"
+        }
+      ]
+    },
+    {
+      "template_id": "pfitz_85_plus_marathon",
+      "name": "Pfitzinger/Douglas 85+ Miles/Week Marathon Plan",
+      "author": "Pete Pfitzinger and Scott Douglas",
+      "source": "Advanced Marathoning (2nd Edition)",
+      "source_reference": "Pfitzinger/Douglas 85+ Miles/Week Marathon Plan - 18-week schedule",
+      "description": "Elite-level science-based marathon training with periodized mesocycles emphasizing lactate threshold development, VO2max work, and marathon-specific preparation. 85+ miles/week peak weekly volume for experienced competitive marathoners.",
+      "target_audience": {
+        "experience_level": "elite/advanced",
+        "prerequisites": [
+          "Very strong aerobic base with consistent 70+ mile weeks",
+          "Running 6-7 days per week for extended period",
+          "Extensive experience with tempo runs and intervals",
+          "Proven ability to handle very high weekly mileage",
+          "Excellent injury resistance and recovery capacity",
+          "Multiple marathon completions"
+        ],
+        "peak_weekly_mileage": "102+ miles (164+ km)"
+      },
+      "program_structure": {
+        "duration_weeks": 18,
+        "training_philosophy": "Elite-level periodized approach with four distinct mesocycles building exceptional aerobic capacity, lactate threshold, and race-specific fitness at very high volumes",
+        "mesocycles": [
+          {
+            "name": "Mesocycle 1 - Endurance",
+            "weeks": "17-13",
+            "duration": "5 weeks",
+            "focus": "Building massive aerobic base with very high volume, introducing speedwork"
+          },
+          {
+            "name": "Mesocycle 2 - Lactate Threshold + Endurance",
+            "weeks": "12-8",
+            "duration": "5 weeks",
+            "focus": "Extensive lactate threshold development with sustained high-volume tempo efforts"
+          },
+          {
+            "name": "Mesocycle 3 - Race Preparation",
+            "weeks": "7-2",
+            "duration": "6 weeks",
+            "focus": "Marathon-specific work with very long runs including substantial marathon pace segments"
+          },
+          {
+            "name": "Mesocycle 4 - Taper and Race",
+            "weeks": "1-0",
+            "duration": "2 weeks",
+            "focus": "Reduced volume with intensity maintenance, final sharpening, and race execution"
+          }
+        ],
+        "typical_week": "7 days structured with 2-3 quality sessions, long run Sunday, recovery/aerobic runs throughout"
+      },
+      "philosophy": {
+        "key_principles": [
+          "Very high volume progressive overload with strategic recovery weeks",
+          "Lactate threshold development as primary physiological adaptation",
+          "VO2max intervals for speed and running economy",
+          "Marathon-pace segments integrated into very long runs",
+          "Undulating volume pattern rather than linear progression",
+          "Recovery runs kept truly easy despite high weekly volume",
+          "Elite-level volume demands exceptional attention to recovery, nutrition, and injury prevention"
+        ],
+        "workout_priorities": [
+          "Long runs (primary weekly stimulus)",
+          "Lactate threshold workouts (tempo runs, cruise intervals)",
+          "VO2max intervals (5K pace work)",
+          "Marathon-pace runs (race-specific preparation)",
+          "General aerobic runs with optional strides",
+          "Recovery runs (active recovery between quality sessions)"
+        ]
+      },
+      "pace_guidance": {
+        "recovery_pace": "Easy conversational effort, comfortable and relaxed",
+        "general_aerobic_pace": "Comfortable aerobic pace, slightly faster than recovery but still conversational",
+        "medium_long_run_pace": "Steady aerobic effort, moderate comfort level",
+        "long_run_pace": "Sustainable aerobic pace with marathon pace segments as prescribed",
+        "lactate_threshold_pace": "15K to Half Marathon race pace - comfortably hard, sustainable for 20-30 minutes",
+        "vo2max_pace": "5K race pace - hard effort, sustainable for 3-5 minute intervals",
+        "marathon_pace": "Goal marathon race pace",
+        "strides": "Fast but controlled, 20-30 seconds at approximately mile race pace"
+      },
+      "workout_notation": {
+        "distance_format": "Total distance includes warm-up/cooldown",
+        "interval_format": "Recovery prescribed as percentage of work interval time",
+        "pace_references": [
+          "'@ 5K pace' = VO2max intensity",
+          "'@ 15K to half marathon pace' = Lactate threshold range",
+          "'@ marathon pace' = Goal race pace"
+        ],
+        "strides_notation": "'w/ 8 \u00d7 100 m strides' means 8 repetitions of 100m at fast controlled pace",
+        "recovery_format": "'jog 50 to 90% interval time between' = Recovery as percentage of work time"
+      },
+      "weekly_schedule": [
+        {
+          "week": 17,
+          "phase": "Mesocycle 1 - Endurance",
+          "monday": "Recovery 6 mi. (10 km) a.m. + Recovery 5 mi. (8 km) p.m.",
+          "tuesday": "Recovery 6 mi. (10 km) a.m. + Recovery 5 mi. (8 km) p.m.",
+          "wednesday": "Medium-long run: 13 mi. (21 km)",
+          "thursday": "Recovery + speed: 6 mi. (10 km) a.m. + VO2max: 9 mi. (14 km) w/ 8 \u00d7 100 m @ 5K race pace p.m.",
+          "friday": "Recovery 6 mi. (10 km) a.m. + Recovery 5 mi. (8 km) p.m.",
+          "saturday": "Recovery 6 mi. (10 km)",
+          "sunday": "Long run: 17 mi. (27 km)",
+          "weekly_total": "89 mi. (139 km)"
+        },
+        {
+          "week": 16,
+          "phase": "Mesocycle 1 - Endurance",
+          "monday": "Recovery 6 mi. (10 km) a.m. + Recovery 5 mi. (8 km) p.m.",
+          "tuesday": "Recovery 10 mi. (16 km)",
+          "wednesday": "Medium-long run: 13 mi. (21 km)",
+          "thursday": "Recovery + speed: 6 mi. (10 km) a.m. + General aerobic + speed: 10 mi. (16 km) w/ 10 \u00d7 100 m strides p.m.",
+          "friday": "Recovery 6 mi. (10 km) a.m. + Recovery 4 mi. (6 km) p.m.",
+          "saturday": "Recovery 6 mi. (10 km)",
+          "sunday": "Long run: 19 mi. (31 km)",
+          "weekly_total": "85 mi. (139 km)"
+        },
+        {
+          "week": 15,
+          "phase": "Mesocycle 1 - Endurance",
+          "monday": "Recovery 5 mi. (8 km) a.m. + Recovery 5 mi. (8 km) p.m.",
+          "tuesday": "Recovery 10 mi. (16 km)",
+          "wednesday": "Medium-long run: 13 mi. (21 km)",
+          "thursday": "Recovery + speed: 6 mi. (10 km) a.m. + VO2max: 9 mi. (14 km) w/ 5 \u00d7 1,000 m @ 5K pace p.m.",
+          "friday": "Recovery 6 mi. (10 km) a.m. + Recovery 5 mi. (8 km) p.m.",
+          "saturday": "Recovery 6 mi. (10 km)",
+          "sunday": "Long run: 20 mi. (32 km)",
+          "weekly_total": "90 mi. (147 km)"
+        },
+        {
+          "week": 14,
+          "phase": "Mesocycle 1 - Endurance",
+          "monday": "Recovery 6 mi. (10 km) a.m. + Recovery 5 mi. (8 km) a.m. p.m.",
+          "tuesday": "Recovery 10 mi. (16 km)",
+          "wednesday": "Medium-long run: 15 mi. (24 km)",
+          "thursday": "Recovery 6 mi. (10 km) a.m. + General aerobic + speed: 10 mi. (16 km) w/ 8 \u00d7 100 m strides p.m.",
+          "friday": "Recovery 6 mi. (10 km) a.m. + Recovery 4 mi. (6 km) p.m.",
+          "saturday": "Recovery 6 mi. (10 km)",
+          "sunday": "Long run: 22 mi. (35 km)",
+          "weekly_total": "100 mi. (163 km)"
+        },
+        {
+          "week": 13,
+          "phase": "Mesocycle 1 - Endurance",
+          "monday": "Recovery 6 mi. (10 km) a.m. + Recovery 5 mi. (8 km) p.m.",
+          "tuesday": "Recovery 10 mi. (16 km)",
+          "wednesday": "Medium-long run: 15 mi. (24 km)",
+          "thursday": "Recovery 6 mi. (10 km) a.m. + Lactate threshold: 10 mi. (16 km) w/ 5 mi. @ 15K to half marathon race pace p.m.",
+          "friday": "Recovery 6 mi. (10 km) a.m. + Recovery 5 mi. (8 km) p.m.",
+          "saturday": "Recovery 6 mi. (10 km)",
+          "sunday": "Long run: 20 mi. (32 km)",
+          "weekly_total": "94 mi. (154 km)"
+        },
+        {
+          "week": 12,
+          "phase": "Mesocycle 2 - Lactate Threshold + Endurance",
+          "monday": "Recovery 6 mi. (10 km) a.m. + Recovery 5 mi. (8 km) a.m. p.m.",
+          "tuesday": "Recovery 10 mi. (16 km)",
+          "wednesday": "Medium-long run: 15 mi. (24 km)",
+          "thursday": "Recovery 6 mi. (10 km) a.m. + Lactate threshold: 12 mi. (19 km) w/ 7 mi. (12 km) @ 15K to half marathon race pace p.m.",
+          "friday": "Recovery 6 mi. (10 km) a.m. + Recovery 5 mi. (8 km) p.m.",
+          "saturday": "Recovery 6 mi. (10 km)",
+          "sunday": "Long run: 22 mi. (35 km)",
+          "weekly_total": "98 mi. (161 km)"
+        },
+        {
+          "week": 11,
+          "phase": "Mesocycle 2 - Lactate Threshold + Endurance",
+          "monday": "Recovery 6 mi. (10 km) a.m. + Recovery 5 mi. (8 km) p.m.",
+          "tuesday": "Lactate threshold: 10 mi. (16 km) w/ 5 \u00d7 1 mi. (2 km) @ 15K to half marathon pace",
+          "wednesday": "Medium-long run: 15 mi. (24 km)",
+          "thursday": "Recovery 6 mi. (10 km) a.m. + Medium-long run: 12 mi. (19 km) p.m.",
+          "friday": "Recovery 6 mi. (10 km) a.m. + Recovery 5 mi. (8 km) p.m.",
+          "saturday": "Recovery + speed: 6 mi. (10 km) + strides",
+          "sunday": "Long run: 24 mi. (39 km)",
+          "weekly_total": "100 mi. (165 km)"
+        },
+        {
+          "week": 10,
+          "phase": "Mesocycle 2 - Lactate Threshold + Endurance",
+          "monday": "Recovery 6 mi. (10 km) a.m. + Recovery 5 mi. (8 km) p.m.",
+          "tuesday": "Medium-long run: 16 mi. (26 km)",
+          "wednesday": "Medium-long run: 15 mi. (24 km)",
+          "thursday": "Recovery 6 mi. (10 km) a.m. + Medium-long run: 13 mi. (21 km) p.m.",
+          "friday": "Recovery 6 mi. (10 km) a.m. + Recovery 5 mi. (8 km) p.m.",
+          "saturday": "Recovery 6 mi. (10 km)",
+          "sunday": "Marathon-pace run: 24 mi. (39 km) w/ 16 mi. (26 km) @ marathon race pace",
+          "weekly_total": "103 mi. (167 km)"
+        },
+        {
+          "week": 9,
+          "phase": "Mesocycle 2 - Lactate Threshold + Endurance",
+          "monday": "Recovery 6 mi. (10 km) a.m. + Recovery 4 mi. (6 km) a.m. p.m.",
+          "tuesday": "Recovery 10 mi. (16 km)",
+          "wednesday": "Medium-long run: 15 mi. (24 km)",
+          "thursday": "Recovery 6 mi. (10 km) a.m. + Recovery 5 mi. (8 km) p.m.",
+          "friday": "Recovery 6 mi. (10 km) a.m. + Recovery 5 mi. (8 km) p.m.",
+          "saturday": "Recovery 6 mi. (10 km)",
+          "sunday": "Long run: 26 mi. (42 km)",
+          "weekly_total": "90 mi. (147 km)"
+        },
+        {
+          "week": 8,
+          "phase": "Mesocycle 2 - Lactate Threshold + Endurance",
+          "monday": "Recovery 6 mi. (10 km) a.m. + Recovery 5 mi. (8 km) p.m.",
+          "tuesday": "Lactate threshold: 13 mi. (21 km) w/ 8 mi. (13 km) @ 15K to half marathon race pace",
+          "wednesday": "Medium-long run: 15 mi. (24 km)",
+          "thursday": "Recovery 6 mi. (10 km) a.m. + Medium-long run: 13 mi. (21 km) p.m.",
+          "friday": "Recovery 6 mi. (10 km) a.m. + Recovery 5 mi. (8 km) p.m.",
+          "saturday": "Recovery 6 mi. (10 km)",
+          "sunday": "Long run: 22 mi. (35 km)",
+          "weekly_total": "102 mi. (166 km)"
+        },
+        {
+          "week": 7,
+          "phase": "Mesocycle 3 - Race Preparation",
+          "monday": "Recovery 6 mi. (10 km) a.m. + Recovery 5 mi. (8 km) p.m.",
+          "tuesday": "Recovery 10 mi. (16 km)",
+          "wednesday": "Medium-long run: 15 mi. (24 km)",
+          "thursday": "Recovery 6 mi. (10 km) a.m. + VO2max: 9 mi. (14 km) w/ 5 \u00d7 800 m @ 5K race pace, jog 50 to 90% interval time between p.m.",
+          "friday": "Recovery 6 mi. (10 km) a.m. + Recovery 5 mi. (8 km) p.m.",
+          "saturday": "Recovery 5 mi. (8 km)",
+          "sunday": "Long run: 22 mi. (35 km)",
+          "weekly_total": "89 mi. (146 km)"
+        },
+        {
+          "week": 6,
+          "phase": "Mesocycle 3 - Race Preparation",
+          "monday": "Recovery 6 mi. (10 km) a.m. + Recovery 5 mi. (8 km) p.m.",
+          "tuesday": "VO2max: 11 mi. (18 km) w/ 5 \u00d7 1,000 m @ 5K pace, jog 50 to 90% interval time between",
+          "wednesday": "Medium-long run: 15 mi. (24 km)",
+          "thursday": "Recovery 6 mi. (10 km) a.m. + Medium-long run: 13 mi. (21 km) p.m.",
+          "friday": "Recovery 6 mi. (10 km) a.m. + Recovery 4 mi. (6 km) p.m.",
+          "saturday": "Recovery 6 mi. (10 km)",
+          "sunday": "Marathon-pace run: 24 mi. (39 km) w/ 18 mi. (29 km) @ marathon race pace",
+          "weekly_total": "96 mi. (157 km)"
+        },
+        {
+          "week": 5,
+          "phase": "Mesocycle 3 - Race Preparation",
+          "monday": "Recovery 6 mi. (10 km) a.m. + Recovery 4 mi. (6 km) p.m.",
+          "tuesday": "Lactate threshold: 12 mi. (19 km) w/ 7 mi. (12 km) @ 15K to half marathon race pace",
+          "wednesday": "Medium-long run: 15 mi. (24 km)",
+          "thursday": "Recovery 6 mi. (10 km) a.m. + General aerobic: 10 mi. (16 km) p.m.",
+          "friday": "Recovery 6 mi. (10 km) a.m. + Recovery 5 mi. (8 km) p.m.",
+          "saturday": "Recovery 5 mi. (8 km)",
+          "sunday": "Long run: 24 mi. (39 km)",
+          "weekly_total": "93 mi. (152 km)"
+        },
+        {
+          "week": 4,
+          "phase": "Mesocycle 3 - Race Preparation",
+          "monday": "Recovery 6 mi. (10 km) a.m. + Recovery 5 mi. (8 km) p.m.",
+          "tuesday": "General aerobic + speed: 11 mi. (18 km) w/ 8 \u00d7 100 m strides",
+          "wednesday": "Medium-long run: 15 mi. (24 km)",
+          "thursday": "Recovery 6 mi. (10 km) a.m. + Medium-long run: 13 mi. (21 km) p.m.",
+          "friday": "Recovery 6 mi. (10 km) a.m. + Recovery 4 mi. (6 km) p.m.",
+          "saturday": "Recovery 6 mi. (10 km)",
+          "sunday": "Marathon-pace run: 24 mi. (39 km) w/ 18 mi. (29 km) @ marathon race pace",
+          "weekly_total": "96 mi. (157 km)"
+        },
+        {
+          "week": 3,
+          "phase": "Mesocycle 3 - Race Preparation",
+          "monday": "Recovery 6 mi. (10 km) a.m. + Recovery 5 mi. (8 km) p.m.",
+          "tuesday": "VO2max: 11 mi. (18 km) w/ 6 \u00d7 800 m @ 5K pace, jog 50 to 90% interval time between",
+          "wednesday": "Medium-long run: 15 mi. (24 km)",
+          "thursday": "Recovery 6 mi. (10 km) a.m. + Recovery + speed: 6 mi. (10 km) + strides p.m.",
+          "friday": "Recovery 6 mi. (10 km) a.m. + Recovery 5 mi. (8 km) p.m.",
+          "saturday": "Recovery 6 mi. (10 km)",
+          "sunday": "Long run: 16 mi. (26 km)",
+          "weekly_total": "78 mi. (128 km)"
+        },
+        {
+          "week": 2,
+          "phase": "Mesocycle 3 - Race Preparation",
+          "monday": "Recovery 6 mi. (10 km) a.m. + Recovery 5 mi. (8 km) p.m.",
+          "tuesday": "Dress rehearsal: 10 mi. (16 km) w/ 2 mi. (3 km) @ marathon race pace",
+          "wednesday": "Medium-long run: 13 mi. (21 km)",
+          "thursday": "Recovery 6 mi. (10 km) a.m. + Recovery 4 mi. (6 km) p.m.",
+          "friday": "Recovery 6 mi. (10 km) a.m. + Recovery 5 mi. (8 km) p.m.",
+          "saturday": "Recovery 6 mi. (10 km)",
+          "sunday": "Medium-long run: 16 mi. (26 km) w/ 10 mi. (16 km) @ marathon race pace",
+          "weekly_total": "78 mi. (128 km)"
+        },
+        {
+          "week": 1,
+          "phase": "Mesocycle 4 - Taper and Race",
+          "monday": "Recovery 6 mi. (10 km) a.m. + Recovery 5 mi. (8 km) p.m.",
+          "tuesday": "VO2max: 8 mi. (13 km) w/ 5 \u00d7 400 m @ 5K race pace, jog 50 to 90% interval time between",
+          "wednesday": "Recovery 6 mi. (10 km) a.m. + Recovery 4 mi. (6 km) p.m.",
+          "thursday": "Recovery 6 mi. (10 km) a.m. + Recovery + speed: 5 mi. (8 km) + strides p.m.",
+          "friday": "Recovery 6 mi. (10 km)",
+          "saturday": "Recovery 4 mi. (6 km)",
+          "sunday": "Goal marathon",
+          "weekly_total": "76.2 mi. (123 km)"
+        }
+      ]
+    }
+  ]
+}

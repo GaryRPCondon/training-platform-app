@@ -44,3 +44,6 @@ next-env.d.ts
 # MCP servers (external dependencies)
 garmin-connect-mcp/
 strava-mcp/
+
+# documentation templates
+docs/templates/
