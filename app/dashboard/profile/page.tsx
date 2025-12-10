@@ -1,18 +1,42 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
+import { useRouter } from 'next/navigation'
 import { getAthleteProfile } from '@/lib/supabase/queries'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AISettingsCard } from '@/components/settings/ai-settings-card'
 import { ConnectionsCard } from '@/components/settings/connections-card'
 import { PreferencesCard } from '@/components/settings/preferences-card'
+import { LogOut } from 'lucide-react'
+import { toast } from 'sonner'
 
 export default function ProfilePage() {
+    const router = useRouter()
     const { data: athlete, isLoading, error } = useQuery({
         queryKey: ['athlete'],
         queryFn: getAthleteProfile,
     })
+
+    async function handleLogout() {
+        try {
+            const response = await fetch('/api/auth/logout', {
+                method: 'POST'
+            })
+
+            if (!response.ok) {
+                throw new Error('Logout failed')
+            }
+
+            toast.success('Logged out successfully')
+            router.push('/login')
+            router.refresh()
+        } catch (error) {
+            console.error('Error logging out:', error)
+            toast.error('Failed to log out')
+        }
+    }
 
     if (isLoading) {
         return <ProfileSkeleton />
@@ -24,7 +48,17 @@ export default function ProfilePage() {
 
     return (
         <div className="space-y-6">
-            <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
+            <div className="flex items-center justify-between">
+                <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
+                <Button
+                    variant="outline"
+                    onClick={handleLogout}
+                    className="gap-2"
+                >
+                    <LogOut className="h-4 w-4" />
+                    Logout
+                </Button>
+            </div>
 
             <div className="grid gap-6 md:grid-cols-2">
                 <Card>
