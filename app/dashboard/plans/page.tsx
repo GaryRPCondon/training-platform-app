@@ -51,7 +51,7 @@ export default function PlansPage() {
     }
 
     const activePlans = plans.filter(p => p.status === 'active')
-    const draftPlans = plans.filter(p => p.status === 'draft')
+    const draftPlans = plans.filter(p => p.status === 'draft' || p.status === 'draft_generated')
 
     return (
         <div className="space-y-6">

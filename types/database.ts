@@ -97,8 +97,11 @@ export interface TrainingPlan {
     start_date: string
     end_date: string
     plan_type: string | null
-    status: 'draft' | 'active' | 'completed' | 'paused'
+    status: 'draft' | 'draft_generated' | 'active' | 'completed' | 'paused'
     created_by: string | null
+    template_id: string | null
+    template_version: string | null
+    user_criteria: any | null
     created_at: string
     updated_at: string
 }
@@ -141,6 +144,7 @@ export interface PlannedWorkout {
     scheduled_date: string
     scheduled_time: string | null
     workout_type: 'easy_run' | 'long_run' | 'intervals' | 'tempo' | 'rest' | 'cross_training'
+    workout_index: string | null
     description: string | null
     distance_target_meters: number | null
     duration_target_seconds: number | null

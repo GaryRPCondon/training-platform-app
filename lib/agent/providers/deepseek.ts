@@ -8,14 +8,18 @@ export class DeepSeekProvider implements LLMProvider {
 
     constructor(apiKey: string, modelName?: string) {
         this.apiKey = apiKey
-        this.modelName = modelName || 'deepseek-chat'
+        this.modelName = modelName || 'deepseek-reasoner'
     }
 
     async generateResponse(params: LLMRequest): Promise<LLMResponse> {
-        const messages = [
-            { role: 'system', content: params.systemPrompt },
-            ...params.messages
-        ]
+        const messages: any[] = []
+
+        // Only add system message if systemPrompt is provided
+        if (params.systemPrompt) {
+            messages.push({ role: 'system', content: params.systemPrompt })
+        }
+
+        messages.push(...params.messages)
 
         const response = await fetch(`${this.baseURL}/chat/completions`, {
             method: 'POST',
@@ -32,14 +36,17 @@ export class DeepSeekProvider implements LLMProvider {
         })
 
         if (!response.ok) {
-            throw new Error(`DeepSeek API error: ${response.statusText}`)
+            const errorData = await response.json().catch(() => ({}))
+            const errorMessage = errorData.error?.message || errorData.message || response.statusText
+            console.error('DeepSeek API error details:', errorData)
+            throw new Error(`DeepSeek API error: ${errorMessage}`)
         }
 
         const data = await response.json()
 
         return {
             content: data.choices[0].message.content,
-            model: 'deepseek-chat',
+            model: this.modelName,
             usage: {
                 inputTokens: data.usage?.prompt_tokens || 0,
                 outputTokens: data.usage?.completion_tokens || 0

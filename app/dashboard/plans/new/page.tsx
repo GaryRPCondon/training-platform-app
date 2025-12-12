@@ -22,8 +22,22 @@ export default function NewPlanPage() {
         return futureDate.toISOString().split('T')[0]
     }
 
+    // Calculate start of next week based on user's week_starts_on preference
+    const getDefaultStartDate = () => {
+        // For now, default to next Monday
+        // TODO: Fetch user's week_starts_on preference from settings
+        const today = new Date()
+        const dayOfWeek = today.getDay() // 0=Sunday, 1=Monday, ..., 6=Saturday
+        const targetDay = 1 // Monday
+        const daysUntilTarget = dayOfWeek === 0 ? 1 : dayOfWeek <= targetDay ? targetDay - dayOfWeek : 7 - dayOfWeek + targetDay
+        const nextWeekStart = new Date(today)
+        nextWeekStart.setDate(today.getDate() + daysUntilTarget)
+        return nextWeekStart.toISOString().split('T')[0]
+    }
+
     const [goalName, setGoalName] = useState('My Marathon Plan')
     const [goalDate, setGoalDate] = useState(getDefaultDate())
+    const [startDate, setStartDate] = useState(getDefaultStartDate())
     const [goalType, setGoalType] = useState('marathon')
     const [currentVolume, setCurrentVolume] = useState(65)
     const [maxVolume, setMaxVolume] = useState(80)
@@ -36,6 +50,7 @@ export default function NewPlanPage() {
     useEffect(() => {
         const name = searchParams.get('goalName')
         const date = searchParams.get('goalDate')
+        const start = searchParams.get('startDate')
         const type = searchParams.get('goalType')
         const current = searchParams.get('current')
         const peak = searchParams.get('peak')
@@ -45,6 +60,7 @@ export default function NewPlanPage() {
 
         if (name) setGoalName(name)
         if (date) setGoalDate(date)
+        if (start) setStartDate(start)
         if (type) setGoalType(type)
         if (current) setCurrentVolume(Number(current))
         if (peak) setMaxVolume(Number(peak))
@@ -65,18 +81,37 @@ export default function NewPlanPage() {
                 return
             }
 
+            if (!startDate) {
+                toast.error('Please select a start date')
+                setIsSubmitting(false)
+                return
+            }
+
             const goalDateObj = new Date(goalDate)
+            const startDateObj = new Date(startDate)
             const today = new Date()
+
             if (goalDateObj <= today) {
                 toast.error('Goal date must be in the future')
                 setIsSubmitting(false)
                 return
             }
 
+            if (startDateObj < today) {
+                toast.error('Start date cannot be in the past')
+                setIsSubmitting(false)
+                return
+            }
 
-            // Calculate weeks available
+            if (startDateObj >= goalDateObj) {
+                toast.error('Start date must be before goal date')
+                setIsSubmitting(false)
+                return
+            }
+
+            // Calculate weeks available between start date and goal date
             const msPerWeek = 7 * 24 * 60 * 60 * 1000
-            const weeksAvailable = Math.floor((goalDateObj.getTime() - today.getTime()) / msPerWeek)
+            const weeksAvailable = Math.floor((goalDateObj.getTime() - startDateObj.getTime()) / msPerWeek)
 
             // Build query parameters
             const params = new URLSearchParams({
@@ -89,6 +124,7 @@ export default function NewPlanPage() {
                 methodology: preferredMethodology,
                 force: (preferredMethodology !== 'any').toString(),
                 goalDate: goalDate,
+                startDate: startDate,
                 goalType: goalType,
                 // Pass warning flag for short timeline
                 shortTimeline: (goalType === 'marathon' && weeksAvailable < 12).toString()
@@ -138,6 +174,20 @@ export default function NewPlanPage() {
                                 type="date"
                                 value={goalDate}
                                 onChange={(e) => setGoalDate(e.target.value)}
+                                required
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <div>
+                                <Label htmlFor="startDate">Start Date</Label>
+                                <p className="text-sm text-muted-foreground">Please choose a start date (defaults to start of next week)</p>
+                            </div>
+                            <Input
+                                id="startDate"
+                                type="date"
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.target.value)}
                                 required
                             />
                         </div>

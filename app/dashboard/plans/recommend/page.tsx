@@ -61,8 +61,21 @@ export default function RecommendPage() {
   }, [searchParams])
 
   function handleSelectTemplate(templateId: string) {
-    // Navigate to Phase 2 (generation) - will be implemented in next phase
-    router.push(`/dashboard/plans/generate?template=${templateId}`)
+    // Navigate to Phase 2 (generation) with all form params
+    const generateParams = new URLSearchParams({
+      template: templateId,
+      goal_name: searchParams.get('goalName') || '',
+      goal_date: searchParams.get('goalDate') || '',
+      start_date: searchParams.get('startDate') || '',
+      goal_type: searchParams.get('goalType') || '',
+      experience: searchParams.get('experience') || '',
+      current: searchParams.get('current') || '',
+      peak: searchParams.get('peak') || '',
+      days: searchParams.get('days') || '',
+      weeks: searchParams.get('weeks') || '',
+      methodology: searchParams.get('methodology') || ''
+    })
+    router.push(`/dashboard/plans/generate?${generateParams.toString()}`)
   }
 
   if (isLoading) {

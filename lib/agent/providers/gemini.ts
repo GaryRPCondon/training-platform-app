@@ -7,11 +7,17 @@ export class GeminiProvider implements LLMProvider {
 
     constructor(apiKey: string, modelName?: string) {
         this.client = new GoogleGenerativeAI(apiKey)
-        this.modelName = modelName || 'gemini-1.5-pro'
+        this.modelName = modelName || 'gemini-flash-latest'
     }
 
     async generateResponse(request: LLMRequest): Promise<LLMResponse> {
-        const model = this.client.getGenerativeModel({ model: this.modelName })
+        const model = this.client.getGenerativeModel({
+            model: this.modelName,
+            generationConfig: {
+                maxOutputTokens: request.maxTokens || 8192,
+                temperature: request.temperature ?? 1.0,
+            },
+        })
 
         const chat = model.startChat({
             history: request.messages
@@ -31,12 +37,17 @@ export class GeminiProvider implements LLMProvider {
         const response = await result.response
         const text = response.text()
 
+        // Get token usage from response
+        const usageMetadata = response.usageMetadata
+        const inputTokens = usageMetadata?.promptTokenCount || 0
+        const outputTokens = usageMetadata?.candidatesTokenCount || 0
+
         return {
             content: text,
             model: this.modelName,
             usage: {
-                inputTokens: 0,
-                outputTokens: 0,
+                inputTokens,
+                outputTokens,
             },
         }
     }
