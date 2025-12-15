@@ -1,3 +1,5 @@
+import { addDays, parseISO, format } from 'date-fns'
+
 export interface ParsedWorkout {
   day: number
   workout_index: string
@@ -10,6 +12,15 @@ export interface ParsedWorkout {
   notes: string | null
 }
 
+export interface PreWeekWorkout {
+  type: string
+  distance_km?: number
+  intensity: string
+  description: string
+  pace_guidance?: string | null
+  notes?: string | null
+}
+
 export interface ParsedWeek {
   week_number: number
   phase: string | null
@@ -19,6 +30,7 @@ export interface ParsedWeek {
 
 export interface ParsedPlan {
   weeks: ParsedWeek[]
+  preWeekWorkouts?: PreWeekWorkout[]
 }
 
 /**
@@ -44,6 +56,30 @@ export function parseLLMResponse(responseText: string): ParsedPlan {
   // Validate structure
   if (!parsed.weeks || !Array.isArray(parsed.weeks)) {
     throw new Error('Response missing "weeks" array')
+  }
+
+  // Parse and validate pre_week_workouts if present
+  let preWeekWorkouts: PreWeekWorkout[] | undefined
+  if (parsed.pre_week_workouts && Array.isArray(parsed.pre_week_workouts)) {
+    preWeekWorkouts = parsed.pre_week_workouts.map((workout: any, index: number) => {
+      if (!workout.type || typeof workout.type !== 'string') {
+        throw new Error(`Pre-week workout ${index + 1} missing or invalid type`)
+      }
+      if (!workout.description) {
+        throw new Error(`Pre-week workout ${index + 1} missing description`)
+      }
+      if (!workout.intensity) {
+        throw new Error(`Pre-week workout ${index + 1} missing intensity`)
+      }
+      return {
+        type: workout.type,
+        distance_km: workout.distance_km || workout.distance_meters ? (workout.distance_meters / 1000) : undefined,
+        intensity: workout.intensity,
+        description: workout.description,
+        pace_guidance: workout.pace_guidance || null,
+        notes: workout.notes || null
+      }
+    })
   }
 
   // Validate each week
@@ -76,17 +112,28 @@ export function parseLLMResponse(responseText: string): ParsedPlan {
     }
   }
 
-  return parsed as ParsedPlan
+  return {
+    weeks: parsed.weeks,
+    preWeekWorkouts
+  }
 }
 
 /**
  * Calculate workout date from week start and day
+ * Uses date-fns to avoid timezone issues with Date arithmetic
  */
-export function calculateWorkoutDate(weekStartDate: Date, day: number): string {
+export function calculateWorkoutDate(weekStartDate: Date | string, day: number): string {
   // day: 1=Monday, 7=Sunday
-  const workoutDate = new Date(weekStartDate)
-  workoutDate.setDate(workoutDate.getDate() + (day - 1))
-  return workoutDate.toISOString().split('T')[0]
+  // Parse the date properly to avoid timezone issues
+  const startDate = typeof weekStartDate === 'string'
+    ? parseISO(weekStartDate)
+    : parseISO(weekStartDate.toISOString().split('T')[0])
+
+  // Add days using date-fns (0-indexed: day 1 = start date, day 2 = start + 1 day, etc.)
+  const workoutDate = addDays(startDate, day - 1)
+
+  // Format as YYYY-MM-DD
+  return format(workoutDate, 'yyyy-MM-dd')
 }
 
 /**

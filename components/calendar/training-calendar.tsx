@@ -73,7 +73,7 @@ export function TrainingCalendar() {
 
     const events = workouts?.map(w => ({
         id: w.id,
-        title: w.workout_type.replace('_', ' ').toUpperCase(),
+        title: `${w.workout_index}: ${w.description}`,
         start: new Date(w.scheduled_date),
         end: new Date(w.scheduled_date),
         allDay: true,

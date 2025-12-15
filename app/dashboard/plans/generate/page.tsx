@@ -145,7 +145,7 @@ export default function GeneratePage() {
             <>
               <Progress value={progress} />
               <div className="text-sm text-muted-foreground text-center space-y-1">
-                <p>Working with your AI Coach to generate your plan. This may take 1-2 minutes...</p>
+                <p>Working with your AI Coach to generate your plan. This can take between 2 and 10 minutes, depending on the selected AI Coach model used.</p>
                 <p className="text-xs">
                   {progress < 30 && 'Loading template...'}
                   {progress >= 30 && progress < 60 && 'Adapting to your constraints...'}

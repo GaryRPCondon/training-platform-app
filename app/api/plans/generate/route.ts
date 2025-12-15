@@ -12,12 +12,21 @@ import { join } from 'path'
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { template_id, goal_date, start_date, goal_type, goal_name, user_criteria } = body
+    const { template_id, goal_date, start_date, goal_type, goal_name, user_criteria, first_day_of_week } = body
 
     // Validate request
     if (!template_id || !goal_date || !start_date || !goal_type || !user_criteria) {
       return NextResponse.json(
         { error: 'Missing required fields' },
+        { status: 400 }
+      )
+    }
+
+    // Validate first_day_of_week if provided
+    const firstDayOfWeek = first_day_of_week !== undefined ? first_day_of_week : 1  // Default to Monday
+    if (firstDayOfWeek !== 0 && firstDayOfWeek !== 1) {
+      return NextResponse.json(
+        { error: 'Invalid first_day_of_week (must be 0 for Sunday or 1 for Monday)' },
         { status: 400 }
       )
     }
@@ -47,12 +56,24 @@ export async function POST(request: Request) {
 
     const fullTemplate = await loadFullTemplate(template_id)
 
+    // Calculate when structured training officially begins (next Monday/Sunday from start_date)
+    const startDateObj = new Date(start_date)
+    const currentDay = startDateObj.getDay()
+    const daysUntilTarget = firstDayOfWeek === currentDay ? 0 :
+      ((firstDayOfWeek - currentDay + 7) % 7)
+    const planStartDateObj = new Date(startDateObj)
+    planStartDateObj.setDate(startDateObj.getDate() + daysUntilTarget)
+    const planStartDate = planStartDateObj.toISOString().split('T')[0]
+
+    console.log(`Start date: ${start_date}, Plan start (Week 1): ${planStartDate}, First day of week: ${firstDayOfWeek === 0 ? 'Sunday' : 'Monday'}`)
+
     // Build LLM prompts FIRST (before creating any database records)
     const context = {
       template: fullTemplate,
       criteria: user_criteria as UserCriteria,
       goal_date,
-      start_date
+      start_date,
+      first_day_of_week: firstDayOfWeek as 0 | 1
     }
 
     const systemPrompt = buildGenerationSystemPrompt(context)
@@ -205,7 +226,8 @@ export async function POST(request: Request) {
     // Write workouts to database
     const writeResult = await writePlanToDatabase(parsedPlan, {
       planId: plan.id,
-      planStartDate: start_date,
+      planStartDate: planStartDate,  // Week 1 starts on next Monday/Sunday
+      userStartDate: start_date,      // User's selected start date (for pre-week workouts)
       goalDate: goal_date
     })
 

@@ -1,48 +1,80 @@
 import type { FullTemplate } from '@/lib/templates/types'
 import type { UserCriteria } from '@/lib/templates/types'
+import { differenceInCalendarDays, addDays, format } from 'date-fns'
 
 export interface GenerationContext {
   template: FullTemplate
   criteria: UserCriteria
   goal_date: string
   start_date: string
+  first_day_of_week?: 0 | 1  // 0=Sunday, 1=Monday
+}
+
+/**
+ * Get next occurrence of a specific day of week
+ */
+function getNextDayOfWeek(date: Date, targetDay: number): Date {
+  const result = new Date(date)
+  const currentDay = date.getDay()
+  const daysUntilTarget = targetDay === currentDay ? 0 :
+    ((targetDay - currentDay + 7) % 7)
+  result.setDate(date.getDate() + daysUntilTarget)
+  return result
 }
 
 /**
  * Build system prompt for LLM plan generation
  */
 export function buildGenerationSystemPrompt(context: GenerationContext): string {
-  const { template, criteria, start_date, goal_date } = context
+  const { template, criteria, start_date, goal_date, first_day_of_week = 1 } = context
 
-  // Calculate actual days available
   const startDateObj = new Date(start_date)
   const goalDateObj = new Date(goal_date)
-  const daysAvailable = Math.floor((goalDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24))
-  const weeksNeeded = Math.ceil(daysAvailable / 7)
 
-  // Calculate which day of the week each date falls on
+  // Calculate when the structured plan officially begins (next Monday/Sunday)
+  const planStartDate = getNextDayOfWeek(startDateObj, first_day_of_week)
+
+  // Calculate partial days between user's start date and plan start
+  const partialDays = differenceInCalendarDays(planStartDate, startDateObj)
+
+  // Calculate full weeks from plan start to goal
+  const daysFromPlanStartToGoal = differenceInCalendarDays(goalDateObj, planStartDate)
+  const weeksNeeded = Math.ceil(daysFromPlanStartToGoal / 7)
+
+  // Calculate which day of the week the race falls on
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-  const startDayOfWeek = dayNames[startDateObj.getDay()]
-  const raceDayOfWeek = dayNames[goalDateObj.getDay()]
+  const raceDayOfWeek = goalDateObj.getDay()
+  const raceDayName = dayNames[raceDayOfWeek]
+  const firstDayName = dayNames[first_day_of_week]
 
-  // Calculate which "day number" (1-7) the race should be
-  // If start is Friday (day 5), week 1 day 1 = Friday
-  // If race is Sunday, and start is Friday: Sunday is day 3 of a week starting Friday
-  const raceDayNumber = ((goalDateObj.getDay() - startDateObj.getDay() + 7) % 7) + 1
+  // Calculate which "day number" (1-7) the race should be in final week
+  const raceDayNumber = raceDayOfWeek === first_day_of_week ? 1 :
+    ((raceDayOfWeek - first_day_of_week + 7) % 7) + 1
 
   const templateWeeks = template.duration_weeks || 18
 
-  return `You are a marathon training coach, specializing in the Hansons Marathon Method.
+  // Build pre-week section if there are partial days
+  const preWeekSection = partialDays > 0 ? `
+PARTIAL WEEK (Pre-Week):
+Before the structured plan begins, generate ${partialDays} easy ramp-in runs for the days between ${format(startDateObj, 'MMM d')} and ${format(addDays(planStartDate, -1), 'MMM d')}:
+- Type: easy_run
+- Intensity: easy (conversational pace)
+- Purpose: Gentle ramp-in period before structured training begins
+- Distance: Keep these short and comfortable (relative to athlete's current mileage)
+- Format these in a separate "pre_week_workouts" array (see OUTPUT FORMAT section)
+` : ''
+
+  return `You are a marathon training coach, specializing in the template's training philosophy.
 
 SELECTED TEMPLATE: ${template.name}
 This template (normally ${templateWeeks} weeks) provides the training philosophy and workout structure to adapt.
 
 USER TIMELINE - CRITICAL:
-- Training start date: ${start_date} (${startDayOfWeek})
-- Race date: ${goal_date} (${raceDayOfWeek})
-- Days between start and race: ${daysAvailable} days
-- Weeks needed: ${weeksNeeded} weeks
-- IMPORTANT: The race is on a ${raceDayOfWeek}, which will be day ${raceDayNumber} of week ${weeksNeeded}
+- Athlete selected start date: ${format(startDateObj, 'EEEE, MMMM d, yyyy')}
+- Plan officially begins: ${format(planStartDate, 'EEEE, MMMM d, yyyy')} (Week 1, Day 1)${partialDays > 0 ? `\n- Partial days before plan: ${partialDays} days` : ''}
+- Race date: ${format(goalDateObj, 'EEEE, MMMM d, yyyy')} (Week ${weeksNeeded}, Day ${raceDayNumber})
+- Full weeks of structured training: ${weeksNeeded} weeks
+${preWeekSection}
 
 USER CONSTRAINTS:
 - Current weekly mileage: ${criteria.current_weekly_mileage}km
@@ -52,17 +84,18 @@ USER CONSTRAINTS:
 
 TASK:
 Generate a ${weeksNeeded}-week personalized training plan that:
-1. Week 1, Day 1 starts on ${start_date} (${startDayOfWeek})
-2. Week ${weeksNeeded}, Day ${raceDayNumber} is the marathon race on ${goal_date} (${raceDayOfWeek})
-3. Adapts the Hansons training philosophy to fit this timeline
-4. Includes ${weeksNeeded} total weeks
+1. Week 1, Day 1 starts on ${format(planStartDate, 'EEEE, MMMM d')}
+2. Week ${weeksNeeded}, Day ${raceDayNumber} is the marathon race on ${format(goalDateObj, 'EEEE, MMMM d')}
+3. Adapts the template's training philosophy to fit this timeline
+4. Includes ${weeksNeeded} full weeks${partialDays > 0 ? ` PLUS ${partialDays} pre-week ramp-in runs` : ''}
 
 CRITICAL INSTRUCTIONS:
-- You MUST generate EXACTLY ${weeksNeeded} weeks (not ${templateWeeks} weeks)
-- Each week has EXACTLY 7 days (numbered 1-7)
-- The marathon race MUST be: type="race_pace", on week ${weeksNeeded}, day ${raceDayNumber}
-- This will make the race fall on ${goal_date} (${raceDayOfWeek})
-- Do NOT put the race on day 1, day 7, or any other day - it MUST be day ${raceDayNumber} of week ${weeksNeeded}
+- Generate EXACTLY ${weeksNeeded} full weeks (Week 1 through Week ${weeksNeeded})
+- Week 1, Day 1 starts on ${firstDayName}, ${format(planStartDate, 'MMMM d')}
+- The marathon race MUST be on Week ${weeksNeeded}, Day ${raceDayNumber} (${raceDayName}, ${format(goalDateObj, 'MMMM d')})
+- Each week has EXACTLY 7 days (numbered 1-7, starting with ${firstDayName})
+- Do NOT create day 8, 9, 10, etc. - only days 1-7 exist per week${partialDays > 0 ? `
+- Generate ${partialDays} pre-week workouts in the "pre_week_workouts" array before the "weeks" array` : ''}
 
 KEY PRINCIPLES:
 1. Follow the template's training philosophy throughout
@@ -73,17 +106,27 @@ KEY PRINCIPLES:
 6. Build appropriately from current ${criteria.current_weekly_mileage}km base
 
 WORKOUT INDEXING:
-Every workout MUST have a unique index in the format: W{week}:D{day}
+Every workout in the structured weeks MUST have a unique index in the format: W{week}:D{day}
 - Week numbers: 1 to ${weeksNeeded}
-- Day numbers: ALWAYS 1 to 7 (there are ALWAYS exactly 7 days in each week)
-- Week 1, Day 1 = ${start_date} (${startDayOfWeek})
-- Week ${weeksNeeded}, Day ${raceDayNumber} = ${goal_date} (${raceDayOfWeek}) = RACE DAY
+- Day numbers: ALWAYS 1 to 7 (all weeks start on ${firstDayName})
+- Week 1, Day 1 = ${format(planStartDate, 'MMM d')} (${firstDayName})
+- Week ${weeksNeeded}, Day ${raceDayNumber} = ${format(goalDateObj, 'MMM d')} (${raceDayName}) = RACE DAY
 - Examples: W1:D1, W1:D7, W2:D1, W${weeksNeeded}:D${raceDayNumber}
 - You MUST NOT create day 8, 9, 10, etc. - only days 1-7 exist per week
 
 OUTPUT FORMAT:
-Return a JSON object with this exact structure:
-{
+Return a JSON object with this structure:
+{${partialDays > 0 ? `
+  "pre_week_workouts": [
+    {
+      "type": "easy_run",
+      "distance_km": 8.0,
+      "intensity": "easy",
+      "description": "Easy ramp-in run",
+      "pace_guidance": "Conversational pace",
+      "notes": "Focus on comfort and building routine"
+    }
+  ],` : ''}
   "weeks": [
     {
       "week_number": 1,

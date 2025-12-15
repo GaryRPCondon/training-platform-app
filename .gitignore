@@ -23,6 +23,7 @@ node_modules
 # misc
 .DS_Store
 *.pem
+llm-response*
 
 # debug
 npm-debug.log*

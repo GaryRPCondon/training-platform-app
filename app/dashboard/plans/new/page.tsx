@@ -97,12 +97,6 @@ export default function NewPlanPage() {
                 return
             }
 
-            if (startDateObj < today) {
-                toast.error('Start date cannot be in the past')
-                setIsSubmitting(false)
-                return
-            }
-
             if (startDateObj >= goalDateObj) {
                 toast.error('Start date must be before goal date')
                 setIsSubmitting(false)

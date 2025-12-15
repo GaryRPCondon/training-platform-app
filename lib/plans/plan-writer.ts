@@ -1,11 +1,13 @@
 import { supabase } from '@/lib/supabase/client'
 import type { ParsedPlan } from './response-parser'
 import { calculateWorkoutDate } from './response-parser'
+import { addDays, format } from 'date-fns'
 
 export interface PlanWriteOptions {
   planId: number
-  planStartDate: string  // YYYY-MM-DD
-  goalDate: string       // YYYY-MM-DD
+  planStartDate: string      // YYYY-MM-DD - When Week 1 starts (e.g., next Monday)
+  userStartDate?: string      // YYYY-MM-DD - User's selected start date (may be before planStartDate)
+  goalDate: string           // YYYY-MM-DD
 }
 
 /**
@@ -15,7 +17,7 @@ export async function writePlanToDatabase(
   parsedPlan: ParsedPlan,
   options: PlanWriteOptions
 ) {
-  const { planId, planStartDate } = options
+  const { planId, planStartDate, userStartDate } = options
 
   // Get athlete_id from plan
   const { data: planData } = await supabase
@@ -27,14 +29,14 @@ export async function writePlanToDatabase(
   if (!planData) throw new Error('Plan not found')
   const athleteId = planData.athlete_id
 
-  // Calculate week start dates
+  // Calculate week start dates using date-fns to avoid timezone issues
   const planStart = new Date(planStartDate)
   const weekStartDates = parsedPlan.weeks.map(week => {
-    const weekStart = new Date(planStart)
-    weekStart.setDate(weekStart.getDate() + ((week.week_number - 1) * 7))
+    // Use addDays to add weeks worth of days (week 1 = planStart + 0 days, week 2 = planStart + 7 days, etc.)
+    const weekStart = addDays(planStart, (week.week_number - 1) * 7)
     return {
       week_number: week.week_number,
-      date: weekStart.toISOString().split('T')[0]
+      date: format(weekStart, 'yyyy-MM-dd')
     }
   })
 
@@ -71,6 +73,58 @@ export async function writePlanToDatabase(
 
     if (phaseError) throw phaseError
     phaseRecords.push({ ...phaseRecord, startWeek: phase.start, endWeek: phase.end })
+  }
+
+  // Handle pre-week workouts if present (for partial weeks before structured training)
+  let preWeekWorkoutCount = 0
+  if (parsedPlan.preWeekWorkouts && parsedPlan.preWeekWorkouts.length > 0 && userStartDate) {
+    const userStart = new Date(userStartDate)
+    const preWeekVolume = parsedPlan.preWeekWorkouts.reduce((sum, w) =>
+      sum + (w.distance_km || 0), 0)
+
+    // Create weekly_plans record for Week 0 (pre-week)
+    const { data: preWeekPlan, error: preWeekError } = await supabase
+      .from('weekly_plans')
+      .insert({
+        athlete_id: athleteId,
+        phase_id: phaseRecords[0]?.id || null,  // Attach to first phase
+        week_start_date: userStartDate,
+        week_number: 0,  // Special: pre-week
+        weekly_volume_target: preWeekVolume * 1000,  // Convert km to meters
+        status: 'planned'
+      })
+      .select()
+      .single()
+
+    if (preWeekError) throw preWeekError
+
+    // Write each pre-week workout
+    for (let i = 0; i < parsedPlan.preWeekWorkouts.length; i++) {
+      const workout = parsedPlan.preWeekWorkouts[i]
+      const workoutDate = format(addDays(userStart, i), 'yyyy-MM-dd')
+
+      const { error: workoutError } = await supabase
+        .from('planned_workouts')
+        .insert({
+          weekly_plan_id: preWeekPlan.id,
+          athlete_id: athleteId,
+          scheduled_date: workoutDate,
+          workout_index: `W0:D${i + 1}`,
+          workout_type: workout.type,
+          description: workout.description || 'Easy ramp-in run',
+          distance_target_meters: workout.distance_km ? workout.distance_km * 1000 : null,
+          duration_target_seconds: null,
+          intensity_target: workout.intensity || 'easy',
+          structured_workout: {
+            pace_guidance: workout.pace_guidance,
+            notes: workout.notes
+          },
+          status: 'scheduled'
+        })
+
+      if (workoutError) throw workoutError
+      preWeekWorkoutCount++
+    }
   }
 
   // Insert weekly plans and workouts
@@ -128,10 +182,11 @@ export async function writePlanToDatabase(
     }
   }
 
+  const regularWorkouts = parsedPlan.weeks.reduce((sum, w) => sum + w.workouts.length, 0)
   return {
     phases: phaseRecords.length,
-    weeks: parsedPlan.weeks.length,
-    workouts: parsedPlan.weeks.reduce((sum, w) => sum + w.workouts.length, 0)
+    weeks: parsedPlan.weeks.length + (preWeekWorkoutCount > 0 ? 1 : 0),  // Include pre-week if present
+    workouts: regularWorkouts + preWeekWorkoutCount
   }
 }
 

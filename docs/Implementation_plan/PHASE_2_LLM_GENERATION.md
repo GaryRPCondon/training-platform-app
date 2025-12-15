@@ -69,6 +69,7 @@ import type { UserCriteria } from '@/lib/templates/types'
 export interface DraftPlanData {
   template_id: string
   template_name: string
+  goal_name?: string  // Optional user-provided goal name
   goal_date: string
   goal_type: string
   user_criteria: UserCriteria
@@ -108,7 +109,7 @@ export async function createDraftPlan(data: DraftPlanData) {
     .insert({
       athlete_id: athleteId,
       goal_type: data.goal_type,
-      goal_name: `${data.goal_type.replace('_', ' ')} - ${data.template_name}`,
+      goal_name: data.goal_name || `${data.goal_type.replace('_', ' ')} - ${data.template_name}`,
       target_date: data.goal_date,
       target_value: {
         distance_meters: goalDistances[data.goal_type]
@@ -187,7 +188,7 @@ Create lib/plans/draft-plan.ts with draft plan management functions.
 Implement:
 1. createDraftPlan(data) - Creates draft plan:
    - Check for existing drafts, delete if found (one draft per athlete)
-   - Create athlete_goals record
+   - Create athlete_goals record with goal_name (use data.goal_name or generate from goal_type + template_name)
    - Create training_plans record with:
      * status: 'draft'
      * template_id, template_version, user_criteria
@@ -746,7 +747,7 @@ import type { UserCriteria } from '@/lib/templates/types'
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { template_id, goal_date, goal_type, user_criteria } = body
+    const { template_id, goal_date, goal_type, goal_name, user_criteria } = body
 
     // Validate request
     if (!template_id || !goal_date || !goal_type || !user_criteria) {
@@ -771,6 +772,7 @@ export async function POST(request: Request) {
     const { plan } = await createDraftPlan({
       template_id,
       template_name: summary.name,
+      goal_name,  // Pass through from request (optional)
       goal_date,
       goal_type,
       user_criteria
@@ -850,9 +852,10 @@ POST endpoint that:
    - template_id
    - goal_date
    - goal_type
+   - goal_name (optional)
    - user_criteria
 
-2. Validates required fields
+2. Validates required fields (goal_name is optional)
 
 3. Loads template (summary + full template)
 
@@ -927,6 +930,7 @@ export default function GeneratePage() {
         // For now, get from query params
         const goalDate = searchParams.get('goal_date')
         const goalType = searchParams.get('goal_type')
+        const goalName = searchParams.get('goal_name')  // Added from Phase 1 form
         const experienceLevel = searchParams.get('experience')
         const currentMileage = searchParams.get('current')
         const peakMileage = searchParams.get('peak')
@@ -965,6 +969,7 @@ export default function GeneratePage() {
             template_id: templateId,
             goal_date: goalDate,
             goal_type: goalType,
+            goal_name: goalName,  // Pass through from form
             user_criteria: userCriteria
           })
         })
