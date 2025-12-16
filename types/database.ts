@@ -143,7 +143,7 @@ export interface PlannedWorkout {
     athlete_id: string
     scheduled_date: string
     scheduled_time: string | null
-    workout_type: 'easy_run' | 'long_run' | 'intervals' | 'tempo' | 'rest' | 'cross_training'
+    workout_type: 'easy_run' | 'long_run' | 'intervals' | 'tempo' | 'rest' | 'cross_training' | 'recovery'
     workout_index: string | null
     description: string | null
     distance_target_meters: number | null

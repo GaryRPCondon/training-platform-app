@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,8 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { toast } from 'sonner'
+import { Loader2 } from 'lucide-react'
 
-export default function NewPlanPage() {
+function NewPlanPageContent() {
     const router = useRouter()
     const searchParams = useSearchParams()
 
@@ -175,7 +176,7 @@ export default function NewPlanPage() {
                         <div className="space-y-2">
                             <div>
                                 <Label htmlFor="startDate">Start Date</Label>
-                                <p className="text-sm text-muted-foreground">Please choose a start date (defaults to start of next week)</p>
+                                <p className="text-sm text-muted-foreground">Choose a start date (defaults to upcoming first day of the week)</p>
                             </div>
                             <Input
                                 id="startDate"
@@ -292,5 +293,17 @@ export default function NewPlanPage() {
                 </CardContent>
             </Card>
         </div>
+    )
+}
+
+export default function NewPlanPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex items-center justify-center h-screen">
+                <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+        }>
+            <NewPlanPageContent />
+        </Suspense>
     )
 }

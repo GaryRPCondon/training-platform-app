@@ -1,103 +1,265 @@
 'use client'
 
-import { useEffect, useState, use } from 'react'
+import { use, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { TrainingCalendar } from '@/components/review/training-calendar'
+import { ChatPanel } from '@/components/review/chat-panel'
 import { Button } from '@/components/ui/button'
-import { CheckCircle, Calendar, Activity } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Loader2, CheckCircle2, ArrowLeft } from 'lucide-react'
+import { loadPlanForReview } from '@/lib/plans/review-loader'
+import type { PlanReviewContext, ReviewMessage, WorkoutWithDetails } from '@/types/review'
+import { createClient } from '@/lib/supabase/client'
+import { activatePlan } from '@/lib/supabase/plan-activation'
+import { toast } from 'sonner'
 
 interface PageProps {
   params: Promise<{ planId: string }>
 }
 
 export default function ReviewPage({ params }: PageProps) {
-  const resolvedParams = use(params)
   const router = useRouter()
-  const [planData, setPlanData] = useState<any>(null)
+  const queryClient = useQueryClient()
+  const { planId: planIdString } = use(params)
+  const planId = parseInt(planIdString, 10)
 
+  const [sessionId, setSessionId] = useState<number | null>(null)
+  const [athleteId, setAthleteId] = useState<string | null>(null)
+
+  const supabase = createClient()
+
+  // Get authenticated user
   useEffect(() => {
-    // Placeholder - Phase 3 will implement full review interface
-    async function fetchPlanData() {
-      // TODO: Fetch plan data from API
-      console.log('Plan ID:', resolvedParams.planId)
-      setPlanData({ id: resolvedParams.planId })
+    async function loadUser() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        setAthleteId(user.id)
+      }
     }
-    fetchPlanData()
-  }, [resolvedParams.planId])
+    loadUser()
+  }, [supabase])
+
+  // Load plan data
+  const { data: context, isLoading: isLoadingPlan } = useQuery({
+    queryKey: ['plan-review', planId],
+    queryFn: () => loadPlanForReview(planId),
+    enabled: !!planId
+  })
+
+  // Create or load chat session
+  useEffect(() => {
+    async function initSession() {
+      if (!athleteId || !planId) return
+
+      // Check for existing session
+      // FIX #1: Use 'general' session_type instead of 'plan_review'
+      // FIX #2: Store plan_id in context field, not as direct column
+      const { data: existingSessions } = await supabase
+        .from('chat_sessions')
+        .select('id, context')
+        .eq('athlete_id', athleteId)
+        .eq('session_type', 'general')
+        .is('ended_at', null)
+        .order('started_at', { ascending: false })
+
+      // Find session with matching plan_id in context
+      const matchingSession = existingSessions?.find(
+        s => s.context?.plan_id === planId && s.context?.session_purpose === 'plan_review'
+      )
+
+      if (matchingSession) {
+        setSessionId(matchingSession.id)
+      } else {
+        // Create new session with plan_id in context
+        const { data: newSession, error } = await supabase
+          .from('chat_sessions')
+          .insert({
+            athlete_id: athleteId,
+            session_type: 'general',
+            context: {
+              plan_id: planId,
+              session_purpose: 'plan_review'
+            }
+          })
+          .select()
+          .single()
+
+        if (!error && newSession) {
+          setSessionId(newSession.id)
+        } else {
+          console.error('Error creating session:', error)
+          toast.error('Failed to initialize chat session')
+        }
+      }
+    }
+
+    initSession()
+  }, [planId, athleteId, supabase])
+
+  // Load chat messages
+  const { data: messages = [], isLoading: isLoadingMessages } = useQuery({
+    queryKey: ['chat-messages', sessionId],
+    queryFn: async () => {
+      if (!sessionId) return []
+
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select('*')
+        .eq('session_id', sessionId)
+        .order('created_at', { ascending: true })
+
+      if (error) throw error
+      return data as ReviewMessage[]
+    },
+    enabled: !!sessionId
+  })
+
+  // Send message mutation
+  const sendMessage = useMutation({
+    mutationFn: async (message: string) => {
+      if (!sessionId || !context) throw new Error('Session not ready')
+
+      // Save user message
+      await supabase
+        .from('chat_messages')
+        .insert({
+          session_id: sessionId,
+          role: 'user',
+          content: message
+        })
+
+      // Call refine API (stub for Phase 3)
+      const response = await fetch('/api/plans/refine', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          plan_id: planId,
+          session_id: sessionId,
+          message,
+          context
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to get response')
+      }
+
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['chat-messages', sessionId] })
+      queryClient.invalidateQueries({ queryKey: ['plan-review', planId] })
+    },
+    onError: (error) => {
+      console.error('Error sending message:', error)
+      toast.error('Failed to send message')
+    }
+  })
+
+  // Accept plan mutation
+  // FIX #4: Use activatePlan() instead of direct status update
+  const acceptPlan = useMutation({
+    mutationFn: async () => {
+      if (!athleteId) throw new Error('Not authenticated')
+      await activatePlan(planId, athleteId)
+    },
+    onSuccess: () => {
+      toast.success('Plan activated successfully!')
+      router.push('/dashboard/plans')
+    },
+    onError: (error) => {
+      console.error('Error activating plan:', error)
+      toast.error('Failed to activate plan')
+    }
+  })
+
+  if (isLoadingPlan || !context) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    )
+  }
+
+  // Flatten all workouts for calendar
+  const allWorkouts: WorkoutWithDetails[] = context.weeks.flatMap(w => w.workouts)
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="bg-green-100 dark:bg-green-900/20 p-3 rounded-full">
-          <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-500" />
-        </div>
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Plan Generated Successfully!</h1>
-          <p className="text-muted-foreground mt-1">
-            Plan ID: {resolvedParams.planId}
-          </p>
+    <div className="h-screen flex flex-col">
+      {/* Header */}
+      <div className="border-b bg-background px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => router.push('/dashboard/plans')}
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold">{context.plan_name}</h1>
+              <p className="text-sm text-muted-foreground">
+                {context.total_weeks} weeks • {context.goal_type.replace('_', ' ')} • Goal: {context.goal_date}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant={context.status === 'active' ? 'default' : 'secondary'}>
+              {context.status}
+            </Badge>
+            <Button
+              onClick={() => acceptPlan.mutate()}
+              disabled={context.status === 'active' || acceptPlan.isPending}
+              size="lg"
+            >
+              {acceptPlan.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Accepting...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                  Accept Plan
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Phase 3: Review Interface (Coming Soon)</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-muted-foreground">
-            The full review interface will be implemented in Phase 3. It will include:
-          </p>
-          <ul className="space-y-2 ml-6 list-disc text-sm text-muted-foreground">
-            <li>Interactive calendar view showing all planned workouts</li>
-            <li>Week-by-week breakdown with phase indicators</li>
-            <li>Workout detail modals with descriptions and pace guidance</li>
-            <li>Chat interface for questions about the plan</li>
-            <li>Option to regenerate or modify the plan</li>
-            <li>Accept button to activate the plan</li>
-          </ul>
+      {/* Main Content: 60/40 Split */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Calendar - 60% */}
+        <div className="w-[60%] p-6 overflow-auto">
+          <TrainingCalendar
+            workouts={allWorkouts}
+            onWorkoutSelect={(workout) => {
+              console.log('Selected workout:', workout.workout_index)
+              // Could auto-insert workout_index into chat input in Phase 4
+            }}
+          />
+        </div>
 
-          <div className="flex gap-3 pt-4">
-            <Button
-              onClick={() => router.push('/dashboard')}
-              className="gap-2"
-            >
-              <Activity className="h-4 w-4" />
-              Go to Dashboard
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => router.push('/dashboard/calendar')}
-              className="gap-2"
-            >
-              <Calendar className="h-4 w-4" />
-              View Calendar
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>What Happened?</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <p>
-            <strong>Phase 2 Complete:</strong> Your training plan has been successfully generated using AI and saved to the database.
-          </p>
-          <p>
-            The plan includes:
-          </p>
-          <ul className="ml-6 list-disc space-y-1">
-            <li>Phases (Base, Build, Peak, Taper)</li>
-            <li>Weekly plans with volume targets</li>
-            <li>Individual workouts with W#:D# indexing</li>
-            <li>Pace guidance and coaching notes</li>
-          </ul>
-          <p className="pt-2">
-            You can view your plan on the Dashboard or Calendar page. Phase 3 will add a dedicated review interface.
-          </p>
-        </CardContent>
-      </Card>
+        {/* Chat Panel - 40% */}
+        <div className="w-[40%]">
+          {sessionId ? (
+            <ChatPanel
+              planId={planId}
+              sessionId={sessionId}
+              messages={messages}
+              onSendMessage={(msg) => sendMessage.mutateAsync(msg)}
+              isLoading={sendMessage.isPending}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

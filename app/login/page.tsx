@@ -49,6 +49,35 @@ export default function LoginPage() {
 
             if (error) throw error
 
+            // Create athlete profile automatically after successful signup
+            if (data.user) {
+                try {
+                    console.log('Attempting to create athlete profile for user:', data.user.id)
+
+                    const response = await fetch('/api/auth/create-athlete', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            userId: data.user.id,
+                            email: data.user.email
+                        })
+                    })
+
+                    const result = await response.json()
+
+                    if (!response.ok) {
+                        console.error('Failed to create athlete profile:', result)
+                    } else {
+                        console.log('Athlete profile created successfully:', result.athlete)
+                    }
+                } catch (athleteErr) {
+                    // Log error but don't fail the signup
+                    console.error('Error creating athlete profile:', athleteErr)
+                }
+            }
+
             toast.success('Account created! Please check your email to verify.')
         } catch (error: any) {
             toast.error(error.message || 'Sign up failed')

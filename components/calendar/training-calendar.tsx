@@ -13,6 +13,7 @@ import { Card } from '@/components/ui/card'
 import { WorkoutDetail } from '@/components/workouts/workout-detail'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
+import { getWorkoutColor } from '@/lib/constants/workout-colors'
 
 const localizer = momentLocalizer(moment)
 const DnDCalendar = withDragAndDrop(Calendar)
@@ -95,6 +96,25 @@ export function TrainingCalendar() {
         }
     }, [rescheduleMutation])
 
+    const eventStyleGetter = (event: any) => {
+        const workout = event.resource
+        const workoutType = workout?.workout_type || 'default'
+        const backgroundColor = getWorkoutColor(workoutType)
+
+        return {
+            style: {
+                backgroundColor,
+                borderRadius: '4px',
+                opacity: 0.9,
+                color: 'white',
+                border: '0px',
+                display: 'block',
+                fontSize: '0.875rem',
+                padding: '2px 4px'
+            }
+        }
+    }
+
     return (
         <div className="h-[600px] bg-background">
             <DnDCalendar
@@ -113,6 +133,7 @@ export function TrainingCalendar() {
                 onEventDrop={onEventDrop}
                 draggableAccessor={() => true}
                 resizable={false}
+                eventPropGetter={eventStyleGetter}
             />
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

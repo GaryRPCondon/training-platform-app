@@ -3,10 +3,10 @@
  */
 
 export interface WorkoutTemplate {
-    type: 'easy_run' | 'long_run' | 'tempo' | 'intervals' | 'rest' | 'cross_training'
+    type: 'easy_run' | 'long_run' | 'tempo' | 'intervals' | 'rest' | 'cross_training' | 'recovery'
     description: string
     distancePercentage: number // Percentage of weekly volume
-    intensity: 'easy' | 'moderate' | 'hard'
+    intensity: 'easy' | 'moderate' | 'hard' | 'recovery'
     structuredWorkout?: any
 }
 
@@ -16,7 +16,7 @@ export function getWorkoutTemplatesForPhase(phaseName: string): WorkoutTemplate[
     if (phase === 'base') {
         return [
             { type: 'easy_run', description: 'Easy aerobic run', distancePercentage: 0.15, intensity: 'easy' },
-            { type: 'easy_run', description: 'Easy recovery run', distancePercentage: 0.12, intensity: 'easy' },
+            { type: 'recovery', description: 'Recovery run', distancePercentage: 0.12, intensity: 'recovery' },
             { type: 'easy_run', description: 'Easy aerobic run', distancePercentage: 0.15, intensity: 'easy' },
             { type: 'easy_run', description: 'Easy run with strides', distancePercentage: 0.13, intensity: 'easy' },
             { type: 'rest', description: 'Rest or cross-training', distancePercentage: 0, intensity: 'easy' },
@@ -27,7 +27,7 @@ export function getWorkoutTemplatesForPhase(phaseName: string): WorkoutTemplate[
 
     if (phase === 'build') {
         return [
-            { type: 'easy_run', description: 'Easy recovery run', distancePercentage: 0.12, intensity: 'easy' },
+            { type: 'recovery', description: 'Recovery run', distancePercentage: 0.12, intensity: 'recovery' },
             {
                 type: 'tempo', description: 'Tempo run', distancePercentage: 0.15, intensity: 'hard',
                 structuredWorkout: { warmup: 2000, tempo: 5000, cooldown: 2000 }
@@ -45,7 +45,7 @@ export function getWorkoutTemplatesForPhase(phaseName: string): WorkoutTemplate[
 
     if (phase === 'peak') {
         return [
-            { type: 'easy_run', description: 'Easy recovery run', distancePercentage: 0.10, intensity: 'easy' },
+            { type: 'recovery', description: 'Recovery run', distancePercentage: 0.10, intensity: 'recovery' },
             {
                 type: 'tempo', description: 'Marathon pace tempo', distancePercentage: 0.18, intensity: 'hard',
                 structuredWorkout: { warmup: 2000, tempo: 8000, cooldown: 2000 }
@@ -63,7 +63,7 @@ export function getWorkoutTemplatesForPhase(phaseName: string): WorkoutTemplate[
 
     // Taper
     return [
-        { type: 'easy_run', description: 'Easy recovery run', distancePercentage: 0.20, intensity: 'easy' },
+        { type: 'recovery', description: 'Recovery run', distancePercentage: 0.20, intensity: 'recovery' },
         { type: 'easy_run', description: 'Easy run with strides', distancePercentage: 0.15, intensity: 'easy' },
         { type: 'rest', description: 'Rest', distancePercentage: 0, intensity: 'easy' },
         { type: 'easy_run', description: 'Easy shakeout with race pace strides', distancePercentage: 0.15, intensity: 'moderate' },

@@ -149,15 +149,14 @@ Return a JSON object with this structure:
   ]
 }
 
-WORKOUT TYPES (use these consistently):
-- easy_run
-- long_run
-- tempo_run
-- intervals
-- race_pace
-- recovery_run
-- cross_training
-- rest
+WORKOUT TYPES (use ONLY these exact types):
+- easy_run (for standard easy/aerobic runs)
+- recovery (for recovery runs - very easy, day after hard workouts)
+- long_run (for long runs)
+- tempo (for tempo runs and race pace efforts)
+- intervals (for speed/interval workouts)
+- rest (for rest days)
+- cross_training (for cross-training activities)
 
 REQUIRED FIELDS per workout:
 - day (1-7)
@@ -172,7 +171,7 @@ REQUIRED FIELDS per workout:
 
 IMPORTANT:
 - Generate EXACTLY ${weeksNeeded} weeks
-- Week ${weeksNeeded}, Day ${raceDayNumber} MUST be the marathon race (type="race_pace")
+- Week ${weeksNeeded}, Day ${raceDayNumber} MUST be the marathon race (type="tempo", description="Marathon Race Day")
 - Do not truncate or summarize - output the complete ${weeksNeeded}-week plan
 - Return ONLY the JSON object, no markdown formatting, no extra text
 - Ensure the JSON is valid and complete (all brackets closed)`

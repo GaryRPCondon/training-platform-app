@@ -1,14 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { TemplateCard } from '@/components/plans/template-card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ArrowLeft, AlertCircle } from 'lucide-react'
+import { ArrowLeft, AlertCircle, Loader2 } from 'lucide-react'
 import type { RecommendationResponse, UserCriteria } from '@/lib/templates/types'
 
-export default function RecommendPage() {
+function RecommendPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [recommendations, setRecommendations] = useState<RecommendationResponse | null>(null)
@@ -212,5 +212,17 @@ export default function RecommendPage() {
         ))}
       </div>
     </div>
+  )
+}
+
+export default function RecommendPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    }>
+      <RecommendPageContent />
+    </Suspense>
   )
 }

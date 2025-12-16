@@ -130,9 +130,16 @@ export default function PlansPage() {
                                                     <div>Type: {plan.plan_type}</div>
                                                     <div>Created: {format(new Date(plan.created_at), 'MMM d, yyyy')}</div>
                                                 </div>
-                                                <Button onClick={() => handleActivate(plan.id)}>
-                                                    Activate Plan
-                                                </Button>
+                                                <div className="flex flex-col gap-2">
+                                                    <Button asChild>
+                                                        <Link href={`/dashboard/plans/review/${plan.id}`}>
+                                                            Review Plan
+                                                        </Link>
+                                                    </Button>
+                                                    <Button onClick={() => handleActivate(plan.id)}>
+                                                        Activate Plan
+                                                    </Button>
+                                                </div>
                                             </div>
                                         </CardContent>
                                     </Card>
