@@ -12,6 +12,14 @@ This is a Next.js-based AI-powered training platform for endurance athletes (pri
 - Intelligent activity merging between platforms
 - Workout rescheduling and plan adjustments
 
+## Important: AI Terminology
+
+**Always use terminology that clearly indicates AI involvement, not human coaching:**
+- ✅ Use: "AI Coach", "AI coaching", "Chat with your AI Coach", "AI-powered guidance"
+- ❌ Avoid: "Coach", "Your coach" (without AI qualifier when referring to the system)
+- **Rationale**: The system uses LLMs to provide training guidance. Users must clearly understand they're interacting with AI, not a human coach.
+- This applies to all user-facing text: UI labels, navigation, help text, documentation, etc.
+
 ## Build and Development Commands
 
 ```bash

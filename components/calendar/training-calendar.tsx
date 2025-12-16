@@ -116,7 +116,7 @@ export function TrainingCalendar() {
     }
 
     return (
-        <div className="h-[600px] bg-background">
+        <div className="h-full bg-background">
             <DnDCalendar
                 localizer={localizer}
                 events={events}

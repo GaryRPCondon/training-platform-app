@@ -208,7 +208,7 @@ export default function ReviewPage({ params }: PageProps) {
   const allWorkouts: WorkoutWithDetails[] = context.weeks.flatMap(w => w.workouts)
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="h-full flex flex-col">
       {/* Header */}
       <div className="border-b bg-background px-6 py-4">
         <div className="flex items-center justify-between">
@@ -279,21 +279,23 @@ export default function ReviewPage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* Main Content: 60/40 Split */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Calendar - 60% */}
-        <div className="w-[60%] p-6 overflow-auto">
-          <TrainingCalendar
-            workouts={allWorkouts}
-            onWorkoutSelect={(workout) => {
-              console.log('Selected workout:', workout.workout_index)
-              // Could auto-insert workout_index into chat input in Phase 4
-            }}
-          />
+      {/* Main Content: Grid Layout - Calendar + Chat */}
+      <div className="flex-1 grid grid-cols-[3fr_minmax(320px,1fr)] overflow-hidden">
+        {/* Calendar - Full height container */}
+        <div className="h-full w-full min-w-0 p-3 md:p-4 lg:p-6">
+          <div className="h-full w-full">
+            <TrainingCalendar
+              workouts={allWorkouts}
+              onWorkoutSelect={(workout) => {
+                console.log('Selected workout:', workout.workout_index)
+                // Could auto-insert workout_index into chat input in Phase 4
+              }}
+            />
+          </div>
         </div>
 
-        {/* Chat Panel - 40% */}
-        <div className="w-[40%]">
+        {/* Chat Panel - Fixed 400px width */}
+        <div className="h-full border-l overflow-hidden">
           {sessionId ? (
             <ChatPanel
               planId={planId}

@@ -43,7 +43,7 @@ const navItems = [
         icon: Activity,
     },
     {
-        title: 'Coach',
+        title: 'AI Coach',
         href: '/dashboard/chat',
         icon: MessageSquare,
     },

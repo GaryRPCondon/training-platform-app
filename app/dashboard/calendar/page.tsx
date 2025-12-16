@@ -13,9 +13,9 @@ const TrainingCalendar = dynamic(
 
 export default function CalendarPage() {
     return (
-        <div className="space-y-6 h-full flex flex-col">
-            <h1 className="text-3xl font-bold tracking-tight">Training Calendar</h1>
-            <div className="flex-1 min-h-[600px]">
+        <div className="h-full flex flex-col">
+            <h1 className="text-3xl font-bold tracking-tight mb-6">Training Calendar</h1>
+            <div className="flex-1 min-h-0">
                 <TrainingCalendar />
             </div>
         </div>

@@ -56,7 +56,7 @@ export function ChatPanel({
     <div className="flex flex-col h-full bg-background border-l">
       {/* Header */}
       <div className="p-4 border-b">
-        <h2 className="font-semibold">Chat with Your Coach</h2>
+        <h2 className="font-semibold">Chat with Your AI Coach</h2>
         <p className="text-sm text-muted-foreground">
           Ask questions or request changes using workout codes (e.g., "Make W4:D2 easier")
         </p>

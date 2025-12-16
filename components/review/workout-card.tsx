@@ -105,7 +105,7 @@ export function WorkoutCard({ workout, onClose, onDiscuss }: WorkoutCardProps) {
             variant="default"
             className="flex-1"
           >
-            Discuss with Coach
+            Discuss with AI Coach
           </Button>
         )}
         {onClose && (
