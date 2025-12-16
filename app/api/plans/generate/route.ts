@@ -228,7 +228,8 @@ export async function POST(request: Request) {
       planId: plan.id,
       planStartDate: planStartDate,  // Week 1 starts on next Monday/Sunday
       userStartDate: start_date,      // User's selected start date (for pre-week workouts)
-      goalDate: goal_date
+      goalDate: goal_date,
+      supabase: supabase
     })
 
     return NextResponse.json({

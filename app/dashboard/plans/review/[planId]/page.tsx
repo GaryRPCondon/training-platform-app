@@ -7,7 +7,7 @@ import { TrainingCalendar } from '@/components/review/training-calendar'
 import { ChatPanel } from '@/components/review/chat-panel'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, CheckCircle2, ArrowLeft } from 'lucide-react'
+import { Loader2, CheckCircle2, ArrowLeft, Trash2 } from 'lucide-react'
 import { loadPlanForReview } from '@/lib/plans/review-loader'
 import type { PlanReviewContext, ReviewMessage, WorkoutWithDetails } from '@/types/review'
 import { createClient } from '@/lib/supabase/client'
@@ -174,6 +174,28 @@ export default function ReviewPage({ params }: PageProps) {
     }
   })
 
+  // Delete draft plan mutation
+  const deletePlan = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/plans/${planId}`, {
+        method: 'DELETE'
+      })
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to delete plan')
+      }
+      return response.json()
+    },
+    onSuccess: () => {
+      toast.success('Plan deleted successfully')
+      router.push('/dashboard/plans')
+    },
+    onError: (error) => {
+      console.error('Error deleting plan:', error)
+      toast.error('Failed to delete plan')
+    }
+  })
+
   if (isLoadingPlan || !context) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -210,22 +232,49 @@ export default function ReviewPage({ params }: PageProps) {
               {context.status}
             </Badge>
             <Button
-              onClick={() => acceptPlan.mutate()}
-              disabled={context.status === 'active' || acceptPlan.isPending}
+              onClick={() => {
+                const message = context.status === 'active'
+                  ? 'Are you sure you want to delete this active plan? All workouts and progress will be lost. This cannot be undone.'
+                  : 'Are you sure you want to delete this draft plan? This cannot be undone.'
+                if (confirm(message)) {
+                  deletePlan.mutate()
+                }
+              }}
+              disabled={deletePlan.isPending}
+              variant="destructive"
               size="lg"
             >
-              {acceptPlan.isPending ? (
+              {deletePlan.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Accepting...
+                  Deleting...
                 </>
               ) : (
                 <>
-                  <CheckCircle2 className="mr-2 h-4 w-4" />
-                  Accept Plan
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Plan
                 </>
               )}
             </Button>
+            {context.status !== 'active' && (
+              <Button
+                onClick={() => acceptPlan.mutate()}
+                disabled={acceptPlan.isPending}
+                size="lg"
+              >
+                {acceptPlan.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Accepting...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                    Accept Plan
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </div>
       </div>

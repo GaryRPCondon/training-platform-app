@@ -9,6 +9,8 @@ import { TrainingPlan } from '@/types/database'
 import { activatePlan } from '@/lib/supabase/plan-activation'
 import { getCurrentAthleteId } from '@/lib/supabase/client'
 import { format } from 'date-fns'
+import { Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 
 export default function PlansPage() {
     const [plans, setPlans] = useState<TrainingPlan[]>([])
@@ -43,6 +45,33 @@ export default function PlansPage() {
         } catch (error) {
             console.error('Error activating plan:', error)
             alert('Failed to activate plan')
+        }
+    }
+
+    async function handleDelete(planId: number, isActive: boolean) {
+        const message = isActive
+            ? 'Are you sure you want to delete this active plan? All workouts and progress will be lost. This cannot be undone.'
+            : 'Are you sure you want to delete this draft plan? This cannot be undone.'
+
+        if (!confirm(message)) {
+            return
+        }
+
+        try {
+            const response = await fetch(`/api/plans/${planId}`, {
+                method: 'DELETE'
+            })
+
+            if (!response.ok) {
+                const data = await response.json()
+                throw new Error(data.error || 'Failed to delete plan')
+            }
+
+            toast.success('Plan deleted successfully')
+            await fetchPlans() // Refresh the list
+        } catch (error) {
+            console.error('Error deleting plan:', error)
+            toast.error('Failed to delete plan')
         }
     }
 
@@ -88,9 +117,18 @@ export default function PlansPage() {
                                             </div>
                                         </CardHeader>
                                         <CardContent>
-                                            <div className="text-sm text-muted-foreground">
-                                                <div>Type: {plan.plan_type}</div>
-                                                <div>Created: {format(new Date(plan.created_at), 'MMM d, yyyy')}</div>
+                                            <div className="flex items-center justify-between">
+                                                <div className="text-sm text-muted-foreground">
+                                                    <div>Type: {plan.plan_type}</div>
+                                                    <div>Created: {format(new Date(plan.created_at), 'MMM d, yyyy')}</div>
+                                                </div>
+                                                <Button
+                                                    variant="destructive"
+                                                    onClick={() => handleDelete(plan.id, true)}
+                                                >
+                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                    Delete Plan
+                                                </Button>
                                             </div>
                                         </CardContent>
                                     </Card>
@@ -138,6 +176,13 @@ export default function PlansPage() {
                                                     </Button>
                                                     <Button onClick={() => handleActivate(plan.id)}>
                                                         Activate Plan
+                                                    </Button>
+                                                    <Button
+                                                        variant="destructive"
+                                                        onClick={() => handleDelete(plan.id, false)}
+                                                    >
+                                                        <Trash2 className="mr-2 h-4 w-4" />
+                                                        Delete Plan
                                                     </Button>
                                                 </div>
                                             </div>

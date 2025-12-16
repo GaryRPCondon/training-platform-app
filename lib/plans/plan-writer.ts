@@ -1,13 +1,14 @@
-import { supabase } from '@/lib/supabase/client'
 import type { ParsedPlan } from './response-parser'
 import { calculateWorkoutDate } from './response-parser'
 import { addDays, format } from 'date-fns'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 export interface PlanWriteOptions {
   planId: number
   planStartDate: string      // YYYY-MM-DD - When Week 1 starts (e.g., next Monday)
   userStartDate?: string      // YYYY-MM-DD - User's selected start date (may be before planStartDate)
   goalDate: string           // YYYY-MM-DD
+  supabase: SupabaseClient   // Supabase client to use (server or client)
 }
 
 /**
@@ -17,7 +18,7 @@ export async function writePlanToDatabase(
   parsedPlan: ParsedPlan,
   options: PlanWriteOptions
 ) {
-  const { planId, planStartDate, userStartDate } = options
+  const { planId, planStartDate, userStartDate, supabase } = options
 
   // Get athlete_id from plan
   const { data: planData } = await supabase
@@ -193,7 +194,7 @@ export async function writePlanToDatabase(
 /**
  * Delete all weekly plans and workouts for a plan (for regeneration)
  */
-export async function clearPlanWorkouts(planId: number) {
+export async function clearPlanWorkouts(planId: number, supabase: SupabaseClient) {
   // Get athlete_id first
   const { data: plan } = await supabase
     .from('training_plans')
