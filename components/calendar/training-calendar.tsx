@@ -116,7 +116,24 @@ export function TrainingCalendar() {
     }
 
     return (
-        <div className="h-full bg-background">
+        /* CRITICAL LAYOUT PATTERN - DO NOT MODIFY
+         * React Big Calendar (DnDCalendar) has specific layout requirements:
+         *
+         * 1. Parent MUST use CSS Grid with min-w-0 (not just Flexbox)
+         *    - See app/dashboard/calendar/page.tsx for grid container
+         *    - Flexbox alone causes calendar to lock at ~1652px width
+         *
+         * 2. Component wrapper needs: h-full w-full overflow-hidden relative
+         *    - overflow-hidden prevents scrollbars
+         *    - relative provides positioning context
+         *
+         * 3. Inline styles MUST include both height and width at 100%
+         *    - Calendar library calculates dimensions from these values
+         *
+         * This pattern was debugged over 2 sessions. Matches working review page.
+         * When adding chat panel later, maintain this grid-based constraint pattern.
+         */
+        <div className="h-full w-full bg-background overflow-hidden relative">
             <DnDCalendar
                 localizer={localizer}
                 events={events}
@@ -129,7 +146,7 @@ export function TrainingCalendar() {
                 onView={setView}
                 views={['month', 'week', 'day']}
                 defaultView="month"
-                style={{ height: '100%' }}
+                style={{ height: '100%', width: '100%' }}
                 onEventDrop={onEventDrop}
                 draggableAccessor={() => true}
                 resizable={false}

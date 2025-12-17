@@ -252,6 +252,26 @@ const response = await fetch('/api/agent/chat', {
 })
 ```
 
+**React Big Calendar layout (CRITICAL)**:
+```tsx
+// Parent container MUST use Grid layout with min-w-0 constraint
+// Flexbox alone causes calendar to lock at ~1652px width with scrollbars
+<div className="flex-1 grid grid-cols-1 overflow-hidden">
+  <div className="h-full w-full min-w-0">
+    <TrainingCalendar />
+  </div>
+</div>
+
+// Component wrapper requires specific classes
+<div className="h-full w-full bg-background overflow-hidden relative">
+  <DnDCalendar
+    style={{ height: '100%', width: '100%' }}  // Both required
+    // ... other props
+  />
+</div>
+```
+See detailed comments in `app/dashboard/calendar/page.tsx` and `components/calendar/training-calendar.tsx`. This pattern was debugged over 2 sessions - DO NOT modify without careful testing.
+
 ## Path Alias
 Use `@/` for imports from project root (configured in `tsconfig.json`):
 ```typescript
