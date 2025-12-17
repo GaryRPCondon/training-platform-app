@@ -15,8 +15,43 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { toast } from 'sonner'
 import { getWorkoutColor } from '@/lib/constants/workout-colors'
 
+// Custom styles to enable text wrapping in calendar events (max 2 lines)
+const calendarStyles = `
+  .rbc-event {
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+    line-height: 1.3 !important;
+    white-space: normal !important;
+  }
+  .rbc-event-content {
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+    white-space: normal !important;
+  }
+`
+
 const localizer = momentLocalizer(moment)
 const DnDCalendar = withDragAndDrop(Calendar)
+
+function formatWorkoutTitle(workout: any): string {
+    const description = workout.description || 'Workout'
+
+    if (workout.distance_target_meters) {
+        const km = (workout.distance_target_meters / 1000).toFixed(1)
+        return `${description} ${km}km`
+    }
+
+    if (workout.duration_target_seconds) {
+        const mins = Math.round(workout.duration_target_seconds / 60)
+        return `${description} ${mins}min`
+    }
+
+    return description
+}
 
 export function TrainingCalendar() {
     const [currentDate, setCurrentDate] = useState(new Date())
@@ -74,7 +109,7 @@ export function TrainingCalendar() {
 
     const events = workouts?.map(w => ({
         id: w.id,
-        title: `${w.workout_index}: ${w.description}`,
+        title: formatWorkoutTitle(w),
         start: new Date(w.scheduled_date),
         end: new Date(w.scheduled_date),
         allDay: true,
@@ -110,7 +145,10 @@ export function TrainingCalendar() {
                 border: '0px',
                 display: 'block',
                 fontSize: '0.875rem',
-                padding: '2px 4px'
+                padding: '2px 4px',
+                whiteSpace: 'normal',
+                overflow: 'visible',
+                lineHeight: '1.2'
             }
         }
     }
@@ -134,6 +172,7 @@ export function TrainingCalendar() {
          * When adding chat panel later, maintain this grid-based constraint pattern.
          */
         <div className="h-full w-full bg-background overflow-hidden relative">
+            <style>{calendarStyles}</style>
             <DnDCalendar
                 localizer={localizer}
                 events={events}

@@ -6,8 +6,27 @@ import moment from 'moment'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import type { WorkoutEvent, WorkoutWithDetails } from '@/types/review'
 import { WorkoutCard } from './workout-card'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { getWorkoutColor } from '@/lib/constants/workout-colors'
+
+// Custom styles to enable text wrapping in calendar events (max 2 lines)
+const calendarStyles = `
+  .rbc-event {
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+    line-height: 1.3 !important;
+    white-space: normal !important;
+  }
+  .rbc-event-content {
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+    white-space: normal !important;
+  }
+`
 
 const localizer = momentLocalizer(moment)
 
@@ -60,6 +79,7 @@ export function TrainingCalendar({ workouts, onWorkoutSelect }: TrainingCalendar
   return (
     <>
       <div className="h-full">
+        <style>{calendarStyles}</style>
         <Calendar
           localizer={localizer}
           events={events}
@@ -80,6 +100,7 @@ export function TrainingCalendar({ workouts, onWorkoutSelect }: TrainingCalendar
       {/* Workout Detail Modal */}
       <Dialog open={!!selectedWorkout} onOpenChange={() => setSelectedWorkout(null)}>
         <DialogContent className="max-w-2xl">
+          <DialogTitle className="sr-only">Workout Details</DialogTitle>
           {selectedWorkout && (
             <WorkoutCard
               workout={selectedWorkout}
