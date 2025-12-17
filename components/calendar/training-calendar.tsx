@@ -14,6 +14,8 @@ import { WorkoutDetail } from '@/components/workouts/workout-detail'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import { getWorkoutColor } from '@/lib/constants/workout-colors'
+import { WeeklyTotals } from './weekly-totals'
+import { CustomToolbar } from './custom-toolbar'
 
 // Custom styles to enable text wrapping in calendar events (max 2 lines)
 const calendarStyles = `
@@ -31,6 +33,19 @@ const calendarStyles = `
     -webkit-box-orient: vertical !important;
     overflow: hidden !important;
     white-space: normal !important;
+  }
+  /* Force RBC Header height to match WeeklyTotals header */
+  .rbc-header {
+    height: 40px !important;
+    line-height: 40px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+  }
+  /* Remove RBC Month View borders that double up */
+  .rbc-month-view {
+    border-top: none !important;
   }
 `
 
@@ -153,44 +168,64 @@ export function TrainingCalendar() {
         }
     }
 
+    const handleNavigate = (action: 'PREV' | 'NEXT' | 'TODAY') => {
+        const newDate = new Date(currentDate)
+        if (action === 'TODAY') {
+            setCurrentDate(new Date())
+        } else if (action === 'PREV') {
+            if (view === 'month') newDate.setMonth(newDate.getMonth() - 1)
+            else if (view === 'week') newDate.setDate(newDate.getDate() - 7)
+            else newDate.setDate(newDate.getDate() - 1)
+            setCurrentDate(newDate)
+        } else if (action === 'NEXT') {
+            if (view === 'month') newDate.setMonth(newDate.getMonth() + 1)
+            else if (view === 'week') newDate.setDate(newDate.getDate() + 7)
+            else newDate.setDate(newDate.getDate() + 1)
+            setCurrentDate(newDate)
+        }
+    }
+
     return (
-        /* CRITICAL LAYOUT PATTERN - DO NOT MODIFY
-         * React Big Calendar (DnDCalendar) has specific layout requirements:
-         *
-         * 1. Parent MUST use CSS Grid with min-w-0 (not just Flexbox)
-         *    - See app/dashboard/calendar/page.tsx for grid container
-         *    - Flexbox alone causes calendar to lock at ~1652px width
-         *
-         * 2. Component wrapper needs: h-full w-full overflow-hidden relative
-         *    - overflow-hidden prevents scrollbars
-         *    - relative provides positioning context
-         *
-         * 3. Inline styles MUST include both height and width at 100%
-         *    - Calendar library calculates dimensions from these values
-         *
-         * This pattern was debugged over 2 sessions. Matches working review page.
-         * When adding chat panel later, maintain this grid-based constraint pattern.
-         */
-        <div className="h-full w-full bg-background overflow-hidden relative">
-            <style>{calendarStyles}</style>
-            <DnDCalendar
-                localizer={localizer}
-                events={events}
-                startAccessor={(event: any) => event.start}
-                endAccessor={(event: any) => event.end}
-                onSelectEvent={handleSelectEvent}
+        <div className="h-full w-full flex flex-col overflow-hidden">
+            <CustomToolbar
                 date={currentDate}
-                onNavigate={setCurrentDate}
-                view={view}
-                onView={setView}
-                views={['month', 'week', 'day']}
-                defaultView="month"
-                style={{ height: '100%', width: '100%' }}
-                onEventDrop={onEventDrop}
-                draggableAccessor={() => true}
-                resizable={false}
-                eventPropGetter={eventStyleGetter}
+                view={view as 'month' | 'week' | 'day'}
+                onNavigate={handleNavigate}
+                onViewChange={(v) => setView(v)}
             />
+
+            <div className="flex-1 w-full grid grid-cols-[1fr_220px] overflow-hidden border rounded-md">
+                <div className="h-full w-full bg-background overflow-hidden relative min-w-0 border-r">
+                    <style>{calendarStyles}</style>
+                    <DnDCalendar
+                        localizer={localizer}
+                        events={events}
+                        startAccessor={(event: any) => event.start}
+                        endAccessor={(event: any) => event.end}
+                        onSelectEvent={handleSelectEvent}
+                        date={currentDate}
+                        onNavigate={setCurrentDate}
+                        view={view}
+                        onView={setView}
+                        views={['month', 'week', 'day']}
+                        defaultView="month"
+                        style={{ height: '100%', width: '100%' }}
+                        onEventDrop={onEventDrop}
+                        draggableAccessor={() => true}
+                        resizable={false}
+                        eventPropGetter={eventStyleGetter}
+                        toolbar={false}
+                    />
+                </div>
+
+                <WeeklyTotals
+                    workouts={workouts || []}
+                    currentDate={currentDate}
+                    view={view as 'month' | 'week' | 'day'}
+                    weekStartsOn={weekStartsOn}
+                    showActual={true}
+                />
+            </div>
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent>

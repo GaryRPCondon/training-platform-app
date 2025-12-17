@@ -8,8 +8,12 @@ import type { WorkoutEvent, WorkoutWithDetails } from '@/types/review'
 import { WorkoutCard } from './workout-card'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { getWorkoutColor } from '@/lib/constants/workout-colors'
+import { WeeklyTotals } from '../calendar/weekly-totals'
+import { useQuery } from '@tanstack/react-query'
+import { getAthleteProfile } from '@/lib/supabase/queries'
+import { CustomToolbar } from '../calendar/custom-toolbar'
 
-// Custom styles to enable text wrapping in calendar events (max 2 lines)
+// Custom styles to enable text wrapping and enforce alignment
 const calendarStyles = `
   .rbc-event {
     display: -webkit-box !important;
@@ -26,6 +30,19 @@ const calendarStyles = `
     overflow: hidden !important;
     white-space: normal !important;
   }
+  /* Force RBC Header height to match WeeklyTotals header */
+  .rbc-header {
+    height: 40px !important;
+    line-height: 40px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+  }
+  /* Remove RBC Month View borders that double up */
+  .rbc-month-view {
+    border-top: none !important;
+  }
 `
 
 const localizer = momentLocalizer(moment)
@@ -35,12 +52,35 @@ interface TrainingCalendarProps {
   onWorkoutSelect?: (workout: WorkoutWithDetails) => void
 }
 
+function formatWorkoutTitle(workout: WorkoutWithDetails): string {
+  const description = workout.description || 'Workout'
+
+  if (workout.distance_target_meters) {
+    const km = (workout.distance_target_meters / 1000).toFixed(1)
+    return `${description} ${km}km`
+  }
+
+  if (workout.duration_target_seconds) {
+    const mins = Math.round(workout.duration_target_seconds / 60)
+    return `${description} ${mins}min`
+  }
+
+  return description
+}
+
 export function TrainingCalendar({ workouts, onWorkoutSelect }: TrainingCalendarProps) {
   const [selectedWorkout, setSelectedWorkout] = useState<WorkoutWithDetails | null>(null)
   const [view, setView] = useState<View>('month')
   const [currentDate, setCurrentDate] = useState(new Date())
 
-  // Convert workouts to calendar events
+  // Get athlete profile for week start preference
+  const { data: athlete } = useQuery({
+    queryKey: ['athlete'],
+    queryFn: getAthleteProfile,
+  })
+
+  const weekStartsOn = (athlete?.week_starts_on ?? 1) as 0 | 1 | 2 | 3 | 4 | 5 | 6
+
   const events: WorkoutEvent[] = useMemo(() => {
     return workouts.map(workout => ({
       id: workout.id,
@@ -76,28 +116,63 @@ export function TrainingCalendar({ workouts, onWorkoutSelect }: TrainingCalendar
     }
   }
 
+  const handleNavigate = (action: 'PREV' | 'NEXT' | 'TODAY') => {
+    const newDate = new Date(currentDate)
+    if (action === 'TODAY') {
+      setCurrentDate(new Date())
+    } else if (action === 'PREV') {
+      if (view === 'month') newDate.setMonth(newDate.getMonth() - 1)
+      else if (view === 'week') newDate.setDate(newDate.getDate() - 7)
+      else newDate.setDate(newDate.getDate() - 1)
+      setCurrentDate(newDate)
+    } else if (action === 'NEXT') {
+      if (view === 'month') newDate.setMonth(newDate.getMonth() + 1)
+      else if (view === 'week') newDate.setDate(newDate.getDate() + 7)
+      else newDate.setDate(newDate.getDate() + 1)
+      setCurrentDate(newDate)
+    }
+  }
+
   return (
     <>
-      <div className="h-full">
-        <style>{calendarStyles}</style>
-        <Calendar
-          localizer={localizer}
-          events={events}
-          startAccessor="start"
-          endAccessor="end"
+      <div className="h-full w-full flex flex-col overflow-hidden">
+        <CustomToolbar
           date={currentDate}
-          onNavigate={setCurrentDate}
-          view={view}
-          onView={setView}
-          views={['week', 'month']}
-          onSelectEvent={handleSelectEvent}
-          eventPropGetter={eventStyleGetter}
-          style={{ height: '100%' }}
-          toolbar={true}
+          view={view as 'month' | 'week' | 'day'}
+          onNavigate={handleNavigate}
+          onViewChange={(v) => setView(v)}
         />
+
+        <div className="flex-1 w-full grid grid-cols-[1fr_220px] overflow-hidden border rounded-md">
+          <div className="h-full min-w-0 border-r">
+            <style>{calendarStyles}</style>
+            <Calendar
+              localizer={localizer}
+              events={events}
+              startAccessor="start"
+              endAccessor="end"
+              date={currentDate}
+              onNavigate={setCurrentDate}
+              view={view}
+              onView={setView}
+              views={['week', 'month']}
+              onSelectEvent={handleSelectEvent}
+              eventPropGetter={eventStyleGetter}
+              style={{ height: '100%' }}
+              toolbar={false}
+            />
+          </div>
+
+          <WeeklyTotals
+            workouts={workouts}
+            currentDate={currentDate}
+            view={view as 'month' | 'week' | 'day'}
+            weekStartsOn={weekStartsOn}
+            showActual={false}
+          />
+        </div>
       </div>
 
-      {/* Workout Detail Modal */}
       <Dialog open={!!selectedWorkout} onOpenChange={() => setSelectedWorkout(null)}>
         <DialogContent className="max-w-2xl">
           <DialogTitle className="sr-only">Workout Details</DialogTitle>
@@ -111,21 +186,4 @@ export function TrainingCalendar({ workouts, onWorkoutSelect }: TrainingCalendar
       </Dialog>
     </>
   )
-}
-
-function formatWorkoutTitle(workout: WorkoutWithDetails): string {
-  // Use the description field which has proper names like "Easy aerobic run" or "Marathon Race Day"
-  const description = workout.description || 'Workout'
-
-  if (workout.distance_target_meters) {
-    const km = (workout.distance_target_meters / 1000).toFixed(1)
-    return `${description} ${km}km`
-  }
-
-  if (workout.duration_target_seconds) {
-    const mins = Math.round(workout.duration_target_seconds / 60)
-    return `${description} ${mins}min`
-  }
-
-  return description
 }
