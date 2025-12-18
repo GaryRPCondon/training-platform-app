@@ -4,17 +4,34 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import type { WorkoutWithDetails } from '@/types/review'
-import { Calendar, Clock, TrendingUp, Target } from 'lucide-react'
+import type { TrainingPaces } from '@/types/database'
+import { Calendar, Clock, TrendingUp, Target, Gauge, Flag, RotateCcw } from 'lucide-react'
+import { formatPace, estimateDuration, getWorkoutPaceType } from '@/lib/training/vdot'
 
 interface WorkoutCardProps {
   workout: WorkoutWithDetails
+  trainingPaces?: TrainingPaces | null
+  vdot?: number | null
   onClose?: () => void
   onDiscuss?: (workout: WorkoutWithDetails) => void
 }
 
-export function WorkoutCard({ workout, onClose, onDiscuss }: WorkoutCardProps) {
+export function WorkoutCard({ workout, trainingPaces, vdot, onClose, onDiscuss }: WorkoutCardProps) {
   const hasStructuredWorkout = workout.structured_workout &&
     typeof workout.structured_workout === 'object'
+
+  // Calculate target pace and estimated duration if we have training paces
+  let targetPace: number | null = null
+  let estimatedDurationMinutes: number | null = null
+  let paceLabel: string | null = null
+
+  if (trainingPaces && workout.distance_target_meters && workout.workout_type) {
+    const paceType = getWorkoutPaceType(workout.workout_type)
+    targetPace = trainingPaces[paceType]
+    estimatedDurationMinutes = Math.round(estimateDuration(workout.distance_target_meters, targetPace) / 60)
+    // Capitalize pace type for display (e.g., "interval" -> "Interval")
+    paceLabel = paceType.charAt(0).toUpperCase() + paceType.slice(1)
+  }
 
   return (
     <div className="space-y-4">
@@ -40,6 +57,34 @@ export function WorkoutCard({ workout, onClose, onDiscuss }: WorkoutCardProps) {
 
       <Separator />
 
+      {/* Validation Warning */}
+      {workout.validation_warning && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
+          <div className="flex items-start gap-2">
+            <Flag className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 space-y-1">
+              <p className="text-sm font-medium text-red-900">
+                ⚠️ Possible LLM Hallucination
+              </p>
+              <p className="text-xs text-red-800">
+                This workout has an unusual distance that may be due to an AI calculation error.
+              </p>
+              <p className="text-xs text-red-700 font-mono">
+                Distance: {(workout.validation_warning.actualDistance / 1000).toFixed(1)}km
+                (expected: {(workout.validation_warning.expectedRange.min / 1000).toFixed(1)}-
+                {(workout.validation_warning.expectedRange.max / 1000).toFixed(1)}km for {workout.workout_type})
+              </p>
+              <div className="flex items-center gap-1 mt-2">
+                <RotateCcw className="h-3 w-3 text-red-600" />
+                <p className="text-xs text-red-700 font-medium">
+                  Consider regenerating the plan if this looks incorrect
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Description */}
       {workout.description && (
         <div>
@@ -61,18 +106,6 @@ export function WorkoutCard({ workout, onClose, onDiscuss }: WorkoutCardProps) {
           </div>
         )}
 
-        {workout.duration_target_seconds && (
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Clock className="h-4 w-4" />
-              Duration Target
-            </div>
-            <div className="text-lg font-medium">
-              {Math.round(workout.duration_target_seconds / 60)} minutes
-            </div>
-          </div>
-        )}
-
         {workout.intensity_target && (
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -80,6 +113,35 @@ export function WorkoutCard({ workout, onClose, onDiscuss }: WorkoutCardProps) {
               Intensity
             </div>
             <Badge>{workout.intensity_target}</Badge>
+          </div>
+        )}
+
+        {targetPace !== null && (
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Gauge className="h-4 w-4" />
+              {paceLabel} Pace
+            </div>
+            <div className="text-lg font-medium">
+              {formatPace(targetPace)}
+            </div>
+            {vdot && (
+              <div className="text-xs text-muted-foreground">
+                VDOT {vdot}
+              </div>
+            )}
+          </div>
+        )}
+
+        {estimatedDurationMinutes !== null && (
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Clock className="h-4 w-4" />
+              Estimated Duration
+            </div>
+            <div className="text-lg font-medium">
+              {estimatedDurationMinutes} min
+            </div>
           </div>
         )}
       </div>

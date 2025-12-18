@@ -4,15 +4,18 @@ import { loadFullTemplate, getTemplateSummary } from '@/lib/templates/template-l
 import { buildGenerationSystemPrompt, buildGenerationUserMessage } from '@/lib/plans/llm-prompts'
 import { parseLLMResponse } from '@/lib/plans/response-parser'
 import { writePlanToDatabase, clearPlanWorkouts } from '@/lib/plans/plan-writer'
+import { validateWorkoutDistances } from '@/lib/plans/workout-validator'
 import { createLLMProvider } from '@/lib/agent/factory'
+import { calculateTrainingPaces } from '@/lib/training/vdot'
 import type { UserCriteria } from '@/lib/templates/types'
+import type { TrainingPaces } from '@/types/database'
 import { writeFileSync } from 'fs'
 import { join } from 'path'
 
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { template_id, goal_date, start_date, goal_type, goal_name, user_criteria, first_day_of_week } = body
+    const { template_id, goal_date, start_date, goal_type, goal_name, user_criteria, first_day_of_week, vdot_data } = body
 
     // Validate request
     if (!template_id || !goal_date || !start_date || !goal_type || !user_criteria) {
@@ -20,6 +23,22 @@ export async function POST(request: Request) {
         { error: 'Missing required fields' },
         { status: 400 }
       )
+    }
+
+    // Calculate training paces if VDOT data provided
+    let vdot: number | null = null
+    let trainingPaces: TrainingPaces | null = null
+    let paceSource: string | null = null
+    let paceSourceData: any = null
+
+    if (vdot_data && typeof vdot_data === 'object' && typeof vdot_data.vdot === 'number') {
+      const vdotValue = vdot_data.vdot
+      vdot = vdotValue
+      trainingPaces = calculateTrainingPaces(vdotValue)
+      paceSource = vdot_data.source || 'vdot_direct'
+      paceSourceData = vdot_data.sourceData || { vdot: vdotValue }
+
+      console.log(`VDOT: ${vdotValue}, Training paces calculated for plan`)
     }
 
     // Validate first_day_of_week if provided
@@ -112,14 +131,18 @@ export async function POST(request: Request) {
     }
     const maxTokens = maxTokensMap[providerName] || 8192
 
+    const llmStartTime = Date.now()
     const response = await provider.generateResponse({
       messages: [{ role: 'user', content: userMessage }],
       systemPrompt,
       maxTokens,
       temperature: 0.7
     })
+    const llmEndTime = Date.now()
+    const llmDurationMs = llmEndTime - llmStartTime
+    const llmDurationSec = (llmDurationMs / 1000).toFixed(2)
 
-    console.log(`LLM Response - Length: ${response.content.length} chars, Tokens used: ${response.usage.outputTokens}`)
+    console.log(`LLM Response - Length: ${response.content.length} chars, Tokens used: ${response.usage.outputTokens}, Generation time: ${llmDurationSec}s`)
 
     // Log first and last 200 chars to debug JSON issues
     console.log('Response start:', response.content.substring(0, 200))
@@ -132,6 +155,7 @@ export async function POST(request: Request) {
       timestamp,
       provider: providerName,
       model: modelName,
+      generationTimeSeconds: parseFloat(llmDurationSec),
       systemPrompt,
       userMessage: userMessage.substring(0, 1000) + '... (truncated)',
       response: response.content,
@@ -158,6 +182,13 @@ export async function POST(request: Request) {
       }
 
       throw parseError
+    }
+
+    // Validate workout distances for potential LLM hallucinations
+    const validationWarnings = validateWorkoutDistances(parsedPlan)
+    if (validationWarnings.length > 0) {
+      console.warn(`⚠️  Found ${validationWarnings.length} potential hallucinations:`)
+      validationWarnings.forEach(w => console.warn(`  - ${w.message}`))
     }
 
     // LLM succeeded! Now create the plan structure in the database
@@ -216,7 +247,11 @@ export async function POST(request: Request) {
         created_by: 'agent',
         template_id: template_id,
         template_version: '1.0',
-        user_criteria: user_criteria
+        user_criteria: user_criteria,
+        vdot: vdot,
+        training_paces: trainingPaces,
+        pace_source: paceSource,
+        pace_source_data: paceSourceData
       })
       .select()
       .single()
@@ -237,7 +272,8 @@ export async function POST(request: Request) {
       status: 'draft_generated',
       template_used: summary.name,
       summary: writeResult,
-      token_usage: response.usage
+      token_usage: response.usage,
+      warnings: validationWarnings
     })
 
   } catch (error) {

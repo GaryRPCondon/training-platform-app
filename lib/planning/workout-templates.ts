@@ -3,7 +3,7 @@
  */
 
 export interface WorkoutTemplate {
-    type: 'easy_run' | 'long_run' | 'tempo' | 'intervals' | 'rest' | 'cross_training' | 'recovery'
+    type: 'easy_run' | 'long_run' | 'tempo' | 'intervals' | 'rest' | 'cross_training' | 'recovery' | 'race'
     description: string
     distancePercentage: number // Percentage of weekly volume
     intensity: 'easy' | 'moderate' | 'hard' | 'recovery'

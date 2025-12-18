@@ -14,6 +14,7 @@ function GeneratePageContent() {
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [planId, setPlanId] = useState<number | null>(null)
+  const [warnings, setWarnings] = useState<any[]>([])
   const generationStartedRef = useRef(false)
 
   useEffect(() => {
@@ -43,6 +44,8 @@ function GeneratePageContent() {
         const daysPerWeek = searchParams.get('days')
         const weeksAvailable = searchParams.get('weeks')
         const methodology = searchParams.get('methodology')
+        const vdotDataRaw = searchParams.get('vdotData')
+        const preferredRestDaysRaw = searchParams.get('preferredRestDays')
 
         if (!goalDate || !goalType || !startDate) {
           setError('Missing required criteria')
@@ -50,13 +53,38 @@ function GeneratePageContent() {
           return
         }
 
-        const userCriteria = {
+        // Parse preferred rest days if present
+        let preferredRestDays: number[] = []
+        if (preferredRestDaysRaw) {
+          try {
+            preferredRestDays = JSON.parse(preferredRestDaysRaw)
+          } catch (e) {
+            console.error('Failed to parse preferred rest days:', e)
+          }
+        }
+
+        const userCriteria: any = {
           experience_level: experienceLevel,
           current_weekly_mileage: Number(currentMileage),
           comfortable_peak_mileage: Number(peakMileage),
           days_per_week: Number(daysPerWeek),
           weeks_available: Number(weeksAvailable),
           preferred_methodology: methodology
+        }
+
+        // Add preferred rest days if provided
+        if (preferredRestDays.length > 0) {
+          userCriteria.preferred_rest_days = preferredRestDays
+        }
+
+        // Parse VDOT data if present
+        let vdotData = null
+        if (vdotDataRaw) {
+          try {
+            vdotData = JSON.parse(vdotDataRaw)
+          } catch (e) {
+            console.error('Failed to parse VDOT data:', e)
+          }
         }
 
         setStatus('generating')
@@ -68,17 +96,24 @@ function GeneratePageContent() {
         }, 1000)
 
         // Call generation API
+        const requestBody: any = {
+          template_id: templateId,
+          goal_date: goalDate,
+          start_date: startDate,
+          goal_type: goalType,
+          goal_name: goalName,
+          user_criteria: userCriteria
+        }
+
+        // Add VDOT data if present
+        if (vdotData) {
+          requestBody.vdot_data = vdotData
+        }
+
         const response = await fetch('/api/plans/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            template_id: templateId,
-            goal_date: goalDate,
-            start_date: startDate,
-            goal_type: goalType,
-            goal_name: goalName,
-            user_criteria: userCriteria
-          })
+          body: JSON.stringify(requestBody)
         })
 
         clearInterval(progressInterval)
@@ -91,12 +126,14 @@ function GeneratePageContent() {
 
         const data = await response.json()
         setPlanId(data.plan_id)
+        setWarnings(data.warnings || [])
         setStatus('success')
 
-        // Navigate to review page after short delay
+        // Navigate to review page after delay (longer if warnings present)
+        const delay = data.warnings && data.warnings.length > 0 ? 5000 : 1500
         setTimeout(() => {
           router.push(`/dashboard/plans/review/${data.plan_id}`)
-        }, 1500)
+        }, delay)
 
       } catch (err) {
         console.error('Generation error:', err)
@@ -157,13 +194,48 @@ function GeneratePageContent() {
           )}
 
           {status === 'success' && (
-            <div className="text-center space-y-2">
-              <p className="text-sm text-muted-foreground">
-                Your personalized training plan is ready!
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Redirecting to review page...
-              </p>
+            <div className="space-y-4">
+              <div className="text-center space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Your personalized training plan is ready!
+                </p>
+                {warnings.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Redirecting to review page...
+                  </p>
+                )}
+              </div>
+
+              {warnings.length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-3">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1 space-y-2">
+                      <p className="text-sm font-medium text-amber-900">
+                        ⚠️ Potential LLM Hallucinations Detected
+                      </p>
+                      <p className="text-xs text-amber-800">
+                        The following workouts have distances that seem unusual. This may be due to LLM calculation errors:
+                      </p>
+                      <ul className="text-xs text-amber-800 space-y-1 list-disc list-inside">
+                        {warnings.map((w, i) => (
+                          <li key={i}>
+                            <span className="font-mono">{w.workoutIndex}</span>: "{w.description}" -
+                            Distance is {(w.actualDistance / 1000).toFixed(1)}km
+                            (expected {(w.expectedRange.min / 1000).toFixed(1)}-{(w.expectedRange.max / 1000).toFixed(1)}km for {w.workoutType})
+                          </li>
+                        ))}
+                      </ul>
+                      <p className="text-xs text-amber-800 font-medium">
+                        Consider regenerating the plan or manually adjusting these workouts.
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Redirecting to review page in 5 seconds...
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

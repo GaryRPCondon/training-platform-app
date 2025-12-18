@@ -286,6 +286,8 @@ export default function ReviewPage({ params }: PageProps) {
           <div className="h-full w-full">
             <TrainingCalendar
               workouts={allWorkouts}
+              trainingPaces={context.training_paces}
+              vdot={context.vdot}
               onWorkoutSelect={(workout) => {
                 console.log('Selected workout:', workout.workout_index)
                 // Could auto-insert workout_index into chat input in Phase 4

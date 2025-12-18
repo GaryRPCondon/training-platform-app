@@ -15,6 +15,11 @@ export interface WorkoutWithDetails extends PlannedWorkout {
   formatted_date: string
   phase_name: string
   week_of_plan: number
+  validation_warning?: {
+    message: string
+    expectedRange: { min: number; max: number }
+    actualDistance: number
+  }
 }
 
 // Week view data structure
@@ -38,6 +43,14 @@ export interface PlanReviewContext {
   status: string
   total_weeks: number
   current_week: number
+  vdot: number | null
+  training_paces: {
+    easy: number
+    marathon: number
+    tempo: number
+    interval: number
+    repetition: number
+  } | null
   phases: TrainingPhase[]
   weeks: WeekViewData[]
 }

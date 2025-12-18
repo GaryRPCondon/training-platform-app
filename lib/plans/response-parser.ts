@@ -6,7 +6,6 @@ export interface ParsedWorkout {
   type: string
   description: string
   distance_meters: number | null
-  duration_minutes: number | null
   intensity: string
   pace_guidance: string | null
   notes: string | null

@@ -80,7 +80,8 @@ USER CONSTRAINTS:
 - Current weekly mileage: ${criteria.current_weekly_mileage}km
 - Maximum comfortable weekly mileage: ${criteria.comfortable_peak_mileage}km
 - Training days per week: ${criteria.days_per_week}
-- Experience level: ${criteria.experience_level}
+- Experience level: ${criteria.experience_level}${criteria.preferred_rest_days && criteria.preferred_rest_days.length > 0 ? `
+- Preferred non-training days: ${criteria.preferred_rest_days.map(d => dayNames[d]).join(', ')}` : ''}
 
 TASK:
 Generate a ${weeksNeeded}-week personalized training plan that:
@@ -102,8 +103,63 @@ KEY PRINCIPLES:
 2. Maintain the core workout structure and progression patterns
 3. Adapt phase lengths proportionally to fit ${weeksNeeded} weeks
 4. Respect the weekly mileage ceiling (${criteria.comfortable_peak_mileage}km)
-5. Schedule workouts on ${criteria.days_per_week} days per week (rest days on others)
-6. Build appropriately from current ${criteria.current_weekly_mileage}km base
+5. Schedule workouts on ${criteria.days_per_week} days per week (rest days on others)${criteria.preferred_rest_days && criteria.preferred_rest_days.length > 0 ? `
+6. MANDATORY: Schedule rest days on: ${criteria.preferred_rest_days.map(d => dayNames[d]).join(', ')}
+   - These are the athlete's REQUIRED non-training days
+   - You MUST place rest days on these specific days of the week
+   - Adjust the template's workout schedule to accommodate this requirement
+   - The athlete's schedule preferences override the template's default rest day placement
+7. Build appropriately from current ${criteria.current_weekly_mileage}km base` : `
+6. Build appropriately from current ${criteria.current_weekly_mileage}km base`}
+
+⚠️  CRITICAL WORKOUT SCHEDULING RULE - ABSOLUTE REQUIREMENT ⚠️
+
+YOU MUST NEVER PLACE HARD WORKOUTS ON CONSECUTIVE DAYS UNLESS THE TEMPLATE EXPLICITLY DOES THIS.
+
+Hard workouts are defined as:
+- type: "long_run"
+- type: "intervals"
+- type: "tempo"
+- ANY workout with intensity: "hard" or intensity: "moderate"
+
+ABSOLUTE REQUIREMENTS - NO EXCEPTIONS:
+1. CHECK THE TEMPLATE: Does the template place hard workouts on back-to-back days?
+   - YES → Preserve that exact pattern (e.g., Saturday tempo + Sunday long run)
+   - NO → You MUST separate all hard workouts with rest/easy_run/recovery days
+
+2. BEFORE ASSIGNING ANY WORKOUT:
+   - Look at the PREVIOUS day's workout (even across week boundaries)
+   - If previous day was hard, THIS day MUST be rest/easy_run/recovery
+   - If this day will be hard, PREVIOUS day MUST have been rest/easy_run/recovery
+
+3. CROSS-WEEK BOUNDARIES:
+   - Week 2 Monday depends on Week 1 Sunday
+   - Week 3 Monday depends on Week 2 Sunday
+   - And so on...
+
+4. WHEN ADAPTING FOR REST DAY PREFERENCES:
+   - Moving workouts to accommodate rest days is ONLY allowed if it doesn't create consecutive hard days
+   - If rest day preference forces consecutive hard days, move the HARD workout to a different day instead
+
+VERIFICATION CHECKLIST - CHECK EVERY WEEK:
+□ Day 1: If hard, was Day 7 of previous week easy/rest/recovery?
+□ Day 2: If hard, was Day 1 easy/rest/recovery?
+□ Day 3: If hard, was Day 2 easy/rest/recovery?
+□ Day 4: If hard, was Day 3 easy/rest/recovery?
+□ Day 5: If hard, was Day 4 easy/rest/recovery?
+□ Day 6: If hard, was Day 5 easy/rest/recovery?
+□ Day 7: If hard, was Day 6 easy/rest/recovery?
+
+CORRECT PATTERNS:
+✓ Monday (intervals) → Tuesday (easy_run) → Wednesday (tempo)
+✓ Sunday (long_run) → Monday (rest) → Tuesday (intervals)
+✓ Saturday (easy) → Sunday (long_run) → Monday (recovery)
+✓ Template has consecutive hard days → Keep them consecutive
+
+ABSOLUTELY FORBIDDEN PATTERNS:
+✗ Tuesday (intervals) → Wednesday (tempo)  ← THIS IS WRONG
+✗ Sunday (long_run) → Monday (intervals)   ← THIS IS WRONG
+✗ Thursday (tempo) → Friday (long_run)     ← THIS IS WRONG
 
 WORKOUT INDEXING:
 Every workout in the structured weeks MUST have a unique index in the format: W{week}:D{day}
@@ -139,7 +195,6 @@ Return a JSON object with this structure:
           "type": "easy_run",
           "description": "Easy aerobic run to start the plan",
           "distance_meters": 8000,
-          "duration_minutes": 50,
           "intensity": "easy",
           "pace_guidance": "Conversational pace, heart rate zone 2",
           "notes": "Focus on form and comfort"
@@ -157,21 +212,31 @@ WORKOUT TYPES (use ONLY these exact types):
 - intervals (for speed/interval workouts)
 - rest (for rest days)
 - cross_training (for cross-training activities)
+- race (for goal race day - marathon, half marathon, 10K, 5K, ultra, etc.)
+
+CRITICAL INSTRUCTION - DISTANCE-BASED PRESCRIPTIONS:
+All marathon training templates prescribe DISTANCE + INTENSITY only.
+The athlete determines their own pace based on fitness level (VDOT).
+DO NOT calculate or include duration_minutes - the system calculates this automatically based on athlete's training paces.
 
 REQUIRED FIELDS per workout:
 - day (1-7)
 - workout_index (W#:D# format)
-- type
-- description
-- distance_meters (or null for time-based workouts)
-- duration_minutes (estimated)
+- type (easy_run/recovery/long_run/tempo/intervals/rest/cross_training)
+- description (human-readable workout description)
+- distance_meters (required for running workouts, null for rest/cross-training)
 - intensity (easy/moderate/hard/recovery)
-- pace_guidance (descriptive)
+- pace_guidance (descriptive guidance: "conversational pace", "comfortably hard", "5K race pace", etc.)
 - notes (optional coaching notes)
+
+DO NOT INCLUDE:
+- duration_minutes (system calculates from distance + athlete's pace)
+- duration_seconds (system calculates from distance + athlete's pace)
+- Any time-based targets (the template prescribes distance only)
 
 IMPORTANT:
 - Generate EXACTLY ${weeksNeeded} weeks
-- Week ${weeksNeeded}, Day ${raceDayNumber} MUST be the marathon race (type="tempo", description="Marathon Race Day")
+- Week ${weeksNeeded}, Day ${raceDayNumber} MUST be the race day (type="race", description="Marathon Race Day")
 - Do not truncate or summarize - output the complete ${weeksNeeded}-week plan
 - Return ONLY the JSON object, no markdown formatting, no extra text
 - Ensure the JSON is valid and complete (all brackets closed)`

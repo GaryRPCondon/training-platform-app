@@ -100,6 +100,7 @@ export interface UserCriteria {
   weeks_available: number
   preferred_methodology?: string  // 'any' | 'hal' | 'pfitzinger' | 'hansons' | 'daniels' | 'magness'
   force_methodology?: boolean  // If true, only show preferred_methodology
+  preferred_rest_days?: number[]  // Days of week (0=Sunday, 1=Monday, etc.) for preferred rest days
 }
 
 export interface TemplateRecommendation {

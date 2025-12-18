@@ -75,6 +75,19 @@ function RecommendPageContent() {
       weeks: searchParams.get('weeks') || '',
       methodology: searchParams.get('methodology') || ''
     })
+
+    // Pass VDOT data if present
+    const vdotData = searchParams.get('vdotData')
+    if (vdotData) {
+      generateParams.set('vdotData', vdotData)
+    }
+
+    // Pass preferred rest days if present
+    const preferredRestDays = searchParams.get('preferredRestDays')
+    if (preferredRestDays) {
+      generateParams.set('preferredRestDays', preferredRestDays)
+    }
+
     router.push(`/dashboard/plans/generate?${generateParams.toString()}`)
   }
 
@@ -142,6 +155,7 @@ function RecommendPageContent() {
     const formParams = new URLSearchParams({
       goalName: searchParams.get('goalName') || '',
       goalDate: searchParams.get('goalDate') || '',
+      startDate: searchParams.get('startDate') || '',
       goalType: searchParams.get('goalType') || '',
       current: searchParams.get('current') || '',
       peak: searchParams.get('peak') || '',
@@ -149,6 +163,19 @@ function RecommendPageContent() {
       days: searchParams.get('days') || '',
       methodology: searchParams.get('methodology') || ''
     })
+
+    // Preserve VDOT data
+    const vdotData = searchParams.get('vdotData')
+    if (vdotData) {
+      formParams.set('vdotData', vdotData)
+    }
+
+    // Preserve preferred rest days
+    const preferredRestDays = searchParams.get('preferredRestDays')
+    if (preferredRestDays) {
+      formParams.set('preferredRestDays', preferredRestDays)
+    }
+
     router.push(`/dashboard/plans/new?${formParams.toString()}`)
   }
 

@@ -102,8 +102,20 @@ export interface TrainingPlan {
     template_id: string | null
     template_version: string | null
     user_criteria: any | null
+    vdot: number | null
+    training_paces: TrainingPaces | null
+    pace_source: string | null
+    pace_source_data: any | null
     created_at: string
     updated_at: string
+}
+
+export interface TrainingPaces {
+    easy: number          // seconds per km
+    marathon: number
+    tempo: number
+    interval: number
+    repetition: number
 }
 
 export interface TrainingPhase {
@@ -143,7 +155,7 @@ export interface PlannedWorkout {
     athlete_id: string
     scheduled_date: string
     scheduled_time: string | null
-    workout_type: 'easy_run' | 'long_run' | 'intervals' | 'tempo' | 'rest' | 'cross_training' | 'recovery'
+    workout_type: 'easy_run' | 'long_run' | 'intervals' | 'tempo' | 'rest' | 'cross_training' | 'recovery' | 'race'
     workout_index: string | null
     description: string | null
     distance_target_meters: number | null

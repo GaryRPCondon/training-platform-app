@@ -5,6 +5,7 @@ import { Calendar, momentLocalizer, View } from 'react-big-calendar'
 import moment from 'moment'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import type { WorkoutEvent, WorkoutWithDetails } from '@/types/review'
+import type { TrainingPaces } from '@/types/database'
 import { WorkoutCard } from './workout-card'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { getWorkoutColor } from '@/lib/constants/workout-colors'
@@ -49,26 +50,35 @@ const localizer = momentLocalizer(moment)
 
 interface TrainingCalendarProps {
   workouts: WorkoutWithDetails[]
+  trainingPaces?: TrainingPaces | null
+  vdot?: number | null
   onWorkoutSelect?: (workout: WorkoutWithDetails) => void
 }
 
 function formatWorkoutTitle(workout: WorkoutWithDetails): string {
   const description = workout.description || 'Workout'
 
-  if (workout.distance_target_meters) {
+  // Check if description already contains distance information (e.g., "10km", "15km", "5K")
+  const hasDistanceInDescription = /\d+\.?\d*\s?(km|k|miles?|mi)\b/i.test(description)
+
+  let title = description
+  if (workout.distance_target_meters && !hasDistanceInDescription) {
     const km = (workout.distance_target_meters / 1000).toFixed(1)
-    return `${description} ${km}km`
-  }
-
-  if (workout.duration_target_seconds) {
+    title = `${description} ${km}km`
+  } else if (workout.duration_target_seconds) {
     const mins = Math.round(workout.duration_target_seconds / 60)
-    return `${description} ${mins}min`
+    title = `${description} ${mins}min`
   }
 
-  return description
+  // Add red flag if there's a validation warning
+  if (workout.validation_warning) {
+    title = `🚩 ${title}`
+  }
+
+  return title
 }
 
-export function TrainingCalendar({ workouts, onWorkoutSelect }: TrainingCalendarProps) {
+export function TrainingCalendar({ workouts, trainingPaces, vdot, onWorkoutSelect }: TrainingCalendarProps) {
   const [selectedWorkout, setSelectedWorkout] = useState<WorkoutWithDetails | null>(null)
   const [view, setView] = useState<View>('month')
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -179,6 +189,8 @@ export function TrainingCalendar({ workouts, onWorkoutSelect }: TrainingCalendar
           {selectedWorkout && (
             <WorkoutCard
               workout={selectedWorkout}
+              trainingPaces={trainingPaces}
+              vdot={vdot}
               onClose={() => setSelectedWorkout(null)}
             />
           )}

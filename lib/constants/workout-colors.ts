@@ -3,7 +3,8 @@ export const WORKOUT_COLORS: Record<string, string> = {
   'easy_run': '#10b981',      // Green
   'long_run': '#3b82f6',      // Blue
   'tempo': '#fb923c',         // Orange-red (was amber, now more red/orange)
-  'intervals': '#ef4444',     // Red
+  'intervals': '#ec4899',     // Magenta/pink - high intensity, distinct from red flag emoji
+  'race': '#eab308',          // Gold/yellow - goal achievement
   'race_pace': '#8b5cf6',     // Purple
   'recovery': '#86efac',      // Lighter green (for recovery runs)
   'rest': '#94a3b8',          // Gray

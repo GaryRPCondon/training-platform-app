@@ -2,6 +2,45 @@ import { createClient } from '@/lib/supabase/client'
 import type { PlanReviewContext, WeekViewData, WorkoutWithDetails } from '@/types/review'
 import { parseISO, format, endOfWeek } from 'date-fns'
 
+// Distance ranges for validation (same as workout-validator.ts)
+const DISTANCE_RANGES: Record<string, { min: number; max: number }> = {
+  intervals: { min: 8000, max: 18000 },
+  tempo: { min: 10000, max: 22000 },
+  easy_run: { min: 3000, max: 20000 },
+  long_run: { min: 15000, max: 50000 },
+  recovery: { min: 3000, max: 12000 },
+  cross_training: { min: 0, max: 0 },
+  rest: { min: 0, max: 0 },
+  race: { min: 5000, max: 100000 }
+}
+
+function validateWorkout(workout: any): WorkoutWithDetails['validation_warning'] {
+  // Skip workouts without distance
+  if (!workout.distance_target_meters || workout.distance_target_meters === 0) {
+    return undefined
+  }
+
+  const workoutType = workout.workout_type?.toLowerCase()
+  const range = DISTANCE_RANGES[workoutType]
+
+  // Skip if no range defined or validation not needed
+  if (!range || (range.min === 0 && range.max === 0)) {
+    return undefined
+  }
+
+  // Check if distance is outside expected range
+  const actualDistance = workout.distance_target_meters
+  if (actualDistance < range.min || actualDistance > range.max) {
+    return {
+      message: `Possible LLM hallucination: Distance is ${(actualDistance / 1000).toFixed(1)}km, but expected ${(range.min / 1000).toFixed(1)}-${(range.max / 1000).toFixed(1)}km for ${workout.workout_type}`,
+      expectedRange: range,
+      actualDistance
+    }
+  }
+
+  return undefined
+}
+
 export async function loadPlanForReview(planId: number): Promise<PlanReviewContext> {
   const supabase = createClient()
 
@@ -23,6 +62,9 @@ export async function loadPlanForReview(planId: number): Promise<PlanReviewConte
       status,
       template_id,
       template_version,
+      vdot,
+      training_paces,
+      pace_source,
       created_at,
       athlete_goals (
         goal_name,
@@ -82,7 +124,8 @@ export async function loadPlanForReview(planId: number): Promise<PlanReviewConte
       date: parseISO(workout.scheduled_date),
       formatted_date: format(parseISO(workout.scheduled_date), 'EEE, MMM d'),
       phase_name: phase?.phase_name || 'unknown',
-      week_of_plan: week.week_number || 0
+      week_of_plan: week.week_number || 0,
+      validation_warning: validateWorkout(workout)
     }))
 
     return {
@@ -114,6 +157,8 @@ export async function loadPlanForReview(planId: number): Promise<PlanReviewConte
     status: plan.status,
     total_weeks: totalWeeks,
     current_week: currentWeek,
+    vdot: plan.vdot || null,
+    training_paces: plan.training_paces || null,
     phases: (plan.training_phases as any[]).sort((a, b) => a.phase_order - b.phase_order),
     weeks: weeks
   }
