@@ -193,33 +193,36 @@ export async function writePlanToDatabase(
 
 /**
  * Delete all weekly plans and workouts for a plan (for regeneration)
+ * FIXED: Now correctly deletes only weekly plans for THIS plan's phases
  */
 export async function clearPlanWorkouts(planId: number, supabase: SupabaseClient) {
-  // Get athlete_id first
-  const { data: plan } = await supabase
-    .from('training_plans')
-    .select('athlete_id')
-    .eq('id', planId)
-    .single()
-
-  if (!plan) throw new Error('Plan not found')
-
-  // Delete weekly plans (cascade will delete workouts)
-  const { data: weeklyPlans } = await supabase
-    .from('weekly_plans')
+  // Get all phases for this plan
+  const { data: phases, error: phasesError } = await supabase
+    .from('training_phases')
     .select('id')
-    .eq('athlete_id', plan.athlete_id)
+    .eq('plan_id', planId)
 
-  if (weeklyPlans) {
-    await supabase
-      .from('weekly_plans')
-      .delete()
-      .in('id', weeklyPlans.map(w => w.id))
+  if (phasesError) throw phasesError
+  if (!phases || phases.length === 0) {
+    // No phases = no workouts to delete, just return
+    return
   }
 
-  // Delete phases
-  await supabase
+  const phaseIds = phases.map(p => p.id)
+
+  // Delete weekly plans for these phases (cascade will delete workouts)
+  const { error: weeklyPlansError } = await supabase
+    .from('weekly_plans')
+    .delete()
+    .in('phase_id', phaseIds)
+
+  if (weeklyPlansError) throw weeklyPlansError
+
+  // Delete the phases themselves
+  const { error: phasesDeleteError } = await supabase
     .from('training_phases')
     .delete()
     .eq('plan_id', planId)
+
+  if (phasesDeleteError) throw phasesDeleteError
 }
