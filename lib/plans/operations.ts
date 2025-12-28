@@ -555,7 +555,15 @@ export function previewOperations(
           const after = { ...before }
 
           if (op.op === 'change_workout_type') {
-            after.type = (op as any).newType
+            const newType = (op as any).newType
+            after.type = newType
+
+            // Use shared helper to get smart defaults for preview
+            const defaults = getWorkoutTypeDefaults(newType, workout.distance_km)
+            if (defaults.description) after.description = defaults.description
+            if (defaults.distance_target_meters !== undefined) {
+              after.distanceKm = defaults.distance_target_meters / 1000
+            }
           } else if (op.op === 'change_workout_distance') {
             after.distanceKm = (op as any).newDistanceMeters / 1000
           } else if (op.op === 'scale_workout_distance') {
@@ -790,8 +798,29 @@ export async function applyOperations(
       })
     )
 
+    // Sort operations to ensure dependencies are applied in correct order
+    // Distance/intensity changes should happen before type changes so auto-generated
+    // descriptions (like "10.0 mile race") use the updated distance
+    const sortedOperations = [...resolvedOperations].sort((a, b) => {
+      const priorityOrder: Record<string, number> = {
+        'change_workout_distance': 1,
+        'scale_workout_distance': 1,
+        'change_intensity': 2,
+        'change_workout_type': 3,
+        'reschedule_workout': 4,
+        'swap_days': 5,
+        'move_workout_type': 5,
+        'remove_workout_type': 6,
+        'scale_week_volume': 7,
+        'scale_phase_volume': 8
+      }
+      const aPriority = priorityOrder[a.op] || 99
+      const bPriority = priorityOrder[b.op] || 99
+      return aPriority - bPriority
+    })
+
     // Apply each operation
-    for (const op of resolvedOperations) {
+    for (const op of sortedOperations) {
       const result = await applySingleOperation(op, planId, planContext, supabase)
       if (result.success) {
         operationsApplied++
@@ -910,6 +939,83 @@ async function applySingleOperation(
       errors: [error instanceof Error ? error.message : 'Unknown error']
     }
   }
+}
+
+// ============================================================================
+// Shared Helper: Smart Defaults for Workout Types
+// ============================================================================
+
+/**
+ * Generate smart defaults for a workout type change
+ * Returns the fields that should be updated based on the new type
+ *
+ * @param newType - The new workout type
+ * @param currentDistanceKm - Current distance in kilometers (for race description)
+ * @returns Object with fields to update (description, distance_target_meters, etc.)
+ */
+function getWorkoutTypeDefaults(
+  newType: string,
+  currentDistanceKm?: number | null
+): {
+  description?: string
+  intensity_target?: string
+  distance_target_meters?: number
+  duration_target_seconds?: number | null
+} {
+  const updates: any = {}
+
+  switch (newType) {
+    case 'race': {
+      const distanceMiles = currentDistanceKm
+        ? (currentDistanceKm / 1.60934).toFixed(1)
+        : ''
+      updates.description = distanceMiles ? `${distanceMiles} mile race` : 'Race'
+      updates.intensity_target = 'hard'
+      break
+    }
+    case 'long_run':
+      updates.description = 'Long run'
+      updates.intensity_target = 'moderate'
+      break
+    case 'tempo':
+      updates.description = 'Tempo run'
+      updates.intensity_target = 'hard'
+      break
+    case 'intervals':
+    case 'speed':
+      updates.description = 'Interval training'
+      updates.intensity_target = 'hard'
+      break
+    case 'easy_run':
+    case 'easy':
+      updates.description = 'Easy run'
+      updates.intensity_target = 'easy'
+      break
+    case 'rest':
+      updates.description = 'Rest day'
+      updates.intensity_target = 'easy'
+      updates.distance_target_meters = 0
+      updates.duration_target_seconds = null
+      break
+    case 'recovery':
+      updates.description = 'Recovery'
+      updates.intensity_target = 'easy'
+      // Keep distance for recovery workouts
+      break
+    case 'progression':
+      updates.description = 'Progression run'
+      updates.intensity_target = 'moderate'
+      break
+    case 'cross_training':
+      updates.description = 'Cross training'
+      updates.intensity_target = 'easy'
+      break
+    default:
+      updates.description = newType
+      break
+  }
+
+  return updates
 }
 
 // ============================================================================
@@ -1107,9 +1213,29 @@ async function executeChangeWorkoutType(
     }
   }
 
+  // Get current workout to access distance for smart description generation
+  const { data: workout, error: fetchError } = await supabase
+    .from('planned_workouts')
+    .select('distance_target_meters')
+    .eq('id', workoutId)
+    .single()
+
+  if (fetchError) {
+    return { success: false, workoutsModified: 0, errors: [fetchError.message] }
+  }
+
   const update: Record<string, any> = { workout_type: op.newType }
+
+  // Auto-generate description and intensity if not explicitly provided
   if (op.newDescription) {
     update.description = op.newDescription
+  } else {
+    // Use shared helper to get smart defaults
+    const distanceKm = workout?.distance_target_meters
+      ? workout.distance_target_meters / 1000
+      : null
+    const defaults = getWorkoutTypeDefaults(op.newType, distanceKm)
+    Object.assign(update, defaults)
   }
 
   const { error } = await supabase

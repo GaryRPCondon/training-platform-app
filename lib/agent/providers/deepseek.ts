@@ -1,4 +1,4 @@
-import { LLMProvider, LLMResponse, LLMRequest } from '../provider-interface'
+import { LLMProvider, LLMResponse, LLMRequest, ToolCall } from '../provider-interface'
 
 export class DeepSeekProvider implements LLMProvider {
     private apiKey: string
@@ -21,18 +21,34 @@ export class DeepSeekProvider implements LLMProvider {
 
         messages.push(...params.messages)
 
+        // Convert tools to OpenAI-compatible format
+        const tools = params.tools?.map(tool => ({
+            type: 'function' as const,
+            function: {
+                name: tool.name,
+                description: tool.description,
+                parameters: tool.parameters
+            }
+        }))
+
+        const requestBody: any = {
+            model: this.modelName,
+            messages,
+            max_tokens: params.maxTokens || 2000,
+            temperature: params.temperature || 0.7
+        }
+
+        if (tools) {
+            requestBody.tools = tools
+        }
+
         const response = await fetch(`${this.baseURL}/chat/completions`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${this.apiKey}`
             },
-            body: JSON.stringify({
-                model: this.modelName,
-                messages,
-                max_tokens: params.maxTokens || 2000,
-                temperature: params.temperature || 0.7
-            })
+            body: JSON.stringify(requestBody)
         })
 
         if (!response.ok) {
@@ -48,6 +64,20 @@ export class DeepSeekProvider implements LLMProvider {
         // deepseek-reasoner (R1) may return reasoning_content + content
         const message = data.choices?.[0]?.message
         let content = message?.content || ''
+
+        // Extract tool calls (OpenAI-compatible format)
+        const toolCalls: ToolCall[] = []
+        if (message?.tool_calls) {
+            for (const tc of message.tool_calls) {
+                if (tc.type === 'function') {
+                    toolCalls.push({
+                        id: tc.id,
+                        name: tc.function.name,
+                        arguments: JSON.parse(tc.function.arguments)
+                    })
+                }
+            }
+        }
 
         // If content is empty but reasoning_content exists (R1 model),
         // the model might have put the response there
@@ -65,8 +95,8 @@ export class DeepSeekProvider implements LLMProvider {
             }
         }
 
-        // If still empty, throw an error
-        if (!content) {
+        // If still empty and no tool calls, throw an error
+        if (!content && toolCalls.length === 0) {
             console.error('DeepSeek returned empty content. Full response:', JSON.stringify(data, null, 2))
             throw new Error('DeepSeek returned empty response. The model may be overloaded or the request timed out.')
         }
@@ -77,7 +107,8 @@ export class DeepSeekProvider implements LLMProvider {
             usage: {
                 inputTokens: data.usage?.prompt_tokens || 0,
                 outputTokens: data.usage?.completion_tokens || 0
-            }
+            },
+            toolCalls: toolCalls.length > 0 ? toolCalls : undefined
         }
     }
 }

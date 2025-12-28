@@ -35,14 +35,14 @@ import {
   formatValidationErrors
 } from '@/lib/chat/regeneration-prompts'
 import {
-  buildOperationPrompt,
-  parseOperationResponse
+  buildOperationPrompt
 } from '@/lib/chat/operation-prompts'
 import {
   validateOperations,
   previewOperations,
   describeOperation
 } from '@/lib/plans/operations'
+import { OPERATION_TOOLS } from '@/lib/plans/operation-tools'
 import { calculateMaxTokens, estimateTokens } from '@/lib/chat/token-budget'
 import { writeFileSync } from 'fs'
 import { join } from 'path'
@@ -147,8 +147,8 @@ export async function POST(request: Request) {
       // Max tokens for operations response (small - just operations list)
       const maxTokens = 1000
 
-      // Call LLM
-      console.log(`[Regenerate] Calling LLM for operations...`)
+      // Call LLM with tool calling
+      console.log(`[Regenerate] Calling LLM for operations (using tool calling)...`)
       const llmStartTime = Date.now()
 
       const response = await provider.generateResponse({
@@ -156,14 +156,14 @@ export async function POST(request: Request) {
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
+        tools: OPERATION_TOOLS,
+        toolChoice: 'auto',
         maxTokens,
         temperature: 0.2 // Lower temperature for consistent operations
       })
 
       const llmDuration = ((Date.now() - llmStartTime) / 1000).toFixed(2)
       console.log(`[Regenerate] LLM responded in ${llmDuration}s`)
-
-      const llmResponse = response.content
 
       // Log response for debugging
       const timestamp = new Date().toISOString().replace(/:/g, '-')
@@ -180,46 +180,54 @@ export async function POST(request: Request) {
           generationTimeSeconds: parseFloat(llmDuration),
           systemPrompt,
           userPrompt,
-          rawResponse: llmResponse
+          rawResponse: response.content,
+          toolCalls: response.toolCalls
         }, null, 2))
         console.log(`[Regenerate] Logged response to ${logPath}`)
       } catch (err) {
         console.error('[Regenerate] Failed to write log file:', err)
       }
 
-      // Parse operation response
-      const parsed = parseOperationResponse(llmResponse)
-
-      if (!parsed.success) {
-        console.error('[Regenerate] Failed to parse operations:', parsed.error)
-        console.error('[Regenerate] Raw LLM response:', llmResponse.substring(0, 500))
+      // Extract operations from tool calls
+      if (!response.toolCalls || response.toolCalls.length === 0) {
+        console.error('[Regenerate] No tool calls received from LLM')
+        console.error('[Regenerate] Response content:', response.content.substring(0, 500))
         return NextResponse.json(
           {
-            error: 'Failed to parse LLM response',
-            details: parsed.error,
-            raw_response: llmResponse.substring(0, 1000)
+            error: 'No operations received from LLM',
+            details: 'LLM did not call any operation tools',
+            raw_response: response.content.substring(0, 1000)
           },
           { status: 500 }
         )
       }
 
+      // Convert tool calls to operations format
+      const operations = response.toolCalls.map(tc => ({
+        op: tc.name,
+        ...tc.arguments
+      }))
+
+      console.log(`[Regenerate] Received ${operations.length} operations from tool calls`)
+
       // Check for fallback request
-      if (parsed.fallback) {
-        console.log(`[Regenerate] LLM requested fallback: ${parsed.fallback.reason}`)
+      const fallbackOp = operations.find((op: any) => op.op === 'request_fallback') as any
+      if (fallbackOp) {
+        const reason = fallbackOp.reason || 'Complex request requires full regeneration'
+        console.log(`[Regenerate] LLM requested fallback: ${reason}`)
         return NextResponse.json({
           success: true,
           mode: 'fallback_required',
-          reason: parsed.fallback.reason,
+          reason,
           estimated_time: '5-10 minutes',
           user_message: `This modification is complex and requires regenerating affected weeks. This typically takes 5-10 minutes with ${providerName}. Would you like to proceed?`
         })
       }
 
       // Validate operations
-      const operations = parsed.operations || []
-      console.log(`[Regenerate] Parsed ${operations.length} operations`)
+      console.log(`[Regenerate] Validating ${operations.length} operations`)
 
-      const validation = validateOperations(operations, planContext)
+      const validation = validateOperations(operations as any, planContext)
       if (!validation.valid) {
         console.warn('[Regenerate] Operation validation errors:', validation.errors)
       }
@@ -228,7 +236,7 @@ export async function POST(request: Request) {
       }
 
       // Generate preview
-      const previews = previewOperations(operations, planContext)
+      const previews = previewOperations(operations as any, planContext)
 
       // Get week_starts_on for day name conversion
       const weekStartsOn = planContext.athlete_constraints.week_starts_on ?? 0
@@ -237,15 +245,20 @@ export async function POST(request: Request) {
       console.log(`[Regenerate] Sending ${operations.length} operations to UI:`,
         operations.map((op: any) => ({ op: op?.op, hasDescription: !!op })))
 
+      // Generate summary from operations
+      const summary = operations.length === 1
+        ? describeOperation(operations[0] as any, weekStartsOn)
+        : `${operations.length} plan modifications`
+
       // Return operations preview
       return NextResponse.json({
         success: true,
         mode: 'operations',
         preview: {
-          summary: parsed.summary || 'Plan modifications',
+          summary,
           operations: operations.map((op: any) => ({
             ...op,
-            description: describeOperation(op, weekStartsOn)
+            description: describeOperation(op as any, weekStartsOn)
           })),
           affected_workouts: previews.flatMap(p => p.affectedWorkouts),
           validation: {

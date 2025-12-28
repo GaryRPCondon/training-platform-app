@@ -1,3 +1,15 @@
+export interface ToolDefinition {
+    name: string
+    description: string
+    parameters: Record<string, unknown>  // JSON Schema
+}
+
+export interface ToolCall {
+    id: string
+    name: string
+    arguments: Record<string, unknown>
+}
+
 export interface LLMResponse {
     content: string
     model: string
@@ -5,6 +17,7 @@ export interface LLMResponse {
         inputTokens: number
         outputTokens: number
     }
+    toolCalls?: ToolCall[]
 }
 
 export interface LLMRequest {
@@ -15,6 +28,8 @@ export interface LLMRequest {
     systemPrompt?: string
     maxTokens?: number
     temperature?: number
+    tools?: ToolDefinition[]
+    toolChoice?: 'auto' | 'none' | { type: 'function'; function: { name: string } }
 }
 
 export interface LLMProvider {

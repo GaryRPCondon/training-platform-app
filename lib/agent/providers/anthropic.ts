@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { LLMProvider, LLMRequest, LLMResponse } from '../provider-interface'
+import { LLMProvider, LLMRequest, LLMResponse, ToolCall } from '../provider-interface'
 
 export class AnthropicProvider implements LLMProvider {
     private client: Anthropic
@@ -20,21 +20,46 @@ export class AnthropicProvider implements LLMProvider {
                 content: m.content,
             }))
 
+        // Convert tools to Anthropic's format
+        const tools = request.tools?.map(tool => ({
+            name: tool.name,
+            description: tool.description,
+            input_schema: tool.parameters
+        }))
+
         const response = await this.client.messages.create({
             model: this.modelName,
             max_tokens: request.maxTokens || 1024,
             temperature: request.temperature,
             system: systemMessage,
             messages: messages,
+            tools: tools as any
         })
 
+        // Extract text content
+        let text = ''
+        const toolCalls: ToolCall[] = []
+
+        for (const block of response.content) {
+            if (block.type === 'text') {
+                text += block.text
+            } else if (block.type === 'tool_use') {
+                toolCalls.push({
+                    id: block.id,
+                    name: block.name,
+                    arguments: block.input as Record<string, unknown>
+                })
+            }
+        }
+
         return {
-            content: response.content[0].type === 'text' ? response.content[0].text : '',
+            content: text,
             model: response.model,
             usage: {
                 inputTokens: response.usage.input_tokens,
                 outputTokens: response.usage.output_tokens,
             },
+            toolCalls: toolCalls.length > 0 ? toolCalls : undefined
         }
     }
 }

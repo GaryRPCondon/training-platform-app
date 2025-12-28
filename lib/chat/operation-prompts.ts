@@ -41,42 +41,16 @@ export function buildOperationPrompt(request: OperationRequest): {
 }
 
 /**
- * System prompt for operation extraction
+ * System prompt for operation extraction using tool calling
  */
 function buildOperationSystemPrompt(): string {
-  return `You are a training plan modification assistant. Your job is to translate natural language requests into structured operations.
+  return `You are a training plan modification assistant. Your job is to translate natural language requests into structured operation tool calls.
 
 ## Your Task
 
 1. **Understand the user's request** - What do they want to change?
-2. **Output operations** - Discrete, atomic changes that code will apply
-3. **Request fallback** if the change is too complex for operations
-
-## Available Operations
-
-### Schedule Changes (Bulk)
-Use these for patterns across multiple weeks:
-\`\`\`json
-{ "op": "swap_days", "weekNumbers": [1,2,3] | "all", "dayA": 1, "dayB": 6 }
-{ "op": "move_workout_type", "workoutType": "long_run", "toDay": 6, "weekNumbers": [1,2,3] | "all" }
-\`\`\`
-
-### Workout Modifications (Specific Workouts)
-Use workout indices (e.g., "W14:D6") when user references specific workouts:
-\`\`\`json
-{ "op": "reschedule_workout", "workoutIndex": "W14:D6", "newDate": "2025-01-15" }
-{ "op": "change_workout_type", "workoutIndex": "W14:D4", "newType": "rest" }
-{ "op": "change_workout_distance", "workoutIndex": "W14:D6", "newDistanceMeters": 16093 }
-{ "op": "scale_workout_distance", "workoutIndex": "W5:D3", "factor": 0.8 }
-\`\`\`
-
-### Bulk Operations
-Use these to modify multiple workouts by type or week:
-\`\`\`json
-{ "op": "remove_workout_type", "workoutType": "speed", "replacement": "easy", "weekNumbers": [14] }
-{ "op": "scale_week_volume", "weekNumber": 5, "factor": 0.8 }
-{ "op": "scale_phase_volume", "phaseName": "Taper", "factor": 0.7 }
-\`\`\`
+2. **Call operation tools** - Use the provided tools to express discrete, atomic changes
+3. **Call request_fallback tool** if the change is too complex for operations
 
 ## Day Numbers
 
@@ -88,42 +62,19 @@ The current plan's week start is shown in the context.
 
 ## Common Translations
 
-| User Request | Operations |
+| User Request | Tool Calls |
 |--------------|------------|
-| "Move rest days to Saturday" | \`{ "op": "move_workout_type", "workoutType": "rest", "toDay": 6, "weekNumbers": "all" }\` |
-| "Put long runs on Sundays" | \`{ "op": "move_workout_type", "workoutType": "long_run", "toDay": 7, "weekNumbers": "all" }\` |
-| "Remove W14:D4" | \`{ "op": "change_workout_type", "workoutIndex": "W14:D4", "newType": "rest" }\` |
-| "Change W14:D6 to a 10 mile race" | \`{ "op": "change_workout_type", "workoutIndex": "W14:D6", "newType": "race" }\`, \`{ "op": "change_workout_distance", "workoutIndex": "W14:D6", "newDistanceMeters": 16093 }\` |
-| "Make week 5 easier" | \`{ "op": "scale_week_volume", "weekNumber": 5, "factor": 0.8 }\` |
-| "Swap Monday and Friday" | \`{ "op": "swap_days", "weekNumbers": "all", "dayA": 1, "dayB": 5 }\` |
-| "Reduce taper week volume" | \`{ "op": "scale_phase_volume", "phaseName": "Taper", "factor": 0.7 }\` |
+| "Move rest days to Saturday" | move_workout_type(workoutType="rest", toDay=6, weekNumbers="all") |
+| "Put long runs on Sundays" | move_workout_type(workoutType="long_run", toDay=7, weekNumbers="all") |
+| "Remove W14:D4" | change_workout_type(workoutIndex="W14:D4", newType="rest") |
+| "Change W14:D6 to a 10 mile race" | change_workout_type(workoutIndex="W14:D6", newType="race") + change_workout_distance(workoutIndex="W14:D6", newDistanceMeters=16093) |
+| "Make week 5 easier" | scale_week_volume(weekNumber=5, factor=0.8) |
+| "Swap Monday and Friday" | swap_days(weekNumbers="all", dayA=1, dayB=5) |
+| "Reduce taper week volume" | scale_phase_volume(phaseName="Taper", factor=0.7) |
 
-## Output Format
+## When to Use request_fallback
 
-Return a JSON object with either operations OR a fallback request:
-
-### Success (Operations)
-\`\`\`json
-{
-  "operations": [
-    { "op": "move_workout_type", "workoutType": "rest", "toDay": 6, "weekNumbers": "all" },
-    { "op": "move_workout_type", "workoutType": "long_run", "toDay": 7, "weekNumbers": "all" }
-  ],
-  "summary": "Moving rest days to Saturday and long runs to Sunday across all weeks"
-}
-\`\`\`
-
-### Fallback (Complex Request)
-\`\`\`json
-{
-  "fallback": true,
-  "reason": "This request requires restructuring workout sequences that cannot be expressed as simple operations. Full plan regeneration is needed."
-}
-\`\`\`
-
-## When to Fallback
-
-Use fallback for requests that:
+Use request_fallback for requests that:
 - Require adding or removing workouts (changing days per week)
 - Need complex interdependent changes across weeks
 - Require rewriting workout descriptions or structures
@@ -131,12 +82,10 @@ Use fallback for requests that:
 
 ## Rules
 
-1. **Use the fewest operations** - Combine when possible
+1. **Use the fewest tool calls** - Multiple operations can be combined
 2. **Preserve original data** - Operations modify specific fields only
 3. **Use "all" for week ranges** when the user wants changes everywhere
-4. **Fallback if unsure** - It's better to fall back than produce wrong operations
-
-Return ONLY the JSON object. No explanatory text.`
+4. **Call request_fallback if unsure** - It's better to fall back than produce wrong operations`
 }
 
 /**
@@ -171,13 +120,17 @@ function buildOperationUserPrompt(request: OperationRequest): string {
   }
   prompt += `**Workout Types Used**: ${Array.from(workoutTypes).join(', ')}\n\n`
 
-  // Current week structure (sample first few weeks)
+  // Current week structure (sample first few weeks with dates)
   prompt += `## Week Structure Sample\n\n`
   const sampleWeeks = planContext.weeks.slice(0, 3) // Show first 3 weeks
   for (const week of sampleWeeks) {
-    prompt += `**Week ${week.week_number}** (${week.phase_name}):\n`
+    prompt += `**Week ${week.week_number}** (${week.phase_name}, starts ${week.week_start_date}):\n`
     for (const workout of week.workouts) {
-      prompt += `  Day ${workout.day}: ${workout.workout_type}`
+      // Format date as "Mon, Mar 22" for readability
+      const date = new Date(workout.scheduled_date)
+      const dateStr = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+
+      prompt += `  ${workout.workout_index} - ${dateStr}: ${workout.workout_type}`
       if (workout.distance_km) {
         prompt += ` (${workout.distance_km.toFixed(1)}km)`
       }
@@ -189,6 +142,24 @@ function buildOperationUserPrompt(request: OperationRequest): string {
   if (planContext.weeks.length > 3) {
     prompt += `... and ${planContext.weeks.length - 3} more weeks with similar structure.\n\n`
   }
+
+  // Add date range reference for the entire plan
+  prompt += `**Plan Date Range**: ${planContext.plan.start_date} to ${planContext.plan.end_date}\n\n`
+
+  // Add complete date-to-index mapping for date-based requests
+  prompt += `## Date Reference (for date-based requests)\n\n`
+  prompt += `When the user mentions a specific date, use this reference to find the workout index:\n\n`
+
+  // Show all workouts with their dates grouped by week
+  for (const week of planContext.weeks) {
+    const workoutDates = week.workouts.map(w => {
+      const date = new Date(w.scheduled_date)
+      const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      return `${w.workout_index}=${dateStr}`
+    }).join(', ')
+    prompt += `Week ${week.week_number}: ${workoutDates}\n`
+  }
+  prompt += `\n`
 
   // Phase breakdown
   prompt += `## Phase Breakdown\n\n`
@@ -210,172 +181,14 @@ function buildOperationUserPrompt(request: OperationRequest): string {
 }
 
 /**
- * Parse LLM response for operations
+ * Note: parseOperationResponse has been removed.
  *
- * @param response - Raw LLM response
- * @returns Parsed operations or fallback request
+ * We now use tool calling (function calling) which guarantees structured output
+ * across all LLM providers. Operations come back as toolCalls[] with guaranteed
+ * schema compliance, eliminating the need for JSON parsing and normalization.
+ *
+ * See:
+ * - lib/plans/operation-tools.ts for tool definitions
+ * - lib/agent/provider-interface.ts for ToolCall interface
+ * - app/api/plans/regenerate/route.ts for usage
  */
-export function parseOperationResponse(response: string): {
-  success: boolean
-  operations?: any[]
-  summary?: string
-  fallback?: { reason: string }
-  error?: string
-} {
-  try {
-    // Extract JSON from response
-    const jsonMatch = response.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
-      return { success: false, error: 'No JSON found in response' }
-    }
-
-    const parsed = JSON.parse(jsonMatch[0])
-
-    // Debug: Log what LLM returned
-    console.log('[parseOperationResponse] Parsed LLM response:', JSON.stringify(parsed, null, 2))
-
-    // Check for fallback
-    if (parsed.fallback === true) {
-      return {
-        success: true,
-        fallback: { reason: parsed.reason || 'Complex request requires full regeneration' }
-      }
-    }
-
-    // Handle Gemini returning singular "operation" instead of "operations" array
-    let operations = parsed.operations
-    if (!operations && parsed.operation) {
-      console.log('[parseOperationResponse] Gemini returned singular "operation", wrapping in array')
-      operations = [parsed.operation]
-    }
-
-    // Check for operations
-    if (Array.isArray(operations)) {
-      // Normalize operations (handle different LLM formats)
-      const normalizedOps = operations.map((op: any, idx: number) => {
-        if (!op || typeof op !== 'object') {
-          console.error(`[parseOperationResponse] Operation ${idx} is not an object:`, op)
-          return null
-        }
-
-        // If already in correct format, return as-is
-        if (op.op && typeof op.op === 'string') {
-          return op
-        }
-
-        // Handle Gemini's format (operation_type, week_index, day_index, etc.)
-        if (op.operation_type === 'update_workout') {
-          console.log(`[parseOperationResponse] Normalizing Gemini format for operation ${idx}`)
-
-          const weekIndex = op.week_index || op.weekNumber
-          const dayIndex = op.day_index || op.dayNumber
-          const workoutIndex = `W${weekIndex}:D${dayIndex}`
-
-          const normalized: any[] = []
-
-          // Change type if specified
-          if (op.workout_type) {
-            // Generate appropriate description and intensity for the workout type
-            let description = op.workout_type
-            let intensity = 'easy'
-
-            if (op.workout_type === 'race') {
-              const distanceMiles = op.distance_km ? (op.distance_km / 1.60934).toFixed(1) : ''
-              description = distanceMiles ? `${distanceMiles} mile race` : 'Race'
-              intensity = 'hard'
-            } else if (op.workout_type === 'long_run') {
-              description = 'Long run'
-              intensity = 'moderate'
-            } else if (op.workout_type === 'tempo') {
-              description = 'Tempo run'
-              intensity = 'hard'
-            } else if (op.workout_type === 'intervals' || op.workout_type === 'speed') {
-              description = 'Interval training'
-              intensity = 'hard'
-            } else if (op.workout_type === 'easy_run' || op.workout_type === 'easy') {
-              description = 'Easy run'
-              intensity = 'easy'
-            } else if (op.workout_type === 'rest' || op.workout_type === 'recovery') {
-              description = 'Rest day'
-              intensity = 'easy'
-            }
-
-            // Add change_intensity operation to update intensity_target
-            normalized.push({
-              op: 'change_intensity',
-              workoutIndex,
-              newIntensity: intensity
-            })
-
-            normalized.push({
-              op: 'change_workout_type',
-              workoutIndex,
-              newType: op.workout_type,
-              newDescription: description
-            })
-          }
-
-          // Change distance if specified
-          if (op.distance_km) {
-            normalized.push({
-              op: 'change_workout_distance',
-              workoutIndex,
-              newDistanceMeters: Math.round(op.distance_km * 1000)
-            })
-          }
-
-          // Change date if specified
-          if (op.scheduled_date || op.newDate) {
-            normalized.push({
-              op: 'reschedule_workout',
-              workoutIndex,
-              newDate: op.scheduled_date || op.newDate
-            })
-          }
-
-          return normalized
-        }
-
-        console.error(`[parseOperationResponse] Operation ${idx} missing 'op' field and cannot normalize:`, op)
-        return null
-      })
-
-      // Flatten (in case we expanded Gemini ops) and filter nulls
-      const validOps = normalizedOps.flat().filter((op: any) => op !== null)
-
-      if (validOps.length === 0) {
-        return {
-          success: false,
-          error: `No valid operations found. Full response: ${JSON.stringify(parsed).substring(0, 500)}`
-        }
-      }
-
-      console.log(`[parseOperationResponse] Normalized ${parsed.operations.length} operations to ${validOps.length} operations`)
-
-      return {
-        success: true,
-        operations: validOps,
-        summary: parsed.summary || 'Plan modifications'
-      }
-    }
-
-    return { success: false, error: 'Invalid response format' }
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to parse response'
-    }
-  }
-}
-
-/**
- * Estimate token count for operation prompt
- * (Much smaller than full regeneration prompt)
- */
-export function estimateOperationTokens(request: OperationRequest): number {
-  // System prompt is ~1000 tokens
-  // User prompt is ~200-400 tokens (condensed context)
-  // Total: ~1200-1400 tokens input
-  // Expected output: ~50-200 tokens (just operations)
-  return 1500
-}
