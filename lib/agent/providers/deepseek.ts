@@ -44,8 +44,35 @@ export class DeepSeekProvider implements LLMProvider {
 
         const data = await response.json()
 
+        // Handle different DeepSeek model response formats
+        // deepseek-reasoner (R1) may return reasoning_content + content
+        const message = data.choices?.[0]?.message
+        let content = message?.content || ''
+
+        // If content is empty but reasoning_content exists (R1 model),
+        // the model might have put the response there
+        if (!content && message?.reasoning_content) {
+            // Try to extract JSON from reasoning content
+            const jsonMatch = message.reasoning_content.match(/```json\s*([\s\S]*?)\s*```/)
+            if (jsonMatch) {
+                content = jsonMatch[1]
+            } else {
+                // Try to find any JSON object in the reasoning
+                const objMatch = message.reasoning_content.match(/\{[\s\S]*\}/)
+                if (objMatch) {
+                    content = objMatch[0]
+                }
+            }
+        }
+
+        // If still empty, throw an error
+        if (!content) {
+            console.error('DeepSeek returned empty content. Full response:', JSON.stringify(data, null, 2))
+            throw new Error('DeepSeek returned empty response. The model may be overloaded or the request timed out.')
+        }
+
         return {
-            content: data.choices[0].message.content,
+            content,
             model: this.modelName,
             usage: {
                 inputTokens: data.usage?.prompt_tokens || 0,

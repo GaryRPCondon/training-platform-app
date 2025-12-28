@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 
@@ -13,6 +14,7 @@ export function AISettingsCard() {
     const [saving, setSaving] = useState(false)
     const [provider, setProvider] = useState('deepseek')
     const [model, setModel] = useState('')
+    const [useFastModel, setUseFastModel] = useState(true)
 
     useEffect(() => {
         fetchSettings()
@@ -29,6 +31,8 @@ export function AISettingsCard() {
                 if (data.model) {
                     setModel(data.model)
                 }
+                // Default to true if not set
+                setUseFastModel(data.useFastModelForOperations ?? true)
             }
         } catch (error) {
             console.error('Failed to fetch settings:', error)
@@ -44,7 +48,11 @@ export function AISettingsCard() {
             const response = await fetch('/api/settings/update', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ provider, model })
+                body: JSON.stringify({
+                    provider,
+                    model,
+                    useFastModelForOperations: useFastModel
+                })
             })
 
             if (!response.ok) throw new Error('Failed to update settings')
@@ -113,6 +121,25 @@ export function AISettingsCard() {
                     <p className="text-sm text-muted-foreground">
                         Override the default model. Leave empty to use default.
                     </p>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                    <Checkbox
+                        id="useFastModel"
+                        checked={useFastModel}
+                        onCheckedChange={(checked) => setUseFastModel(checked === true)}
+                    />
+                    <div className="grid gap-1.5 leading-none">
+                        <Label
+                            htmlFor="useFastModel"
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                            Use non-reasoning model for operations
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                            Uses faster models (e.g., deepseek-chat) for quick plan modifications instead of reasoning models. Recommended for faster response times.
+                        </p>
+                    </div>
                 </div>
 
                 <div className="flex justify-end">

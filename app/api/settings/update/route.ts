@@ -5,7 +5,7 @@ import { ensureAthleteExists } from '@/lib/supabase/ensure-athlete'
 export async function POST(request: Request) {
     try {
         const body = await request.json()
-        const { provider, model, preferred_units, week_starts_on } = body
+        const { provider, model, preferred_units, week_starts_on, useFastModelForOperations } = body
 
         const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()
@@ -26,6 +26,7 @@ export async function POST(request: Request) {
         if (model !== undefined) updates.preferred_llm_model = model || null
         if (preferred_units !== undefined) updates.preferred_units = preferred_units
         if (week_starts_on !== undefined) updates.week_starts_on = week_starts_on
+        if (useFastModelForOperations !== undefined) updates.use_fast_model_for_operations = useFastModelForOperations
 
         const { error } = await supabase
             .from('athletes')

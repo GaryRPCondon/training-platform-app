@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { TrainingCalendar } from '@/components/review/training-calendar'
 import { ChatPanel } from '@/components/review/chat-panel'
+import { PlanChatInterface } from '@/components/plans/plan-chat-interface'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, CheckCircle2, ArrowLeft, Trash2 } from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Loader2, CheckCircle2, ArrowLeft, Trash2, MessageSquare, Wand2 } from 'lucide-react'
 import { loadPlanForReview } from '@/lib/plans/review-loader'
 import type { PlanReviewContext, ReviewMessage, WorkoutWithDetails } from '@/types/review'
 import { createClient } from '@/lib/supabase/client'
@@ -296,16 +298,60 @@ export default function ReviewPage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* Chat Panel - Fixed 400px width */}
+        {/* Chat Panel - Tabbed interface */}
         <div className="h-full border-l overflow-hidden">
           {sessionId ? (
-            <ChatPanel
-              planId={planId}
-              sessionId={sessionId}
-              messages={messages}
-              onSendMessage={(msg) => sendMessage.mutateAsync(msg)}
-              isLoading={sendMessage.isPending}
-            />
+            <Tabs defaultValue="coach" className="h-full flex flex-col">
+              <div className="border-b px-4 pt-4 pb-2">
+                <TabsList className="w-full">
+                  <TabsTrigger value="coach" className="flex-1">
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    AI Coach
+                  </TabsTrigger>
+                  <TabsTrigger value="modify" className="flex-1">
+                    <Wand2 className="h-4 w-4 mr-2" />
+                    Modify Plan
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+
+              <TabsContent value="coach" className="flex-1 overflow-hidden mt-0">
+                <ChatPanel
+                  planId={planId}
+                  sessionId={sessionId}
+                  messages={messages}
+                  onSendMessage={(msg) => sendMessage.mutateAsync(msg)}
+                  isLoading={sendMessage.isPending}
+                />
+              </TabsContent>
+
+              <TabsContent value="modify" className="flex-1 overflow-auto mt-0 p-4">
+                <PlanChatInterface
+                  planId={planId}
+                  planName={context.plan_name}
+                  currentWeeks={context.weeks.map(w => ({
+                    week_number: w.week_number,
+                    phase_name: w.phase,
+                    weekly_volume_km: w.weekly_volume / 1000, // Convert meters to km
+                    workouts: w.workouts.map((workout, idx) => {
+                      // Extract day from workout_index (format: W#:D#) or fallback to index+1
+                      const dayMatch = workout.workout_index?.match(/:D(\d+)/)
+                      const day = dayMatch ? parseInt(dayMatch[1], 10) : idx + 1
+
+                      return {
+                        day,
+                        workout_type: workout.workout_type,
+                        description: workout.description || 'Rest',
+                        distance_km: workout.distance_target_meters ? workout.distance_target_meters / 1000 : null
+                      }
+                    })
+                  }))}
+                  onPlanUpdated={() => {
+                    queryClient.invalidateQueries({ queryKey: ['plan-review', planId] })
+                  }}
+                />
+              </TabsContent>
+            </Tabs>
           ) : (
             <div className="flex items-center justify-center h-full">
               <Loader2 className="h-6 w-6 animate-spin" />

@@ -89,7 +89,14 @@ export function TrainingCalendar({ workouts, trainingPaces, vdot, onWorkoutSelec
     queryFn: getAthleteProfile,
   })
 
-  const weekStartsOn = (athlete?.week_starts_on ?? 1) as 0 | 1 | 2 | 3 | 4 | 5 | 6
+  const weekStartsOn = (athlete?.week_starts_on ?? 0) as 0 | 1 | 2 | 3 | 4 | 5 | 6 // Default to Sunday if not set
+
+  // Update moment locale to use the preferred week start day
+  moment.updateLocale('en', {
+    week: {
+      dow: weekStartsOn, // 0 = Sunday, 1 = Monday, etc.
+    }
+  })
 
   const events: WorkoutEvent[] = useMemo(() => {
     return workouts.map(workout => ({
