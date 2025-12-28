@@ -4,14 +4,12 @@ import { use, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { TrainingCalendar } from '@/components/review/training-calendar'
-import { ChatPanel } from '@/components/review/chat-panel'
 import { PlanChatInterface } from '@/components/plans/plan-chat-interface'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Loader2, CheckCircle2, ArrowLeft, Trash2, MessageSquare, Wand2 } from 'lucide-react'
+import { Loader2, CheckCircle2, ArrowLeft, Trash2 } from 'lucide-react'
 import { loadPlanForReview } from '@/lib/plans/review-loader'
-import type { PlanReviewContext, ReviewMessage, WorkoutWithDetails } from '@/types/review'
+import type { PlanReviewContext, WorkoutWithDetails } from '@/types/review'
 import { createClient } from '@/lib/supabase/client'
 import { activatePlan } from '@/lib/supabase/plan-activation'
 import { toast } from 'sonner'
@@ -26,9 +24,7 @@ export default function ReviewPage({ params }: PageProps) {
   const { planId: planIdString } = use(params)
   const planId = parseInt(planIdString, 10)
 
-  const [sessionId, setSessionId] = useState<number | null>(null)
   const [athleteId, setAthleteId] = useState<string | null>(null)
-
   const supabase = createClient()
 
   // Get authenticated user
@@ -47,116 +43,6 @@ export default function ReviewPage({ params }: PageProps) {
     queryKey: ['plan-review', planId],
     queryFn: () => loadPlanForReview(planId),
     enabled: !!planId
-  })
-
-  // Create or load chat session
-  useEffect(() => {
-    async function initSession() {
-      if (!athleteId || !planId) return
-
-      // Check for existing session
-      // FIX #1: Use 'general' session_type instead of 'plan_review'
-      // FIX #2: Store plan_id in context field, not as direct column
-      const { data: existingSessions } = await supabase
-        .from('chat_sessions')
-        .select('id, context')
-        .eq('athlete_id', athleteId)
-        .eq('session_type', 'general')
-        .is('ended_at', null)
-        .order('started_at', { ascending: false })
-
-      // Find session with matching plan_id in context
-      const matchingSession = existingSessions?.find(
-        s => s.context?.plan_id === planId && s.context?.session_purpose === 'plan_review'
-      )
-
-      if (matchingSession) {
-        setSessionId(matchingSession.id)
-      } else {
-        // Create new session with plan_id in context
-        const { data: newSession, error } = await supabase
-          .from('chat_sessions')
-          .insert({
-            athlete_id: athleteId,
-            session_type: 'general',
-            context: {
-              plan_id: planId,
-              session_purpose: 'plan_review'
-            }
-          })
-          .select()
-          .single()
-
-        if (!error && newSession) {
-          setSessionId(newSession.id)
-        } else {
-          console.error('Error creating session:', error)
-          toast.error('Failed to initialize chat session')
-        }
-      }
-    }
-
-    initSession()
-  }, [planId, athleteId, supabase])
-
-  // Load chat messages
-  const { data: messages = [], isLoading: isLoadingMessages } = useQuery({
-    queryKey: ['chat-messages', sessionId],
-    queryFn: async () => {
-      if (!sessionId) return []
-
-      const { data, error } = await supabase
-        .from('chat_messages')
-        .select('*')
-        .eq('session_id', sessionId)
-        .order('created_at', { ascending: true })
-
-      if (error) throw error
-      return data as ReviewMessage[]
-    },
-    enabled: !!sessionId
-  })
-
-  // Send message mutation
-  const sendMessage = useMutation({
-    mutationFn: async (message: string) => {
-      if (!sessionId || !context) throw new Error('Session not ready')
-
-      // Save user message
-      await supabase
-        .from('chat_messages')
-        .insert({
-          session_id: sessionId,
-          role: 'user',
-          content: message
-        })
-
-      // Call refine API (stub for Phase 3)
-      const response = await fetch('/api/plans/refine', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          plan_id: planId,
-          session_id: sessionId,
-          message,
-          context
-        })
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to get response')
-      }
-
-      return response.json()
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['chat-messages', sessionId] })
-      queryClient.invalidateQueries({ queryKey: ['plan-review', planId] })
-    },
-    onError: (error) => {
-      console.error('Error sending message:', error)
-      toast.error('Failed to send message')
-    }
   })
 
   // Accept plan mutation
@@ -281,7 +167,7 @@ export default function ReviewPage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* Main Content: Grid Layout - Calendar + Chat */}
+      {/* Main Content: Grid Layout - Calendar + Modify Panel */}
       <div className="flex-1 grid grid-cols-[3fr_minmax(320px,1fr)] overflow-hidden">
         {/* Calendar - Full height container */}
         <div className="h-full w-full min-w-0 p-3 md:p-4 lg:p-6">
@@ -292,71 +178,37 @@ export default function ReviewPage({ params }: PageProps) {
               vdot={context.vdot}
               onWorkoutSelect={(workout) => {
                 console.log('Selected workout:', workout.workout_index)
-                // Could auto-insert workout_index into chat input in Phase 4
               }}
             />
           </div>
         </div>
 
-        {/* Chat Panel - Tabbed interface */}
-        <div className="h-full border-l overflow-hidden">
-          {sessionId ? (
-            <Tabs defaultValue="coach" className="h-full flex flex-col">
-              <div className="border-b px-4 pt-4 pb-2">
-                <TabsList className="w-full">
-                  <TabsTrigger value="coach" className="flex-1">
-                    <MessageSquare className="h-4 w-4 mr-2" />
-                    AI Coach
-                  </TabsTrigger>
-                  <TabsTrigger value="modify" className="flex-1">
-                    <Wand2 className="h-4 w-4 mr-2" />
-                    Modify Plan
-                  </TabsTrigger>
-                </TabsList>
-              </div>
+        {/* Modify Plan Panel */}
+        <div className="h-full border-l overflow-auto p-4">
+          <PlanChatInterface
+            planId={planId}
+            planName={context.plan_name}
+            currentWeeks={context.weeks.map(w => ({
+              week_number: w.week_number,
+              phase_name: w.phase,
+              weekly_volume_km: w.weekly_volume / 1000, // Convert meters to km
+              workouts: w.workouts.map((workout, idx) => {
+                // Extract day from workout_index (format: W#:D#) or fallback to index+1
+                const dayMatch = workout.workout_index?.match(/:D(\d+)/)
+                const day = dayMatch ? parseInt(dayMatch[1], 10) : idx + 1
 
-              <TabsContent value="coach" className="flex-1 overflow-hidden mt-0">
-                <ChatPanel
-                  planId={planId}
-                  sessionId={sessionId}
-                  messages={messages}
-                  onSendMessage={(msg) => sendMessage.mutateAsync(msg)}
-                  isLoading={sendMessage.isPending}
-                />
-              </TabsContent>
-
-              <TabsContent value="modify" className="flex-1 overflow-auto mt-0 p-4">
-                <PlanChatInterface
-                  planId={planId}
-                  planName={context.plan_name}
-                  currentWeeks={context.weeks.map(w => ({
-                    week_number: w.week_number,
-                    phase_name: w.phase,
-                    weekly_volume_km: w.weekly_volume / 1000, // Convert meters to km
-                    workouts: w.workouts.map((workout, idx) => {
-                      // Extract day from workout_index (format: W#:D#) or fallback to index+1
-                      const dayMatch = workout.workout_index?.match(/:D(\d+)/)
-                      const day = dayMatch ? parseInt(dayMatch[1], 10) : idx + 1
-
-                      return {
-                        day,
-                        workout_type: workout.workout_type,
-                        description: workout.description || 'Rest',
-                        distance_km: workout.distance_target_meters ? workout.distance_target_meters / 1000 : null
-                      }
-                    })
-                  }))}
-                  onPlanUpdated={() => {
-                    queryClient.invalidateQueries({ queryKey: ['plan-review', planId] })
-                  }}
-                />
-              </TabsContent>
-            </Tabs>
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <Loader2 className="h-6 w-6 animate-spin" />
-            </div>
-          )}
+                return {
+                  day,
+                  workout_type: workout.workout_type,
+                  description: workout.description || 'Rest',
+                  distance_km: workout.distance_target_meters ? workout.distance_target_meters / 1000 : null
+                }
+              })
+            }))}
+            onPlanUpdated={() => {
+              queryClient.invalidateQueries({ queryKey: ['plan-review', planId] })
+            }}
+          />
         </div>
       </div>
     </div>
