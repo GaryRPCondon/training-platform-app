@@ -23,9 +23,12 @@ export default async function MergeReviewPage() {
             .eq('id', matchId)
             .single()
 
+        // Join returns array, extract first element
+        const activity = Array.isArray(flag.activity) ? flag.activity[0] : flag.activity
+
         return {
             flag_id: flag.id,
-            activity: flag.activity,
+            activity,
             potential_match: match,
             confidence_score: flag.flag_data.confidence_score
         }

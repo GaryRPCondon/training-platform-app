@@ -7,10 +7,12 @@ import moment from 'moment'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getPlannedWorkoutsForDateRange, getAthleteProfile } from '@/lib/supabase/queries'
+import { getPlannedWorkoutsForDateRange, getAthleteProfile, getActivitiesForDateRange, getWorkoutsWithActivities } from '@/lib/supabase/queries'
 import { startOfWeek, endOfWeek, format, startOfMonth, endOfMonth, subDays, addDays, parseISO } from 'date-fns'
 import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { WorkoutCard } from '@/components/review/workout-card'
+import { ActivityDetail } from '@/components/activities/activity-detail'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import { getWorkoutColor } from '@/lib/constants/workout-colors'
@@ -19,6 +21,7 @@ import { CustomToolbar } from './custom-toolbar'
 import { createClient } from '@/lib/supabase/client'
 import type { TrainingPaces } from '@/types/database'
 import type { WorkoutWithDetails } from '@/types/review'
+import { useRouter } from 'next/navigation'
 
 // Custom styles to enable text wrapping in calendar events (max 2 lines)
 const calendarStyles = `
@@ -58,29 +61,43 @@ const DnDCalendar = withDragAndDrop(Calendar)
 function formatWorkoutTitle(workout: any): string {
     const description = workout.description || 'Workout'
 
+    // Add completion status indicator
+    let statusIndicator = ''
+    if (workout.completion_status === 'completed') {
+        statusIndicator = '✓ '
+    } else if (workout.completion_status === 'partial') {
+        statusIndicator = '⚠ '
+    } else if (workout.completion_status === 'skipped') {
+        statusIndicator = '✗ '
+    }
+
     // Check if description already contains distance information (e.g., "10km", "15km", "5K")
     const hasDistanceInDescription = /\d+\.?\d*\s?(km|k|miles?|mi)\b/i.test(description)
 
     if (workout.distance_target_meters && !hasDistanceInDescription) {
         const km = (workout.distance_target_meters / 1000).toFixed(1)
-        return `${description} ${km}km`
+        return `${statusIndicator}${description} ${km}km`
     }
 
     if (workout.duration_target_seconds) {
         const mins = Math.round(workout.duration_target_seconds / 60)
-        return `${description} ${mins}min`
+        return `${statusIndicator}${description} ${mins}min`
     }
 
-    return description
+    return `${statusIndicator}${description}`
 }
 
 export function TrainingCalendar() {
     const [currentDate, setCurrentDate] = useState(new Date())
     const [view, setView] = useState<View>('month')
     const [selectedWorkout, setSelectedWorkout] = useState<WorkoutWithDetails | null>(null)
-    const [isDialogOpen, setIsDialogOpen] = useState(false)
+    const [selectedActivity, setSelectedActivity] = useState<any | null>(null)
+    const [isWorkoutDialogOpen, setIsWorkoutDialogOpen] = useState(false)
+    const [isActivityDialogOpen, setIsActivityDialogOpen] = useState(false)
+    const [isAutoMatching, setIsAutoMatching] = useState(false)
     const queryClient = useQueryClient()
     const supabase = createClient()
+    const router = useRouter()
 
     // Get athlete profile for week start preference
     const { data: athlete } = useQuery({
@@ -130,9 +147,20 @@ export function TrainingCalendar() {
         ? format(addDays(endOfMonth(currentDate), 7), 'yyyy-MM-dd')
         : format(endOfWeek(currentDate, { weekStartsOn: weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6 }), 'yyyy-MM-dd')
 
-    const { data: rawWorkouts, isLoading } = useQuery({
+    const { data: rawWorkouts, isLoading, error: workoutsError } = useQuery({
         queryKey: ['workouts', queryStart, queryEnd],
-        queryFn: () => getPlannedWorkoutsForDateRange(queryStart, queryEnd),
+        queryFn: () => getWorkoutsWithActivities(queryStart, queryEnd),
+    })
+
+    // Log workouts query error
+    if (workoutsError) {
+        console.error('Workouts query error:', workoutsError)
+    }
+
+    // Phase 6: Query activities for the same date range
+    const { data: rawActivities } = useQuery({
+        queryKey: ['activities', queryStart, queryEnd],
+        queryFn: () => getActivitiesForDateRange(queryStart, queryEnd),
     })
 
     // Convert raw workouts to WorkoutWithDetails format
@@ -167,42 +195,159 @@ export function TrainingCalendar() {
         }
     })
 
-    const events = workouts.map(w => ({
-        id: w.id,
-        title: formatWorkoutTitle(w),
-        start: new Date(w.scheduled_date),
-        end: new Date(w.scheduled_date),
-        allDay: true,
-        resource: w,
-    }))
+    // Phase 6: Auto-match activities mutation
+    const handleAutoMatch = useCallback(async () => {
+        setIsAutoMatching(true)
+        try {
+            const response = await fetch('/api/activities/match', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    startDate: queryStart,
+                    endDate: queryEnd,
+                })
+            })
 
-    const handleSelectEvent = (event: any) => {
-        setSelectedWorkout(event.resource)
-        setIsDialogOpen(true)
-    }
+            if (!response.ok) throw new Error('Auto-match failed')
+
+            const result = await response.json()
+
+            // Invalidate queries to refresh data
+            queryClient.invalidateQueries({ queryKey: ['workouts'] })
+            queryClient.invalidateQueries({ queryKey: ['activities'] })
+
+            toast.success(`Matched ${result.matchCount} ${result.matchCount === 1 ? 'activity' : 'activities'}`)
+        } catch (error) {
+            console.error('Auto-match error:', error)
+            toast.error('Failed to auto-match activities')
+        } finally {
+            setIsAutoMatching(false)
+        }
+    }, [queryStart, queryEnd, queryClient])
+
+    // Phase 6: Combine workout and activity events
+    const events = useMemo(() => {
+        const workoutEvents = workouts.map(w => ({
+            id: `workout-${w.id}`,
+            title: formatWorkoutTitle(w),
+            start: new Date(w.scheduled_date),
+            end: new Date(w.scheduled_date),
+            allDay: true,
+            resource: {
+                type: 'workout',
+                data: w,
+            },
+        }))
+
+        const activityEvents = rawActivities
+            ?.filter(a => a.start_time)
+            .map(a => ({
+                id: `activity-${a.id}`,
+                title: a.activity_name || a.activity_type || 'Activity',
+                start: parseISO(a.start_time!),
+                end: parseISO(a.start_time!),
+                allDay: true,
+                resource: {
+                    type: 'activity',
+                    data: a,
+                },
+            })) || []
+
+        return [...workoutEvents, ...activityEvents]
+    }, [workouts, rawActivities])
+
+    const handleSelectEvent = useCallback(async (event: any) => {
+        // Phase 6: Handle both workouts and activities
+        if (event.resource.type === 'workout') {
+            setSelectedWorkout(event.resource.data)
+            setIsWorkoutDialogOpen(true)
+        } else if (event.resource.type === 'activity') {
+            // Fetch linked workout if exists
+            const activity = event.resource.data
+            let activityWithWorkout = { ...activity }
+
+            if (activity.planned_workout_id) {
+                const { data: workout } = await supabase
+                    .from('planned_workouts')
+                    .select('*')
+                    .eq('id', activity.planned_workout_id)
+                    .single()
+
+                if (workout) {
+                    activityWithWorkout.planned_workouts = workout
+                }
+            }
+
+            setSelectedActivity(activityWithWorkout)
+            setIsActivityDialogOpen(true)
+        }
+    }, [supabase])
 
     const onEventDrop = useCallback(({ event, start }: any) => {
+        // Phase 6: Only allow dragging workouts, not activities
+        if (event.resource.type !== 'workout') return
+
         const newDate = format(start, 'yyyy-MM-dd')
-        if (newDate !== event.resource.scheduled_date) {
+        if (newDate !== event.resource.data.scheduled_date) {
             rescheduleMutation.mutate({
-                workoutId: event.id,
+                workoutId: parseInt(event.id.split('-')[1]), // Extract ID from "workout-123"
                 newDate
             })
         }
     }, [rescheduleMutation])
 
     const eventStyleGetter = (event: any) => {
-        const workout = event.resource
+        // Phase 6: Different styling for activities vs workouts
+        if (event.resource.type === 'activity') {
+            return {
+                style: {
+                    backgroundColor: '#9CA3AF', // gray-400
+                    borderLeft: '4px solid #6B7280', // gray-500
+                    borderTop: '0px',
+                    borderRight: '0px',
+                    borderBottom: '0px',
+                    borderRadius: '4px',
+                    opacity: 0.9,
+                    color: '#374151', // gray-700
+                    display: 'block',
+                    fontSize: '0.75rem', // Slightly smaller
+                    padding: '2px 4px',
+                    whiteSpace: 'normal',
+                    overflow: 'visible',
+                    lineHeight: '1.2'
+                }
+            }
+        }
+
+        // Workout styling (existing)
+        const workout = event.resource.data
         const workoutType = workout?.workout_type || 'default'
-        const backgroundColor = getWorkoutColor(workoutType)
+        let backgroundColor = getWorkoutColor(workoutType)
+        let borderLeft = ''
+        let opacity = 0.9
+
+        // Visual feedback for completion status
+        if (workout.completion_status === 'completed') {
+            borderLeft = '4px solid #10b981' // green-500
+            opacity = 1.0
+        } else if (workout.completion_status === 'partial') {
+            borderLeft = '4px solid #f59e0b' // yellow-500
+            opacity = 0.95
+        } else if (workout.completion_status === 'skipped') {
+            borderLeft = '4px solid #ef4444' // red-500
+            opacity = 0.6
+        }
 
         return {
             style: {
                 backgroundColor,
                 borderRadius: '4px',
-                opacity: 0.9,
+                opacity,
                 color: 'white',
-                border: '0px',
+                borderTop: '0px',
+                borderRight: '0px',
+                borderBottom: '0px',
+                borderLeft: borderLeft || '0px',
                 display: 'block',
                 fontSize: '0.875rem',
                 padding: '2px 4px',
@@ -237,6 +382,8 @@ export function TrainingCalendar() {
                 view={view as 'month' | 'week' | 'day'}
                 onNavigate={handleNavigate}
                 onViewChange={(v) => setView(v)}
+                onAutoMatch={handleAutoMatch}
+                isAutoMatching={isAutoMatching}
             />
 
             <div className="flex-1 w-full grid grid-cols-[1fr_220px] overflow-hidden border rounded-md">
@@ -265,6 +412,7 @@ export function TrainingCalendar() {
 
                 <WeeklyTotals
                     workouts={workouts || []}
+                    activities={rawActivities || []}
                     currentDate={currentDate}
                     view={view as 'month' | 'week' | 'day'}
                     weekStartsOn={weekStartsOn}
@@ -272,7 +420,8 @@ export function TrainingCalendar() {
                 />
             </div>
 
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            {/* Workout Dialog */}
+            <Dialog open={isWorkoutDialogOpen} onOpenChange={setIsWorkoutDialogOpen}>
                 <DialogContent className="max-w-2xl">
                     <DialogTitle className="sr-only">Workout Details</DialogTitle>
                     {selectedWorkout && (
@@ -280,8 +429,35 @@ export function TrainingCalendar() {
                             workout={selectedWorkout}
                             trainingPaces={activePlan?.training_paces || null}
                             vdot={activePlan?.vdot || null}
-                            onClose={() => setIsDialogOpen(false)}
+                            onClose={() => setIsWorkoutDialogOpen(false)}
                         />
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            {/* Activity Dialog */}
+            <Dialog open={isActivityDialogOpen} onOpenChange={setIsActivityDialogOpen}>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogTitle className="sr-only">Activity Details</DialogTitle>
+                    {selectedActivity && (
+                        <>
+                            <ActivityDetail
+                                activity={selectedActivity}
+                                onClose={() => setIsActivityDialogOpen(false)}
+                            />
+                            <div className="flex justify-end pt-4 border-t">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                        setIsActivityDialogOpen(false)
+                                        router.push(`/dashboard/activities/${selectedActivity.id}`)
+                                    }}
+                                >
+                                    View Full Details
+                                </Button>
+                            </div>
+                        </>
                     )}
                 </DialogContent>
             </Dialog>

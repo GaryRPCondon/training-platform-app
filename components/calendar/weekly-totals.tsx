@@ -5,6 +5,7 @@ import { startOfWeek, endOfWeek, format, eachWeekOfInterval, startOfMonth, endOf
 
 interface WeeklyTotalsProps {
     workouts: any[]
+    activities?: any[]
     currentDate: Date
     view: 'month' | 'week' | 'day'
     weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6
@@ -19,7 +20,7 @@ interface WeekTotal {
     actualKm: number
 }
 
-export function WeeklyTotals({ workouts, currentDate, view, weekStartsOn, showActual = false }: WeeklyTotalsProps) {
+export function WeeklyTotals({ workouts, activities = [], currentDate, view, weekStartsOn, showActual = false }: WeeklyTotalsProps) {
     const weekTotals = useMemo(() => {
         // Determine the date range to show based on view
         let rangeStart: Date
@@ -66,13 +67,15 @@ export function WeeklyTotals({ workouts, currentDate, view, weekStartsOn, showAc
                 return sum + (w.distance_target_meters || 0)
             }, 0)
 
-            // Calculate actual distance (from completed activities)
-            const actualMeters = weekWorkouts.reduce((sum, w) => {
-                // Check if workout has a completed activity with distance
-                if (w.completed_activity_id && w.activity_distance_meters) {
-                    return sum + w.activity_distance_meters
-                }
-                return sum
+            // Calculate actual distance (from ALL activities in this week)
+            const weekActivities = activities.filter(a => {
+                if (!a.start_time) return false
+                const activityDate = new Date(a.start_time)
+                return activityDate >= weekStart && activityDate <= weekEnd
+            })
+
+            const actualMeters = weekActivities.reduce((sum, a) => {
+                return sum + (a.distance_meters || 0)
             }, 0)
 
             // Format week label
@@ -86,7 +89,7 @@ export function WeeklyTotals({ workouts, currentDate, view, weekStartsOn, showAc
                 actualKm: actualMeters / 1000
             }
         })
-    }, [workouts, currentDate, view, weekStartsOn])
+    }, [workouts, activities, currentDate, view, weekStartsOn])
 
     return (
         <div className="h-full flex flex-col bg-muted/20 border-l">

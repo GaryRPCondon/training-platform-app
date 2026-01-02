@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import type { WorkoutWithDetails } from '@/types/review'
 import type { TrainingPaces } from '@/types/database'
-import { Calendar, Clock, TrendingUp, Target, Gauge, Flag, RotateCcw } from 'lucide-react'
+import { Calendar, Clock, TrendingUp, Target, Gauge, Flag, RotateCcw, CheckCircle, AlertCircle, XCircle } from 'lucide-react'
 import { formatPace, estimateDuration, getWorkoutPaceType } from '@/lib/training/vdot'
 
 interface WorkoutCardProps {
@@ -54,6 +54,39 @@ export function WorkoutCard({ workout, trainingPaces, vdot, onClose, onDiscuss }
           <Badge variant="secondary">{workout.phase_name}</Badge>
         </div>
       </div>
+
+      {/* Completion Status */}
+      {workout.completion_status && workout.completion_status !== 'pending' && (
+        <div className="flex items-center gap-2 text-sm">
+          {workout.completion_status === 'completed' && (
+            <>
+              <CheckCircle className="h-4 w-4 text-green-500" />
+              <span className="text-green-600 font-medium">Completed</span>
+            </>
+          )}
+          {workout.completion_status === 'partial' && (
+            <>
+              <AlertCircle className="h-4 w-4 text-yellow-500" />
+              <span className="text-yellow-600 font-medium">Partial</span>
+            </>
+          )}
+          {workout.completion_status === 'skipped' && (
+            <>
+              <XCircle className="h-4 w-4 text-red-500" />
+              <span className="text-red-600 font-medium">Skipped</span>
+            </>
+          )}
+
+          {/* Show variance if exists */}
+          {workout.completion_metadata?.distance_variance_percent !== undefined &&
+           Math.abs(workout.completion_metadata.distance_variance_percent) > 10 && (
+            <span className="text-xs text-muted-foreground">
+              ({workout.completion_metadata.distance_variance_percent > 0 ? '+' : ''}
+              {workout.completion_metadata.distance_variance_percent.toFixed(0)}%)
+            </span>
+          )}
+        </div>
+      )}
 
       <Separator />
 

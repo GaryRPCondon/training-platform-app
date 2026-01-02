@@ -562,8 +562,8 @@
         "duration_weeks": 18,
         "training_days_per_week": 4,
         "peak_weekly_mileage": {
-          "miles": 2,
-          "km": 78
+          "miles": 47,
+          "km": 76
         },
         "difficulty_score": 1,
         "structure_type": "moderate"
@@ -592,7 +592,7 @@
       "suitable_for": {
         "good_fit": [
           "Suitable for beginner",
-          "Comfortable with 2 miles/week peak",
+          "Comfortable with 47 miles/week peak",
           "Can train 4 days per week"
         ],
         "not_recommended": []
@@ -609,7 +609,7 @@
         "training_days_per_week": 6,
         "peak_weekly_mileage": {
           "miles": 57,
-          "km": 92
+          "km": 93
         },
         "difficulty_score": 5,
         "structure_type": "moderate"
@@ -655,7 +655,7 @@
         "training_days_per_week": 6,
         "peak_weekly_mileage": {
           "miles": 63,
-          "km": 102
+          "km": 103
         },
         "difficulty_score": 8,
         "structure_type": "moderate"

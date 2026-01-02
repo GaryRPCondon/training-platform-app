@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Link2 } from 'lucide-react'
 import { format } from 'date-fns'
 
 interface CustomToolbarProps {
@@ -9,9 +9,11 @@ interface CustomToolbarProps {
     view: 'month' | 'week' | 'day'
     onNavigate: (action: 'PREV' | 'NEXT' | 'TODAY') => void
     onViewChange: (view: 'month' | 'week' | 'day') => void
+    onAutoMatch?: () => void
+    isAutoMatching?: boolean
 }
 
-export function CustomToolbar({ date, view, onNavigate, onViewChange }: CustomToolbarProps) {
+export function CustomToolbar({ date, view, onNavigate, onViewChange, onAutoMatch, isAutoMatching }: CustomToolbarProps) {
     return (
         <div className="flex items-center justify-between mb-4 px-2">
             <div className="flex items-center gap-2">
@@ -45,6 +47,18 @@ export function CustomToolbar({ date, view, onNavigate, onViewChange }: CustomTo
                 <h2 className="text-xl font-semibold ml-2">
                     {format(date, 'MMMM yyyy')}
                 </h2>
+                {onAutoMatch && (
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={onAutoMatch}
+                        disabled={isAutoMatching}
+                        className="h-7 px-3 text-xs ml-4"
+                    >
+                        <Link2 className="h-3 w-3 mr-1.5" />
+                        {isAutoMatching ? 'Matching...' : 'Auto-Match Activities'}
+                    </Button>
+                )}
             </div>
 
             <div className="flex items-center rounded-md border bg-background p-1">

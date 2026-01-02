@@ -71,6 +71,15 @@ export interface Activity {
     strava_data: any | null
     synced_from_garmin: string | null
     synced_from_strava: string | null
+    // Phase 6: Activity matching metadata
+    match_confidence: number | null
+    match_method: 'auto_time' | 'auto_distance' | 'manual' | null
+    match_metadata: {
+        time_diff_minutes?: number
+        distance_diff_percent?: number
+        duration_diff_percent?: number
+        manual_link_reason?: string
+    } | null
     // Merge tracking (virtual fields or stored in metadata/JSONB in real DB)
     merge_status?: 'pending_review' | 'merged' | 'auto_merged' | 'ignored'
     confidence_score?: number
@@ -165,12 +174,23 @@ export interface PlannedWorkout {
     structured_workout: any | null
     status: 'scheduled' | 'completed' | 'skipped' | 'rescheduled'
     completed_activity_id: number | null
+    // Phase 6: Completion tracking
+    completion_status: 'pending' | 'completed' | 'partial' | 'skipped'
+    completion_metadata: {
+        actual_distance_meters?: number
+        actual_duration_seconds?: number
+        distance_variance_percent?: number
+        duration_variance_percent?: number
+        notes?: string
+    } | null
     agent_rationale: string | null
     agent_decision_metadata: any | null
     notes: string | null
     version: number
     created_at: string
     updated_at: string
+    // Virtual join field (populated via select with join)
+    activities?: Activity | null
 }
 
 export interface WorkoutFeedback {
