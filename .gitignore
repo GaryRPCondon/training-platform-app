@@ -49,6 +49,7 @@ garmin-connect-mcp/
 strava-mcp/
 
 # documentation templates
+docs/
 docs/templates/
 
 # database backups
@@ -56,6 +57,8 @@ backups/
 backup-schema*.sql
 
 # screenshots
+bugscreens/
+
 .claude/
 temp_strava_original.txt
 build_log.txt
