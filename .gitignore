@@ -24,6 +24,8 @@ node_modules
 .DS_Store
 *.pem
 llm-response*
+llm-operations*
+llmresponse*
 
 # debug
 npm-debug.log*
@@ -49,4 +51,14 @@ strava-mcp/
 # documentation templates
 docs/templates/
 
+# database backups
 backups/
+backup-schema*.sql
+
+# screenshots
+screenshots/
+.claude/
+temp_strava_original.txt
+build_log.txt
+build_output.txt
+*.code-workspace
