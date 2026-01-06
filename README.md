@@ -38,8 +38,8 @@ An AI-powered training platform for endurance athletes, primarily focused on mar
 
 ## Screenshots
 
-| Feature | Screenshot |
-|---------|------------|
+| Feature |
+|---------|
 | [Dashboard Overview](screenshots/dashboard.png) |
 | [Training Calendar](screenshots/calendar.png) |
 | [AI Coach Chat](screenshots/chat.png) |
