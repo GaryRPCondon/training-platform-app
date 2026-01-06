@@ -8,13 +8,17 @@ import { getWeeklyProgress } from '@/lib/analysis/phase-progress'
 import { cn } from '@/lib/utils'
 
 export function WeeklyProgressChart() {
-    const { data: weeklyData, isLoading } = useQuery({
+    const { data: weeklyData, isLoading, error } = useQuery({
         queryKey: ['weekly-progress'],
         queryFn: async () => {
             const athleteId = await getCurrentAthleteId()
-            return getWeeklyProgress(athleteId)
+            const data = await getWeeklyProgress(athleteId)
+            console.log('Weekly Progress Data:', data)
+            return data
         },
     })
+
+    console.log('WeeklyProgressChart render:', { isLoading, hasData: !!weeklyData, error })
 
     if (isLoading || !weeklyData) return null
 
@@ -22,6 +26,8 @@ export function WeeklyProgressChart() {
         ...weeklyData.map(d => Math.max(d.plannedDistance, d.actualDistance)),
         10 // Minimum scale
     )
+
+    console.log('Chart rendering with maxDistance:', maxDistance, 'weeklyData:', weeklyData)
 
     return (
         <Card>
@@ -32,40 +38,54 @@ export function WeeklyProgressChart() {
                 </CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="flex items-end justify-between gap-2 h-48 pt-4">
-                    {weeklyData.map((day) => (
-                        <div key={day.date} className="flex flex-col items-center gap-2 flex-1">
-                            <div className="relative w-full flex justify-center items-end h-full gap-1">
-                                {/* Planned Bar (Background/Ghost) */}
-                                {day.plannedDistance > 0 && (
-                                    <div
-                                        className="absolute bottom-0 w-full max-w-[24px] bg-muted rounded-t-sm"
-                                        style={{ height: `${(day.plannedDistance / maxDistance) * 100}%` }}
-                                        title={`Planned: ${day.plannedDistance}km`}
-                                    />
-                                )}
-                                {/* Actual Bar (Foreground) */}
-                                <div
-                                    className={cn(
-                                        "relative w-full max-w-[24px] rounded-t-sm transition-all",
-                                        day.status === 'completed' ? "bg-primary" :
-                                            day.status === 'missed' ? "bg-destructive/50" : "bg-transparent"
+                <div className="flex items-end justify-between gap-2 pt-4" style={{ height: '192px' }}>
+                    {weeklyData.map((day) => {
+                        const plannedHeight = (day.plannedDistance / maxDistance) * 100
+                        const actualHeight = (day.actualDistance / maxDistance) * 100
+                        console.log(`${day.dayName}: planned=${day.plannedDistance}km (${plannedHeight}%), actual=${day.actualDistance}km (${actualHeight}%)`)
+
+                        return (
+                            <div key={day.date} className="flex flex-col items-center gap-2 flex-1 min-w-0" style={{ height: '100%' }}>
+                                <div className="relative w-full flex justify-center items-end" style={{ height: '160px' }}>
+                                    {/* Planned Bar (Background) - More visible with pattern */}
+                                    {day.plannedDistance > 0 && (
+                                        <div
+                                            className="absolute bottom-0 left-1/2 -translate-x-1/2 bg-blue-100 dark:bg-blue-950 rounded-t-sm border-2 border-blue-300 dark:border-blue-800 border-dashed"
+                                            style={{
+                                                width: '24px',
+                                                height: `${Math.max(plannedHeight, 2)}%`,
+                                                minHeight: '2px'
+                                            }}
+                                            title={`Planned: ${day.plannedDistance}km`}
+                                        />
                                     )}
-                                    style={{ height: `${(day.actualDistance / maxDistance) * 100}%` }}
-                                    title={`Actual: ${day.actualDistance}km`}
-                                >
+                                    {/* Actual Bar (Foreground) - Solid colors */}
                                     {day.actualDistance > 0 && (
-                                        <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] font-medium">
-                                            {day.actualDistance}
-                                        </span>
+                                        <div
+                                            className={cn(
+                                                "absolute bottom-0 left-1/2 -translate-x-1/2 rounded-t-sm transition-all border-2",
+                                                day.status === 'completed' ? "bg-green-500 border-green-600" :
+                                                    day.status === 'missed' ? "bg-red-400 border-red-500" : "bg-gray-400 border-gray-500"
+                                            )}
+                                            style={{
+                                                width: '24px',
+                                                height: `${Math.max(actualHeight, 2)}%`,
+                                                minHeight: '2px'
+                                            }}
+                                            title={`Actual: ${day.actualDistance}km`}
+                                        >
+                                            <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] font-medium whitespace-nowrap">
+                                                {day.actualDistance}
+                                            </span>
+                                        </div>
                                     )}
                                 </div>
+                                <span className="text-xs text-muted-foreground font-medium">
+                                    {day.dayName}
+                                </span>
                             </div>
-                            <span className="text-xs text-muted-foreground font-medium">
-                                {day.dayName}
-                            </span>
-                        </div>
-                    ))}
+                        )
+                    })}
                 </div>
                 <div className="flex justify-center gap-4 mt-4 text-xs text-muted-foreground">
                     <div className="flex items-center gap-1">

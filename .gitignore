@@ -56,7 +56,6 @@ backups/
 backup-schema*.sql
 
 # screenshots
-screenshots/
 .claude/
 temp_strava_original.txt
 build_log.txt

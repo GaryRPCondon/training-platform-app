@@ -66,7 +66,7 @@ export async function getPhaseProgress(athleteId: string): Promise<PhaseProgress
         weeklyVolumeActual = (thisWeekActivities?.reduce((sum, a) => sum + (a.distance_meters || 0), 0) || 0) / 1000
     }
 
-    const weeklyVolumeTarget = weeklyPlan?.weekly_volume_target || 0
+    const weeklyVolumeTarget = (weeklyPlan?.weekly_volume_target || 0) / 1000 // Convert meters to km
     const volumePercentComplete = weeklyVolumeTarget > 0
         ? Math.round((weeklyVolumeActual / weeklyVolumeTarget) * 100)
         : 0
@@ -106,12 +106,22 @@ export interface DailyProgress {
 export async function getWeeklyProgress(athleteId: string): Promise<DailyProgress[]> {
     const supabase = createClient()
     const today = new Date()
-    const weekStart = format(today, 'yyyy-MM-dd') // This should be start of week, but let's stick to current week logic
-    // Actually, let's get the real start of week (Monday)
+
+    // Get athlete's week_starts_on preference
+    const { data: athlete } = await supabase
+        .from('athletes')
+        .select('week_starts_on')
+        .eq('id', athleteId)
+        .single()
+
+    const weekStartsOn = athlete?.week_starts_on ?? 0 // Default to Sunday if not set
+
+    // Calculate week start based on user preference
     const realWeekStart = new Date(today)
     const day = realWeekStart.getDay()
-    const diff = realWeekStart.getDate() - day + (day === 0 ? -6 : 1) // adjust when day is sunday
-    realWeekStart.setDate(diff)
+    const diff = day - weekStartsOn
+    const daysToSubtract = diff >= 0 ? diff : 7 + diff
+    realWeekStart.setDate(realWeekStart.getDate() - daysToSubtract)
     const startDateStr = format(realWeekStart, 'yyyy-MM-dd')
 
     // Get planned workouts for this week
@@ -122,16 +132,29 @@ export async function getWeeklyProgress(athleteId: string): Promise<DailyProgres
         .gte('scheduled_date', startDateStr)
         .lte('scheduled_date', format(addDays(realWeekStart, 6), 'yyyy-MM-dd'))
 
-    // Get activities for this week
+    // Get activities for this week (add time to end date for proper comparison)
+    const endDateStr = format(addDays(realWeekStart, 6), 'yyyy-MM-dd')
     const { data: activities } = await supabase
         .from('activities')
         .select('*')
         .eq('athlete_id', athleteId)
         .gte('start_time', startDateStr)
-        .lte('start_time', format(addDays(realWeekStart, 6), 'yyyy-MM-dd'))
+        .lte('start_time', endDateStr + 'T23:59:59')
+
+    console.log('Weekly Progress Debug:', {
+        athleteId,
+        weekStartsOn,
+        startDateStr,
+        endDateStr,
+        workoutCount: workouts?.length || 0,
+        activityCount: activities?.length || 0
+    })
 
     const progress: DailyProgress[] = []
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    // Day labels starting from Sunday (0) through Saturday (6)
+    const allDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    // Rotate array to start from weekStartsOn
+    const days = [...allDays.slice(weekStartsOn), ...allDays.slice(0, weekStartsOn)]
 
     for (let i = 0; i < 7; i++) {
         const currentDate = addDays(realWeekStart, i)
