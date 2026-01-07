@@ -4,15 +4,26 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { GarminConnect } from './garmin-connect'
 
 interface ConnectionsCardProps {
     stravaConnected: boolean
     garminConnected: boolean
+    onRefresh?: () => void
 }
 
-export function ConnectionsCard({ stravaConnected, garminConnected }: ConnectionsCardProps) {
+export function ConnectionsCard({ stravaConnected, garminConnected, onRefresh }: ConnectionsCardProps) {
     const router = useRouter()
     const [loading, setLoading] = useState<string | null>(null)
+
+    const handleConnectionChange = () => {
+        // Refresh the parent component to get updated connection status
+        if (onRefresh) {
+            onRefresh()
+        } else {
+            router.refresh()
+        }
+    }
 
     const handleConnectStrava = () => {
         setLoading('strava')
@@ -71,24 +82,10 @@ export function ConnectionsCard({ stravaConnected, garminConnected }: Connection
                 </div>
 
                 {/* Garmin */}
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center gap-4">
-                        <div className="bg-[#000000] text-white p-2 rounded w-10 h-10 flex items-center justify-center">
-                            <span className="font-bold">G</span>
-                        </div>
-                        <div>
-                            <div className="font-medium">Garmin</div>
-                            <div className="text-sm text-muted-foreground">
-                                {garminConnected ? 'Connected' : 'Not connected'}
-                            </div>
-                        </div>
-                    </div>
-                    <div>
-                        <Button variant="outline" size="sm" disabled>
-                            {garminConnected ? 'Connected' : 'Managed via MCP'}
-                        </Button>
-                    </div>
-                </div>
+                <GarminConnect
+                    isConnected={garminConnected}
+                    onConnectionChange={handleConnectionChange}
+                />
             </CardContent>
         </Card>
     )

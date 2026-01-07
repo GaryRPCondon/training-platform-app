@@ -141,15 +141,6 @@ export async function getWeeklyProgress(athleteId: string): Promise<DailyProgres
         .gte('start_time', startDateStr)
         .lte('start_time', endDateStr + 'T23:59:59')
 
-    console.log('Weekly Progress Debug:', {
-        athleteId,
-        weekStartsOn,
-        startDateStr,
-        endDateStr,
-        workoutCount: workouts?.length || 0,
-        activityCount: activities?.length || 0
-    })
-
     const progress: DailyProgress[] = []
     // Day labels starting from Sunday (0) through Saturday (6)
     const allDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']

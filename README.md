@@ -19,7 +19,7 @@ An AI-powered training platform for endurance athletes, primarily focused on mar
 - **Session history**: All coaching conversations are saved and retrievable
 
 ### Activity Tracking
-- **Garmin integration** via MCP bridge
+- **Garmin integration** with direct API authentication
 - **Strava integration** with OAuth authentication
 - **Intelligent activity merging**: Automatically detects and suggests merging duplicate activities from different platforms
 - **Workout matching**: Links completed activities to planned workouts
@@ -64,7 +64,7 @@ An AI-powered training platform for endurance athletes, primarily focused on mar
 ### Optional Services
 
 - **Strava account** for activity sync
-- **Garmin Connect account** for activity sync (requires MCP bridge setup)
+- **Garmin Connect account** for activity sync
 
 ### Setup Steps
 
@@ -98,14 +98,6 @@ An AI-powered training platform for endurance athletes, primarily focused on mar
    npm run dev
    ```
    Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-6. **Optional: Set up Garmin MCP bridge**
-   ```bash
-   cd mcp-bridges
-   npm install
-   node garmin-http-bridge.mjs
-   ```
-   The bridge runs on port 3001 by default.
 
 ## Configuration
 
@@ -143,13 +135,16 @@ To enable Strava activity sync:
 
 ### Garmin Integration
 
-Garmin integration uses an MCP (Model Context Protocol) bridge:
+Garmin integration uses the `garmin-connect` npm package with direct API authentication:
 
-1. The bridge is located in the `mcp-bridges/` directory
-2. Start it with: `node garmin-http-bridge.mjs`
-3. Configure the URL in `.env.local` (defaults to `http://localhost:3001`)
+1. Navigate to **Profile → Integrations** in the application
+2. Click **Connect** next to Garmin Connect
+3. Enter your Garmin Connect email and password
+4. Your credentials are used only to obtain authentication tokens and are not stored
 
-For production deployments, you can run the bridge on a separate server and point to it.
+**Note**: If you have multi-factor authentication (MFA) enabled on your Garmin account, you'll need to temporarily disable it or use Strava sync instead. The `garmin-connect` library does not currently support MFA.
+
+Authentication tokens are stored securely in the database and automatically refreshed as needed.
 
 ## Architecture
 
@@ -187,6 +182,8 @@ lib/                    # Core application logic
   planning/             # Training plan generation
   activities/           # Activity matching and merging
   analysis/             # Observation and adjustment systems
+  garmin/               # Garmin Connect API client
+  strava/               # Strava API client
   supabase/             # Database queries and utilities
 types/                  # TypeScript type definitions
 supabase/migrations/    # Database migrations

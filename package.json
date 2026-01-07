@@ -30,6 +30,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "garmin-connect": "^1.6.2",
     "lightningcss": "^1.30.2",
     "lucide-react": "^0.554.0",
     "moment": "^2.30.1",

@@ -33,9 +33,8 @@ npm start               # Run production server
 # Linting
 npm run lint            # Run ESLint
 
-# MCP Bridges (for Garmin integration)
-cd mcp-bridges
-node garmin-http-bridge.mjs  # Start Garmin MCP HTTP bridge on port 3001
+# Testing
+npx ts-node scripts/test-garmin-client.ts  # Test Garmin client (requires GARMIN_EMAIL and GARMIN_PASSWORD env vars)
 ```
 
 ## Architecture Overview
@@ -76,13 +75,17 @@ Plan generation flow:
 
 ### Activity Integration
 
-**Garmin** (via MCP bridge):
-- MCP bridge: `mcp-bridges/garmin-http-bridge.mjs` - HTTP wrapper around Garmin MCP server
-- Client: `lib/mcp/garmin-client.ts` - Makes HTTP calls to bridge
+**Garmin** (direct API):
+- Client: `lib/garmin/client.ts` - OAuth1/OAuth2 authentication and activity fetching
+- Types: `lib/garmin/types.ts` - TypeScript interfaces for Garmin data
+- Auth flow: `app/api/auth/garmin/route.ts` (login) and `app/api/auth/garmin/disconnect/route.ts`
 - Sync endpoint: `app/api/sync/garmin/route.ts`
+- Tokens stored in `athlete_integrations` table (oauth1_token + oauth2_token columns)
+- Uses `garmin-connect` npm package (v1.6.2)
+- **Note**: MFA is not supported by the garmin-connect library
 
 **Strava** (direct API):
-- Client: `lib/strava/client.ts` - OAuth and activity fetching
+- Client: `lib/strava/client.ts` - OAuth2 authentication and activity fetching
 - Auth flow: `app/api/strava/auth/route.ts` → `app/api/strava/callback/route.ts`
 - Sync endpoint: `app/api/sync/strava/route.ts`
 
@@ -163,10 +166,6 @@ STRAVA_CLIENT_SECRET=
 STRAVA_REDIRECT_URI=http://localhost:3000/api/strava/callback
 ```
 
-Optional Garmin MCP:
-```bash
-GARMIN_MCP_URL=http://localhost:3001  # Defaults to this
-```
 
 ## Key Concepts
 
@@ -209,14 +208,6 @@ Several test pages exist for debugging:
 - `/test-core` - Test core planning functions
 - `/test-db` - Test database connectivity
 - `/test-sync` - Test activity sync
-
-## MCP Bridge Architecture
-
-The Garmin integration uses an HTTP bridge to wrap the stdio-based Garmin MCP server:
-- MCP server runs as subprocess spawned by bridge
-- Bridge exposes HTTP endpoints for tools
-- Next.js app makes HTTP calls to bridge (not direct MCP)
-- This architecture allows Vercel deployment (can point to remote bridge)
 
 ## Common Patterns
 
