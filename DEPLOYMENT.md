@@ -19,7 +19,21 @@
 2. Run the schema from `../training-platform/design/DATABASE_SCHEMA.sql`
 3. This creates all necessary tables and relationships
 
-### 3. Create Athlete Record
+### 3. Run Database Migrations
+
+After the initial schema, apply any migrations from `supabase/migrations/`:
+
+**Required for Garmin integration:**
+```sql
+-- Add OAuth1/OAuth2 token columns for Garmin authentication
+ALTER TABLE athlete_integrations
+ADD COLUMN IF NOT EXISTS oauth1_token TEXT,
+ADD COLUMN IF NOT EXISTS oauth2_token TEXT;
+```
+
+Run all SQL files in the `supabase/migrations/` directory in chronological order.
+
+### 4. Create Athlete Record
 
 ```sql
 INSERT INTO athletes (id, name, email)
@@ -46,41 +60,35 @@ Add the following in Vercel project settings:
 - `NEXT_PUBLIC_ATHLETE_ID`: Your athlete UUID from database
 - `GOOGLE_API_KEY`: Your Google AI API key (or another LLM provider)
 
-**Optional:**
+**Optional LLM Providers:**
 - `OPENAI_API_KEY`: OpenAI API key
 - `ANTHROPIC_API_KEY`: Anthropic API key
 - `DEEPSEEK_API_KEY`: DeepSeek API key
 - `XAI_API_KEY`: X.AI (Grok) API key
-- `GARMIN_MCP_URL`: URL to Garmin MCP server (default: http://localhost:3001)
-- `STRAVA_MCP_URL`: URL to Strava MCP server (default: http://localhost:3002)
+
+**Optional Integrations:**
+- `STRAVA_CLIENT_ID`: Strava API application client ID
+- `STRAVA_CLIENT_SECRET`: Strava API application client secret
+- `STRAVA_REDIRECT_URI`: OAuth callback URL (e.g., `https://your-domain.vercel.app/api/strava/callback`)
+
+**Note**: Garmin integration does not require environment variables. Users authenticate via the UI (Profile → Integrations) by entering their Garmin Connect credentials.
 
 ### 3. Deploy
 
 Click "Deploy" - Vercel will build and deploy your application.
 
-## MCP Server Setup (Optional)
-
-The Garmin and Strava sync features require MCP servers. You have two options:
-
-### Option 1: Local Development Only
-
-Set `GARMIN_MCP_URL` and `STRAVA_MCP_URL` to your local servers:
-- `http://localhost:3001`
-- `http://localhost:3002`
-
-### Option 2: Deploy MCP Servers
-
-Deploy the MCP servers separately:
-1. Deploy `garmin-connect-mcp` to a hosting service
-2. Deploy `strava-mcp` to a hosting service
-3. Update environment variables with deployed URLs
 
 ## Post-Deployment
 
 1. Visit your deployed URL
 2. Sign in with Supabase Auth
-3. Create your first training plan
-4. Sync activities from Garmin/Strava (if MCP servers configured)
+3. **Connect Activity Tracking** (optional):
+   - Go to **Profile → Integrations**
+   - **Strava**: Click "Connect" to authorize via OAuth
+   - **Garmin**: Click "Connect" and enter your Garmin Connect credentials
+     - **Note**: Garmin MFA is not supported. Temporarily disable MFA if enabled, or use Strava sync instead.
+4. Create your first training plan
+5. Sync activities from the **Activity Sync** page 
 
 ## Troubleshooting
 
@@ -93,11 +101,6 @@ Deploy the MCP servers separately:
 - Verify Supabase URL and anon key
 - Check that athlete record exists in database
 - Ensure `NEXT_PUBLIC_ATHLETE_ID` matches database
-
-### MCP Sync Not Working
-- Verify MCP server URLs are accessible
-- Check MCP server logs
-- Ensure API keys are configured in MCP servers
 
 ## Local Development
 

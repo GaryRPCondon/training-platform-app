@@ -8,17 +8,13 @@ import { getWeeklyProgress } from '@/lib/analysis/phase-progress'
 import { cn } from '@/lib/utils'
 
 export function WeeklyProgressChart() {
-    const { data: weeklyData, isLoading, error } = useQuery({
+    const { data: weeklyData, isLoading } = useQuery({
         queryKey: ['weekly-progress'],
         queryFn: async () => {
             const athleteId = await getCurrentAthleteId()
-            const data = await getWeeklyProgress(athleteId)
-            console.log('Weekly Progress Data:', data)
-            return data
+            return getWeeklyProgress(athleteId)
         },
     })
-
-    console.log('WeeklyProgressChart render:', { isLoading, hasData: !!weeklyData, error })
 
     if (isLoading || !weeklyData) return null
 
@@ -26,8 +22,6 @@ export function WeeklyProgressChart() {
         ...weeklyData.map(d => Math.max(d.plannedDistance, d.actualDistance)),
         10 // Minimum scale
     )
-
-    console.log('Chart rendering with maxDistance:', maxDistance, 'weeklyData:', weeklyData)
 
     return (
         <Card>
@@ -42,7 +36,6 @@ export function WeeklyProgressChart() {
                     {weeklyData.map((day) => {
                         const plannedHeight = (day.plannedDistance / maxDistance) * 100
                         const actualHeight = (day.actualDistance / maxDistance) * 100
-                        console.log(`${day.dayName}: planned=${day.plannedDistance}km (${plannedHeight}%), actual=${day.actualDistance}km (${actualHeight}%)`)
 
                         return (
                             <div key={day.date} className="flex flex-col items-center gap-2 flex-1 min-w-0" style={{ height: '100%' }}>
@@ -89,15 +82,15 @@ export function WeeklyProgressChart() {
                 </div>
                 <div className="flex justify-center gap-4 mt-4 text-xs text-muted-foreground">
                     <div className="flex items-center gap-1">
-                        <div className="w-3 h-3 bg-primary rounded-sm" />
+                        <div className="w-3 h-3 bg-green-500 border-2 border-green-600 rounded-sm" />
                         <span>Completed</span>
                     </div>
                     <div className="flex items-center gap-1">
-                        <div className="w-3 h-3 bg-muted rounded-sm" />
+                        <div className="w-3 h-3 bg-blue-100 dark:bg-blue-950 border-2 border-blue-300 dark:border-blue-800 border-dashed rounded-sm" />
                         <span>Planned</span>
                     </div>
                     <div className="flex items-center gap-1">
-                        <div className="w-3 h-3 bg-destructive/50 rounded-sm" />
+                        <div className="w-3 h-3 bg-red-400 border-2 border-red-500 rounded-sm" />
                         <span>Missed</span>
                     </div>
                 </div>

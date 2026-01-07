@@ -51,6 +51,7 @@ strava-mcp/
 # documentation templates
 docs/
 docs/templates/
+public/templates/
 
 # database backups
 backups/
@@ -58,6 +59,7 @@ backup-schema*.sql
 
 # screenshots
 bugscreens/
+
 
 .claude/
 temp_strava_original.txt
