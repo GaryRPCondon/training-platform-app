@@ -83,9 +83,22 @@ export function findMergeCandidates(
             ) * 100
         }
 
+        // Detect likely timezone offset (time diff is whole hours, up to 12 hours)
+        const isLikelyTimezoneOffset = timeDiff > 0 && timeDiff % 60 === 0 && timeDiff <= 720
+
+        // Near-perfect distance/duration match (< 0.2% distance, < 0.5% duration)
+        const isNearPerfectMatch = distanceDiff < 0.2 && durationDiff < 0.5
+
         // Calculate confidence score (0-100)
         let score = 100
-        score -= Math.min(timeDiff * 0.1, 20) // GC: Trying to fix up matching - Cap time penalty at 20 points max
+
+        if (isLikelyTimezoneOffset && isNearPerfectMatch) {
+            // Timezone offset with perfect data match - minimal time penalty
+            score -= Math.min(timeDiff * 0.01, 5) // Only 0.01 penalty per minute, max 5 points
+        } else {
+            score -= Math.min(timeDiff * 0.1, 20) // Standard penalty: 0.1 per minute, max 20 points
+        }
+
         score -= distanceDiff * 20
 
         if (newActivity.duration_seconds && existing.duration_seconds) {

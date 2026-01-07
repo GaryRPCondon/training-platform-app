@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     const endDate = body.endDate
       ? new Date(new Date(body.endDate).setHours(23, 59, 59, 999))
       : new Date()
-    const limit = body.limit || 200
+    const limit = body.limit || 400  // ~1 activity/day for a year + margin for multi-activity days
 
     // Get athlete record
     let { data: athlete } = await supabase
