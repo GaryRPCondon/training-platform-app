@@ -19,6 +19,8 @@ export interface StravaActivity {
     elapsed_time: number
     total_elevation_gain: number
     type: string
+    sport_type?: string  // e.g., "Run", "TrailRun", "VirtualRun"
+    workout_type?: number | null  // Integer: 0=Default, 1=Race, 2=Long Run, 3=Workout (for runs)
     start_date: string
     start_date_local: string
     timezone: string

@@ -212,6 +212,12 @@ export async function POST(request: Request) {
                 start_time: activity.start_date,
                 distance_meters: activity.distance,
                 duration_seconds: activity.elapsed_time,
+                strava_data: {
+                    workout_type: activity.workout_type,
+                    sport_type: activity.sport_type,
+                    trainer: activity.trainer,
+                    commute: activity.commute
+                },
                 synced_from_strava: new Date().toISOString()
             }
 
@@ -274,7 +280,13 @@ export async function POST(request: Request) {
                                 .update({
                                     strava_id: activity.id?.toString(),
                                     synced_from_strava: new Date().toISOString(),
-                                    source: 'merged'
+                                    source: 'merged',
+                                    strava_data: {
+                                        workout_type: activity.workout_type,
+                                        sport_type: activity.sport_type,
+                                        trainer: activity.trainer,
+                                        commute: activity.commute
+                                    }
                                 })
                                 .eq('id', mergeCandidate.activity2.id)
 

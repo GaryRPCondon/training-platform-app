@@ -18,10 +18,47 @@ export function getWorkoutColor(workoutType: string): string {
 }
 
 /**
+ * Decode Strava workout_type integer to workout type string
+ * Based on reverse-engineered values from Strava API
+ *
+ * For Runs: 0=Default, 1=Race, 2=Long Run, 3=Workout
+ * For Rides: 10=Default, 11=Race, 12=Workout
+ */
+export function decodeStravaWorkoutType(workoutType: number | null | undefined, activityType: string): string {
+  if (workoutType === null || workoutType === undefined) {
+    // No workout type specified - treat as easy_run for runs, default for others
+    const isRun = activityType?.toLowerCase().includes('run')
+    return isRun ? 'easy_run' : 'default'
+  }
+
+  // Running workout types
+  if (workoutType === 0) return 'easy_run'  // Default run (green)
+  if (workoutType === 1) return 'race'       // Race (gold)
+  if (workoutType === 2) return 'long_run'   // Long Run (blue)
+  if (workoutType === 3) return 'intervals'  // Workout (pink)
+
+  // Cycling workout types (10+)
+  if (workoutType === 10) return 'cross_training'  // Default ride
+  if (workoutType === 11) return 'race'            // Race
+  if (workoutType === 12) return 'intervals'       // Workout
+
+  return 'default'
+}
+
+/**
  * Normalize activity types from Garmin/Strava to match planned workout types
  * This ensures consistent color coding across planned and completed workouts
  */
-export function normalizeActivityType(activityType: string | null): string {
+export function normalizeActivityType(
+  activityType: string | null,
+  stravaData?: { workout_type?: number | null } | null
+): string {
+  // First, check if we have Strava workout_type metadata
+  if (stravaData?.workout_type !== undefined && activityType) {
+    const decoded = decodeStravaWorkoutType(stravaData.workout_type, activityType)
+    if (decoded !== 'default') return decoded
+  }
+
   if (!activityType) return 'default'
 
   // Convert to lowercase for case-insensitive matching

@@ -15,7 +15,7 @@ import { WorkoutCard } from '@/components/review/workout-card'
 import { ActivityDetail } from '@/components/activities/activity-detail'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { getWorkoutColor } from '@/lib/constants/workout-colors'
+import { getWorkoutColor, normalizeActivityType } from '@/lib/constants/workout-colors'
 import { WeeklyTotals } from './weekly-totals'
 import { CustomToolbar } from './custom-toolbar'
 import { createClient } from '@/lib/supabase/client'
@@ -243,7 +243,7 @@ export function TrainingCalendar() {
             ?.filter(a => a.start_time)
             .map(a => ({
                 id: `activity-${a.id}`,
-                title: a.activity_name || a.activity_type || 'Activity',
+                title: `✓ ${a.activity_name || a.activity_type || 'Activity'}`,
                 start: parseISO(a.start_time!),
                 end: parseISO(a.start_time!),
                 allDay: true,
@@ -299,16 +299,21 @@ export function TrainingCalendar() {
     const eventStyleGetter = (event: any) => {
         // Phase 6: Different styling for activities vs workouts
         if (event.resource.type === 'activity') {
+            const activity = event.resource.data
+            // Use Strava workout_type if available, otherwise fall back to activity_type
+            const workoutType = normalizeActivityType(activity.activity_type, activity.strava_data)
+            const backgroundColor = getWorkoutColor(workoutType)
+
             return {
                 style: {
-                    backgroundColor: '#9CA3AF', // gray-400
-                    borderLeft: '4px solid #6B7280', // gray-500
+                    backgroundColor,
+                    borderLeft: `4px solid ${backgroundColor}`,
                     borderTop: '0px',
                     borderRight: '0px',
                     borderBottom: '0px',
                     borderRadius: '4px',
-                    opacity: 0.9,
-                    color: '#374151', // gray-700
+                    opacity: 0.85,
+                    color: '#ffffff', // white text to match planned workouts
                     display: 'block',
                     fontSize: '0.75rem', // Slightly smaller
                     padding: '2px 4px',
