@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     // Get athlete record
     let { data: athlete } = await supabase
       .from('athletes')
-      .select('id')
+      .select('id, preferred_activity_data_source')
       .eq('id', user.id)
       .single()
 
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
       // Check by email (migration case)
       const { data: athleteByEmail } = await supabase
         .from('athletes')
-        .select('id')
+        .select('id, preferred_activity_data_source')
         .eq('email', user.email)
         .single()
 
@@ -203,14 +203,26 @@ export async function POST(request: Request) {
               // Delete newly inserted, update existing
               await supabase.from('activities').delete().eq('id', inserted.id)
 
+              // Respect user's data priority preference
+              const preference = athlete?.preferred_activity_data_source || 'most_recent'
+              const shouldUpdateDetails = preference === 'garmin' || preference === 'most_recent'
+
+              const updateData: any = {
+                garmin_id: activityIdStr,
+                synced_from_garmin: new Date().toISOString(),
+                source: 'merged',
+                garmin_data: activityData.garmin_data
+              }
+
+              // Only update activity name/type if preference allows
+              if (shouldUpdateDetails) {
+                updateData.activity_name = activity.activityName
+                updateData.activity_type = activityData.activity_type
+              }
+
               const { error: updateError } = await supabase
                 .from('activities')
-                .update({
-                  garmin_id: activityIdStr,
-                  synced_from_garmin: new Date().toISOString(),
-                  source: 'merged',
-                  garmin_data: activityData.garmin_data
-                })
+                .update(updateData)
                 .eq('id', mergeCandidate.activity2.id)
 
               if (!updateError) {

@@ -13,14 +13,26 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Switch } from '@/components/ui/switch'
 import { CheckCircle2, Loader2 } from 'lucide-react'
 
 interface GarminConnectProps {
   isConnected: boolean
   onConnectionChange: () => void
+  stravaConnected?: boolean
+  garminPreferred?: boolean
+  stravaPreferred?: boolean
+  onPreferenceChange?: (checked: boolean) => void
 }
 
-export function GarminConnect({ isConnected, onConnectionChange }: GarminConnectProps) {
+export function GarminConnect({
+  isConnected,
+  onConnectionChange,
+  stravaConnected,
+  garminPreferred,
+  stravaPreferred,
+  onPreferenceChange
+}: GarminConnectProps) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -92,32 +104,33 @@ export function GarminConnect({ isConnected, onConnectionChange }: GarminConnect
   }
 
   return (
-    <div className="flex items-center justify-between p-4 border rounded-lg">
-      <div className="flex items-center gap-4">
-        <div className="bg-[#000000] text-white p-2 rounded w-10 h-10 flex items-center justify-center">
-          <span className="font-bold">G</span>
-        </div>
-        <div>
-          <div className="font-medium">Garmin Connect</div>
-          <div className="text-sm text-muted-foreground">
-            {isConnected ? 'Connected' : 'Not connected'}
+    <div className="p-4 border rounded-lg space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="bg-[#000000] text-white p-2 rounded w-10 h-10 flex items-center justify-center">
+            <span className="font-bold">G</span>
+          </div>
+          <div>
+            <div className="font-medium">Garmin Connect</div>
+            <div className="text-sm text-muted-foreground">
+              {isConnected ? 'Connected' : 'Not connected'}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Show button for connect/disconnect */}
-      {isConnected ? (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleDisconnect}
-          disabled={loading}
-        >
-          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Disconnect
-        </Button>
-      ) : (
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        {/* Show button for connect/disconnect */}
+        {isConnected ? (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDisconnect}
+            disabled={loading}
+          >
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Disconnect
+          </Button>
+        ) : (
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button
               size="sm"
@@ -191,6 +204,22 @@ export function GarminConnect({ isConnected, onConnectionChange }: GarminConnect
             </div>
           </DialogContent>
         </Dialog>
+        )}
+      </div>
+
+      {/* Garmin Data Priority Toggle - Always show if at least one integration exists */}
+      {(isConnected || stravaConnected) && onPreferenceChange && (
+        <div className="flex items-center justify-between pt-2 border-t">
+          <Label htmlFor="garmin-prefer" className="text-sm text-muted-foreground cursor-pointer">
+            Prefer data from this source
+          </Label>
+          <Switch
+            id="garmin-prefer"
+            checked={garminPreferred}
+            onCheckedChange={onPreferenceChange}
+            disabled={!isConnected}
+          />
+        </div>
       )}
     </div>
   )

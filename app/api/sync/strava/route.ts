@@ -20,7 +20,7 @@ export async function POST(request: Request) {
         // Ensure athlete record exists - check by ID first
         let { data: athlete } = await supabase
             .from('athletes')
-            .select('id')
+            .select('id, preferred_activity_data_source')
             .eq('id', user.id)
             .single()
 
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
             // Check if athlete exists with this email but different ID
             const { data: athleteByEmail } = await supabase
                 .from('athletes')
-                .select('id')
+                .select('id, preferred_activity_data_source')
                 .eq('email', user.email)
                 .single()
 
@@ -275,19 +275,31 @@ export async function POST(request: Request) {
                             }
 
                             // Update the existing activity
+                            // Respect user's data priority preference
+                            const preference = athlete?.preferred_activity_data_source || 'most_recent'
+                            const shouldUpdateDetails = preference === 'strava' || preference === 'most_recent'
+
+                            const updateData: any = {
+                                strava_id: activity.id?.toString(),
+                                synced_from_strava: new Date().toISOString(),
+                                source: 'merged',
+                                strava_data: {
+                                    workout_type: activity.workout_type,
+                                    sport_type: activity.sport_type,
+                                    trainer: activity.trainer,
+                                    commute: activity.commute
+                                }
+                            }
+
+                            // Only update activity name/type if preference allows
+                            if (shouldUpdateDetails) {
+                                updateData.activity_name = activity.name
+                                updateData.activity_type = activity.type
+                            }
+
                             const { error: updateError } = await supabase
                                 .from('activities')
-                                .update({
-                                    strava_id: activity.id?.toString(),
-                                    synced_from_strava: new Date().toISOString(),
-                                    source: 'merged',
-                                    strava_data: {
-                                        workout_type: activity.workout_type,
-                                        sport_type: activity.sport_type,
-                                        trainer: activity.trainer,
-                                        commute: activity.commute
-                                    }
-                                })
+                                .update(updateData)
                                 .eq('id', mergeCandidate.activity2.id)
 
                             if (!updateError) {

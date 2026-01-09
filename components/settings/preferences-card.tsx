@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -16,9 +17,21 @@ export function PreferencesCard() {
         queryFn: getAthleteProfile,
     })
 
-    const [preferredUnits, setPreferredUnits] = useState<'metric' | 'imperial'>(athlete?.preferred_units || 'metric')
-    const [weekStartsOn, setWeekStartsOn] = useState<number>(athlete?.week_starts_on ?? 0)
+    const [firstName, setFirstName] = useState('')
+    const [lastName, setLastName] = useState('')
+    const [preferredUnits, setPreferredUnits] = useState<'metric' | 'imperial'>('metric')
+    const [weekStartsOn, setWeekStartsOn] = useState<number>(0)
     const [saving, setSaving] = useState(false)
+
+    // Update local state when athlete data loads
+    useEffect(() => {
+        if (athlete) {
+            setFirstName(athlete.first_name || '')
+            setLastName(athlete.last_name || '')
+            setPreferredUnits(athlete.preferred_units || 'metric')
+            setWeekStartsOn(athlete.week_starts_on ?? 0)
+        }
+    }, [athlete])
 
     const handleSave = async () => {
         setSaving(true)
@@ -27,6 +40,8 @@ export function PreferencesCard() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    first_name: firstName,
+                    last_name: lastName,
                     preferred_units: preferredUnits,
                     week_starts_on: weekStartsOn,
                 }),
@@ -47,35 +62,66 @@ export function PreferencesCard() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Preferences</CardTitle>
-                <CardDescription>Customize your application settings</CardDescription>
+                <CardTitle>Personal Preferences</CardTitle>
+                <CardDescription>Manage your profile and application settings</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-                <div className="space-y-2">
-                    <Label htmlFor="units">Preferred Units</Label>
-                    <Select value={preferredUnits} onValueChange={(value) => setPreferredUnits(value as 'metric' | 'imperial')}>
-                        <SelectTrigger id="units">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="metric">Metric (km, kg)</SelectItem>
-                            <SelectItem value="imperial">Imperial (miles, lbs)</SelectItem>
-                        </SelectContent>
-                    </Select>
+                {/* Name Fields */}
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="first-name">First Name</Label>
+                        <Input
+                            id="first-name"
+                            value={firstName}
+                            onChange={(e) => setFirstName(e.target.value)}
+                            placeholder="First name"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="last-name">Last Name</Label>
+                        <Input
+                            id="last-name"
+                            value={lastName}
+                            onChange={(e) => setLastName(e.target.value)}
+                            placeholder="Last name"
+                        />
+                    </div>
                 </div>
 
+                {/* Email (read-only) */}
                 <div className="space-y-2">
-                    <Label htmlFor="week-start">Week Starts On</Label>
-                    <Select value={weekStartsOn.toString()} onValueChange={(value) => setWeekStartsOn(parseInt(value))}>
-                        <SelectTrigger id="week-start">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="0">Sunday</SelectItem>
-                            <SelectItem value="1">Monday</SelectItem>
-                            <SelectItem value="6">Saturday</SelectItem>
-                        </SelectContent>
-                    </Select>
+                    <Label htmlFor="email">Email</Label>
+                    <div className="text-sm text-muted-foreground">{athlete?.email}</div>
+                </div>
+
+                {/* Units and Week Start - Single Line */}
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="units">Preferred Units</Label>
+                        <Select value={preferredUnits} onValueChange={(value) => setPreferredUnits(value as 'metric' | 'imperial')}>
+                            <SelectTrigger id="units">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="metric">Metric (km, kg)</SelectItem>
+                                <SelectItem value="imperial">Imperial (miles, lbs)</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="week-start">Week Starts On</Label>
+                        <Select value={weekStartsOn.toString()} onValueChange={(value) => setWeekStartsOn(parseInt(value))}>
+                            <SelectTrigger id="week-start">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="0">Sunday</SelectItem>
+                                <SelectItem value="1">Monday</SelectItem>
+                                <SelectItem value="6">Saturday</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
 
                 <Button onClick={handleSave} disabled={saving} className="w-full">

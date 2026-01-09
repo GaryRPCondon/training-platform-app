@@ -61,22 +61,6 @@ export default function ProfilePage() {
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Personal Information</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div>
-                            <div className="text-sm font-medium text-muted-foreground">Name</div>
-                            <div className="text-lg">{athlete?.name || 'Not set'}</div>
-                        </div>
-                        <div>
-                            <div className="text-sm font-medium text-muted-foreground">Email</div>
-                            <div className="text-lg">{athlete?.email}</div>
-                        </div>
-                    </CardContent>
-                </Card>
-
                 <PreferencesCard />
                 <AISettingsCard />
                 <ConnectionsCard

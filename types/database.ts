@@ -1,7 +1,9 @@
 export interface Athlete {
     id: string
     email: string
-    name: string | null
+    name: string | null  // Legacy field
+    first_name: string | null
+    last_name: string | null
     date_of_birth: string | null
     gender: string | null
     max_hr: number | null
@@ -17,6 +19,7 @@ export interface Athlete {
     preferred_llm_provider: 'anthropic' | 'openai' | 'gemini' | 'deepseek' | 'grok'
     preferred_llm_model: string | null
     use_fast_model_for_operations: boolean // Use non-reasoning model for quick operations
+    preferred_activity_data_source: 'strava' | 'garmin' | 'most_recent' // Priority for merged activity details
     created_at: string
     updated_at: string
 }
