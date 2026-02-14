@@ -9,6 +9,7 @@ import type { TrainingPaces } from '@/types/database'
 import { WorkoutCard } from './workout-card'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { getWorkoutColor } from '@/lib/constants/workout-colors'
+import { toDisplayDistance, distanceLabel, type UnitSystem } from '@/lib/utils/units'
 import { WeeklyTotals } from '../calendar/weekly-totals'
 import { useQuery } from '@tanstack/react-query'
 import { getAthleteProfile } from '@/lib/supabase/queries'
@@ -55,7 +56,7 @@ interface TrainingCalendarProps {
   onWorkoutSelect?: (workout: WorkoutWithDetails) => void
 }
 
-function formatWorkoutTitle(workout: WorkoutWithDetails): string {
+function formatWorkoutTitle(workout: WorkoutWithDetails, units: UnitSystem = 'metric'): string {
   const description = workout.description || 'Workout'
 
   // Check if description already contains distance information (e.g., "10km", "15km", "5K")
@@ -63,8 +64,9 @@ function formatWorkoutTitle(workout: WorkoutWithDetails): string {
 
   let title = description
   if (workout.distance_target_meters && !hasDistanceInDescription) {
-    const km = (workout.distance_target_meters / 1000).toFixed(1)
-    title = `${description} ${km}km`
+    const dist = toDisplayDistance(workout.distance_target_meters, units).toFixed(1)
+    const label = distanceLabel(units)
+    title = `${description} ${dist}${label}`
   } else if (workout.duration_target_seconds) {
     const mins = Math.round(workout.duration_target_seconds / 60)
     title = `${description} ${mins}min`
@@ -90,6 +92,7 @@ export function TrainingCalendar({ workouts, trainingPaces, vdot, onWorkoutSelec
   })
 
   const weekStartsOn = (athlete?.week_starts_on ?? 0) as 0 | 1 | 2 | 3 | 4 | 5 | 6 // Default to Sunday if not set
+  const preferredUnits: UnitSystem = athlete?.preferred_units ?? 'metric'
 
   // Update moment locale to use the preferred week start day
   moment.updateLocale('en', {
@@ -101,12 +104,12 @@ export function TrainingCalendar({ workouts, trainingPaces, vdot, onWorkoutSelec
   const events: WorkoutEvent[] = useMemo(() => {
     return workouts.map(workout => ({
       id: workout.id,
-      title: formatWorkoutTitle(workout),
+      title: formatWorkoutTitle(workout, preferredUnits),
       start: workout.date,
       end: workout.date,
       resource: workout
     }))
-  }, [workouts])
+  }, [workouts, preferredUnits])
 
   const handleSelectEvent = (event: WorkoutEvent) => {
     setSelectedWorkout(event.resource)

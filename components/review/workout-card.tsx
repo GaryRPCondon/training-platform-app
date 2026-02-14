@@ -6,7 +6,9 @@ import { Separator } from '@/components/ui/separator'
 import type { WorkoutWithDetails } from '@/types/review'
 import type { TrainingPaces } from '@/types/database'
 import { Calendar, Clock, TrendingUp, Target, Gauge, Flag, RotateCcw, CheckCircle, AlertCircle, XCircle } from 'lucide-react'
-import { formatPace, estimateDuration, getWorkoutPaceType } from '@/lib/training/vdot'
+import { estimateDuration, getWorkoutPaceType } from '@/lib/training/vdot'
+import { useUnits } from '@/lib/hooks/use-units'
+import { formatDistance as fmtDist, type UnitSystem } from '@/lib/utils/units'
 
 interface WorkoutCardProps {
   workout: WorkoutWithDetails
@@ -17,6 +19,7 @@ interface WorkoutCardProps {
 }
 
 export function WorkoutCard({ workout, trainingPaces, vdot, onClose, onDiscuss }: WorkoutCardProps) {
+  const { units, formatDistance, formatPace, distanceLabel } = useUnits()
   const hasStructuredWorkout = workout.structured_workout &&
     typeof workout.structured_workout === 'object'
 
@@ -103,9 +106,9 @@ export function WorkoutCard({ workout, trainingPaces, vdot, onClose, onDiscuss }
                 This workout has an unusual distance that may be due to an AI calculation error.
               </p>
               <p className="text-xs text-red-700 font-mono">
-                Distance: {(workout.validation_warning.actualDistance / 1000).toFixed(1)}km
-                (expected: {(workout.validation_warning.expectedRange.min / 1000).toFixed(1)}-
-                {(workout.validation_warning.expectedRange.max / 1000).toFixed(1)}km for {workout.workout_type})
+                Distance: {formatDistance(workout.validation_warning.actualDistance, 1)}
+                (expected: {formatDistance(workout.validation_warning.expectedRange.min, 1)}-
+                {formatDistance(workout.validation_warning.expectedRange.max, 1)} for {workout.workout_type})
               </p>
               <div className="flex items-center gap-1 mt-2">
                 <RotateCcw className="h-3 w-3 text-red-600" />
@@ -134,7 +137,7 @@ export function WorkoutCard({ workout, trainingPaces, vdot, onClose, onDiscuss }
               Distance Target
             </div>
             <div className="text-lg font-medium">
-              {(workout.distance_target_meters / 1000).toFixed(1)} km
+              {formatDistance(workout.distance_target_meters, 1)}
             </div>
           </div>
         )}
@@ -156,7 +159,7 @@ export function WorkoutCard({ workout, trainingPaces, vdot, onClose, onDiscuss }
               {paceLabel} Pace
             </div>
             <div className="text-lg font-medium">
-              {formatPace(targetPace)}
+              {formatPace(targetPace!)}
             </div>
             {vdot && (
               <div className="text-xs text-muted-foreground">
@@ -186,7 +189,7 @@ export function WorkoutCard({ workout, trainingPaces, vdot, onClose, onDiscuss }
           <div>
             <h4 className="font-medium mb-2">Workout Structure</h4>
             <div className="text-sm space-y-1">
-              {renderStructuredWorkout(workout.structured_workout as any)}
+              {renderStructuredWorkout(workout.structured_workout as any, units)}
             </div>
           </div>
         </>
@@ -213,13 +216,13 @@ export function WorkoutCard({ workout, trainingPaces, vdot, onClose, onDiscuss }
   )
 }
 
-function renderStructuredWorkout(structure: any): React.ReactNode {
+function renderStructuredWorkout(structure: any, units: UnitSystem = 'metric'): React.ReactNode {
   if (!structure) return null
 
   const parts: string[] = []
 
   if (structure.warmup) {
-    parts.push(`Warmup: ${formatWorkoutPart(structure.warmup)}`)
+    parts.push(`Warmup: ${formatWorkoutPart(structure.warmup, units)}`)
   }
 
   if (structure.main_set) {
@@ -231,12 +234,12 @@ function renderStructuredWorkout(structure: any): React.ReactNode {
         }
       })
     } else {
-      parts.push(`Main: ${formatWorkoutPart(structure.main_set)}`)
+      parts.push(`Main: ${formatWorkoutPart(structure.main_set, units)}`)
     }
   }
 
   if (structure.cooldown) {
-    parts.push(`Cooldown: ${formatWorkoutPart(structure.cooldown)}`)
+    parts.push(`Cooldown: ${formatWorkoutPart(structure.cooldown, units)}`)
   }
 
   return (
@@ -248,14 +251,14 @@ function renderStructuredWorkout(structure: any): React.ReactNode {
   )
 }
 
-function formatWorkoutPart(part: any): string {
+function formatWorkoutPart(part: any, units: UnitSystem = 'metric'): string {
   const details: string[] = []
 
   if (part.duration_minutes) {
     details.push(`${part.duration_minutes}min`)
   }
   if (part.distance_meters) {
-    details.push(`${(part.distance_meters / 1000).toFixed(1)}km`)
+    details.push(fmtDist(part.distance_meters, units, 1))
   }
   if (part.intensity) {
     details.push(part.intensity)

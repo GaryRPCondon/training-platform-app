@@ -7,8 +7,10 @@ import { Badge } from '@/components/ui/badge'
 import { TrendingUp, Calendar, Target } from 'lucide-react'
 import { getCurrentAthleteId } from '@/lib/supabase/client'
 import { getPhaseProgress } from '@/lib/analysis/phase-progress'
+import { useUnits } from '@/lib/hooks/use-units'
 
 export function PhaseProgressCard() {
+    const { toDisplayDistance, distanceLabel } = useUnits()
     const { data: progress, isLoading } = useQuery({
         queryKey: ['phase-progress'],
         queryFn: async () => {
@@ -54,8 +56,8 @@ export function PhaseProgressCard() {
                         <span className="text-sm font-medium">This Week's Volume</span>
                     </div>
                     <div className="flex items-baseline gap-2 mb-2">
-                        <span className="text-2xl font-bold">{progress.weeklyVolumeActual}km</span>
-                        <span className="text-sm text-muted-foreground">/ {progress.weeklyVolumeTarget}km</span>
+                        <span className="text-2xl font-bold">{Math.round(toDisplayDistance(progress.weeklyVolumeActual * 1000))}{distanceLabel()}</span>
+                        <span className="text-sm text-muted-foreground">/ {Math.round(toDisplayDistance(progress.weeklyVolumeTarget * 1000))}{distanceLabel()}</span>
                     </div>
                     <Progress value={progress.volumePercentComplete} className="h-2" />
                     <p className="text-xs text-muted-foreground mt-1">

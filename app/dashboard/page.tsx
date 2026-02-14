@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/server'
 import { PhaseProgressCard } from '@/components/progress/phase-progress-card'
 import { WeeklyProgressChart } from '@/components/progress/weekly-progress-chart'
+import { toDisplayDistance, distanceLabel, type UnitSystem } from '@/lib/utils/units'
 
 export default async function DashboardPage() {
     const supabase = await createClient()
@@ -12,14 +13,14 @@ export default async function DashboardPage() {
     // Find athlete by ID first, then by email (same as sync routes)
     let { data: athlete } = await supabase
         .from('athletes')
-        .select('id')
+        .select('id, preferred_units')
         .eq('id', user.id)
         .single()
 
     if (!athlete) {
         const { data: athleteByEmail } = await supabase
             .from('athletes')
-            .select('id')
+            .select('id, preferred_units')
             .eq('email', user.email)
             .single()
         athlete = athleteByEmail
@@ -28,6 +29,7 @@ export default async function DashboardPage() {
     if (!athlete) return null
 
     const athleteId = athlete.id
+    const units: UnitSystem = (athlete.preferred_units as UnitSystem) || 'metric'
 
     // Fetch total distance (all time)
     const { data: activities } = await supabase
@@ -36,7 +38,8 @@ export default async function DashboardPage() {
         .eq('athlete_id', athleteId)  // Use athleteId instead of user.id
 
     const totalDistanceMeters = activities?.reduce((acc: number, curr: { distance_meters: number | null }) => acc + (curr.distance_meters || 0), 0) || 0
-    const totalDistanceKm = (totalDistanceMeters / 1000).toFixed(1)
+    const totalDistanceDisplay = toDisplayDistance(totalDistanceMeters, units).toFixed(1)
+    const distUnit = distanceLabel(units)
 
     // Fetch active plan (also use athleteId)
     const { data: activePlan } = await supabase
@@ -57,7 +60,7 @@ export default async function DashboardPage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{totalDistanceKm} km</div>
+                        <div className="text-2xl font-bold">{totalDistanceDisplay} {distUnit}</div>
                         <p className="text-xs text-muted-foreground">
                             All time
                         </p>

@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import type { Activity } from '@/types/database'
+import { useUnits } from '@/lib/hooks/use-units'
 
 interface MergeConflict {
     flag_id: number
@@ -21,6 +22,7 @@ export function MergeReviewList({ conflicts }: { conflicts: MergeConflict[] }) {
     const [processingId, setProcessingId] = useState<number | null>(null)
     const router = useRouter()
     const supabase = createClient()
+    const { formatDistance } = useUnits()
 
     const handleMerge = async (conflict: MergeConflict) => {
         setProcessingId(conflict.flag_id)
@@ -114,7 +116,7 @@ export function MergeReviewList({ conflicts }: { conflicts: MergeConflict[] }) {
                                 <div className="space-y-1 text-sm">
                                     <p>{conflict.activity.activity_name || 'Activity'}</p>
                                     <p>{conflict.activity.start_time ? new Date(conflict.activity.start_time).toLocaleString() : 'N/A'}</p>
-                                    <p>{conflict.activity.distance_meters ? (conflict.activity.distance_meters / 1000).toFixed(2) + ' km' : 'N/A'}</p>
+                                    <p>{conflict.activity.distance_meters ? formatDistance(conflict.activity.distance_meters) : 'N/A'}</p>
                                     <p>{conflict.activity.duration_seconds ? Math.floor(conflict.activity.duration_seconds / 60) + ' min' : 'N/A'}</p>
                                 </div>
                             </div>
@@ -123,7 +125,7 @@ export function MergeReviewList({ conflicts }: { conflicts: MergeConflict[] }) {
                                 <div className="space-y-1 text-sm">
                                     <p>{conflict.potential_match.activity_name || 'Activity'}</p>
                                     <p>{conflict.potential_match.start_time ? new Date(conflict.potential_match.start_time).toLocaleString() : 'N/A'}</p>
-                                    <p>{conflict.potential_match.distance_meters ? (conflict.potential_match.distance_meters / 1000).toFixed(2) + ' km' : 'N/A'}</p>
+                                    <p>{conflict.potential_match.distance_meters ? formatDistance(conflict.potential_match.distance_meters) : 'N/A'}</p>
                                     <p>{conflict.potential_match.duration_seconds ? Math.floor(conflict.potential_match.duration_seconds / 60) + ' min' : 'N/A'}</p>
                                 </div>
                             </div>

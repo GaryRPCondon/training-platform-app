@@ -24,9 +24,10 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table'
-import { format, startOfWeek, endOfWeek, isWithinInterval, subDays } from 'date-fns'
+import { format, startOfWeek, endOfWeek, isWithinInterval, subDays, startOfYear } from 'date-fns'
 import { Trash2, Loader2, X } from 'lucide-react'
 import { toast } from 'sonner'
+import { useUnits } from '@/lib/hooks/use-units'
 
 interface Activity {
     id: number
@@ -59,11 +60,6 @@ function formatDuration(seconds: number | null): string {
     }
 }
 
-function formatDistance(meters: number | null): string {
-    if (!meters) return '-'
-    return (meters / 1000).toFixed(2)
-}
-
 function formatActivityType(activityType: string | null): string {
     if (!activityType) return 'Unknown'
 
@@ -89,6 +85,7 @@ function getSourceBadgeColor(source: string): string {
 }
 
 export function ActivitiesView({ initialActivities }: ActivitiesViewProps) {
+    const { formatDistance, toDisplayDistance, distanceLabel } = useUnits()
     const router = useRouter()
     const [dateFilter, setDateFilter] = useState<string>('all')
     const [typeFilter, setTypeFilter] = useState<string>('all')
@@ -126,6 +123,12 @@ export function ActivitiesView({ initialActivities }: ActivitiesViewProps) {
                         break
                     case '90days':
                         isInRange = activityDate >= subDays(now, 90)
+                        break
+                    case 'thisYear':
+                        isInRange = activityDate >= startOfYear(now)
+                        break
+                    case '365days':
+                        isInRange = activityDate >= subDays(now, 365)
                         break
                 }
                 if (!isInRange) return false
@@ -168,7 +171,7 @@ export function ActivitiesView({ initialActivities }: ActivitiesViewProps) {
 
         return {
             totalActivities,
-            totalDistance: (totalDistance / 1000).toFixed(1),
+            totalDistance: toDisplayDistance(totalDistance).toFixed(1),
             totalDuration: (totalDuration / 3600).toFixed(1),
             thisWeekActivities
         }
@@ -260,7 +263,7 @@ export function ActivitiesView({ initialActivities }: ActivitiesViewProps) {
                         <CardTitle className="text-sm font-medium">Total Distance</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{stats.totalDistance} km</div>
+                        <div className="text-2xl font-bold">{stats.totalDistance} {distanceLabel()}</div>
                         <p className="text-xs text-muted-foreground">All time</p>
                     </CardContent>
                 </Card>
@@ -312,6 +315,8 @@ export function ActivitiesView({ initialActivities }: ActivitiesViewProps) {
                                 <option value="7days">Last 7 Days</option>
                                 <option value="30days">Last 30 Days</option>
                                 <option value="90days">Last 90 Days</option>
+                                <option value="thisYear">This Year</option>
+                                <option value="365days">Last 365 Days</option>
                             </select>
                         </div>
                         <div className="space-y-2">
@@ -410,7 +415,7 @@ export function ActivitiesView({ initialActivities }: ActivitiesViewProps) {
                                         </TableCell>
                                         <TableCell>{activity.activity_name || 'Untitled'}</TableCell>
                                         <TableCell>{formatActivityType(activity.activity_type)}</TableCell>
-                                        <TableCell className="text-right">{formatDistance(activity.distance_meters)} km</TableCell>
+                                        <TableCell className="text-right">{activity.distance_meters ? formatDistance(activity.distance_meters) : '-'}</TableCell>
                                         <TableCell className="text-right">{formatDuration(activity.duration_seconds)}</TableCell>
                                         <TableCell>
                                             <Badge className={getSourceBadgeColor(activity.source)}>

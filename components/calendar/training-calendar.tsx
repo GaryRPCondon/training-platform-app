@@ -16,6 +16,7 @@ import { ActivityDetail } from '@/components/activities/activity-detail'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import { getWorkoutColor, normalizeActivityType } from '@/lib/constants/workout-colors'
+import { toDisplayDistance, distanceLabel, type UnitSystem } from '@/lib/utils/units'
 import { WeeklyTotals } from './weekly-totals'
 import { CustomToolbar } from './custom-toolbar'
 import { createClient } from '@/lib/supabase/client'
@@ -58,7 +59,7 @@ const calendarStyles = `
 const localizer = momentLocalizer(moment)
 const DnDCalendar = withDragAndDrop(Calendar)
 
-function formatWorkoutTitle(workout: any): string {
+function formatWorkoutTitle(workout: any, units: UnitSystem = 'metric'): string {
     const description = workout.description || 'Workout'
 
     // Add completion status indicator
@@ -75,8 +76,9 @@ function formatWorkoutTitle(workout: any): string {
     const hasDistanceInDescription = /\d+\.?\d*\s?(km|k|miles?|mi)\b/i.test(description)
 
     if (workout.distance_target_meters && !hasDistanceInDescription) {
-        const km = (workout.distance_target_meters / 1000).toFixed(1)
-        return `${statusIndicator}${description} ${km}km`
+        const dist = toDisplayDistance(workout.distance_target_meters, units).toFixed(1)
+        const label = distanceLabel(units)
+        return `${statusIndicator}${description} ${dist}${label}`
     }
 
     if (workout.duration_target_seconds) {
@@ -106,6 +108,7 @@ export function TrainingCalendar() {
     })
 
     const weekStartsOn = (athlete?.week_starts_on ?? 0) as 0 | 1 | 2 | 3 | 4 | 5 | 6 // Default to Sunday if not set
+    const preferredUnits: UnitSystem = athlete?.preferred_units ?? 'metric'
 
     // Get active plan's VDOT and training paces
     const { data: activePlan } = useQuery({
@@ -229,7 +232,7 @@ export function TrainingCalendar() {
     const events = useMemo(() => {
         const workoutEvents = workouts.map(w => ({
             id: `workout-${w.id}`,
-            title: formatWorkoutTitle(w),
+            title: formatWorkoutTitle(w, preferredUnits),
             start: new Date(w.scheduled_date),
             end: new Date(w.scheduled_date),
             allDay: true,
@@ -254,7 +257,7 @@ export function TrainingCalendar() {
             })) || []
 
         return [...workoutEvents, ...activityEvents]
-    }, [workouts, rawActivities])
+    }, [workouts, rawActivities, preferredUnits])
 
     const handleSelectEvent = useCallback(async (event: any) => {
         // Phase 6: Handle both workouts and activities

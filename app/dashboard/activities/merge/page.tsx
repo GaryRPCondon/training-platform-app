@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { format } from 'date-fns'
 import { CheckCircle2, XCircle, Activity as ActivityIcon } from 'lucide-react'
 import { toast } from 'sonner'
+import { useUnits } from '@/lib/hooks/use-units'
 
 interface Activity {
     id: number
@@ -75,7 +76,8 @@ export default function MergeReviewPage() {
         }
     })
 
-    const formatDistance = (meters: number) => (meters / 1000).toFixed(2) + ' km'
+    const { formatDistance: fmtDist } = useUnits()
+    const formatDistance = (meters: number) => fmtDist(meters)
     const formatDuration = (seconds: number) => {
         const mins = Math.floor(seconds / 60)
         const secs = seconds % 60

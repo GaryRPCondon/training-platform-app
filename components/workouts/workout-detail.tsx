@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import type { PlannedWorkout, TrainingPaces } from '@/types'
-import { formatPace, estimateDuration, getWorkoutPaceType } from '@/lib/training/vdot'
+import { estimateDuration, getWorkoutPaceType } from '@/lib/training/vdot'
+import { useUnits } from '@/lib/hooks/use-units'
 
 interface WorkoutDetailProps {
     workout: PlannedWorkout
@@ -15,6 +16,8 @@ interface WorkoutDetailProps {
 }
 
 export function WorkoutDetail({ workout, trainingPaces, vdot, onEdit, onDelete }: WorkoutDetailProps) {
+    const { formatDistance, formatPace } = useUnits()
+
     // Calculate target pace and estimated duration if we have training paces
     let targetPace: number | null = null
     let estimatedDurationMinutes: number | null = null
@@ -49,7 +52,7 @@ export function WorkoutDetail({ workout, trainingPaces, vdot, onEdit, onDelete }
                 {workout.distance_target_meters && (
                     <div>
                         <div className="text-sm text-muted-foreground">Distance Target</div>
-                        <div>{(workout.distance_target_meters / 1000).toFixed(1)} km</div>
+                        <div>{formatDistance(workout.distance_target_meters, 1)}</div>
                     </div>
                 )}
 
@@ -61,7 +64,7 @@ export function WorkoutDetail({ workout, trainingPaces, vdot, onEdit, onDelete }
                 {targetPace !== null && (
                     <div>
                         <div className="text-sm text-muted-foreground">{paceLabel} Pace</div>
-                        <div>{formatPace(targetPace)} {vdot && <span className="text-xs text-muted-foreground">(VDOT {vdot})</span>}</div>
+                        <div>{formatPace(targetPace!)} {vdot && <span className="text-xs text-muted-foreground">(VDOT {vdot})</span>}</div>
                     </div>
                 )}
 

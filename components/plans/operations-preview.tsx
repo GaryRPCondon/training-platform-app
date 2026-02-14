@@ -30,6 +30,7 @@ import {
   ChevronDown,
   ChevronUp
 } from 'lucide-react'
+import { useUnits } from '@/lib/hooks/use-units'
 
 interface Operation {
   op: string
@@ -137,6 +138,7 @@ export function OperationsPreview({
   const [applying, setApplying] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showWeekView, setShowWeekView] = useState(false)
+  const { toDisplayDistance, distanceLabel } = useUnits()
 
   const handleApprove = async () => {
     setApplying(true)
@@ -236,13 +238,13 @@ export function OperationsPreview({
                   {/* Before */}
                   <span className="text-muted-foreground">
                     {workout.before.type}
-                    {workout.before.distanceKm != null && workout.before.distanceKm > 0 && ` (${workout.before.distanceKm}km)`}
+                    {workout.before.distanceKm != null && workout.before.distanceKm > 0 && ` (${toDisplayDistance(workout.before.distanceKm * 1000).toFixed(1)}${distanceLabel()})`}
                   </span>
                   <ArrowRight className="h-3 w-3 text-muted-foreground" />
                   {/* After */}
                   <span className="font-medium text-green-600 dark:text-green-400">
                     {workout.after.type}
-                    {workout.after.distanceKm != null && workout.after.distanceKm > 0 && ` (${workout.after.distanceKm}km)`}
+                    {workout.after.distanceKm != null && workout.after.distanceKm > 0 && ` (${toDisplayDistance(workout.after.distanceKm * 1000).toFixed(1)}${distanceLabel()})`}
                   </span>
                 </div>
                 {workout.before.date !== workout.after.date && (
@@ -351,7 +353,7 @@ export function OperationsPreview({
                             <div>{before.type}</div>
                             {before.distanceKm != null && before.distanceKm > 0 && (
                               <div className="text-xs text-muted-foreground">
-                                {before.distanceKm}km
+                                {toDisplayDistance(before.distanceKm * 1000).toFixed(1)}{distanceLabel()}
                               </div>
                             )}
                           </div>
@@ -369,7 +371,7 @@ export function OperationsPreview({
                             </div>
                             {after.distanceKm != null && after.distanceKm > 0 && (
                               <div className="text-xs text-muted-foreground">
-                                {after.distanceKm}km
+                                {toDisplayDistance(after.distanceKm * 1000).toFixed(1)}{distanceLabel()}
                               </div>
                             )}
                           </div>

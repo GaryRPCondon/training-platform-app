@@ -5,7 +5,7 @@
  * Uses existing bidirectional schema (planned_workout_id ↔ completed_activity_id).
  */
 
-import { isSameDay, parseISO } from 'date-fns'
+import { format, parseISO } from 'date-fns'
 import type { Activity, PlannedWorkout } from '@/types/database'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
@@ -39,16 +39,32 @@ export async function matchActivitiesToWorkouts(
         .eq('athlete_id', athleteId)
         .is('planned_workout_id', null)
         .gte('start_time', startDate)
-        .lte('start_time', endDate)
+        .lte('start_time', endDate + 'T23:59:59')
 
     // Get pending workouts
     const { data: workouts } = await supabase
         .from('planned_workouts')
         .select('*')
         .eq('athlete_id', athleteId)
-        .eq('completion_status', 'pending')
+        .is('completed_activity_id', null)
         .gte('scheduled_date', startDate)
         .lte('scheduled_date', endDate)
+
+    console.log('[AutoMatch] Query range:', startDate, 'to', endDate)
+    console.log('[AutoMatch] Unlinked activities found:', activities?.length ?? 0)
+    if (activities?.length) {
+        console.log('[AutoMatch] Activity samples:', activities.slice(0, 3).map(a => ({
+            id: a.id, start_time: a.start_time, type: a.activity_type,
+            distance: a.distance_meters, planned_workout_id: a.planned_workout_id
+        })))
+    }
+    console.log('[AutoMatch] Unlinked workouts found:', workouts?.length ?? 0)
+    if (workouts?.length) {
+        console.log('[AutoMatch] Workout samples:', workouts.slice(0, 3).map(w => ({
+            id: w.id, date: w.scheduled_date, type: w.workout_type,
+            status: w.completion_status, completed_activity_id: w.completed_activity_id
+        })))
+    }
 
     if (!activities || !workouts) return []
 
@@ -58,7 +74,15 @@ export async function matchActivitiesToWorkouts(
     for (const activity of activities) {
         const match = findBestWorkoutMatch(activity, workouts.filter(w => !matchedWorkoutIds.has(w.id)))
 
-        if (match && match.confidence > 0.7) {
+        if (match) {
+            console.log('[AutoMatch] Match candidate:', {
+                activityId: match.activityId, workoutId: match.workoutId,
+                confidence: match.confidence, method: match.method,
+                accepted: match.confidence > 0.7
+            })
+        }
+
+        if (match && match.confidence >= 0.7) {
             await linkActivityToWorkout(supabase, activity, workouts.find(w => w.id === match.workoutId)!, match)
             matches.push(match)
             matchedWorkoutIds.add(match.workoutId)
@@ -78,11 +102,16 @@ function findBestWorkoutMatch(
     if (!activity.start_time) return null
 
     const activityDate = parseISO(activity.start_time)
+    const activityDay = format(activityDate, 'yyyy-MM-dd')
 
     // Same day workouts only
     const sameDayWorkouts = workouts.filter(w =>
-        isSameDay(parseISO(w.scheduled_date), activityDate)
+        w.scheduled_date === activityDay
     )
+
+    console.log('[AutoMatch] Day check: activity', activity.id, 'start_time=', activity.start_time,
+        'parsed day=', activityDay, 'workout dates=', workouts.map(w => w.scheduled_date),
+        'same-day matches=', sameDayWorkouts.length)
 
     if (sameDayWorkouts.length === 0) return null
 

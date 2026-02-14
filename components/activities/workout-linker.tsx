@@ -11,6 +11,7 @@ import { toast } from 'sonner'
 import { format, parseISO, subDays, addDays } from 'date-fns'
 import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
+import { useUnits } from '@/lib/hooks/use-units'
 
 interface WorkoutLinkerProps {
   activity: Activity
@@ -23,6 +24,7 @@ export function WorkoutLinker({ activity, currentWorkout, onClose }: WorkoutLink
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const queryClient = useQueryClient()
+  const { formatDistance } = useUnits()
 
   // Load nearby workouts for manual linking
   useEffect(() => {
@@ -192,13 +194,13 @@ export function WorkoutLinker({ activity, currentWorkout, onClose }: WorkoutLink
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Target Distance:</span>
                       <span className="font-medium">
-                        {(currentWorkout.distance_target_meters / 1000).toFixed(1)} km
+                        {formatDistance(currentWorkout.distance_target_meters, 1)}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Actual Distance:</span>
                       <span className="font-medium">
-                        {(activity.distance_meters / 1000).toFixed(1)} km
+                        {formatDistance(activity.distance_meters, 1)}
                       </span>
                     </div>
                     {activity.match_metadata?.distance_diff_percent !== undefined && (
@@ -252,7 +254,7 @@ export function WorkoutLinker({ activity, currentWorkout, onClose }: WorkoutLink
                       {workout.distance_target_meters && (
                         <>
                           <Target className="h-3 w-3 ml-2" />
-                          {(workout.distance_target_meters / 1000).toFixed(1)} km
+                          {formatDistance(workout.distance_target_meters, 1)}
                         </>
                       )}
                     </div>

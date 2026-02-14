@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import { startOfWeek, endOfWeek, format, eachWeekOfInterval, startOfMonth, endOfMonth, addDays, subDays } from 'date-fns'
+import { useUnits } from '@/lib/hooks/use-units'
 
 interface WeeklyTotalsProps {
     workouts: any[]
@@ -16,11 +17,12 @@ interface WeekTotal {
     weekLabel: string
     weekStart: Date
     weekEnd: Date
-    plannedKm: number
-    actualKm: number
+    plannedMeters: number
+    actualMeters: number
 }
 
 export function WeeklyTotals({ workouts, activities = [], currentDate, view, weekStartsOn, showActual = false }: WeeklyTotalsProps) {
+    const { toDisplayDistance, distanceLabel } = useUnits()
     const weekTotals = useMemo(() => {
         // Determine the date range to show based on view
         let rangeStart: Date
@@ -85,8 +87,8 @@ export function WeeklyTotals({ workouts, activities = [], currentDate, view, wee
                 weekLabel,
                 weekStart,
                 weekEnd,
-                plannedKm: plannedMeters / 1000,
-                actualKm: actualMeters / 1000
+                plannedMeters,
+                actualMeters,
             }
         })
     }, [workouts, activities, currentDate, view, weekStartsOn])
@@ -111,13 +113,13 @@ export function WeeklyTotals({ workouts, activities = [], currentDate, view, wee
                         <div className="space-y-0.5">
                             <div className="flex justify-between items-baseline">
                                 <span className="text-xs text-muted-foreground">Planned:</span>
-                                <span className="text-sm font-semibold">{week.plannedKm.toFixed(1)} km</span>
+                                <span className="text-sm font-semibold">{toDisplayDistance(week.plannedMeters).toFixed(1)} {distanceLabel()}</span>
                             </div>
                             {showActual && (
                                 <div className="flex justify-between items-baseline">
                                     <span className="text-xs text-muted-foreground">Actual:</span>
                                     <span className="text-sm font-semibold text-primary">
-                                        {week.actualKm > 0 ? `${week.actualKm.toFixed(1)} km` : '-'}
+                                        {week.actualMeters > 0 ? `${toDisplayDistance(week.actualMeters).toFixed(1)} ${distanceLabel()}` : '-'}
                                     </span>
                                 </div>
                             )}

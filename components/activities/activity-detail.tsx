@@ -6,6 +6,7 @@ import { WorkoutLinker } from './workout-linker'
 import { format, parseISO } from 'date-fns'
 import type { Activity, PlannedWorkout } from '@/types/database'
 import { Activity as ActivityIcon, Calendar, Clock, TrendingUp, Gauge, Mountain } from 'lucide-react'
+import { useUnits } from '@/lib/hooks/use-units'
 
 interface ActivityDetailProps {
   activity: Activity & { planned_workouts?: PlannedWorkout | null }
@@ -13,13 +14,13 @@ interface ActivityDetailProps {
 }
 
 export function ActivityDetail({ activity, onClose }: ActivityDetailProps) {
+  const { formatDistance, formatPace, formatElevation } = useUnits()
+
   // Calculate pace if we have distance and duration
   let avgPace: string | null = null
   if (activity.distance_meters && activity.duration_seconds) {
     const paceSecondsPerKm = (activity.duration_seconds / (activity.distance_meters / 1000))
-    const paceMinutes = Math.floor(paceSecondsPerKm / 60)
-    const paceSeconds = Math.floor(paceSecondsPerKm % 60)
-    avgPace = `${paceMinutes}:${paceSeconds.toString().padStart(2, '0')} /km`
+    avgPace = formatPace(paceSecondsPerKm)
   }
 
   return (
@@ -58,7 +59,7 @@ export function ActivityDetail({ activity, onClose }: ActivityDetailProps) {
                   Distance
                 </div>
                 <div className="text-2xl font-bold">
-                  {(activity.distance_meters / 1000).toFixed(2)} km
+                  {formatDistance(activity.distance_meters)}
                 </div>
               </div>
             )}
@@ -126,7 +127,7 @@ export function ActivityDetail({ activity, onClose }: ActivityDetailProps) {
                   Elevation Gain
                 </div>
                 <div className="text-2xl font-bold">
-                  {activity.elevation_gain_meters.toFixed(0)} m
+                  {formatElevation(activity.elevation_gain_meters)}
                 </div>
               </div>
             )}

@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { CheckCircle2, XCircle, AlertTriangle, Loader2 } from 'lucide-react'
+import { useUnits } from '@/lib/hooks/use-units'
 
 interface RegeneratedWeek {
   week_number: number
@@ -75,6 +76,7 @@ export function PlanDiffPreview({
 }: PlanDiffPreviewProps) {
   const [applying, setApplying] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { toDisplayDistance, distanceLabel } = useUnits()
 
   const handleApprove = async () => {
     setApplying(true)
@@ -145,8 +147,8 @@ export function PlanDiffPreview({
                         : 'secondary'
                     }
                   >
-                    {originalWeek?.weekly_volume_km.toFixed(1)}km →{' '}
-                    {newWeek.weekly_volume_km.toFixed(1)}km
+                    {toDisplayDistance(( originalWeek?.weekly_volume_km || 0) * 1000).toFixed(1)}{distanceLabel()} →{' '}
+                    {toDisplayDistance(newWeek.weekly_volume_km * 1000).toFixed(1)}{distanceLabel()}
                   </Badge>
                 </div>
               </CardHeader>
@@ -165,7 +167,7 @@ export function PlanDiffPreview({
                           {workout.description}
                           {workout.distance_km && (
                             <span className="text-muted-foreground ml-1">
-                              ({workout.distance_km.toFixed(1)}km)
+                              ({toDisplayDistance(workout.distance_km * 1000).toFixed(1)}{distanceLabel()})
                             </span>
                           )}
                         </div>
@@ -220,7 +222,7 @@ export function PlanDiffPreview({
                             {workout.description}
                             {workout.distance_km && (
                               <span className="text-muted-foreground ml-1">
-                                ({workout.distance_km.toFixed(1)}km)
+                                ({toDisplayDistance(workout.distance_km * 1000).toFixed(1)}{distanceLabel()})
                               </span>
                             )}
                             {isChanged && (

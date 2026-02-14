@@ -89,6 +89,8 @@ function formatContext(context: any): string {
 
     if (context.athlete) {
         parts.push(`Athlete Profile: ${context.athlete.name || 'Unknown'}`)
+        const preferredUnits = context.athlete.preferred_units || 'metric'
+        parts.push(`Preferred Units: ${preferredUnits} (IMPORTANT: Always respond using ${preferredUnits === 'imperial' ? 'miles, feet, and min/mi pace' : 'kilometers, meters, and min/km pace'})`)
         if (context.athlete.vo2_max) parts.push(`VO2 Max: ${context.athlete.vo2_max}`)
         if (context.athlete.threshold_pace) parts.push(`Threshold Pace: ${context.athlete.threshold_pace} min/km`)
     }

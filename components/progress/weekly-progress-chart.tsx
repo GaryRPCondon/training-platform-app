@@ -6,8 +6,10 @@ import { BarChart } from 'lucide-react'
 import { getCurrentAthleteId } from '@/lib/supabase/client'
 import { getWeeklyProgress } from '@/lib/analysis/phase-progress'
 import { cn } from '@/lib/utils'
+import { useUnits } from '@/lib/hooks/use-units'
 
 export function WeeklyProgressChart() {
+    const { toDisplayDistance, distanceLabel } = useUnits()
     const { data: weeklyData, isLoading } = useQuery({
         queryKey: ['weekly-progress'],
         queryFn: async () => {
@@ -49,7 +51,7 @@ export function WeeklyProgressChart() {
                                                 height: `${Math.max(plannedHeight, 2)}%`,
                                                 minHeight: '2px'
                                             }}
-                                            title={`Planned: ${day.plannedDistance}km`}
+                                            title={`Planned: ${Math.round(toDisplayDistance(day.plannedDistance * 1000))}${distanceLabel()}`}
                                         />
                                     )}
                                     {/* Actual Bar (Foreground) - Solid colors */}
@@ -65,10 +67,10 @@ export function WeeklyProgressChart() {
                                                 height: `${Math.max(actualHeight, 2)}%`,
                                                 minHeight: '2px'
                                             }}
-                                            title={`Actual: ${day.actualDistance}km`}
+                                            title={`Actual: ${Math.round(toDisplayDistance(day.actualDistance * 1000))}${distanceLabel()}`}
                                         >
                                             <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] font-medium whitespace-nowrap">
-                                                {day.actualDistance}
+                                                {Math.round(toDisplayDistance(day.actualDistance * 1000))}
                                             </span>
                                         </div>
                                     )}
