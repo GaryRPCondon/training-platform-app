@@ -147,152 +147,151 @@ export default function ActivitySyncPage() {
                 <p className="text-muted-foreground">Sync your activities from Garmin and Strava</p>
             </div>
 
-            {/* Date Range Selector */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Select Date Range</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <RadioGroup value={dateRange} onValueChange={(value: string) => setDateRange(value as DateRangeOption)}>
-                        <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="latest" id="latest" />
-                            <Label htmlFor="latest">Latest Activity (Newest single activity only)</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="week" id="week" />
-                            <Label htmlFor="week">Last 7 Days</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="month" id="month" />
-                            <Label htmlFor="month">Last 4 Weeks</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="year" id="year" />
-                            <Label htmlFor="year">This Year</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="custom" id="custom" />
-                            <Label htmlFor="custom">Custom</Label>
-                        </div>
-                    </RadioGroup>
-
-                    {dateRange === 'custom' && (
-                        <div className="grid grid-cols-2 gap-4 pl-6">
-                            <div className="space-y-2">
-                                <Label>Start Date</Label>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            className={cn(
-                                                "w-full justify-start text-left font-normal",
-                                                !customStartDate && "text-muted-foreground"
-                                            )}
-                                        >
-                                            <CalendarIcon className="mr-2 h-4 w-4" />
-                                            {customStartDate ? format(customStartDate, 'PPP') : 'Pick a date'}
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0">
-                                        <Calendar
-                                            mode="single"
-                                            selected={customStartDate}
-                                            onSelect={setCustomStartDate}
-                                            initialFocus
-                                        />
-                                    </PopoverContent>
-                                </Popover>
-                            </div>
-                            <div className="space-y-2">
-                                <Label>End Date</Label>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            className={cn(
-                                                "w-full justify-start text-left font-normal",
-                                                !customEndDate && "text-muted-foreground"
-                                            )}
-                                        >
-                                            <CalendarIcon className="mr-2 h-4 w-4" />
-                                            {customEndDate ? format(customEndDate, 'PPP') : 'Pick a date'}
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0">
-                                        <Calendar
-                                            mode="single"
-                                            selected={customEndDate}
-                                            onSelect={setCustomEndDate}
-                                            initialFocus
-                                        />
-                                    </PopoverContent>
-                                </Popover>
-                            </div>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-
-            {/* Sync Buttons */}
-            <Card>
+            {/* Date Range & Sync */}
+            <Card className="w-1/2">
                 <CardHeader>
                     <CardTitle>Sync Activities</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <Button
-                            onClick={syncGarmin}
-                            disabled={garminLoading || stravaLoading}
-                            className="w-full"
-                        >
-                            {garminLoading ? (
-                                <>
-                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                    Syncing...
-                                </>
-                            ) : (
-                                <>
-                                    <Activity className="h-4 w-4 mr-2" />
-                                    Sync from Garmin
-                                </>
+                <CardContent>
+                    <div className="flex flex-col md:flex-row gap-8 max-w-xl">
+                        {/* Left: Date Range */}
+                        <div className="space-y-4 flex-1">
+                            <Label className="text-sm font-medium text-muted-foreground">Date Range</Label>
+                            <RadioGroup value={dateRange} onValueChange={(value: string) => setDateRange(value as DateRangeOption)}>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="latest" id="latest" />
+                                    <Label htmlFor="latest">Latest Activity (Newest single activity only)</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="week" id="week" />
+                                    <Label htmlFor="week">Last 7 Days</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="month" id="month" />
+                                    <Label htmlFor="month">Last 4 Weeks</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="year" id="year" />
+                                    <Label htmlFor="year">This Year</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="custom" id="custom" />
+                                    <Label htmlFor="custom">Custom</Label>
+                                </div>
+                            </RadioGroup>
+
+                            {dateRange === 'custom' && (
+                                <div className="grid grid-cols-2 gap-4 pl-6">
+                                    <div className="space-y-2">
+                                        <Label>Start Date</Label>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    className={cn(
+                                                        "w-full justify-start text-left font-normal",
+                                                        !customStartDate && "text-muted-foreground"
+                                                    )}
+                                                >
+                                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                                    {customStartDate ? format(customStartDate, 'PPP') : 'Pick a date'}
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0">
+                                                <Calendar
+                                                    mode="single"
+                                                    selected={customStartDate}
+                                                    onSelect={setCustomStartDate}
+                                                    initialFocus
+                                                />
+                                            </PopoverContent>
+                                        </Popover>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>End Date</Label>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    className={cn(
+                                                        "w-full justify-start text-left font-normal",
+                                                        !customEndDate && "text-muted-foreground"
+                                                    )}
+                                                >
+                                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                                    {customEndDate ? format(customEndDate, 'PPP') : 'Pick a date'}
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0">
+                                                <Calendar
+                                                    mode="single"
+                                                    selected={customEndDate}
+                                                    onSelect={setCustomEndDate}
+                                                    initialFocus
+                                                />
+                                            </PopoverContent>
+                                        </Popover>
+                                    </div>
+                                </div>
                             )}
-                        </Button>
-                        <Button
-                            onClick={syncStrava}
-                            disabled={garminLoading || stravaLoading}
-                            className="w-full"
-                        >
-                            {stravaLoading ? (
-                                <>
-                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                    Syncing...
-                                </>
-                            ) : (
-                                <>
-                                    <Activity className="h-4 w-4 mr-2" />
-                                    Sync from Strava
-                                </>
-                            )}
-                        </Button>
+                        </div>
+
+                        {/* Right: Sync Buttons */}
+                        <div className="flex flex-col gap-2 md:w-40 shrink-0">
+                            <Button
+                                onClick={syncGarmin}
+                                disabled={garminLoading || stravaLoading}
+                                size="sm"
+                            >
+                                {garminLoading ? (
+                                    <>
+                                        <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
+                                        Syncing...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Activity className="h-3.5 w-3.5 mr-2" />
+                                        Sync Garmin
+                                    </>
+                                )}
+                            </Button>
+                            <Button
+                                onClick={syncStrava}
+                                disabled={garminLoading || stravaLoading}
+                                size="sm"
+                            >
+                                {stravaLoading ? (
+                                    <>
+                                        <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
+                                        Syncing...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Activity className="h-3.5 w-3.5 mr-2" />
+                                        Sync Strava
+                                    </>
+                                )}
+                            </Button>
+                            <Button
+                                onClick={syncBoth}
+                                disabled={garminLoading || stravaLoading}
+                                variant="secondary"
+                                size="sm"
+                            >
+                                {garminLoading || stravaLoading ? (
+                                    <>
+                                        <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
+                                        Syncing...
+                                    </>
+                                ) : (
+                                    <>
+                                        <RefreshCw className="h-3.5 w-3.5 mr-2" />
+                                        Sync Both
+                                    </>
+                                )}
+                            </Button>
+                        </div>
                     </div>
-                    <Button
-                        onClick={syncBoth}
-                        disabled={garminLoading || stravaLoading}
-                        variant="secondary"
-                        className="w-full"
-                    >
-                        {garminLoading || stravaLoading ? (
-                            <>
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                Syncing...
-                            </>
-                        ) : (
-                            <>
-                                <RefreshCw className="h-4 w-4 mr-2" />
-                                Sync Both
-                            </>
-                        )}
-                    </Button>
                 </CardContent>
             </Card>
 
