@@ -38,7 +38,7 @@ export class GeminiProvider implements LLMProvider {
 
     constructor(apiKey: string, modelName?: string) {
         this.client = new GoogleGenerativeAI(apiKey)
-        this.modelName = modelName || 'gemini-flash-latest'
+        this.modelName = modelName || 'gemini-2.5-flash'
     }
 
     async generateResponse(request: LLMRequest): Promise<LLMResponse> {

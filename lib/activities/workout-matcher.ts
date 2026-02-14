@@ -195,7 +195,7 @@ async function linkActivityToWorkout(
     }
 
     // Update activity (set FK + metadata)
-    await supabase
+    const { error: activityError } = await supabase
         .from('activities')
         .update({
             planned_workout_id: workout.id,
@@ -205,8 +205,13 @@ async function linkActivityToWorkout(
         })
         .eq('id', activity.id)
 
+    if (activityError) {
+        console.error('Failed to update activity:', activityError)
+        throw new Error(`Failed to link activity: ${activityError.message}`)
+    }
+
     // Update workout (set FK + completion)
-    await supabase
+    const { error: workoutError } = await supabase
         .from('planned_workouts')
         .update({
             completed_activity_id: activity.id,
@@ -219,6 +224,11 @@ async function linkActivityToWorkout(
             },
         })
         .eq('id', workout.id)
+
+    if (workoutError) {
+        console.error('Failed to update workout:', workoutError)
+        throw new Error(`Failed to link workout: ${workoutError.message}`)
+    }
 }
 
 /**
@@ -274,7 +284,7 @@ export async function unlinkWorkout(supabase: SupabaseClient, activityId: number
     if (!activity?.planned_workout_id) return
 
     // Reset workout
-    await supabase
+    const { error: workoutError } = await supabase
         .from('planned_workouts')
         .update({
             completed_activity_id: null,
@@ -283,8 +293,13 @@ export async function unlinkWorkout(supabase: SupabaseClient, activityId: number
         })
         .eq('id', activity.planned_workout_id)
 
+    if (workoutError) {
+        console.error('Failed to reset workout:', workoutError)
+        throw new Error(`Failed to unlink workout: ${workoutError.message}`)
+    }
+
     // Reset activity
-    await supabase
+    const { error: activityError } = await supabase
         .from('activities')
         .update({
             planned_workout_id: null,
@@ -293,4 +308,9 @@ export async function unlinkWorkout(supabase: SupabaseClient, activityId: number
             match_metadata: null,
         })
         .eq('id', activityId)
+
+    if (activityError) {
+        console.error('Failed to reset activity:', activityError)
+        throw new Error(`Failed to unlink activity: ${activityError.message}`)
+    }
 }

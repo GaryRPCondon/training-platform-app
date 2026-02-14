@@ -123,11 +123,11 @@ export async function POST(request: Request) {
     // Call LLM
     // Note: Token limits vary by provider - these are output (completion) limits
     const maxTokensMap: Record<string, number> = {
-      'deepseek': 32768,  // DeepSeek-V3 (deepseek-reasoner) supports up to 32K output tokens
-      'gemini': 65536,    // Gemini Flash supports up to 65536 output tokens
-      'anthropic': 8192,
+      'deepseek': 32768,  // DeepSeek R1 (deepseek-reasoner) supports up to 32K output tokens
+      'gemini': 65536,    // Gemini 2.5 Flash supports up to 65536 output tokens
+      'anthropic': 64000, // Claude Sonnet 4.5 supports up to 64K output tokens
       'openai': 16000,
-      'grok': 8192
+      'grok': 131072      // Grok 4.1 Fast supports up to 131K output tokens
     }
     const maxTokens = maxTokensMap[providerName] || 8192
 

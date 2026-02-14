@@ -27,7 +27,9 @@ export class AnthropicProvider implements LLMProvider {
             input_schema: tool.parameters
         }))
 
-        const response = await this.client.messages.create({
+        // Use streaming to handle long requests (>10 minutes)
+        // See: https://github.com/anthropics/anthropic-sdk-typescript#long-requests
+        const stream = this.client.messages.stream({
             model: this.modelName,
             max_tokens: request.maxTokens || 1024,
             temperature: request.temperature,
@@ -35,6 +37,9 @@ export class AnthropicProvider implements LLMProvider {
             messages: messages,
             tools: tools as any
         })
+
+        // Accumulate the streamed response
+        const response = await stream.finalMessage()
 
         // Extract text content
         let text = ''

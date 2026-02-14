@@ -8,7 +8,7 @@ export class GrokProvider implements LLMProvider {
 
     constructor(apiKey: string, modelName?: string) {
         this.apiKey = apiKey
-        this.modelName = modelName || 'grok-beta'
+        this.modelName = modelName || 'grok-4-1-fast-non-reasoning'
     }
 
     async generateResponse(params: LLMRequest): Promise<LLMResponse> {

@@ -86,6 +86,10 @@ export default function ActivitySyncPage() {
                 body: JSON.stringify({ startDate, endDate, limit })
             })
             const data = await res.json()
+            if (res.status === 409) {
+                toast.error('Sync already in progress. Please wait and try again.')
+                return
+            }
             setGarminResult(data)
             if (data.success) {
                 toast.success(`Garmin sync complete: ${data.synced} activities`)
@@ -112,6 +116,10 @@ export default function ActivitySyncPage() {
                 body: JSON.stringify({ startDate, endDate, limit })
             })
             const data = await res.json()
+            if (res.status === 409) {
+                toast.error('Sync already in progress. Please wait and try again.')
+                return
+            }
             setStravaResult(data)
             if (data.success) {
                 toast.success(`Strava sync complete: ${data.synced} activities`)
@@ -127,7 +135,9 @@ export default function ActivitySyncPage() {
     }
 
     const syncBoth = async () => {
-        await Promise.all([syncGarmin(), syncStrava()])
+        // Run sequentially to avoid race conditions with duplicate activity detection
+        await syncGarmin()
+        await syncStrava()
     }
 
     return (

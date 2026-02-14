@@ -1,10 +1,21 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog'
 import {
     Table,
     TableBody,
@@ -14,6 +25,8 @@ import {
     TableRow,
 } from '@/components/ui/table'
 import { format, startOfWeek, endOfWeek, isWithinInterval, subDays } from 'date-fns'
+import { Trash2, Loader2, X } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface Activity {
     id: number
@@ -76,10 +89,14 @@ function getSourceBadgeColor(source: string): string {
 }
 
 export function ActivitiesView({ initialActivities }: ActivitiesViewProps) {
+    const router = useRouter()
     const [dateFilter, setDateFilter] = useState<string>('all')
     const [typeFilter, setTypeFilter] = useState<string>('all')
     const [sourceFilter, setSourceFilter] = useState<string>('all')
     const [nameFilter, setNameFilter] = useState<string>('')
+    const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+    const [isDeleting, setIsDeleting] = useState(false)
 
     // Extract unique activity types
     const activityTypes = useMemo(() => {
@@ -156,6 +173,72 @@ export function ActivitiesView({ initialActivities }: ActivitiesViewProps) {
             thisWeekActivities
         }
     }, [filteredActivities])
+
+    // Selection helpers
+    const filteredIds = useMemo(() => new Set(filteredActivities.map(a => a.id)), [filteredActivities])
+    const selectedInView = useMemo(() => {
+        const intersection = new Set<number>()
+        selectedIds.forEach(id => { if (filteredIds.has(id)) intersection.add(id) })
+        return intersection
+    }, [selectedIds, filteredIds])
+
+    const allFilteredSelected = filteredActivities.length > 0 && selectedInView.size === filteredActivities.length
+    const someFilteredSelected = selectedInView.size > 0 && !allFilteredSelected
+
+    const toggleSelectAll = () => {
+        if (allFilteredSelected) {
+            // Deselect all filtered
+            const next = new Set(selectedIds)
+            filteredActivities.forEach(a => next.delete(a.id))
+            setSelectedIds(next)
+        } else {
+            // Select all filtered
+            const next = new Set(selectedIds)
+            filteredActivities.forEach(a => next.add(a.id))
+            setSelectedIds(next)
+        }
+    }
+
+    const toggleSelect = (id: number) => {
+        const next = new Set(selectedIds)
+        if (next.has(id)) {
+            next.delete(id)
+        } else {
+            next.add(id)
+        }
+        setSelectedIds(next)
+    }
+
+    const clearSelection = () => setSelectedIds(new Set())
+
+    const handleDelete = async (ids: number[]) => {
+        setIsDeleting(true)
+        try {
+            const res = await fetch('/api/activities/delete', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids })
+            })
+            const data = await res.json()
+            if (data.success) {
+                toast.success(`Deleted ${data.count} ${data.count === 1 ? 'activity' : 'activities'}`)
+                setSelectedIds(new Set())
+                setDeleteDialogOpen(false)
+                router.refresh()
+            } else {
+                toast.error(data.error || 'Failed to delete activities')
+            }
+        } catch (error) {
+            toast.error('Failed to delete activities')
+        } finally {
+            setIsDeleting(false)
+        }
+    }
+
+    const handleSingleDelete = (id: number) => {
+        setSelectedIds(new Set([id]))
+        setDeleteDialogOpen(true)
+    }
 
     return (
         <div className="space-y-6">
@@ -261,6 +344,27 @@ export function ActivitiesView({ initialActivities }: ActivitiesViewProps) {
                 </CardContent>
             </Card>
 
+            {/* Selection Toolbar */}
+            {selectedInView.size > 0 && (
+                <div className="flex items-center gap-3 rounded-lg border bg-muted/50 px-4 py-3">
+                    <span className="text-sm font-medium">
+                        {selectedInView.size} {selectedInView.size === 1 ? 'activity' : 'activities'} selected
+                    </span>
+                    <Button variant="ghost" size="sm" onClick={clearSelection}>
+                        <X className="h-4 w-4 mr-1" />
+                        Clear
+                    </Button>
+                    <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => setDeleteDialogOpen(true)}
+                    >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete Selected
+                    </Button>
+                </div>
+            )}
+
             {/* Activities Table */}
             <Card>
                 <CardHeader>
@@ -275,17 +379,32 @@ export function ActivitiesView({ initialActivities }: ActivitiesViewProps) {
                         <Table>
                             <TableHeader>
                                 <TableRow>
+                                    <TableHead className="w-10">
+                                        <Checkbox
+                                            checked={allFilteredSelected ? true : someFilteredSelected ? "indeterminate" : false}
+                                            onCheckedChange={toggleSelectAll}
+                                            aria-label="Select all"
+                                        />
+                                    </TableHead>
                                     <TableHead>Date</TableHead>
                                     <TableHead>Name</TableHead>
                                     <TableHead>Type</TableHead>
                                     <TableHead className="text-right">Distance</TableHead>
                                     <TableHead className="text-right">Duration</TableHead>
                                     <TableHead>Source</TableHead>
+                                    <TableHead className="w-10"></TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {filteredActivities.map((activity) => (
                                     <TableRow key={activity.id}>
+                                        <TableCell>
+                                            <Checkbox
+                                                checked={selectedIds.has(activity.id)}
+                                                onCheckedChange={() => toggleSelect(activity.id)}
+                                                aria-label={`Select ${activity.activity_name || 'activity'}`}
+                                            />
+                                        </TableCell>
                                         <TableCell className="font-medium">
                                             {format(new Date(activity.start_time), 'EEE, MMM d, yyyy')}
                                         </TableCell>
@@ -298,6 +417,16 @@ export function ActivitiesView({ initialActivities }: ActivitiesViewProps) {
                                                 {activity.source}
                                             </Badge>
                                         </TableCell>
+                                        <TableCell>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                                onClick={() => handleSingleDelete(activity.id)}
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
@@ -305,6 +434,38 @@ export function ActivitiesView({ initialActivities }: ActivitiesViewProps) {
                     )}
                 </CardContent>
             </Card>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete Activities</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to delete {selectedIds.size} {selectedIds.size === 1 ? 'activity' : 'activities'}?
+                            This action cannot be undone. Linked workout references will be cleared automatically.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={isDeleting}>
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={() => handleDelete(Array.from(selectedIds))}
+                            disabled={isDeleting}
+                        >
+                            {isDeleting ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Deleting...
+                                </>
+                            ) : (
+                                `Delete ${selectedIds.size} ${selectedIds.size === 1 ? 'Activity' : 'Activities'}`
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }
