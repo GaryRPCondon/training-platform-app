@@ -9,7 +9,7 @@ import { TrainingPlan } from '@/types/database'
 import { activatePlan } from '@/lib/supabase/plan-activation'
 import { getCurrentAthleteId } from '@/lib/supabase/client'
 import { format } from 'date-fns'
-import { Trash2 } from 'lucide-react'
+import { Trash2, Download } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function PlansPage() {
@@ -122,13 +122,28 @@ export default function PlansPage() {
                                                     <div>Type: {plan.plan_type}</div>
                                                     <div>Created: {format(new Date(plan.created_at), 'MMM d, yyyy')}</div>
                                                 </div>
-                                                <Button
-                                                    variant="destructive"
-                                                    onClick={() => handleDelete(plan.id, true)}
-                                                >
-                                                    <Trash2 className="mr-2 h-4 w-4" />
-                                                    Delete Plan
-                                                </Button>
+                                                <div className="flex gap-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        onClick={() => {
+                                                            window.open(`/api/plans/${plan.id}/export-ics`)
+                                                            toast.info(
+                                                                'Tip: Import into a separate calendar (e.g. "Training Plan") so you can delete that calendar later to remove all workouts.',
+                                                                { duration: 8000 }
+                                                            )
+                                                        }}
+                                                    >
+                                                        <Download className="mr-2 h-4 w-4" />
+                                                        Export to Calendar
+                                                    </Button>
+                                                    <Button
+                                                        variant="destructive"
+                                                        onClick={() => handleDelete(plan.id, true)}
+                                                    >
+                                                        <Trash2 className="mr-2 h-4 w-4" />
+                                                        Delete Plan
+                                                    </Button>
+                                                </div>
                                             </div>
                                         </CardContent>
                                     </Card>

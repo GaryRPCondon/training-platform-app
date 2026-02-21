@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { getAthleteProfile } from '@/lib/supabase/queries'
 import { toast } from 'sonner'
+import { Loader2 } from 'lucide-react'
 
 export function PreferencesCard() {
     const queryClient = useQueryClient()
@@ -22,16 +23,29 @@ export function PreferencesCard() {
     const [preferredUnits, setPreferredUnits] = useState<'metric' | 'imperial'>('metric')
     const [weekStartsOn, setWeekStartsOn] = useState<number>(0)
     const [saving, setSaving] = useState(false)
+    const savedValues = useRef({ firstName: '', lastName: '', preferredUnits: 'metric' as string, weekStartsOn: 0 })
 
     // Update local state when athlete data loads
     useEffect(() => {
         if (athlete) {
-            setFirstName(athlete.first_name || '')
-            setLastName(athlete.last_name || '')
-            setPreferredUnits(athlete.preferred_units || 'metric')
-            setWeekStartsOn(athlete.week_starts_on ?? 0)
+            const vals = {
+                firstName: athlete.first_name || '',
+                lastName: athlete.last_name || '',
+                preferredUnits: athlete.preferred_units || 'metric',
+                weekStartsOn: athlete.week_starts_on ?? 0,
+            }
+            setFirstName(vals.firstName)
+            setLastName(vals.lastName)
+            setPreferredUnits(vals.preferredUnits as 'metric' | 'imperial')
+            setWeekStartsOn(vals.weekStartsOn)
+            savedValues.current = vals
         }
     }, [athlete])
+
+    const hasChanges = firstName !== savedValues.current.firstName ||
+        lastName !== savedValues.current.lastName ||
+        preferredUnits !== savedValues.current.preferredUnits ||
+        weekStartsOn !== savedValues.current.weekStartsOn
 
     const handleSave = async () => {
         setSaving(true)
@@ -49,6 +63,7 @@ export function PreferencesCard() {
 
             if (!response.ok) throw new Error('Failed to update settings')
 
+            savedValues.current = { firstName, lastName, preferredUnits, weekStartsOn }
             queryClient.invalidateQueries({ queryKey: ['athlete'] })
             toast.success('Preferences updated successfully')
         } catch (error) {
@@ -124,7 +139,8 @@ export function PreferencesCard() {
                     </div>
                 </div>
 
-                <Button onClick={handleSave} disabled={saving} className="w-full">
+                <Button onClick={handleSave} disabled={saving || !hasChanges} className="w-full">
+                    {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {saving ? 'Saving...' : 'Save Preferences'}
                 </Button>
             </CardContent>

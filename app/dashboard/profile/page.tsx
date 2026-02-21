@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { AISettingsCard } from '@/components/settings/ai-settings-card'
 import { ConnectionsCard } from '@/components/settings/connections-card'
 import { PreferencesCard } from '@/components/settings/preferences-card'
+import { PerformanceMetricsCard } from '@/components/settings/performance-metrics-card'
 import { LogOut } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -62,6 +63,7 @@ export default function ProfilePage() {
 
             <div className="grid gap-6 md:grid-cols-2">
                 <PreferencesCard />
+                <PerformanceMetricsCard />
                 <AISettingsCard />
                 <ConnectionsCard
                     stravaConnected={!!athlete?.strava_connected}

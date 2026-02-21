@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -15,6 +15,7 @@ export function AISettingsCard() {
     const [provider, setProvider] = useState('deepseek')
     const [model, setModel] = useState('')
     const [useFastModel, setUseFastModel] = useState(true)
+    const savedValues = useRef({ provider: 'deepseek', model: '', useFastModel: true })
 
     useEffect(() => {
         fetchSettings()
@@ -25,14 +26,15 @@ export function AISettingsCard() {
             const response = await fetch('/api/settings/get')
             if (response.ok) {
                 const data = await response.json()
-                if (data.provider) {
-                    setProvider(data.provider)
+                const vals = {
+                    provider: data.provider || 'deepseek',
+                    model: data.model || '',
+                    useFastModel: data.useFastModelForOperations ?? true,
                 }
-                if (data.model) {
-                    setModel(data.model)
-                }
-                // Default to true if not set
-                setUseFastModel(data.useFastModelForOperations ?? true)
+                setProvider(vals.provider)
+                setModel(vals.model)
+                setUseFastModel(vals.useFastModel)
+                savedValues.current = vals
             }
         } catch (error) {
             console.error('Failed to fetch settings:', error)
@@ -41,6 +43,10 @@ export function AISettingsCard() {
             setLoading(false)
         }
     }
+
+    const hasChanges = provider !== savedValues.current.provider ||
+        model !== savedValues.current.model ||
+        useFastModel !== savedValues.current.useFastModel
 
     const handleSave = async () => {
         setSaving(true)
@@ -57,7 +63,8 @@ export function AISettingsCard() {
 
             if (!response.ok) throw new Error('Failed to update settings')
 
-            toast.success('Settings saved successfully')
+            savedValues.current = { provider, model, useFastModel }
+            toast.success('AI settings saved successfully')
         } catch (error) {
             console.error('Failed to save settings:', error)
             toast.error('Failed to save settings')
@@ -142,12 +149,10 @@ export function AISettingsCard() {
                     </div>
                 </div>
 
-                <div className="flex justify-end">
-                    <Button onClick={handleSave} disabled={saving}>
-                        {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Save Changes
-                    </Button>
-                </div>
+                <Button onClick={handleSave} disabled={saving || !hasChanges} className="w-full">
+                    {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {saving ? 'Saving...' : 'Save AI Settings'}
+                </Button>
             </CardContent>
         </Card>
     )

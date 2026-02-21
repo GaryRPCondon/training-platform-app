@@ -246,7 +246,7 @@ export function TrainingCalendar() {
             ?.filter(a => a.start_time)
             .map(a => ({
                 id: `activity-${a.id}`,
-                title: `✓ ${a.activity_name || a.activity_type || 'Activity'}`,
+                title: a.activity_name || a.activity_type || 'Activity',
                 start: parseISO(a.start_time!),
                 end: parseISO(a.start_time!),
                 allDay: true,

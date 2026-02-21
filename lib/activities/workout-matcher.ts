@@ -8,6 +8,7 @@
 import { format, parseISO } from 'date-fns'
 import type { Activity, PlannedWorkout } from '@/types/database'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { normalizeActivityType } from '@/lib/constants/workout-colors'
 
 export interface MatchResult {
     activityId: number
@@ -50,22 +51,6 @@ export async function matchActivitiesToWorkouts(
         .gte('scheduled_date', startDate)
         .lte('scheduled_date', endDate)
 
-    console.log('[AutoMatch] Query range:', startDate, 'to', endDate)
-    console.log('[AutoMatch] Unlinked activities found:', activities?.length ?? 0)
-    if (activities?.length) {
-        console.log('[AutoMatch] Activity samples:', activities.slice(0, 3).map(a => ({
-            id: a.id, start_time: a.start_time, type: a.activity_type,
-            distance: a.distance_meters, planned_workout_id: a.planned_workout_id
-        })))
-    }
-    console.log('[AutoMatch] Unlinked workouts found:', workouts?.length ?? 0)
-    if (workouts?.length) {
-        console.log('[AutoMatch] Workout samples:', workouts.slice(0, 3).map(w => ({
-            id: w.id, date: w.scheduled_date, type: w.workout_type,
-            status: w.completion_status, completed_activity_id: w.completed_activity_id
-        })))
-    }
-
     if (!activities || !workouts) return []
 
     const matches: MatchResult[] = []
@@ -78,11 +63,11 @@ export async function matchActivitiesToWorkouts(
             console.log('[AutoMatch] Match candidate:', {
                 activityId: match.activityId, workoutId: match.workoutId,
                 confidence: match.confidence, method: match.method,
-                accepted: match.confidence > 0.7
+                accepted: match.confidence >= 0.6
             })
         }
 
-        if (match && match.confidence >= 0.7) {
+        if (match && match.confidence >= 0.6) {
             await linkActivityToWorkout(supabase, activity, workouts.find(w => w.id === match.workoutId)!, match)
             matches.push(match)
             matchedWorkoutIds.add(match.workoutId)
@@ -119,6 +104,14 @@ function findBestWorkoutMatch(
     if (sameDayWorkouts.length === 1) {
         const workout = sameDayWorkouts[0]
         const confidence = calculateConfidence(activity, workout)
+        console.log('[AutoMatch] Single-day scoring:', {
+            activityId: activity.id, workoutId: workout.id,
+            activityType: activity.activity_type, workoutType: workout.workout_type,
+            normalizedType: normalizeActivityType(activity.activity_type,
+                typeof activity.strava_data === 'string' ? JSON.parse(activity.strava_data) : activity.strava_data),
+            distance: activity.distance_meters, target: workout.distance_target_meters,
+            confidence
+        })
 
         if (confidence > 0.6) {
             return {
@@ -163,9 +156,18 @@ function findBestWorkoutMatch(
 function calculateConfidence(activity: Activity, workout: PlannedWorkout): number {
     let score = 0.5 // Base score for same day
 
-    // Type match boost
-    if (activity.activity_type?.toLowerCase().includes(workout.workout_type.toLowerCase())) {
-        score += 0.2
+    // Type match boost - normalize activity type using Strava workout_type when available
+    const stravaData = typeof activity.strava_data === 'string'
+        ? JSON.parse(activity.strava_data) : activity.strava_data
+    const normalizedType = normalizeActivityType(activity.activity_type, stravaData)
+    if (normalizedType === workout.workout_type) {
+        score += 0.3  // Exact type match
+    } else if (normalizedType !== 'default' && normalizedType !== 'rest') {
+        // Both are running workout types but different subtypes (e.g. easy_run vs tempo)
+        const runTypes = ['easy_run', 'long_run', 'intervals', 'tempo', 'recovery', 'race']
+        if (runTypes.includes(normalizedType) && runTypes.includes(workout.workout_type)) {
+            score += 0.15
+        }
     }
 
     // Distance similarity boost
