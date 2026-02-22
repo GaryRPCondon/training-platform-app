@@ -150,6 +150,55 @@ export interface GarminStressData {
   bodyBatteryValuesArray?: [number, string, number, number][]
 }
 
+// Workout types (for Garmin Connect workout API)
+export interface GarminSportType {
+  sportTypeId: number
+  sportTypeKey: string
+}
+
+export interface GarminEndCondition {
+  conditionTypeId: number
+  conditionTypeKey: string
+}
+
+export interface GarminTargetType {
+  workoutTargetTypeId: number
+  workoutTargetTypeKey: string
+}
+
+export interface GarminWorkoutStep {
+  type: 'ExecutableStepDTO' | 'RepeatGroupDTO'
+  stepId: null
+  stepOrder: number
+  childStepId: number | null
+  description: null
+  stepType: { stepTypeId: number; stepTypeKey: string }
+  endCondition: GarminEndCondition
+  endConditionValue: number | null
+  endConditionCompare: null
+  endConditionZone: null
+  targetType: GarminTargetType
+  targetValueOne: number | null
+  targetValueTwo: number | null
+  zoneNumber: null
+  // RepeatGroupDTO only
+  numberOfIterations?: number
+  smartRepeat?: boolean        // always true for structured repeat groups
+  skipLastRestStep?: boolean   // "Skip Last Recover" checkbox in Garmin Connect
+  workoutSteps?: GarminWorkoutStep[]
+}
+
+export interface GarminWorkoutPayload {
+  workoutName: string
+  description?: string
+  sportType: GarminSportType
+  workoutSegments: Array<{
+    segmentOrder: number
+    sportType: GarminSportType
+    workoutSteps: GarminWorkoutStep[]
+  }>
+}
+
 // User profile
 export interface GarminUserProfile {
   displayName: string

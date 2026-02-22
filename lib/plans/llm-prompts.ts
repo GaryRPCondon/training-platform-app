@@ -8,6 +8,7 @@ export interface GenerationContext {
   goal_date: string
   start_date: string
   first_day_of_week?: 0 | 1  // 0=Sunday, 1=Monday
+  preferred_units: 'metric' | 'imperial'
 }
 
 /**
@@ -26,7 +27,7 @@ function getNextDayOfWeek(date: Date, targetDay: number): Date {
  * Build system prompt for LLM plan generation
  */
 export function buildGenerationSystemPrompt(context: GenerationContext): string {
-  const { template, criteria, start_date, goal_date, first_day_of_week = 1 } = context
+  const { template, criteria, start_date, goal_date, first_day_of_week = 1, preferred_units } = context
 
   const startDateObj = new Date(start_date)
   const goalDateObj = new Date(goal_date)
@@ -82,6 +83,14 @@ USER CONSTRAINTS:
 - Training days per week: ${criteria.days_per_week}
 - Experience level: ${criteria.experience_level}${criteria.preferred_rest_days && criteria.preferred_rest_days.length > 0 ? `
 - Preferred non-training days: ${criteria.preferred_rest_days.map(d => dayNames[d]).join(', ')}` : ''}
+
+MEASUREMENT UNITS:
+- Athlete's preferred unit system: ${preferred_units === 'imperial' ? 'Imperial (miles)' : 'Metric (km)'}
+- distance_meters field: ALWAYS in meters regardless of preference
+- description field: include distance in the athlete's preferred unit
+  - Metric: "Easy 13 km", "Tempo 13 km", "Long run 29 km", "6 × 1600m with 400m recovery"
+  - Imperial: "Easy 8 miles", "Tempo 8 miles", "Long run 18 miles", "6 × 1 mile with 400m recovery"
+- pace_guidance field: use min/km for metric, min/mile for imperial
 
 TASK:
 Generate a ${weeksNeeded}-week personalized training plan that:
@@ -197,7 +206,11 @@ Return a JSON object with this structure:
           "distance_meters": 8000,
           "intensity": "easy",
           "pace_guidance": "Conversational pace, heart rate zone 2",
-          "notes": "Focus on form and comfort"
+          "notes": "Focus on form and comfort",
+          "structured_workout": {
+            "pace_guidance": "Conversational pace, heart rate zone 2",
+            "notes": "Focus on form and comfort"
+          }
         }
       ]
     }
@@ -223,11 +236,114 @@ REQUIRED FIELDS per workout:
 - day (1-7)
 - workout_index (W#:D# format)
 - type (easy_run/recovery/long_run/tempo/intervals/rest/cross_training)
-- description (human-readable workout description)
+- description (human-readable label including distance in the athlete's preferred units. Format: "{Type} {distance} {unit}" for continuous runs. For intervals: "{N} × {distance} with {recovery}")
 - distance_meters (required for running workouts, null for rest/cross-training)
 - intensity (easy/moderate/hard/recovery)
 - pace_guidance (descriptive guidance: "conversational pace", "comfortably hard", "5K race pace", etc.)
 - notes (optional coaching notes)
+- structured_workout (required for all workouts — see STRUCTURED WORKOUT RULES below)
+
+STRUCTURED WORKOUT RULES:
+
+Every workout MUST include a "structured_workout" field. The schema depends on workout type.
+
+TYPE: easy_run, recovery, long_run, rest, cross_training, race
+→ Simple format. No warmup/main_set/cooldown keys.
+  "structured_workout": {
+    "pace_guidance": "(same value as the top-level pace_guidance field)",
+    "notes": "(same value as the top-level notes field, or null)"
+  }
+
+TYPE: intervals
+→ 15-minute warmup + 10-minute cooldown (fixed — do not change).
+  Parse the description to extract repeat count, interval distance, and recovery distance.
+  "structured_workout": {
+    "warmup": { "duration_minutes": 15, "intensity": "easy" },
+    "main_set": [
+      { "repeat": N, "intervals": [
+        { "distance_meters": XXXXX, "intensity": "hard" },
+        { "distance_meters": XXXXX, "intensity": "recovery" }
+      ]}
+    ],
+    "cooldown": { "duration_minutes": 10, "intensity": "easy" },
+    "pace_guidance": "(same value as the top-level pace_guidance field)",
+    "notes": "(same value as the top-level notes field, or null)"
+  }
+
+TYPE: tempo
+→ 10-minute warmup + 10-minute cooldown (fixed — do not change).
+  The template distance IS the tempo segment. Set main_set distance_meters = distance_meters exactly.
+  Do NOT subtract warmup/cooldown — they are time-based additions, not deductions from the target.
+  "structured_workout": {
+    "warmup": { "duration_minutes": 10, "intensity": "easy" },
+    "main_set": [
+      { "repeat": 1, "intervals": [
+        { "distance_meters": XXXXX, "intensity": "tempo" }
+      ]}
+    ],
+    "cooldown": { "duration_minutes": 10, "intensity": "easy" },
+    "pace_guidance": "(same value as the top-level pace_guidance field)",
+    "notes": "(same value as the top-level notes field, or null)"
+  }
+
+WORKED EXAMPLES — follow these exactly as templates:
+
+Example A — easy_run: Template says "Easy 8 mi. (13 km)"
+{
+  "type": "easy_run",
+  "description": "Easy 8 miles",
+  "distance_meters": 12875,
+  "intensity": "easy",
+  "pace_guidance": "Conversational pace, heart rate zone 2",
+  "notes": "Stay comfortable throughout",
+  "structured_workout": {
+    "pace_guidance": "Conversational pace, heart rate zone 2",
+    "notes": "Stay comfortable throughout"
+  }
+}
+
+Example B — intervals: Template says "Strength: 3 × 2 mi., 800 recovery"
+{
+  "type": "intervals",
+  "description": "3 × 2 mile intervals with 800m recovery jog",
+  "distance_meters": 16000,
+  "intensity": "hard",
+  "pace_guidance": "Intervals at 10K effort. Recovery jog at very easy pace.",
+  "notes": "Focus on consistent effort across all repetitions",
+  "structured_workout": {
+    "warmup": { "duration_minutes": 15, "intensity": "easy" },
+    "main_set": [
+      { "repeat": 3, "intervals": [
+        { "distance_meters": 3219, "intensity": "hard" },
+        { "distance_meters": 800, "intensity": "recovery" }
+      ]}
+    ],
+    "cooldown": { "duration_minutes": 10, "intensity": "easy" },
+    "pace_guidance": "Intervals at 10K effort. Recovery jog at very easy pace.",
+    "notes": "Focus on consistent effort across all repetitions"
+  }
+}
+
+Example C — tempo: Template says "Tempo 10 mi. (16 km)"
+{
+  "type": "tempo",
+  "description": "Tempo 10 miles",
+  "distance_meters": 16000,
+  "intensity": "hard",
+  "pace_guidance": "Comfortably hard, sustained marathon-to-threshold effort",
+  "notes": "Maintain steady pace throughout the tempo segment",
+  "structured_workout": {
+    "warmup": { "duration_minutes": 10, "intensity": "easy" },
+    "main_set": [
+      { "repeat": 1, "intervals": [
+        { "distance_meters": 16000, "intensity": "tempo" }
+      ]}
+    ],
+    "cooldown": { "duration_minutes": 10, "intensity": "easy" },
+    "pace_guidance": "Comfortably hard, sustained marathon-to-threshold effort",
+    "notes": "Maintain steady pace throughout the tempo segment"
+  }
+}
 
 DO NOT INCLUDE:
 - duration_minutes (system calculates from distance + athlete's pace)

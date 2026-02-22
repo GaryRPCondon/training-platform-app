@@ -116,7 +116,7 @@ export async function writePlanToDatabase(
           distance_target_meters: workout.distance_km ? workout.distance_km * 1000 : null,
           duration_target_seconds: null,
           intensity_target: workout.intensity || 'easy',
-          structured_workout: {
+          structured_workout: workout.structured_workout ?? {
             pace_guidance: workout.pace_guidance,
             notes: workout.notes
           },
@@ -172,7 +172,7 @@ export async function writePlanToDatabase(
           distance_target_meters: workout.distance_meters,
           duration_target_seconds: null,  // Duration calculated from distance + pace
           intensity_target: workout.intensity,
-          structured_workout: {
+          structured_workout: workout.structured_workout ?? {
             pace_guidance: workout.pace_guidance,
             notes: workout.notes
           },

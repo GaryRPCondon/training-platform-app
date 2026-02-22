@@ -86,13 +86,21 @@ export async function POST(request: Request) {
 
     console.log(`Start date: ${start_date}, Plan start (Week 1): ${planStartDate}, First day of week: ${firstDayOfWeek === 0 ? 'Sunday' : 'Monday'}`)
 
+    // Get athlete's preferred LLM provider, model, and unit preference
+    const { data: athlete } = await supabase
+      .from('athletes')
+      .select('preferred_llm_provider, preferred_llm_model, preferred_units')
+      .eq('id', athleteId)
+      .single()
+
     // Build LLM prompts FIRST (before creating any database records)
     const context = {
       template: fullTemplate,
       criteria: user_criteria as UserCriteria,
       goal_date,
       start_date,
-      first_day_of_week: firstDayOfWeek as 0 | 1
+      first_day_of_week: firstDayOfWeek as 0 | 1,
+      preferred_units: (athlete?.preferred_units ?? 'metric') as 'metric' | 'imperial',
     }
 
     const systemPrompt = buildGenerationSystemPrompt(context)
@@ -103,13 +111,6 @@ export async function POST(request: Request) {
     const userMessageLength = userMessage.length
     const estimatedTokens = Math.ceil((systemPromptLength + userMessageLength) / 4)
     console.log(`LLM Request - System: ${systemPromptLength} chars, User: ${userMessageLength} chars, Est tokens: ${estimatedTokens}`)
-
-    // Get athlete's preferred LLM provider and model
-    const { data: athlete } = await supabase
-      .from('athletes')
-      .select('preferred_llm_provider, preferred_llm_model')
-      .eq('id', athleteId)
-      .single()
 
     // For plan generation, use provider with sufficient token limits
     // Old deepseek-chat had 8192 limit, but deepseek-reasoner has higher limits

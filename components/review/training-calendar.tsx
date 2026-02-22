@@ -158,9 +158,7 @@ export function TrainingCalendar({ workouts, trainingPaces, vdot, onWorkoutSelec
       <div className="h-full w-full flex flex-col overflow-hidden">
         <CustomToolbar
           date={currentDate}
-          view={view as 'month' | 'week' | 'day'}
           onNavigate={handleNavigate}
-          onViewChange={(v) => setView(v)}
         />
 
         <div className="flex-1 w-full grid grid-cols-[1fr_220px] overflow-hidden border rounded-md">
@@ -186,7 +184,6 @@ export function TrainingCalendar({ workouts, trainingPaces, vdot, onWorkoutSelec
           <WeeklyTotals
             workouts={workouts}
             currentDate={currentDate}
-            view={view as 'month' | 'week' | 'day'}
             weekStartsOn={weekStartsOn}
             showActual={false}
           />

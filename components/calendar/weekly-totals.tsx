@@ -1,52 +1,44 @@
 'use client'
 
-import { useMemo } from 'react'
-import { startOfWeek, endOfWeek, format, eachWeekOfInterval, startOfMonth, endOfMonth, addDays, subDays } from 'date-fns'
+import { useMemo, useState } from 'react'
+import { startOfWeek, endOfWeek, format, eachWeekOfInterval, startOfMonth, endOfMonth } from 'date-fns'
 import { useUnits } from '@/lib/hooks/use-units'
+import { Button } from '@/components/ui/button'
+
+interface WorkoutRow {
+    scheduled_date?: string | null
+    date?: Date | string | null
+    distance_target_meters?: number | null
+}
+
+interface ActivityRow {
+    start_time?: string | null
+    distance_meters?: number | null
+}
 
 interface WeeklyTotalsProps {
-    workouts: any[]
-    activities?: any[]
+    workouts: WorkoutRow[]
+    activities?: ActivityRow[]
     currentDate: Date
-    view: 'month' | 'week' | 'day'
     weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6
     showActual?: boolean
+    garminConnected?: boolean
+    onSendToGarmin?: (weekStart: Date, weekEnd: Date) => Promise<void>
 }
 
-interface WeekTotal {
-    weekLabel: string
-    weekStart: Date
-    weekEnd: Date
-    plannedMeters: number
-    actualMeters: number
-}
-
-export function WeeklyTotals({ workouts, activities = [], currentDate, view, weekStartsOn, showActual = false }: WeeklyTotalsProps) {
+export function WeeklyTotals({ workouts, activities = [], currentDate, weekStartsOn, showActual = false, garminConnected, onSendToGarmin }: WeeklyTotalsProps) {
+    const [sendingWeek, setSendingWeek] = useState<string | null>(null)
     const { toDisplayDistance, distanceLabel } = useUnits()
     const weekTotals = useMemo(() => {
-        // Determine the date range to show based on view
-        let rangeStart: Date
-        let rangeEnd: Date
+        // Calendar is month view only — always show weeks for the current month
+        const monthStart = startOfMonth(currentDate)
+        const monthEnd = endOfMonth(currentDate)
 
-        if (view === 'month') {
-            // For month view, show weeks that overlap with the month
-            const monthStart = startOfMonth(currentDate)
-            const monthEnd = endOfMonth(currentDate)
-
-            // Match React Big Calendar logic:
-            // Start: Start of the week containing the 1st of the month
-            // End: End of the week containing the last day of the month
-            rangeStart = startOfWeek(monthStart, { weekStartsOn })
-            rangeEnd = endOfWeek(monthEnd, { weekStartsOn })
-        } else if (view === 'week') {
-            // For week view, just show the current week
-            rangeStart = startOfWeek(currentDate, { weekStartsOn })
-            rangeEnd = endOfWeek(currentDate, { weekStartsOn })
-        } else {
-            // For day view, show the week containing the day
-            rangeStart = startOfWeek(currentDate, { weekStartsOn })
-            rangeEnd = endOfWeek(currentDate, { weekStartsOn })
-        }
+        // Match React Big Calendar logic:
+        // Start: Start of the week containing the 1st of the month
+        // End: End of the week containing the last day of the month
+        const rangeStart = startOfWeek(monthStart, { weekStartsOn })
+        const rangeEnd = endOfWeek(monthEnd, { weekStartsOn })
 
         // Get all weeks in the range
         const weeks = eachWeekOfInterval(
@@ -60,13 +52,15 @@ export function WeeklyTotals({ workouts, activities = [], currentDate, view, wee
 
             // Filter workouts in this week
             const weekWorkouts = workouts.filter(w => {
-                const workoutDate = new Date(w.scheduled_date || w.date)
+                const raw = w.scheduled_date ?? w.date
+                if (!raw) return false
+                const workoutDate = new Date(raw as string | Date)
                 return workoutDate >= weekStart && workoutDate <= weekEnd
             })
 
             // Calculate planned distance
             const plannedMeters = weekWorkouts.reduce((sum, w) => {
-                return sum + (w.distance_target_meters || 0)
+                return sum + (w.distance_target_meters ?? 0)
             }, 0)
 
             // Calculate actual distance (from ALL activities in this week)
@@ -91,7 +85,7 @@ export function WeeklyTotals({ workouts, activities = [], currentDate, view, wee
                 actualMeters,
             }
         })
-    }, [workouts, activities, currentDate, view, weekStartsOn])
+    }, [workouts, activities, currentDate, weekStartsOn])
 
     return (
         <div className="h-full flex flex-col bg-muted/20 border-l">
@@ -124,6 +118,24 @@ export function WeeklyTotals({ workouts, activities = [], currentDate, view, wee
                                 </div>
                             )}
                         </div>
+                        {garminConnected && onSendToGarmin && week.plannedMeters > 0 && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full mt-1.5 h-6 text-xs"
+                                disabled={sendingWeek === week.weekLabel}
+                                onClick={async () => {
+                                    setSendingWeek(week.weekLabel)
+                                    try {
+                                        await onSendToGarmin(week.weekStart, week.weekEnd)
+                                    } finally {
+                                        setSendingWeek(null)
+                                    }
+                                }}
+                            >
+                                {sendingWeek === week.weekLabel ? 'Sending...' : 'Send to Garmin'}
+                            </Button>
+                        )}
                     </div>
                 ))}
             </div>

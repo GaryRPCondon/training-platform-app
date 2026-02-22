@@ -1,14 +1,14 @@
 'use client'
 
 import { useState, useCallback, useMemo } from 'react'
-import { Calendar, momentLocalizer, View } from 'react-big-calendar'
+import { Calendar, momentLocalizer } from 'react-big-calendar'
 import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop'
 import moment from 'moment'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getPlannedWorkoutsForDateRange, getAthleteProfile, getActivitiesForDateRange, getWorkoutsWithActivities } from '@/lib/supabase/queries'
-import { startOfWeek, endOfWeek, format, startOfMonth, endOfMonth, subDays, addDays, parseISO } from 'date-fns'
+import { format, startOfMonth, endOfMonth, subDays, addDays, parseISO } from 'date-fns'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { WorkoutCard } from '@/components/review/workout-card'
@@ -91,7 +91,6 @@ function formatWorkoutTitle(workout: any, units: UnitSystem = 'metric'): string 
 
 export function TrainingCalendar() {
     const [currentDate, setCurrentDate] = useState(new Date())
-    const [view, setView] = useState<View>('month')
     const [selectedWorkout, setSelectedWorkout] = useState<WorkoutWithDetails | null>(null)
     const [selectedActivity, setSelectedActivity] = useState<any | null>(null)
     const [isWorkoutDialogOpen, setIsWorkoutDialogOpen] = useState(false)
@@ -135,6 +134,8 @@ export function TrainingCalendar() {
         enabled: !!athlete?.id
     })
 
+    const garminConnected = !!(athlete?.garmin_connected)
+
     // Update moment locale to use the preferred week start day
     moment.updateLocale('en', {
         week: {
@@ -142,15 +143,11 @@ export function TrainingCalendar() {
         }
     })
 
-    const queryStart = view === 'month'
-        ? format(subDays(startOfMonth(currentDate), 7), 'yyyy-MM-dd')
-        : format(startOfWeek(currentDate, { weekStartsOn: weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6 }), 'yyyy-MM-dd')
+    // Calendar is month-only — always query a month's worth of data with a week buffer
+    const queryStart = format(subDays(startOfMonth(currentDate), 7), 'yyyy-MM-dd')
+    const queryEnd = format(addDays(endOfMonth(currentDate), 7), 'yyyy-MM-dd')
 
-    const queryEnd = view === 'month'
-        ? format(addDays(endOfMonth(currentDate), 7), 'yyyy-MM-dd')
-        : format(endOfWeek(currentDate, { weekStartsOn: weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6 }), 'yyyy-MM-dd')
-
-    const { data: rawWorkouts, isLoading, error: workoutsError } = useQuery({
+    const { data: rawWorkouts, error: workoutsError } = useQuery({
         queryKey: ['workouts', queryStart, queryEnd],
         queryFn: () => getWorkoutsWithActivities(queryStart, queryEnd),
     })
@@ -267,7 +264,7 @@ export function TrainingCalendar() {
         } else if (event.resource.type === 'activity') {
             // Fetch linked workout if exists
             const activity = event.resource.data
-            let activityWithWorkout = { ...activity }
+            const activityWithWorkout = { ...activity }
 
             if (activity.planned_workout_id) {
                 const { data: workout } = await supabase
@@ -303,8 +300,13 @@ export function TrainingCalendar() {
         // Phase 6: Different styling for activities vs workouts
         if (event.resource.type === 'activity') {
             const activity = event.resource.data
-            // Use Strava workout_type if available, otherwise fall back to activity_type
-            const workoutType = normalizeActivityType(activity.activity_type, activity.strava_data)
+            // Matched activities use the linked workout's color; unmatched use normalized activity type
+            const matchedWorkout = activity.planned_workout_id
+                ? workouts.find(w => w.id === activity.planned_workout_id)
+                : null
+            const workoutType = matchedWorkout
+                ? matchedWorkout.workout_type
+                : normalizeActivityType(activity.activity_type, activity.strava_data)
             const backgroundColor = getWorkoutColor(workoutType)
 
             return {
@@ -330,7 +332,7 @@ export function TrainingCalendar() {
         // Workout styling (existing)
         const workout = event.resource.data
         const workoutType = workout?.workout_type || 'default'
-        let backgroundColor = getWorkoutColor(workoutType)
+        const backgroundColor = getWorkoutColor(workoutType)
         let borderLeft = ''
         let opacity = 0.9
 
@@ -371,25 +373,48 @@ export function TrainingCalendar() {
         if (action === 'TODAY') {
             setCurrentDate(new Date())
         } else if (action === 'PREV') {
-            if (view === 'month') newDate.setMonth(newDate.getMonth() - 1)
-            else if (view === 'week') newDate.setDate(newDate.getDate() - 7)
-            else newDate.setDate(newDate.getDate() - 1)
+            newDate.setMonth(newDate.getMonth() - 1)
             setCurrentDate(newDate)
         } else if (action === 'NEXT') {
-            if (view === 'month') newDate.setMonth(newDate.getMonth() + 1)
-            else if (view === 'week') newDate.setDate(newDate.getDate() + 7)
-            else newDate.setDate(newDate.getDate() + 1)
+            newDate.setMonth(newDate.getMonth() + 1)
             setCurrentDate(newDate)
         }
     }
+
+    const handleSendWeekToGarmin = useCallback(async (weekStart: Date, weekEnd: Date) => {
+        // Find all scheduled (non-rest) workouts in this week
+        const weekWorkoutIds = (workouts || [])
+            .filter(w => {
+                const d = new Date(w.scheduled_date)
+                return d >= weekStart && d <= weekEnd && w.workout_type !== 'rest'
+            })
+            .map(w => w.id)
+
+        if (weekWorkoutIds.length === 0) {
+            toast.error('No workouts to send this week')
+            return
+        }
+
+        try {
+            const response = await fetch('/api/garmin/workouts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ workoutIds: weekWorkoutIds, action: 'send' }),
+            })
+            const result = await response.json()
+            if (!response.ok) throw new Error(result.error || 'Failed to send')
+            queryClient.invalidateQueries({ queryKey: ['workouts'] })
+            toast.success(`Sent ${result.sent} workout${result.sent !== 1 ? 's' : ''} to Garmin`)
+        } catch (err: unknown) {
+            toast.error(err instanceof Error ? err.message : 'Failed to send to Garmin')
+        }
+    }, [workouts, queryClient])
 
     return (
         <div className="h-full w-full flex flex-col overflow-hidden">
             <CustomToolbar
                 date={currentDate}
-                view={view as 'month' | 'week' | 'day'}
                 onNavigate={handleNavigate}
-                onViewChange={(v) => setView(v)}
                 onAutoMatch={handleAutoMatch}
                 isAutoMatching={isAutoMatching}
             />
@@ -405,9 +430,8 @@ export function TrainingCalendar() {
                         onSelectEvent={handleSelectEvent}
                         date={currentDate}
                         onNavigate={setCurrentDate}
-                        view={view}
-                        onView={setView}
-                        views={['month', 'week', 'day']}
+                        view="month"
+                        views={['month']}
                         defaultView="month"
                         style={{ height: '100%', width: '100%' }}
                         onEventDrop={onEventDrop}
@@ -422,9 +446,10 @@ export function TrainingCalendar() {
                     workouts={workouts || []}
                     activities={rawActivities || []}
                     currentDate={currentDate}
-                    view={view as 'month' | 'week' | 'day'}
                     weekStartsOn={weekStartsOn}
                     showActual={true}
+                    garminConnected={garminConnected ?? false}
+                    onSendToGarmin={handleSendWeekToGarmin}
                 />
             </div>
 
@@ -438,6 +463,23 @@ export function TrainingCalendar() {
                             trainingPaces={activePlan?.training_paces || null}
                             vdot={activePlan?.vdot || null}
                             onClose={() => setIsWorkoutDialogOpen(false)}
+                            editable={true}
+                            onSaved={(updated) => {
+                                setSelectedWorkout(updated)
+                                queryClient.invalidateQueries({ queryKey: ['workouts'] })
+                            }}
+                            garminConnected={garminConnected}
+                            onSendToGarmin={async (workoutId) => {
+                                const response = await fetch('/api/garmin/workouts', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ workoutIds: [workoutId], action: 'send' }),
+                                })
+                                const result = await response.json()
+                                if (!response.ok) throw new Error(result.error || 'Failed to send')
+                                queryClient.invalidateQueries({ queryKey: ['workouts'] })
+                                toast.success('Sent to Garmin')
+                            }}
                         />
                     )}
                 </DialogContent>

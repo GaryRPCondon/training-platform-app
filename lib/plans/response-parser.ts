@@ -9,6 +9,7 @@ export interface ParsedWorkout {
   intensity: string
   pace_guidance: string | null
   notes: string | null
+  structured_workout?: Record<string, unknown> | null
 }
 
 export interface PreWeekWorkout {
@@ -18,6 +19,7 @@ export interface PreWeekWorkout {
   description: string
   pace_guidance?: string | null
   notes?: string | null
+  structured_workout?: Record<string, unknown> | null
 }
 
 export interface ParsedWeek {
@@ -107,6 +109,16 @@ export function parseLLMResponse(responseText: string): ParsedPlan {
 
       if (!workout.description) {
         throw new Error(`Missing description in workout ${workout.workout_index}`)
+      }
+
+      // Warn if interval/tempo workout is missing structured main_set
+      const needsStructure = ['intervals', 'tempo'].includes(workout.type)
+      const hasMainSet = workout.structured_workout?.main_set &&
+        Array.isArray(workout.structured_workout.main_set)
+      if (needsStructure && !hasMainSet) {
+        console.warn(
+          `Workout ${workout.workout_index} (${workout.type}) missing structured_workout.main_set`
+        )
       }
     }
   }

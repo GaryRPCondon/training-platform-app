@@ -6,7 +6,8 @@ import type {
   GarminRateLimit,
   GarminSleepData,
   GarminHeartRateData,
-  GarminUserProfile
+  GarminUserProfile,
+  GarminWorkoutPayload
 } from './types'
 
 export class GarminClient {
@@ -46,7 +47,7 @@ export class GarminClient {
       this.client = new GarminConnect({ username, password })
       await this.client.login()
       return this.extractTokens()
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Check if this is an MFA-related error
       if (this.isMFAError(error)) {
         throw new Error('Multi-factor authentication detected. Unfortunately Garmin MFA is not supported. You can continue to synchronize via Strava, or try authenticating while MFA is temporarily disabled.')
@@ -58,14 +59,16 @@ export class GarminClient {
   /**
    * Check if an error is MFA-related
    */
-  private isMFAError(error: any): boolean {
-    const message = error.message?.toLowerCase() || ''
+  private isMFAError(error: unknown): boolean {
+    const err = error as Record<string, unknown>
+    const message = (typeof err?.message === 'string' ? err.message : '').toLowerCase()
+    const status = (err?.response as Record<string, unknown> | undefined)?.status
     return (
       message.includes('mfa') ||
       message.includes('verification') ||
       message.includes('two-factor') ||
       message.includes('2fa') ||
-      error.response?.status === 403
+      status === 403
     )
   }
 
@@ -368,7 +371,7 @@ export class GarminClient {
 
     try {
       const dateString = date.toISOString().split('T')[0]
-      const sleepData = await this.client.getSleepData(dateString as any)
+      const sleepData = await this.client.getSleepData(dateString as unknown as Parameters<typeof this.client.getSleepData>[0])
       await this.updateTokensIfChanged()
       return sleepData as unknown as GarminSleepData
     } catch (error) {
@@ -417,6 +420,51 @@ export class GarminClient {
       console.error('Error fetching Garmin steps:', error)
       return null
     }
+  }
+
+  /**
+   * Create a workout on Garmin Connect.
+   * Uses raw POST to /workout-service/workout so all payload fields (e.g. skipLastRestStep)
+   * are forwarded without being stripped by the garmin-connect library's type system.
+   */
+  async createWorkout(payload: GarminWorkoutPayload): Promise<{ workoutId: string }> {
+    if (!this.client) throw new Error('Garmin client not initialized')
+    await this.ensureAuthenticated()
+    const result = await this.client.post<{ workoutId: string }>(
+      `${GarminClient.GC_API}/workout-service/workout`,
+      payload
+    )
+    return { workoutId: String(result.workoutId) }
+  }
+
+  // Garmin Connect API base — used for raw put/post calls that aren't wrapped by garmin-connect
+  private static readonly GC_API = 'https://connectapi.garmin.com'
+
+  /**
+   * Update an existing Garmin workout.
+   * Uses PUT /workout-service/workout/{workoutId}
+   */
+  async updateWorkout(workoutId: string, payload: GarminWorkoutPayload): Promise<void> {
+    if (!this.client) throw new Error('Garmin client not initialized')
+    await this.ensureAuthenticated()
+    await this.client.put(
+      `${GarminClient.GC_API}/workout-service/workout/${workoutId}`,
+      { ...payload, workoutId }
+    )
+  }
+
+  /**
+   * Schedule a workout on a specific date in Garmin Connect.
+   * Uses POST /workout-service/schedule/{workoutId}
+   * (scheduleWorkout is in README but not in garmin-connect@1.6.2 types)
+   */
+  async scheduleWorkout(workoutId: string, date: string): Promise<void> {
+    if (!this.client) throw new Error('Garmin client not initialized')
+    await this.ensureAuthenticated()
+    await this.client.post(
+      `${GarminClient.GC_API}/workout-service/schedule/${workoutId}`,
+      { date }
+    )
   }
 
   /**

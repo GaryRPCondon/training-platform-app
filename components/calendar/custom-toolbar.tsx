@@ -6,14 +6,12 @@ import { format } from 'date-fns'
 
 interface CustomToolbarProps {
     date: Date
-    view: 'month' | 'week' | 'day'
     onNavigate: (action: 'PREV' | 'NEXT' | 'TODAY') => void
-    onViewChange: (view: 'month' | 'week' | 'day') => void
     onAutoMatch?: () => void
     isAutoMatching?: boolean
 }
 
-export function CustomToolbar({ date, view, onNavigate, onViewChange, onAutoMatch, isAutoMatching }: CustomToolbarProps) {
+export function CustomToolbar({ date, onNavigate, onAutoMatch, isAutoMatching }: CustomToolbarProps) {
     return (
         <div className="flex items-center justify-between mb-4 px-2">
             <div className="flex items-center gap-2">
@@ -59,20 +57,6 @@ export function CustomToolbar({ date, view, onNavigate, onViewChange, onAutoMatc
                         {isAutoMatching ? 'Matching...' : 'Auto-Match Activities'}
                     </Button>
                 )}
-            </div>
-
-            <div className="flex items-center rounded-md border bg-background p-1">
-                {(['month', 'week', 'day'] as const).map((v) => (
-                    <Button
-                        key={v}
-                        variant={view === v ? 'secondary' : 'ghost'}
-                        size="sm"
-                        onClick={() => onViewChange(v)}
-                        className="h-7 px-3 text-xs capitalize"
-                    >
-                        {v}
-                    </Button>
-                ))}
             </div>
         </div>
     )
