@@ -276,7 +276,7 @@ export interface HealthMetric {
 export interface ChatSession {
     id: number
     athlete_id: string
-    session_type: 'weekly_planning' | 'workout_modification' | 'feedback' | 'general'
+    session_type: 'weekly_planning' | 'workout_modification' | 'feedback' | 'general' | 'coach'
     weekly_plan_id: number | null
     specific_workout_id: number | null
     context: any | null

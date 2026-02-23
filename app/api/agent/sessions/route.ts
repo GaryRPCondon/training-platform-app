@@ -11,7 +11,7 @@ export async function GET() {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        const sessions = await getRecentSessions(user.id)
+        const sessions = await getRecentSessions(user.id, supabase)
 
         return NextResponse.json({ sessions })
     } catch (error) {

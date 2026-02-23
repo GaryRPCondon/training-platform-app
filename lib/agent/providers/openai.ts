@@ -1,5 +1,6 @@
 import OpenAI from 'openai'
 import { LLMProvider, LLMRequest, LLMResponse, ToolCall } from '../provider-interface'
+import { streamOpenAICompatible } from './stream-utils'
 
 export class OpenAIProvider implements LLMProvider {
     private client: OpenAI
@@ -67,5 +68,32 @@ export class OpenAIProvider implements LLMProvider {
             },
             toolCalls: toolCalls.length > 0 ? toolCalls : undefined
         }
+    }
+
+    async generateStream(request: LLMRequest, onChunk: (text: string) => void): Promise<LLMResponse> {
+        const messages: any[] = []
+        if (request.systemPrompt) messages.push({ role: 'system', content: request.systemPrompt })
+        messages.push(...request.messages)
+
+        const tools = request.tools?.map(tool => ({
+            type: 'function' as const,
+            function: { name: tool.name, description: tool.description, parameters: tool.parameters }
+        }))
+
+        const body: any = {
+            model: this.modelName,
+            messages,
+            max_tokens: request.maxTokens,
+            temperature: request.temperature,
+        }
+        if (tools) body.tools = tools
+
+        return streamOpenAICompatible(
+            'https://api.openai.com/v1/chat/completions',
+            { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}` },
+            body,
+            this.modelName,
+            onChunk
+        )
     }
 }

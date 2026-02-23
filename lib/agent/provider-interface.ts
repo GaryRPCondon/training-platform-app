@@ -34,4 +34,14 @@ export interface LLMRequest {
 
 export interface LLMProvider {
     generateResponse(request: LLMRequest): Promise<LLMResponse>
+    /**
+     * Optional streaming variant. Calls onChunk for each text token as it
+     * arrives, then returns the full LLMResponse (including tool calls) once
+     * the stream ends. Providers that don't implement this fall back to
+     * generateResponse() with the full text sent as a single chunk.
+     */
+    generateStream?(
+        request: LLMRequest,
+        onChunk: (text: string) => void
+    ): Promise<LLMResponse>
 }

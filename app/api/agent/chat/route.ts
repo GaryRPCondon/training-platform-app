@@ -31,7 +31,7 @@ export async function POST(request: Request) {
 
         if (sessionId) {
             try {
-                const session = await getChatSession(sessionId)
+                const session = await getChatSession(sessionId, supabase)
                 sessionHistory = session.messages.map(m => ({
                     role: m.role,
                     content: m.content
@@ -44,13 +44,13 @@ export async function POST(request: Request) {
             const newSession = await createChatSession({
                 athleteId,
                 sessionType
-            })
+            }, supabase)
             currentSessionId = newSession.id
         }
 
         // Save user message
         const userMessage = messages[messages.length - 1]
-        await saveMessage(currentSessionId, 'user', userMessage.content)
+        await saveMessage(currentSessionId, 'user', userMessage.content, undefined, supabase)
 
         // Load multi-timescale context
         const context = await loadAgentContext(athleteId)
@@ -85,7 +85,7 @@ export async function POST(request: Request) {
             provider: providerName,
             model: response.model,
             tokenUsage: response.usage
-        })
+        }, supabase)
 
         return NextResponse.json({
             message: response.content,

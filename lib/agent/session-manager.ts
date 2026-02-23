@@ -1,22 +1,26 @@
-import { createClient } from '@/lib/supabase/client'
+import { createClient as createBrowserClient } from '@/lib/supabase/client'
+import { SupabaseClient } from '@supabase/supabase-js'
 import { ChatSession, ChatMessage } from '@/types/database'
-import { ensureAthleteExists } from '@/lib/supabase/ensure-athlete'
 
 export interface CreateSessionParams {
     athleteId: string
-    sessionType: 'weekly_planning' | 'workout_modification' | 'feedback' | 'general'
+    sessionType: 'weekly_planning' | 'workout_modification' | 'feedback' | 'general' | 'coach'
     weeklyPlanId?: number
     workoutId?: number
-    context?: any
+    context?: Record<string, unknown>
+}
+
+function getClient(supabase?: SupabaseClient): SupabaseClient {
+    return supabase ?? createBrowserClient()
 }
 
 /**
  * Create a new chat session
  */
-export async function createChatSession(params: CreateSessionParams): Promise<ChatSession> {
-    const supabase = createClient()
+export async function createChatSession(params: CreateSessionParams, supabase?: SupabaseClient): Promise<ChatSession> {
+    const db = getClient(supabase)
 
-    const { data, error } = await supabase
+    const { data, error } = await db
         .from('chat_sessions')
         .insert({
             athlete_id: params.athleteId,
@@ -36,10 +40,10 @@ export async function createChatSession(params: CreateSessionParams): Promise<Ch
 /**
  * Get a chat session with its messages
  */
-export async function getChatSession(sessionId: number): Promise<ChatSession & { messages: ChatMessage[] }> {
-    const supabase = createClient()
+export async function getChatSession(sessionId: number, supabase?: SupabaseClient): Promise<ChatSession & { messages: ChatMessage[] }> {
+    const db = getClient(supabase)
 
-    const { data: session, error: sessionError } = await supabase
+    const { data: session, error: sessionError } = await db
         .from('chat_sessions')
         .select('*')
         .eq('id', sessionId)
@@ -47,7 +51,7 @@ export async function getChatSession(sessionId: number): Promise<ChatSession & {
 
     if (sessionError) throw sessionError
 
-    const { data: messages, error: messagesError } = await supabase
+    const { data: messages, error: messagesError } = await db
         .from('chat_messages')
         .select('*')
         .eq('session_id', sessionId)
@@ -61,10 +65,10 @@ export async function getChatSession(sessionId: number): Promise<ChatSession & {
 /**
  * End a chat session
  */
-export async function endChatSession(sessionId: number): Promise<void> {
-    const supabase = createClient()
+export async function endChatSession(sessionId: number, supabase?: SupabaseClient): Promise<void> {
+    const db = getClient(supabase)
 
-    const { error } = await supabase
+    const { error } = await db
         .from('chat_sessions')
         .update({ ended_at: new Date().toISOString() })
         .eq('id', sessionId)
@@ -82,13 +86,14 @@ export async function saveMessage(
     metadata?: {
         provider?: string
         model?: string
-        tokenUsage?: any
-        actionTaken?: any
-    }
+        tokenUsage?: Record<string, unknown>
+        actionTaken?: Record<string, unknown>
+    },
+    supabase?: SupabaseClient
 ): Promise<ChatMessage> {
-    const supabase = createClient()
+    const db = getClient(supabase)
 
-    const { data, error } = await supabase
+    const { data, error } = await db
         .from('chat_messages')
         .insert({
             session_id: sessionId,
@@ -110,10 +115,10 @@ export async function saveMessage(
 /**
  * Get recent sessions for an athlete
  */
-export async function getRecentSessions(athleteId: string, limit = 10): Promise<ChatSession[]> {
-    const supabase = createClient()
+export async function getRecentSessions(athleteId: string, supabase?: SupabaseClient, limit = 10): Promise<ChatSession[]> {
+    const db = getClient(supabase)
 
-    const { data, error } = await supabase
+    const { data, error } = await db
         .from('chat_sessions')
         .select('*')
         .eq('athlete_id', athleteId)

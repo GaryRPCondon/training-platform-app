@@ -9,7 +9,7 @@
  * Critical for Phase 5 plan regeneration which requires 15-20K output tokens
  */
 
-export type OperationType = 'chat' | 'regeneration'
+export type OperationType = 'chat' | 'regeneration' | 'coach'
 export type ProviderName = 'deepseek' | 'gemini' | 'anthropic' | 'openai' | 'grok'
 
 /**
@@ -19,7 +19,7 @@ export type ProviderName = 'deepseek' | 'gemini' | 'anthropic' | 'openai' | 'gro
  * to leave headroom for context and avoid hitting hard limits.
  */
 const PROVIDER_OUTPUT_LIMITS: Record<ProviderName, number> = {
-  'deepseek': 32768,  // DeepSeek-V3 (deepseek-reasoner) supports up to 32K output
+  'deepseek': 32768,  // deepseek-reasoner (V3.2 thinking): 32K default, 64K max. deepseek-chat (V3.2 non-thinking): 8K max.
   'gemini': 65536,    // Gemini Flash supports up to 65K output
   'anthropic': 8192,  // Claude models typically 8K output
   'openai': 16000,    // GPT-4 Turbo supports 16K output
@@ -78,6 +78,10 @@ export function calculateMaxTokens(
     // For regeneration: Use 80% of max output to leave safety margin
     // Regeneration produces large JSON structures (10-20K tokens)
     return Math.floor(maxOutput * 0.8)
+  } else if (operationType === 'coach') {
+    // For AI coach: Cap at 8K tokens — coach responses include markdown analysis
+    // plus structured tool call arguments for workout proposals (5-7K typical)
+    return Math.min(8000, maxOutput)
   } else {
     // For standard chat: Cap at 4K tokens for concise responses
     // Most chat responses should be 500-2000 tokens

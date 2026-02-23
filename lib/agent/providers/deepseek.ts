@@ -1,4 +1,5 @@
 import { LLMProvider, LLMResponse, LLMRequest, ToolCall } from '../provider-interface'
+import { streamOpenAICompatible } from './stream-utils'
 
 export class DeepSeekProvider implements LLMProvider {
     private apiKey: string
@@ -110,5 +111,32 @@ export class DeepSeekProvider implements LLMProvider {
             },
             toolCalls: toolCalls.length > 0 ? toolCalls : undefined
         }
+    }
+
+    async generateStream(params: LLMRequest, onChunk: (text: string) => void): Promise<LLMResponse> {
+        const messages: any[] = []
+        if (params.systemPrompt) messages.push({ role: 'system', content: params.systemPrompt })
+        messages.push(...params.messages)
+
+        const tools = params.tools?.map(tool => ({
+            type: 'function' as const,
+            function: { name: tool.name, description: tool.description, parameters: tool.parameters }
+        }))
+
+        const body: any = {
+            model: this.modelName,
+            messages,
+            max_tokens: params.maxTokens || 2000,
+            temperature: params.temperature || 0.7,
+        }
+        if (tools) body.tools = tools
+
+        return streamOpenAICompatible(
+            `${this.baseURL}/chat/completions`,
+            { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.apiKey}` },
+            body,
+            this.modelName,
+            onChunk
+        )
     }
 }

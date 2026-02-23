@@ -18,7 +18,7 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        const session = await getChatSession(parseInt(sessionId))
+        const session = await getChatSession(parseInt(sessionId), supabase)
 
         // Verify session belongs to user
         if (session.athlete_id !== user.id) {
@@ -27,8 +27,10 @@ export async function GET(request: Request) {
 
         return NextResponse.json({
             messages: session.messages.map(m => ({
+                id: m.id,
                 role: m.role,
-                content: m.content
+                content: m.content,
+                action_taken: m.action_taken ?? null,
             }))
         })
     } catch (error) {

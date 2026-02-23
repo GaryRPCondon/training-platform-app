@@ -568,6 +568,10 @@ export function TrainingCalendar() {
                                 toast.success('Sent to Garmin')
                             }}
                             onRemoveFromGarmin={handleRemoveFromGarmin}
+                            onDiscuss={(workout) => {
+                                setIsWorkoutDialogOpen(false)
+                                router.push(`/dashboard/chat?workoutId=${workout.id}`)
+                            }}
                             onDeleted={() => {
                                 setIsWorkoutDialogOpen(false)
                                 queryClient.invalidateQueries({ queryKey: ['workouts'] })

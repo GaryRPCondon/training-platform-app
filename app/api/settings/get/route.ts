@@ -19,14 +19,17 @@ export async function GET() {
 
         const { data: athlete } = await supabase
             .from('athletes')
-            .select('preferred_llm_provider, preferred_llm_model, use_fast_model_for_operations')
+            .select('preferred_llm_provider, preferred_llm_model, use_fast_model_for_operations, vdot, training_paces')
             .eq('id', athleteId)
             .single()
 
         return NextResponse.json({
+            athleteId,
             provider: athlete?.preferred_llm_provider || 'deepseek',
             model: athlete?.preferred_llm_model || '',
-            useFastModelForOperations: athlete?.use_fast_model_for_operations ?? true // Default to true
+            useFastModelForOperations: athlete?.use_fast_model_for_operations ?? true,
+            vdot: athlete?.vdot ?? null,
+            training_paces: athlete?.training_paces ?? null,
         })
     } catch (error) {
         console.error('Get settings error:', error)
