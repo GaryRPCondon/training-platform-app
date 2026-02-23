@@ -9,6 +9,7 @@ interface WorkoutRow {
     scheduled_date?: string | null
     date?: Date | string | null
     distance_target_meters?: number | null
+    garmin_workout_id?: string | null
 }
 
 interface ActivityRow {
@@ -24,10 +25,12 @@ interface WeeklyTotalsProps {
     showActual?: boolean
     garminConnected?: boolean
     onSendToGarmin?: (weekStart: Date, weekEnd: Date) => Promise<void>
+    onRemoveFromGarmin?: (weekStart: Date, weekEnd: Date) => Promise<void>
 }
 
-export function WeeklyTotals({ workouts, activities = [], currentDate, weekStartsOn, showActual = false, garminConnected, onSendToGarmin }: WeeklyTotalsProps) {
+export function WeeklyTotals({ workouts, activities = [], currentDate, weekStartsOn, showActual = false, garminConnected, onSendToGarmin, onRemoveFromGarmin }: WeeklyTotalsProps) {
     const [sendingWeek, setSendingWeek] = useState<string | null>(null)
+    const [removingWeek, setRemovingWeek] = useState<string | null>(null)
     const { toDisplayDistance, distanceLabel } = useUnits()
     const weekTotals = useMemo(() => {
         // Calendar is month view only — always show weeks for the current month
@@ -77,12 +80,15 @@ export function WeeklyTotals({ workouts, activities = [], currentDate, weekStart
             // Format week label
             const weekLabel = `${format(weekStart, 'd')} - ${format(weekEnd, 'd MMM')}`
 
+            const hasSyncedWorkouts = weekWorkouts.some(w => w.garmin_workout_id)
+
             return {
                 weekLabel,
                 weekStart,
                 weekEnd,
                 plannedMeters,
                 actualMeters,
+                hasSyncedWorkouts,
             }
         })
     }, [workouts, activities, currentDate, weekStartsOn])
@@ -123,7 +129,7 @@ export function WeeklyTotals({ workouts, activities = [], currentDate, weekStart
                                 variant="outline"
                                 size="sm"
                                 className="w-full mt-1.5 h-6 text-xs"
-                                disabled={sendingWeek === week.weekLabel}
+                                disabled={sendingWeek === week.weekLabel || removingWeek === week.weekLabel}
                                 onClick={async () => {
                                     setSendingWeek(week.weekLabel)
                                     try {
@@ -134,6 +140,24 @@ export function WeeklyTotals({ workouts, activities = [], currentDate, weekStart
                                 }}
                             >
                                 {sendingWeek === week.weekLabel ? 'Sending...' : 'Send to Garmin'}
+                            </Button>
+                        )}
+                        {garminConnected && onRemoveFromGarmin && week.hasSyncedWorkouts && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full mt-1 h-6 text-xs text-destructive hover:text-destructive"
+                                disabled={removingWeek === week.weekLabel || sendingWeek === week.weekLabel}
+                                onClick={async () => {
+                                    setRemovingWeek(week.weekLabel)
+                                    try {
+                                        await onRemoveFromGarmin(week.weekStart, week.weekEnd)
+                                    } finally {
+                                        setRemovingWeek(null)
+                                    }
+                                }}
+                            >
+                                {removingWeek === week.weekLabel ? 'Removing...' : 'Remove from Garmin'}
                             </Button>
                         )}
                     </div>

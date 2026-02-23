@@ -454,6 +454,16 @@ export class GarminClient {
   }
 
   /**
+   * Delete a workout from Garmin Connect.
+   * Also removes it from the calendar.
+   */
+  async deleteWorkout(workoutId: string): Promise<void> {
+    if (!this.client) throw new Error('Garmin client not initialized')
+    await this.ensureAuthenticated()
+    await this.client.deleteWorkout({ workoutId: parseInt(workoutId) })
+  }
+
+  /**
    * Schedule a workout on a specific date in Garmin Connect.
    * Uses POST /workout-service/schedule/{workoutId}
    * (scheduleWorkout is in README but not in garmin-connect@1.6.2 types)

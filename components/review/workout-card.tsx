@@ -23,7 +23,13 @@ import { useQueryClient } from '@tanstack/react-query'
 
 const INTENSITY_OPTIONS = ['easy', 'moderate', 'hard', 'tempo', 'threshold', 'interval', 'recovery', 'custom']
 
+const WORKOUT_TYPES = ['easy_run', 'long_run', 'intervals', 'tempo', 'rest', 'cross_training', 'recovery', 'race'] as const
+
 const KM_TO_MILES = 0.621371
+
+function formatWorkoutType(type: string): string {
+  return type.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+}
 
 interface WorkoutCardProps {
   workout: WorkoutWithDetails
@@ -35,6 +41,12 @@ interface WorkoutCardProps {
   onSaved?: (updated: WorkoutWithDetails) => void
   garminConnected?: boolean
   onSendToGarmin?: (workoutId: number) => Promise<void>
+  onRemoveFromGarmin?: (workoutId: number) => Promise<void>
+  onDeleted?: () => void
+  /** When true: starts directly in edit mode, calls POST /api/workouts on save */
+  isNew?: boolean
+  /** Called after a new workout is successfully created */
+  onCreated?: () => void
 }
 
 // ============================================================================
@@ -805,13 +817,20 @@ export function WorkoutCard({
   onSaved,
   garminConnected,
   onSendToGarmin,
+  onRemoveFromGarmin,
+  onDeleted,
+  isNew = false,
+  onCreated,
 }: WorkoutCardProps) {
   const { units, formatDistance, formatPace, toDisplayDistance, distanceLabel } = useUnits()
   const queryClient = useQueryClient()
 
-  const [isEditing, setIsEditing] = useState(false)
+  const [isEditing, setIsEditing] = useState(isNew)
   const [isSaving, setIsSaving] = useState(false)
+  const [editWorkoutType, setEditWorkoutType] = useState<typeof WORKOUT_TYPES[number]>(workout.workout_type)
   const [isSendingToGarmin, setIsSendingToGarmin] = useState(false)
+  const [isRemovingFromGarmin, setIsRemovingFromGarmin] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Edit state — initialized from workout when edit mode is toggled on
   const [editDescription, setEditDescription] = useState(workout.description ?? '')
@@ -915,25 +934,72 @@ export function WorkoutCard({
   }
 
   const cancelEdit = () => {
-    setIsEditing(false)
+    if (isNew) {
+      onClose?.()
+    } else {
+      setIsEditing(false)
+    }
   }
 
   const handleSave = async () => {
     setIsSaving(true)
     try {
+      const displayDist = parseFloat(editDistanceDisplay)
+      const meters = !isNaN(displayDist) && displayDist > 0
+        ? Math.round(units === 'imperial' ? (displayDist / KM_TO_MILES) * 1000 : displayDist * 1000)
+        : null
+      const durationSecs = editDurationMinutes
+        ? Math.round(parseFloat(editDurationMinutes) * 60)
+        : null
+
+      let structuredWorkoutValue: Record<string, unknown> | null = null
+      // Only persist structured workout if it has at least one step
+      if (editStructured && editStructured.main_set.length > 0) {
+        structuredWorkoutValue = editStructured as unknown as Record<string, unknown>
+      } else if (editIntensity === 'custom' && editCustomPaceM && editCustomPaceS) {
+        const secDisplay = (parseInt(editCustomPaceM, 10) || 0) * 60 + (parseInt(editCustomPaceS, 10) || 0)
+        const secKm = units === 'imperial' ? secDisplay / PACE_SCALE_KM_TO_MI : secDisplay
+        const stored = `${Math.floor(secKm / 60)}:${String(Math.round(secKm % 60)).padStart(2, '0')}`
+        const existing = (workout.structured_workout ?? {}) as Record<string, unknown>
+        structuredWorkoutValue = { ...existing, target_pace: stored }
+      }
+
+      if (isNew) {
+        const response = await fetch('/api/workouts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            scheduled_date: workout.scheduled_date,
+            workout_type: editWorkoutType,
+            description: editDescription || null,
+            distance_target_meters: meters,
+            duration_target_seconds: durationSecs,
+            intensity_target: editIntensity || null,
+            structured_workout: structuredWorkoutValue,
+          }),
+        })
+
+        if (!response.ok) {
+          const err = await response.json()
+          throw new Error(err.error || 'Failed to create')
+        }
+
+        queryClient.invalidateQueries({ queryKey: ['workouts'] })
+        toast.success('Workout created')
+        onCreated?.()
+        return
+      }
+
+      // --- Edit existing workout ---
       const updates: Record<string, unknown> = {}
 
       if (editDescription !== (workout.description ?? '')) {
         updates.description = editDescription
       }
 
-      const displayDist = parseFloat(editDistanceDisplay)
-      if (!isNaN(displayDist) && displayDist > 0) {
-        const meters = units === 'imperial'
-          ? (displayDist / KM_TO_MILES) * 1000
-          : displayDist * 1000
+      if (meters !== null) {
         if (Math.abs(meters - (workout.distance_target_meters ?? 0)) > 1) {
-          updates.distance_target_meters = Math.round(meters)
+          updates.distance_target_meters = meters
         }
       } else if (editDistanceDisplay === '' && workout.distance_target_meters !== null) {
         updates.distance_target_meters = null
@@ -943,22 +1009,12 @@ export function WorkoutCard({
         updates.intensity_target = editIntensity || null
       }
 
-      const durationSecs = editDurationMinutes
-        ? Math.round(parseFloat(editDurationMinutes) * 60)
-        : null
       if (durationSecs !== (workout.duration_target_seconds ?? null)) {
         updates.duration_target_seconds = durationSecs
       }
 
-      if (editStructured) {
-        updates.structured_workout = editStructured
-      } else if (editIntensity === 'custom' && editCustomPaceM && editCustomPaceS) {
-        // Store custom pace in structured_workout for simple workouts
-        const secDisplay = (parseInt(editCustomPaceM, 10) || 0) * 60 + (parseInt(editCustomPaceS, 10) || 0)
-        const secKm = units === 'imperial' ? secDisplay / PACE_SCALE_KM_TO_MI : secDisplay
-        const stored = `${Math.floor(secKm / 60)}:${String(Math.round(secKm % 60)).padStart(2, '0')}`
-        const existing = (workout.structured_workout ?? {}) as Record<string, unknown>
-        updates.structured_workout = { ...existing, target_pace: stored }
+      if (structuredWorkoutValue !== null) {
+        updates.structured_workout = structuredWorkoutValue
       }
 
       if (Object.keys(updates).length === 0) {
@@ -1002,22 +1058,46 @@ export function WorkoutCard({
     }
   }
 
+  const handleDelete = async () => {
+    if (!confirm('Delete this workout from the plan? This cannot be undone.')) return
+    setIsDeleting(true)
+    try {
+      const res = await fetch(`/api/workouts?id=${workout.id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed to delete workout')
+      onDeleted?.()
+    } catch {
+      // error is surfaced via the button's disabled state reverting
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pt-4">
       {/* Header */}
       <div>
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-xl font-semibold">
-            {workout.workout_type
-              .split('_')
-              .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-              .join(' ')}
+            {formatWorkoutType(isNew ? editWorkoutType : workout.workout_type)}
           </h3>
           <div className="flex items-center gap-2">
-            <Badge variant="outline">{workout.workout_index}</Badge>
-            {editable && !isEditing && (
+            {!isNew && workout.workout_index && (
+              <Badge variant="outline">{workout.workout_index}</Badge>
+            )}
+            {editable && !isEditing && !isNew && (
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={enterEditMode}>
                 <Pencil className="h-4 w-4" />
+              </Button>
+            )}
+            {onDeleted && !isEditing && !isNew && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                disabled={isDeleting}
+                onClick={handleDelete}
+              >
+                <Trash2 className="h-4 w-4" />
               </Button>
             )}
           </div>
@@ -1197,8 +1277,7 @@ export function WorkoutCard({
             {garminConnected && onSendToGarmin && workout.workout_type !== 'rest' && (
               <Button
                 variant="outline"
-                size="sm"
-                disabled={isSendingToGarmin}
+                disabled={isSendingToGarmin || isRemovingFromGarmin}
                 onClick={async () => {
                   setIsSendingToGarmin(true)
                   try {
@@ -1211,6 +1290,23 @@ export function WorkoutCard({
                 {isSendingToGarmin ? 'Sending...' : 'Send to Garmin'}
               </Button>
             )}
+            {garminConnected && onRemoveFromGarmin && workout.garmin_workout_id && workout.workout_type !== 'rest' && (
+              <Button
+                variant="outline"
+                className="text-destructive hover:text-destructive"
+                disabled={isRemovingFromGarmin || isSendingToGarmin}
+                onClick={async () => {
+                  setIsRemovingFromGarmin(true)
+                  try {
+                    await onRemoveFromGarmin(workout.id)
+                  } finally {
+                    setIsRemovingFromGarmin(false)
+                  }
+                }}
+              >
+                {isRemovingFromGarmin ? 'Removing...' : 'Remove from Garmin'}
+              </Button>
+            )}
           </div>
         </>
       )}
@@ -1221,6 +1317,25 @@ export function WorkoutCard({
       {isEditing && (
         <>
           <div className="space-y-4">
+            {isNew && (
+              <div className="space-y-1.5">
+                <Label className="text-sm">Workout Type</Label>
+                <Select
+                  value={editWorkoutType}
+                  onValueChange={v => setEditWorkoutType(v as typeof editWorkoutType)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {WORKOUT_TYPES.map(t => (
+                      <SelectItem key={t} value={t}>{formatWorkoutType(t)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <Label className="text-sm">Description</Label>
               <Input
@@ -1309,19 +1424,37 @@ export function WorkoutCard({
               )}
             </div>
 
-            {editStructured && (
-              <>
-                <Separator />
-                <div>
-                  <h4 className="font-medium mb-3 text-sm">Workout Structure</h4>
-                  <StructuredWorkoutEditor
-                    structured={editStructured}
-                    onChange={setEditStructured}
-                    trainingPaces={trainingPaces}
-                    units={units}
-                  />
+            <Separator />
+            {editStructured ? (
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-medium text-sm">Workout Structure</h4>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs text-muted-foreground"
+                    onClick={() => setEditStructured(null)}
+                  >
+                    Remove structure
+                  </Button>
                 </div>
-              </>
+                <StructuredWorkoutEditor
+                  structured={editStructured}
+                  onChange={setEditStructured}
+                  trainingPaces={trainingPaces}
+                  units={units}
+                />
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs w-full"
+                onClick={() => setEditStructured({ main_set: [] })}
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Add workout structure
+              </Button>
             )}
           </div>
 

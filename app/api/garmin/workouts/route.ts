@@ -20,13 +20,78 @@ export async function POST(request: Request) {
 
     const { workoutIds, action } = await request.json()
 
-    if (!workoutIds || !Array.isArray(workoutIds) || workoutIds.length === 0) {
+    if (!['send', 'delete', 'delete-all'].includes(action)) {
+      return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
+    }
+
+    if (action !== 'delete-all' && (!workoutIds || !Array.isArray(workoutIds) || workoutIds.length === 0)) {
       return NextResponse.json({ error: 'workoutIds array required' }, { status: 400 })
     }
 
-    if (action !== 'send') {
-      return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
+    // -------------------------------------------------------------------------
+    // DELETE / DELETE-ALL actions
+    // -------------------------------------------------------------------------
+    if (action === 'delete' || action === 'delete-all') {
+      // Resolve the set of workouts to delete
+      let query = supabase
+        .from('planned_workouts')
+        .select('id, garmin_workout_id')
+        .eq('athlete_id', user.id)
+        .not('garmin_workout_id', 'is', null)
+
+      if (action === 'delete') {
+        query = query.in('id', workoutIds)
+      }
+
+      const { data: toDelete, error: fetchErr } = await query
+      if (fetchErr) {
+        return NextResponse.json({ error: 'Failed to load workouts' }, { status: 500 })
+      }
+
+      const garminClient = new GarminClient()
+      garminClient.init(supabase, user.id)
+      try {
+        await garminClient['ensureAuthenticated']()
+      } catch {
+        return NextResponse.json(
+          { error: 'Garmin not connected. Please authenticate in Settings first.' },
+          { status: 401 }
+        )
+      }
+
+      const results = { deleted: 0, failed: 0, errors: [] as Array<{ workoutId: number; error: string }> }
+
+      for (const workout of (toDelete ?? [])) {
+        try {
+          await garminClient.deleteWorkout(workout.garmin_workout_id!)
+          await supabase
+            .from('planned_workouts')
+            .update({ garmin_workout_id: null, garmin_sync_status: null, garmin_scheduled_at: null })
+            .eq('id', workout.id)
+          results.deleted++
+        } catch (err: unknown) {
+          const errMsg = err instanceof Error ? err.message : 'Unknown error'
+          // Treat 404 as success — already gone from Garmin
+          if (errMsg.includes('404')) {
+            await supabase
+              .from('planned_workouts')
+              .update({ garmin_workout_id: null, garmin_sync_status: null, garmin_scheduled_at: null })
+              .eq('id', workout.id)
+            results.deleted++
+          } else {
+            results.failed++
+            results.errors.push({ workoutId: workout.id, error: errMsg })
+          }
+        }
+        await sleep(DELAY_BETWEEN_REQUESTS_MS)
+      }
+
+      return NextResponse.json(results)
     }
+
+    // -------------------------------------------------------------------------
+    // SEND action (existing logic below)
+    // -------------------------------------------------------------------------
 
     // Load the planned workouts
     const { data: workouts, error: workoutsError } = await supabase

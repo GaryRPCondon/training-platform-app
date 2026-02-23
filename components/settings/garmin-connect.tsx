@@ -14,7 +14,8 @@ import {
 } from '@/components/ui/dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Switch } from '@/components/ui/switch'
-import { CheckCircle2, Loader2 } from 'lucide-react'
+import { CheckCircle2, Loader2, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface GarminConnectProps {
   isConnected: boolean
@@ -37,8 +38,28 @@ export function GarminConnect({
   const [password, setPassword] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [removing, setRemoving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+
+  const handleRemoveAllWorkouts = async () => {
+    if (!confirm('Remove all plan workouts from Garmin Connect? This cannot be undone.')) return
+    setRemoving(true)
+    try {
+      const response = await fetch('/api/garmin/workouts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete-all' }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Failed to remove workouts')
+      toast.success(`Removed ${data.deleted} workout${data.deleted !== 1 ? 's' : ''} from Garmin Connect`)
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to remove workouts')
+    } finally {
+      setRemoving(false)
+    }
+  }
 
   const handleConnect = async () => {
     if (!username || !password) {
@@ -219,6 +240,26 @@ export function GarminConnect({
             onCheckedChange={onPreferenceChange}
             disabled={!isConnected}
           />
+        </div>
+      )}
+
+      {/* Remove all plan workouts */}
+      {isConnected && (
+        <div className="pt-2 border-t">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full text-destructive hover:text-destructive"
+            disabled={removing}
+            onClick={handleRemoveAllWorkouts}
+          >
+            {removing ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="mr-2 h-4 w-4" />
+            )}
+            {removing ? 'Removing...' : 'Remove all plan workouts from Garmin Connect'}
+          </Button>
         </div>
       )}
     </div>

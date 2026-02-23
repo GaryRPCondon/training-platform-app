@@ -20,6 +20,15 @@ export default function ProfilePage() {
         queryFn: getAthleteProfile,
     })
 
+    const { data: vdotData, isLoading: vdotLoading } = useQuery({
+        queryKey: ['vdot'],
+        queryFn: async () => {
+            const res = await fetch('/api/plans/vdot')
+            if (!res.ok) return null
+            return res.json()
+        },
+    })
+
     async function handleLogout() {
         try {
             const response = await fetch('/api/auth/logout', {
@@ -39,7 +48,7 @@ export default function ProfilePage() {
         }
     }
 
-    if (isLoading) {
+    if (isLoading || vdotLoading) {
         return <ProfileSkeleton />
     }
 
@@ -63,7 +72,7 @@ export default function ProfilePage() {
 
             <div className="grid gap-6 md:grid-cols-2">
                 <PreferencesCard />
-                <PerformanceMetricsCard />
+                <PerformanceMetricsCard initialData={vdotData} />
                 <AISettingsCard />
                 <ConnectionsCard
                     stravaConnected={!!athlete?.strava_connected}

@@ -69,20 +69,22 @@ export interface TrainingPaces {
 export function calculateTrainingPaces(vdot: number): TrainingPaces {
   // Formulas based on Jack Daniels' VDOT tables
 
-  // Easy pace: 59-74% of VDOT (conversational, recovery)
+  // Easy pace: ~65% of VDOT (conversational, recovery)
   const easyPace = calculatePaceForIntensity(vdot, 0.65)
 
-  // Marathon pace: 80-88% of VDOT
-  const marathonPace = calculatePaceForIntensity(vdot, 0.84)
+  // Marathon pace: 82% of VDOT
+  // percentMax for a ~3h race converges to 0.818, so this is equivalent
+  // to the exact marathon race pace without requiring iterative solving
+  const marathonPace = calculatePaceForIntensity(vdot, 0.82)
 
-  // Tempo/Threshold pace: 83-88% of VDOT (comfortably hard)
+  // Tempo/Threshold pace: 88% of VDOT (lactate threshold)
   const tempoPace = calculatePaceForIntensity(vdot, 0.88)
 
-  // Interval pace: 98-100% of VDOT (hard, 3-5 min reps)
-  const intervalPace = calculatePaceForIntensity(vdot, 1.0)
+  // Interval pace: 98% of VDOT (VO2max, 3-5 min reps)
+  const intervalPace = calculatePaceForIntensity(vdot, 0.98)
 
-  // Repetition pace: 105-120% of VDOT (very hard, < 2 min reps)
-  const repetitionPace = calculatePaceForIntensity(vdot, 1.10)
+  // Repetition pace: 106% of VDOT (speed, < 2 min reps)
+  const repetitionPace = calculatePaceForIntensity(vdot, 1.06)
 
   return {
     easy: Math.round(easyPace),

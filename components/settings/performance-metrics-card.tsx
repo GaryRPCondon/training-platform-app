@@ -9,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { Loader2, TrendingUp } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useUnits } from '@/lib/hooks/use-units'
 import {
   calculateVDOTFromRaceTime,
@@ -20,18 +21,44 @@ import {
   type TrainingPaces,
 } from '@/lib/training/vdot'
 
-export function PerformanceMetricsCard() {
+interface PerformanceMetricsCardProps {
+  initialData?: {
+    vdot?: number
+    training_paces?: TrainingPaces
+    pace_source?: string
+    pace_source_data?: { race_distance?: RaceDistance; race_time?: string }
+  } | null
+}
+
+export function PerformanceMetricsCard({ initialData }: PerformanceMetricsCardProps = {}) {
   const { units } = useUnits()
-  const [loading, setLoading] = useState(true)
+  const provided = initialData !== undefined
+
+  // Derive initial values from prop so state is correct on first render
+  const initMethod: 'race' | 'vdot' =
+    provided && initialData?.pace_source === 'vdot_direct' ? 'vdot' : 'race'
+  const initRaceDistance: RaceDistance =
+    (provided && initialData?.pace_source_data?.race_distance) || '10k'
+  const initRaceTime = (provided && initialData?.pace_source_data?.race_time) || ''
+  const initVdotDirect =
+    provided && initialData?.pace_source === 'vdot_direct'
+      ? String(initialData?.vdot ?? '')
+      : ''
+
+  const [loading, setLoading] = useState(!provided)
   const [saving, setSaving] = useState(false)
 
-  const [inputMethod, setInputMethod] = useState<'race' | 'vdot'>('race')
-  const [raceDistance, setRaceDistance] = useState<RaceDistance>('10k')
-  const [raceTime, setRaceTime] = useState('')
-  const [vdotDirect, setVdotDirect] = useState('')
+  const [inputMethod, setInputMethod] = useState<'race' | 'vdot'>(initMethod)
+  const [raceDistance, setRaceDistance] = useState<RaceDistance>(initRaceDistance)
+  const [raceTime, setRaceTime] = useState(initRaceTime)
+  const [vdotDirect, setVdotDirect] = useState(initVdotDirect)
 
-  const [currentVDOT, setCurrentVDOT] = useState<number | null>(null)
-  const [currentPaces, setCurrentPaces] = useState<TrainingPaces | null>(null)
+  const [currentVDOT, setCurrentVDOT] = useState<number | null>(
+    (provided && initialData?.vdot) ? initialData.vdot : null
+  )
+  const [currentPaces, setCurrentPaces] = useState<TrainingPaces | null>(
+    (provided && initialData?.training_paces) ? initialData.training_paces : null
+  )
 
   const [newVDOT, setNewVDOT] = useState<number | null>(null)
   const [newPaces, setNewPaces] = useState<TrainingPaces | null>(null)
@@ -39,8 +66,10 @@ export function PerformanceMetricsCard() {
   const [newSourceData, setNewSourceData] = useState<any>(null)
 
   useEffect(() => {
-    fetchCurrentVDOT()
-  }, [])
+    if (!provided) {
+      fetchCurrentVDOT()
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchCurrentVDOT = async () => {
     try {
@@ -171,14 +200,43 @@ export function PerformanceMetricsCard() {
 
   if (loading) {
     return (
-      <Card>
+      <Card className="flex flex-col">
         <CardHeader>
-          <CardTitle>Performance Metrics</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5" />
+            Performance Metrics
+          </CardTitle>
+          <CardDescription>Update your VDOT to calibrate training paces.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center h-40">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <CardContent className="flex flex-col flex-1 space-y-4">
+          <div className="flex items-center space-x-6">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-4 w-24" />
           </div>
+          <div className="min-h-[76px] grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-9 w-full" />
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-9 w-full" />
+            </div>
+          </div>
+          <div className="border-t pt-4 space-y-3 flex-1">
+            <Skeleton className="h-4 w-24" />
+            <div>
+              <Skeleton className="h-4 w-28 mb-2" />
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-36" />
+              </div>
+            </div>
+          </div>
+          <Skeleton className="h-10 w-full" />
         </CardContent>
       </Card>
     )

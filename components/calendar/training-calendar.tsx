@@ -54,6 +54,11 @@ const calendarStyles = `
   .rbc-month-view {
     border-top: none !important;
   }
+  /* Pointer cursor on empty day cells to hint that clicking creates a workout */
+  .rbc-day-bg {
+    cursor: pointer;
+    position: relative;
+  }
 `
 
 const localizer = momentLocalizer(moment)
@@ -89,6 +94,37 @@ function formatWorkoutTitle(workout: any, units: UnitSystem = 'metric'): string 
     return `${statusIndicator}${description}`
 }
 
+function makeNewWorkout(date: Date): WorkoutWithDetails {
+    return {
+        id: 0,
+        athlete_id: '',
+        scheduled_date: format(date, 'yyyy-MM-dd'),
+        scheduled_time: null,
+        workout_type: 'easy_run',
+        workout_index: null,
+        description: '',
+        distance_target_meters: null,
+        duration_target_seconds: null,
+        intensity_target: null,
+        structured_workout: null,
+        status: 'scheduled',
+        completed_activity_id: null,
+        completion_status: 'pending',
+        completion_metadata: null,
+        agent_rationale: null,
+        agent_decision_metadata: null,
+        notes: null,
+        version: 1,
+        created_at: '',
+        updated_at: '',
+        weekly_plan_id: null,
+        date,
+        formatted_date: format(date, 'EEE, MMM d'),
+        phase_name: 'Active Plan',
+        week_of_plan: 0,
+    } as WorkoutWithDetails
+}
+
 export function TrainingCalendar() {
     const [currentDate, setCurrentDate] = useState(new Date())
     const [selectedWorkout, setSelectedWorkout] = useState<WorkoutWithDetails | null>(null)
@@ -96,6 +132,8 @@ export function TrainingCalendar() {
     const [isWorkoutDialogOpen, setIsWorkoutDialogOpen] = useState(false)
     const [isActivityDialogOpen, setIsActivityDialogOpen] = useState(false)
     const [isAutoMatching, setIsAutoMatching] = useState(false)
+    const [createDate, setCreateDate] = useState<Date | null>(null)
+    const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
     const queryClient = useQueryClient()
     const supabase = createClient()
     const router = useRouter()
@@ -382,7 +420,6 @@ export function TrainingCalendar() {
     }
 
     const handleSendWeekToGarmin = useCallback(async (weekStart: Date, weekEnd: Date) => {
-        // Find all scheduled (non-rest) workouts in this week
         const weekWorkoutIds = (workouts || [])
             .filter(w => {
                 const d = new Date(w.scheduled_date)
@@ -410,6 +447,50 @@ export function TrainingCalendar() {
         }
     }, [workouts, queryClient])
 
+    const handleRemoveWeekFromGarmin = useCallback(async (weekStart: Date, weekEnd: Date) => {
+        const weekWorkoutIds = (workouts || [])
+            .filter(w => {
+                const d = new Date(w.scheduled_date)
+                return d >= weekStart && d <= weekEnd && w.garmin_workout_id
+            })
+            .map(w => w.id)
+
+        if (weekWorkoutIds.length === 0) {
+            toast.error('No synced workouts to remove this week')
+            return
+        }
+
+        try {
+            const response = await fetch('/api/garmin/workouts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ workoutIds: weekWorkoutIds, action: 'delete' }),
+            })
+            const result = await response.json()
+            if (!response.ok) throw new Error(result.error || 'Failed to remove')
+            queryClient.invalidateQueries({ queryKey: ['workouts'] })
+            toast.success(`Removed ${result.deleted} workout${result.deleted !== 1 ? 's' : ''} from Garmin`)
+        } catch (err: unknown) {
+            toast.error(err instanceof Error ? err.message : 'Failed to remove from Garmin')
+        }
+    }, [workouts, queryClient])
+
+    const handleRemoveFromGarmin = useCallback(async (workoutId: number) => {
+        try {
+            const response = await fetch('/api/garmin/workouts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ workoutIds: [workoutId], action: 'delete' }),
+            })
+            const result = await response.json()
+            if (!response.ok) throw new Error(result.error || 'Failed to remove')
+            queryClient.invalidateQueries({ queryKey: ['workouts'] })
+            toast.success('Removed from Garmin')
+        } catch (err: unknown) {
+            toast.error(err instanceof Error ? err.message : 'Failed to remove from Garmin')
+        }
+    }, [queryClient])
+
     return (
         <div className="h-full w-full flex flex-col overflow-hidden">
             <CustomToolbar
@@ -428,6 +509,11 @@ export function TrainingCalendar() {
                         startAccessor={(event: any) => event.start}
                         endAccessor={(event: any) => event.end}
                         onSelectEvent={handleSelectEvent}
+                        onSelectSlot={(slot: any) => {
+                            setCreateDate(slot.start)
+                            setIsCreateDialogOpen(true)
+                        }}
+                        selectable={true}
                         date={currentDate}
                         onNavigate={setCurrentDate}
                         view="month"
@@ -450,6 +536,7 @@ export function TrainingCalendar() {
                     showActual={true}
                     garminConnected={garminConnected ?? false}
                     onSendToGarmin={handleSendWeekToGarmin}
+                    onRemoveFromGarmin={handleRemoveWeekFromGarmin}
                 />
             </div>
 
@@ -480,6 +567,29 @@ export function TrainingCalendar() {
                                 queryClient.invalidateQueries({ queryKey: ['workouts'] })
                                 toast.success('Sent to Garmin')
                             }}
+                            onRemoveFromGarmin={handleRemoveFromGarmin}
+                            onDeleted={() => {
+                                setIsWorkoutDialogOpen(false)
+                                queryClient.invalidateQueries({ queryKey: ['workouts'] })
+                            }}
+                        />
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            {/* Create Workout Dialog */}
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                <DialogContent className="max-w-2xl">
+                    <DialogTitle className="sr-only">Create Workout</DialogTitle>
+                    {createDate && (
+                        <WorkoutCard
+                            workout={makeNewWorkout(createDate)}
+                            isNew={true}
+                            trainingPaces={activePlan?.training_paces || null}
+                            vdot={activePlan?.vdot || null}
+                            editable={true}
+                            onClose={() => setIsCreateDialogOpen(false)}
+                            onCreated={() => setIsCreateDialogOpen(false)}
                         />
                     )}
                 </DialogContent>
