@@ -460,7 +460,7 @@ export class GarminClient {
   async deleteWorkout(workoutId: string): Promise<void> {
     if (!this.client) throw new Error('Garmin client not initialized')
     await this.ensureAuthenticated()
-    await this.client.deleteWorkout({ workoutId: parseInt(workoutId) })
+    await this.client.deleteWorkout({ workoutId })
   }
 
   /**

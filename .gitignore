@@ -23,9 +23,10 @@ node_modules
 # misc
 .DS_Store
 *.pem
-llm-response*
-llm-operations*
-llmresponse*
+
+# LLM interaction logs (keep the folder, ignore contents)
+logs/*
+!logs/.gitkeep
 
 # debug
 npm-debug.log*

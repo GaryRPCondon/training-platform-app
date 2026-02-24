@@ -24,6 +24,7 @@ import { buildCoachSystemPrompt } from '@/lib/agent/coach-prompt'
 import { COACH_TOOLS, WorkoutProposal } from '@/lib/agent/coach-tools'
 import { createChatSession, getChatSession, saveMessage } from '@/lib/agent/session-manager'
 import { calculateMaxTokens, estimateTokens } from '@/lib/chat/token-budget'
+import { writeLLMLog } from '@/lib/llm-logger'
 
 export interface CoachAPIResponse {
     message: string
@@ -218,6 +219,7 @@ export async function POST(request: Request) {
                 // ---------------------------------------------------------------
                 send({ type: 'status', status: 'thinking' })
 
+                const llmStartTime = Date.now()
                 let llmResponse
                 if (provider.generateStream) {
                     llmResponse = await provider.generateStream(llmRequest, (chunk) => {
@@ -227,6 +229,7 @@ export async function POST(request: Request) {
                     llmResponse = await provider.generateResponse(llmRequest)
                     send({ type: 'text', chunk: llmResponse.content })
                 }
+                const llmDurationSec = ((Date.now() - llmStartTime) / 1000).toFixed(2)
 
                 // ---------------------------------------------------------------
                 // Parse proposals, persist, send done
@@ -248,6 +251,23 @@ export async function POST(request: Request) {
                     }))
 
                 proposals.sort((a, b) => (b.is_preferred ? 1 : 0) - (a.is_preferred ? 1 : 0))
+
+                writeLLMLog('coach', {
+                    sessionId: currentSessionId,
+                    athleteId,
+                    workoutId: workoutId ?? null,
+                    provider: providerName,
+                    model: llmResponse.model,
+                    generationTimeSeconds: parseFloat(llmDurationSec),
+                    estimatedInputTokens,
+                    maxTokens,
+                    systemPrompt,
+                    messages: allMessages,
+                    response: llmResponse.content,
+                    toolCalls: llmResponse.toolCalls ?? [],
+                    proposals,
+                    usage: llmResponse.usage,
+                })
 
                 const savedMessage = await saveMessage(currentSessionId, 'assistant', llmResponse.content, {
                     provider: providerName,

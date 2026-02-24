@@ -197,6 +197,10 @@ export interface PlannedWorkout {
     version: number
     created_at: string
     updated_at: string
+    // Garmin Connect sync tracking
+    garmin_workout_id: string | null
+    garmin_scheduled_at: string | null
+    garmin_sync_status: 'synced' | 'stale' | 'failed' | null
     // Virtual join field (populated via select with join)
     activities?: Activity | null
 }

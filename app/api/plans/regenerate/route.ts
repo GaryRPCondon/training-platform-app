@@ -40,14 +40,24 @@ import {
 import {
   validateOperations,
   previewOperations,
-  describeOperation
+  describeOperation,
+  type PlanOperation
 } from '@/lib/plans/operations'
 import { OPERATION_TOOLS } from '@/lib/plans/operation-tools'
 import { calculateMaxTokens, estimateTokens } from '@/lib/chat/token-budget'
-import { writeFileSync } from 'fs'
-import { join } from 'path'
+import { writeLLMLog } from '@/lib/llm-logger'
 
 type RegenerateMode = 'operations' | 'full'
+
+/** Raw operation as returned from LLM tool calls — op name + arbitrary args */
+type RawOperation = { op: string } & Record<string, unknown>
+
+/** Shape of the LLM JSON response in full-regeneration mode */
+interface ParsedRegenerateResponse {
+  intent_summary: string
+  affected_weeks: number[]
+  regenerated_weeks: Array<{ workouts: unknown[] } & Record<string, unknown>>
+}
 
 export async function POST(request: Request) {
   try {
@@ -165,28 +175,19 @@ export async function POST(request: Request) {
       const llmDuration = ((Date.now() - llmStartTime) / 1000).toFixed(2)
       console.log(`[Regenerate] LLM responded in ${llmDuration}s`)
 
-      // Log response for debugging
-      const timestamp = new Date().toISOString().replace(/:/g, '-')
-      const logPath = join(process.cwd(), `llm-operations-${timestamp}.json`)
-      try {
-        writeFileSync(logPath, JSON.stringify({
-          timestamp,
-          mode: 'operations',
-          provider: providerName,
-          planId: planIdNum,
-          userMessage: trimmedMessage,
-          estimatedInputTokens,
-          maxOutputTokens: maxTokens,
-          generationTimeSeconds: parseFloat(llmDuration),
-          systemPrompt,
-          userPrompt,
-          rawResponse: response.content,
-          toolCalls: response.toolCalls
-        }, null, 2))
-        console.log(`[Regenerate] Logged response to ${logPath}`)
-      } catch (err) {
-        console.error('[Regenerate] Failed to write log file:', err)
-      }
+      writeLLMLog('plan-operations', {
+        mode: 'operations',
+        provider: providerName,
+        planId: planIdNum,
+        userMessage: trimmedMessage,
+        estimatedInputTokens,
+        maxOutputTokens: maxTokens,
+        generationTimeSeconds: parseFloat(llmDuration),
+        systemPrompt,
+        userPrompt,
+        rawResponse: response.content,
+        toolCalls: response.toolCalls,
+      })
 
       // Extract operations from tool calls
       if (!response.toolCalls || response.toolCalls.length === 0) {
@@ -203,7 +204,7 @@ export async function POST(request: Request) {
       }
 
       // Convert tool calls to operations format
-      const operations = response.toolCalls.map(tc => ({
+      const operations: RawOperation[] = response.toolCalls.map(tc => ({
         op: tc.name,
         ...tc.arguments
       }))
@@ -211,9 +212,11 @@ export async function POST(request: Request) {
       console.log(`[Regenerate] Received ${operations.length} operations from tool calls`)
 
       // Check for fallback request
-      const fallbackOp = operations.find((op: any) => op.op === 'request_fallback') as any
+      const fallbackOp = operations.find(op => op.op === 'request_fallback')
       if (fallbackOp) {
-        const reason = fallbackOp.reason || 'Complex request requires full regeneration'
+        const reason = typeof fallbackOp.reason === 'string'
+          ? fallbackOp.reason
+          : 'Complex request requires full regeneration'
         console.log(`[Regenerate] LLM requested fallback: ${reason}`)
         return NextResponse.json({
           success: true,
@@ -227,7 +230,10 @@ export async function POST(request: Request) {
       // Validate operations
       console.log(`[Regenerate] Validating ${operations.length} operations`)
 
-      const validation = validateOperations(operations as any, planContext)
+      // Safe cast: request_fallback has already been handled and returned above
+      const planOperations = operations as unknown as PlanOperation[]
+
+      const validation = validateOperations(planOperations, planContext)
       if (!validation.valid) {
         console.warn('[Regenerate] Operation validation errors:', validation.errors)
       }
@@ -236,18 +242,18 @@ export async function POST(request: Request) {
       }
 
       // Generate preview
-      const previews = previewOperations(operations as any, planContext)
+      const previews = previewOperations(planOperations, planContext)
 
       // Get week_starts_on for day name conversion
       const weekStartsOn = planContext.athlete_constraints.week_starts_on ?? 0
 
       // Debug: Log operations before sending
       console.log(`[Regenerate] Sending ${operations.length} operations to UI:`,
-        operations.map((op: any) => ({ op: op?.op, hasDescription: !!op })))
+        operations.map(op => ({ op: op.op, hasDescription: !!op })))
 
       // Generate summary from operations
       const summary = operations.length === 1
-        ? describeOperation(operations[0] as any, weekStartsOn)
+        ? describeOperation(planOperations[0], weekStartsOn)
         : `${operations.length} plan modifications`
 
       // Return operations preview
@@ -256,9 +262,9 @@ export async function POST(request: Request) {
         mode: 'operations',
         preview: {
           summary,
-          operations: operations.map((op: any) => ({
+          operations: planOperations.map(op => ({
             ...op,
-            description: describeOperation(op as any, weekStartsOn)
+            description: describeOperation(op, weekStartsOn)
           })),
           affected_workouts: previews.flatMap(p => p.affectedWorkouts),
           validation: {
@@ -327,38 +333,28 @@ export async function POST(request: Request) {
 
     const llmResponse = response.content
 
-    // Log the FULL response to a file for debugging
-    const timestamp = new Date().toISOString().replace(/:/g, '-')
-    const logPath = join(process.cwd(), `llm-regenerate-${timestamp}.json`)
-    try {
-      writeFileSync(logPath, JSON.stringify({
-        timestamp,
-        mode: 'full',
-        provider: providerName,
-        planId: planIdNum,
-        userMessage: trimmedMessage,
-        estimatedInputTokens,
-        maxOutputTokens: maxTokens,
-        generationTimeSeconds: parseFloat(llmDuration),
-        systemPrompt,
-        userPrompt,
-        rawResponse: llmResponse
-      }, null, 2))
-      console.log(`[Regenerate] Logged response to ${logPath}`)
-    } catch (err) {
-      console.error('[Regenerate] Failed to write log file:', err)
-      // Continue execution even if logging fails
-    }
+    writeLLMLog('plan-regenerate', {
+      mode: 'full',
+      provider: providerName,
+      planId: planIdNum,
+      userMessage: trimmedMessage,
+      estimatedInputTokens,
+      maxOutputTokens: maxTokens,
+      generationTimeSeconds: parseFloat(llmDuration),
+      systemPrompt,
+      userPrompt,
+      rawResponse: llmResponse,
+    })
 
     // Parse JSON response
-    let parsedResponse: any
+    let parsedResponse: ParsedRegenerateResponse
     try {
       // Try to extract JSON from response (in case LLM added text)
       const jsonMatch = llmResponse.match(/\{[\s\S]*\}/)
       if (!jsonMatch) {
         throw new Error('No JSON found in LLM response')
       }
-      parsedResponse = JSON.parse(jsonMatch[0])
+      parsedResponse = JSON.parse(jsonMatch[0]) as ParsedRegenerateResponse
     } catch (parseError) {
       console.error('[Regenerate] Failed to parse LLM response:', llmResponse.substring(0, 500))
       return NextResponse.json(
@@ -420,7 +416,7 @@ export async function POST(request: Request) {
           estimated_input_tokens: estimatedInputTokens,
           weeks_to_replace: parsedResponse.regenerated_weeks.length,
           workouts_to_create: parsedResponse.regenerated_weeks.reduce(
-            (sum: number, week: any) => sum + week.workouts.length,
+            (sum, week) => sum + week.workouts.length,
             0
           )
         }

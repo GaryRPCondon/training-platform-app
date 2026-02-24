@@ -47,6 +47,9 @@ function proposalToWorkoutWithDetails(
         version: 1,
         created_at: now,
         updated_at: now,
+        garmin_workout_id: null,
+        garmin_scheduled_at: null,
+        garmin_sync_status: null,
         activities: undefined,
         // WorkoutWithDetails computed fields
         date,

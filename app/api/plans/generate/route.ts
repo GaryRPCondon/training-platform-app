@@ -3,14 +3,13 @@ import { createClient } from '@/lib/supabase/server'
 import { loadFullTemplate, getTemplateSummary } from '@/lib/templates/template-loader'
 import { buildGenerationSystemPrompt, buildGenerationUserMessage } from '@/lib/plans/llm-prompts'
 import { parseLLMResponse } from '@/lib/plans/response-parser'
-import { writePlanToDatabase, clearPlanWorkouts } from '@/lib/plans/plan-writer'
+import { writePlanToDatabase } from '@/lib/plans/plan-writer'
 import { validateWorkoutDistances } from '@/lib/plans/workout-validator'
 import { createLLMProvider } from '@/lib/agent/factory'
 import { calculateTrainingPaces } from '@/lib/training/vdot'
 import type { UserCriteria } from '@/lib/templates/types'
 import type { TrainingPaces } from '@/types/database'
-import { writeFileSync } from 'fs'
-import { join } from 'path'
+import { writeLLMLog } from '@/lib/llm-logger'
 
 export async function POST(request: Request) {
   try {
@@ -29,7 +28,7 @@ export async function POST(request: Request) {
     let vdot: number | null = null
     let trainingPaces: TrainingPaces | null = null
     let paceSource: string | null = null
-    let paceSourceData: any = null
+    let paceSourceData: Record<string, unknown> | null = null
 
     if (vdot_data && typeof vdot_data === 'object' && typeof vdot_data.vdot === 'number') {
       const vdotValue = vdot_data.vdot
@@ -114,7 +113,7 @@ export async function POST(request: Request) {
 
     // For plan generation, use provider with sufficient token limits
     // Old deepseek-chat had 8192 limit, but deepseek-reasoner has higher limits
-    let providerName = athlete?.preferred_llm_provider || 'deepseek'
+    const providerName = athlete?.preferred_llm_provider || 'deepseek'
 
     const modelName = athlete?.preferred_llm_model || undefined
 
@@ -149,20 +148,15 @@ export async function POST(request: Request) {
     console.log('Response start:', response.content.substring(0, 200))
     console.log('Response end:', response.content.substring(response.content.length - 200))
 
-    // Log the FULL response to a file for inspection
-    const timestamp = new Date().toISOString().replace(/:/g, '-')
-    const logPath = join(process.cwd(), `llm-response-${timestamp}.json`)
-    writeFileSync(logPath, JSON.stringify({
-      timestamp,
+    writeLLMLog('plan-generate', {
       provider: providerName,
       model: modelName,
       generationTimeSeconds: parseFloat(llmDurationSec),
       systemPrompt,
-      userMessage: userMessage.substring(0, 1000) + '... (truncated)',
+      userMessage,
       response: response.content,
-      usage: response.usage
-    }, null, 2))
-    console.log(`Full LLM response saved to: ${logPath}`)
+      usage: response.usage,
+    })
 
     // Check if response was truncated (hit token limit)
     const wasLikelyTruncated = response.usage.outputTokens >= maxTokens * 0.98
