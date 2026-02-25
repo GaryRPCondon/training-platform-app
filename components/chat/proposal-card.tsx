@@ -14,6 +14,113 @@ import type { TrainingPaces } from '@/types/database'
 import { useQueryClient } from '@tanstack/react-query'
 
 // ---------------------------------------------------------------------------
+// Structured workout types (mirrors the JSONB schema from coach-tools.ts)
+// ---------------------------------------------------------------------------
+interface StructuredInterval {
+    distance_meters?: number
+    duration_seconds?: number
+    intensity: string
+    target_pace?: string
+}
+interface StructuredSet {
+    repeat: number
+    skip_last_recovery?: boolean
+    intervals: StructuredInterval[]
+}
+interface StructuredWarmupCooldown {
+    duration_minutes?: number
+    distance_meters?: number
+    intensity: string
+}
+interface StructuredWorkout {
+    warmup?: StructuredWarmupCooldown
+    main_set?: StructuredSet[]
+    cooldown?: StructuredWarmupCooldown
+    pace_guidance?: string
+    notes?: string
+}
+
+function formatInterval(interval: StructuredInterval): string {
+    const dist = interval.distance_meters
+        ? interval.distance_meters >= 1000
+            ? `${(interval.distance_meters / 1000).toFixed(1)}km`
+            : `${interval.distance_meters}m`
+        : null
+    const dur = interval.duration_seconds
+        ? interval.duration_seconds >= 60
+            ? `${Math.round(interval.duration_seconds / 60)}min`
+            : `${interval.duration_seconds}s`
+        : null
+    const size = dist ?? dur ?? ''
+    const pace = interval.target_pace ? ` @ ${interval.target_pace}` : ''
+    return `${size} ${interval.intensity}${pace}`.trim()
+}
+
+function formatWarmupCooldown(part: StructuredWarmupCooldown): string {
+    if (part.distance_meters) {
+        const dist = part.distance_meters >= 1000
+            ? `${(part.distance_meters / 1000).toFixed(1)}km`
+            : `${part.distance_meters}m`
+        return `${dist} ${part.intensity}`
+    }
+    if (part.duration_minutes) return `${part.duration_minutes}min ${part.intensity}`
+    return part.intensity
+}
+
+function StructuredWorkoutSummary({ structured }: { structured: StructuredWorkout }) {
+    const mainSet = structured.main_set ?? []
+    const hasContent = structured.warmup || mainSet.length > 0 || structured.cooldown
+    if (!hasContent) return null
+
+    return (
+        <div className="rounded-md border bg-muted/40 px-3 py-2 space-y-1.5 text-xs">
+            {structured.warmup && (
+                <div className="flex gap-2">
+                    <span className="text-muted-foreground w-16 shrink-0">Warmup</span>
+                    <span className="capitalize">{formatWarmupCooldown(structured.warmup)}</span>
+                </div>
+            )}
+            {mainSet.map((set, i) => (
+                <div key={i} className="flex gap-2">
+                    <span className="text-muted-foreground w-16 shrink-0">
+                        {set.repeat > 1 ? `${set.repeat}×` : 'Main'}
+                    </span>
+                    <span className="space-x-1">
+                        {set.intervals.map((iv, j) => (
+                            <span key={j}>
+                                {j > 0 && <span className="text-muted-foreground mx-0.5">→</span>}
+                                <span className="capitalize">{formatInterval(iv)}</span>
+                            </span>
+                        ))}
+                        {set.skip_last_recovery && (
+                            <span className="text-muted-foreground italic ml-1">(skip last recovery)</span>
+                        )}
+                    </span>
+                </div>
+            ))}
+            {structured.cooldown && (
+                <div className="flex gap-2">
+                    <span className="text-muted-foreground w-16 shrink-0">Cooldown</span>
+                    <span className="capitalize">{formatWarmupCooldown(structured.cooldown)}</span>
+                </div>
+            )}
+            {structured.pace_guidance && (
+                <div className="flex gap-2 pt-0.5 border-t border-border/50">
+                    <span className="text-muted-foreground w-16 shrink-0">Pace</span>
+                    <span>{structured.pace_guidance}</span>
+                </div>
+            )}
+            {structured.notes && (
+                <div className="flex gap-2">
+                    <span className="text-muted-foreground w-16 shrink-0">Notes</span>
+                    <span className="italic">{structured.notes}</span>
+                </div>
+            )}
+        </div>
+    )
+}
+
+// ---------------------------------------------------------------------------
 // Shim: build a WorkoutWithDetails from a proposal so WorkoutCard can render it
 // ---------------------------------------------------------------------------
 function proposalToWorkoutWithDetails(
@@ -309,10 +416,17 @@ export function ProposalCard({
                     )}
 
                     {/* Intensity */}
-                    {proposal.intensity_target && (
+                    {proposal.intensity_target && !proposal.structured_workout && (
                         <p className="text-xs text-muted-foreground capitalize">
                             Intensity: {proposal.intensity_target}
                         </p>
+                    )}
+
+                    {/* Structured workout breakdown */}
+                    {proposal.structured_workout && (
+                        <StructuredWorkoutSummary
+                            structured={proposal.structured_workout as StructuredWorkout}
+                        />
                     )}
 
                     {/* Rationale */}

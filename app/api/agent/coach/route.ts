@@ -26,6 +26,61 @@ import { createChatSession, getChatSession, saveMessage } from '@/lib/agent/sess
 import { calculateMaxTokens, estimateTokens } from '@/lib/chat/token-budget'
 import { writeLLMLog } from '@/lib/llm-logger'
 
+// ---------------------------------------------------------------------------
+// Format a structured_workout JSONB into readable text for the system prompt.
+// This ensures the LLM understands the exact segment breakdown rather than
+// guessing from the top-level distance_target_meters alone.
+// ---------------------------------------------------------------------------
+function formatStructuredWorkoutForPrompt(sw: Record<string, unknown>): string {
+    const lines: string[] = ['Structured breakdown:']
+
+    const warmup = sw.warmup as Record<string, unknown> | undefined
+    const mainSet = sw.main_set as Record<string, unknown>[] | undefined
+    const cooldown = sw.cooldown as Record<string, unknown> | undefined
+
+    if (warmup) {
+        const dur = warmup.duration_minutes ? `${warmup.duration_minutes}min` : null
+        const dist = warmup.distance_meters
+            ? `${((warmup.distance_meters as number) / 1000).toFixed(1)}km`
+            : null
+        lines.push(`  Warmup: ${dist ?? dur ?? '?'} ${warmup.intensity ?? ''}`.trimEnd())
+    }
+
+    if (mainSet) {
+        for (const set of mainSet) {
+            const repeat = (set.repeat as number) ?? 1
+            const intervals = (set.intervals as Record<string, unknown>[]) ?? []
+            const parts = intervals.map(iv => {
+                const dist = iv.distance_meters
+                    ? `${((iv.distance_meters as number) / 1000).toFixed(1)}km`
+                    : null
+                const dur = iv.duration_seconds
+                    ? `${Math.round((iv.duration_seconds as number) / 60)}min`
+                    : null
+                return `${dist ?? dur ?? '?'} ${iv.intensity ?? ''}`.trim()
+            })
+            const suffix = set.skip_last_recovery ? ' (skip last recovery)' : ''
+            lines.push(`  Main set: ${repeat}× [${parts.join(' → ')}]${suffix}`)
+        }
+    }
+
+    if (cooldown) {
+        const dur = cooldown.duration_minutes ? `${cooldown.duration_minutes}min` : null
+        const dist = cooldown.distance_meters
+            ? `${((cooldown.distance_meters as number) / 1000).toFixed(1)}km`
+            : null
+        lines.push(`  Cooldown: ${dist ?? dur ?? '?'} ${cooldown.intensity ?? ''}`.trimEnd())
+    }
+
+    const pace = sw.pace_guidance as string | undefined
+    if (pace) lines.push(`  Pace guidance: ${pace}`)
+
+    const notes = sw.notes as string | undefined
+    if (notes) lines.push(`  Notes: ${notes}`)
+
+    return lines.join('\n')
+}
+
 export interface CoachAPIResponse {
     message: string
     proposals: WorkoutProposal[]
@@ -191,14 +246,27 @@ export async function POST(request: Request) {
                         systemPrompt += `Date: ${focusWorkout.scheduled_date}\n`
                         systemPrompt += `Type: ${focusWorkout.workout_type}\n`
                         if (focusWorkout.description) systemPrompt += `Description: ${focusWorkout.description}\n`
-                        if (focusWorkout.distance_target_meters) {
-                            systemPrompt += `Distance: ${(focusWorkout.distance_target_meters / 1000).toFixed(1)}km\n`
-                        }
-                        if (focusWorkout.duration_target_seconds) {
-                            systemPrompt += `Duration: ${Math.round(focusWorkout.duration_target_seconds / 60)}min\n`
-                        }
                         if (focusWorkout.intensity_target) systemPrompt += `Intensity: ${focusWorkout.intensity_target}\n`
                         systemPrompt += `Status: ${focusWorkout.completion_status}\n`
+
+                        const sw = focusWorkout.structured_workout as Record<string, unknown> | null
+                        if (sw?.main_set) {
+                            // Structured workout: show the full breakdown so the LLM understands
+                            // exactly what each segment is. distance_target_meters is the MAIN SET
+                            // distance only — warmup and cooldown are additional.
+                            systemPrompt += formatStructuredWorkoutForPrompt(sw) + '\n'
+                            if (focusWorkout.distance_target_meters) {
+                                systemPrompt += `Planned distance: ${(focusWorkout.distance_target_meters / 1000).toFixed(1)}km (main workout only — warmup and cooldown are ADDITIONAL to this, not subtracted from it)\n`
+                            }
+                        } else {
+                            // Simple workout: distance/duration is the full workout
+                            if (focusWorkout.distance_target_meters) {
+                                systemPrompt += `Distance: ${(focusWorkout.distance_target_meters / 1000).toFixed(1)}km\n`
+                            }
+                            if (focusWorkout.duration_target_seconds) {
+                                systemPrompt += `Duration: ${Math.round(focusWorkout.duration_target_seconds / 60)}min\n`
+                            }
+                        }
                     }
                 }
 

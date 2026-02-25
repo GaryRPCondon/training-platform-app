@@ -24,6 +24,27 @@ export interface MatchResult {
 }
 
 /**
+ * Returns the effective target distance for a workout, including estimated warmup/cooldown.
+ * Structured workouts (intervals, tempo) have time-based warmup/cooldown with no distance_meters.
+ * We convert those duration_minutes to meters using the athlete's easy pace so the
+ * actual GPS distance (which includes warmup/cooldown) can be compared fairly.
+ */
+function getEffectiveTargetDistance(workout: PlannedWorkout, easyPaceSecondsPerKm: number): number | null {
+    const base = workout.distance_target_meters
+    if (!base) return null
+
+    const sw = workout.structured_workout as Record<string, any> | null
+    if (!sw) return base
+
+    const warmupMins: number = sw.warmup?.duration_minutes ?? 0
+    const cooldownMins: number = sw.cooldown?.duration_minutes ?? 0
+    if (warmupMins === 0 && cooldownMins === 0) return base
+
+    const extra = ((warmupMins + cooldownMins) * 60 / easyPaceSecondsPerKm) * 1000
+    return Math.round(base + extra)
+}
+
+/**
  * Match unlinked activities to pending workouts for date range
  */
 export async function matchActivitiesToWorkouts(
@@ -32,6 +53,14 @@ export async function matchActivitiesToWorkouts(
     startDate: string,
     endDate: string
 ): Promise<MatchResult[]> {
+
+    // Fetch athlete's easy pace for warmup/cooldown distance estimation
+    const { data: athlete } = await supabase
+        .from('athletes')
+        .select('training_paces')
+        .eq('id', athleteId)
+        .single()
+    const easyPaceSecondsPerKm: number = (athlete?.training_paces as any)?.easy ?? 360 // fallback 6:00/km
 
     // Get unlinked activities
     const { data: activities } = await supabase
@@ -57,7 +86,7 @@ export async function matchActivitiesToWorkouts(
     const matchedWorkoutIds = new Set<number>()
 
     for (const activity of activities) {
-        const match = findBestWorkoutMatch(activity, workouts.filter(w => !matchedWorkoutIds.has(w.id)))
+        const match = findBestWorkoutMatch(activity, workouts.filter(w => !matchedWorkoutIds.has(w.id)), easyPaceSecondsPerKm)
 
         if (match) {
             console.log('[AutoMatch] Match candidate:', {
@@ -68,7 +97,7 @@ export async function matchActivitiesToWorkouts(
         }
 
         if (match && match.confidence >= 0.6) {
-            await linkActivityToWorkout(supabase, activity, workouts.find(w => w.id === match.workoutId)!, match)
+            await linkActivityToWorkout(supabase, activity, workouts.find(w => w.id === match.workoutId)!, match, easyPaceSecondsPerKm)
             matches.push(match)
             matchedWorkoutIds.add(match.workoutId)
         }
@@ -82,7 +111,8 @@ export async function matchActivitiesToWorkouts(
  */
 function findBestWorkoutMatch(
     activity: Activity,
-    workouts: PlannedWorkout[]
+    workouts: PlannedWorkout[],
+    easyPaceSecondsPerKm: number
 ): MatchResult | null {
     if (!activity.start_time) return null
 
@@ -103,13 +133,15 @@ function findBestWorkoutMatch(
     // Single workout that day = high confidence
     if (sameDayWorkouts.length === 1) {
         const workout = sameDayWorkouts[0]
-        const confidence = calculateConfidence(activity, workout)
+        const confidence = calculateConfidence(activity, workout, easyPaceSecondsPerKm)
         console.log('[AutoMatch] Single-day scoring:', {
             activityId: activity.id, workoutId: workout.id,
             activityType: activity.activity_type, workoutType: workout.workout_type,
             normalizedType: normalizeActivityType(activity.activity_type,
                 typeof activity.strava_data === 'string' ? JSON.parse(activity.strava_data) : activity.strava_data),
-            distance: activity.distance_meters, target: workout.distance_target_meters,
+            distance: activity.distance_meters,
+            target: workout.distance_target_meters,
+            effectiveTarget: getEffectiveTargetDistance(workout, easyPaceSecondsPerKm),
             confidence
         })
 
@@ -120,7 +152,7 @@ function findBestWorkoutMatch(
                 confidence,
                 method: 'auto_time',
                 metadata: {
-                    distance_diff_percent: calculateDistanceDiff(activity, workout),
+                    distance_diff_percent: calculateDistanceDiff(activity, workout, easyPaceSecondsPerKm),
                     duration_diff_percent: calculateDurationDiff(activity, workout),
                 },
             }
@@ -131,7 +163,7 @@ function findBestWorkoutMatch(
     let bestMatch: MatchResult | null = null
 
     for (const workout of sameDayWorkouts) {
-        const confidence = calculateConfidence(activity, workout)
+        const confidence = calculateConfidence(activity, workout, easyPaceSecondsPerKm)
 
         if (confidence > 0.75 && (!bestMatch || confidence > bestMatch.confidence)) {
             bestMatch = {
@@ -140,7 +172,7 @@ function findBestWorkoutMatch(
                 confidence,
                 method: 'auto_distance',
                 metadata: {
-                    distance_diff_percent: calculateDistanceDiff(activity, workout),
+                    distance_diff_percent: calculateDistanceDiff(activity, workout, easyPaceSecondsPerKm),
                     duration_diff_percent: calculateDurationDiff(activity, workout),
                 },
             }
@@ -153,7 +185,7 @@ function findBestWorkoutMatch(
 /**
  * Calculate match confidence (0.0 to 1.0)
  */
-function calculateConfidence(activity: Activity, workout: PlannedWorkout): number {
+function calculateConfidence(activity: Activity, workout: PlannedWorkout, easyPaceSecondsPerKm: number): number {
     let score = 0.5 // Base score for same day
 
     // Type match boost - normalize activity type using Strava workout_type when available
@@ -170,10 +202,11 @@ function calculateConfidence(activity: Activity, workout: PlannedWorkout): numbe
         }
     }
 
-    // Distance similarity boost
-    if (activity.distance_meters && workout.distance_target_meters) {
-        const diff = Math.abs(activity.distance_meters - workout.distance_target_meters)
-        const percent = diff / workout.distance_target_meters
+    // Distance similarity boost — use effective distance (includes estimated warmup/cooldown)
+    const effectiveTarget = getEffectiveTargetDistance(workout, easyPaceSecondsPerKm)
+    if (activity.distance_meters && effectiveTarget) {
+        const diff = Math.abs(activity.distance_meters - effectiveTarget)
+        const percent = diff / effectiveTarget
 
         if (percent < 0.1) score += 0.2
         else if (percent < 0.2) score += 0.1
@@ -190,10 +223,11 @@ function calculateConfidence(activity: Activity, workout: PlannedWorkout): numbe
     return Math.min(1.0, score)
 }
 
-function calculateDistanceDiff(activity: Activity, workout: PlannedWorkout): number {
-    if (!activity.distance_meters || !workout.distance_target_meters) return 0
-    const diff = activity.distance_meters - workout.distance_target_meters
-    return (diff / workout.distance_target_meters) * 100
+function calculateDistanceDiff(activity: Activity, workout: PlannedWorkout, easyPaceSecondsPerKm: number): number {
+    const effectiveTarget = getEffectiveTargetDistance(workout, easyPaceSecondsPerKm)
+    if (!activity.distance_meters || !effectiveTarget) return 0
+    const diff = activity.distance_meters - effectiveTarget
+    return (diff / effectiveTarget) * 100
 }
 
 function calculateDurationDiff(activity: Activity, workout: PlannedWorkout): number {
@@ -209,11 +243,12 @@ async function linkActivityToWorkout(
     supabase: SupabaseClient,
     activity: Activity,
     workout: PlannedWorkout,
-    match: MatchResult
+    match: MatchResult,
+    easyPaceSecondsPerKm: number = 360
 ): Promise<void> {
 
-    // Determine completion status
-    const distanceDiff = Math.abs(calculateDistanceDiff(activity, workout))
+    // Determine completion status using effective distance (includes warmup/cooldown estimate)
+    const distanceDiff = Math.abs(calculateDistanceDiff(activity, workout, easyPaceSecondsPerKm))
     const durationDiff = Math.abs(calculateDurationDiff(activity, workout))
 
     let completionStatus: 'completed' | 'partial' | 'skipped'
@@ -250,7 +285,7 @@ async function linkActivityToWorkout(
             completion_metadata: {
                 actual_distance_meters: activity.distance_meters,
                 actual_duration_seconds: activity.duration_seconds,
-                distance_variance_percent: calculateDistanceDiff(activity, workout),
+                distance_variance_percent: calculateDistanceDiff(activity, workout, easyPaceSecondsPerKm),
                 duration_variance_percent: calculateDurationDiff(activity, workout),
             },
         })

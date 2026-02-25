@@ -12,7 +12,7 @@ import type { TrainingPaces } from '@/types/database'
 import {
   Calendar, Clock, TrendingUp, Target, Gauge, Flag, RotateCcw,
   CheckCircle, AlertCircle, XCircle, Pencil, Plus,
-  ChevronUp, Repeat2, Trash2,
+  ChevronUp, Repeat2, Trash2, Sparkles,
 } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { estimateDuration, getWorkoutPaceType } from '@/lib/training/vdot'
@@ -21,7 +21,7 @@ import { formatDistance as fmtDist, type UnitSystem } from '@/lib/utils/units'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
 
-const INTENSITY_OPTIONS = ['easy', 'moderate', 'hard', 'tempo', 'threshold', 'interval', 'recovery', 'custom']
+const INTENSITY_OPTIONS = ['easy', 'moderate', 'marathon', 'hard', 'tempo', 'threshold', 'interval', 'recovery', 'custom']
 
 const WORKOUT_TYPES = ['easy_run', 'long_run', 'intervals', 'tempo', 'rest', 'cross_training', 'recovery', 'race'] as const
 
@@ -843,7 +843,26 @@ export function WorkoutCard({
   const [editDurationMinutes, setEditDurationMinutes] = useState(
     workout.duration_target_seconds ? String(Math.round(workout.duration_target_seconds / 60)) : ''
   )
-  const [editStructured, setEditStructured] = useState<EditableStructured | null>(null)
+  const [editStructured, setEditStructured] = useState<EditableStructured | null>(() => {
+    // Initialise from workout.structured_workout so that isNew mode (which never
+    // calls enterEditMode) still gets the structured breakdown prepopulated.
+    if (!workout.structured_workout) return null
+    const raw = workout.structured_workout as Record<string, unknown>
+    const rawMainSet = raw.main_set
+    if (!rawMainSet || !Array.isArray(rawMainSet)) return null
+    return {
+      warmup: raw.warmup as EditableWarmupCooldown | undefined,
+      main_set: rawMainSet.map((s: unknown) => {
+        const set = s as Record<string, unknown>
+        return {
+          repeat: (set.repeat as number) ?? 1,
+          intervals: Array.isArray(set.intervals) ? (set.intervals as EditableInterval[]) : [],
+          skip_last_recovery: (set.skip_last_recovery as boolean) ?? false,
+        }
+      }),
+      cooldown: raw.cooldown as EditableWarmupCooldown | undefined,
+    }
+  })
   const [editCustomPaceM, setEditCustomPaceM] = useState('')
   const [editCustomPaceS, setEditCustomPaceS] = useState('')
 
@@ -875,7 +894,11 @@ export function WorkoutCard({
   let paceLabel: string | null = null
 
   if (trainingPaces && workout.distance_target_meters && workout.workout_type) {
-    const paceType = getWorkoutPaceType(workout.workout_type)
+    // Prefer intensity_target when it is explicitly "marathon" — this handles plans like
+    // Hanson's where tempo workouts run at marathon race pace, not threshold pace.
+    const paceType = workout.intensity_target?.toLowerCase().includes('marathon')
+      ? 'marathon'
+      : getWorkoutPaceType(workout.workout_type)
     targetPace = trainingPaces[paceType]
     estimatedDurationMinutes = Math.round(estimateDuration(workout.distance_target_meters, targetPace) / 60)
     paceLabel = paceType.charAt(0).toUpperCase() + paceType.slice(1)
@@ -1085,8 +1108,19 @@ export function WorkoutCard({
               <Badge variant="outline">{workout.workout_index}</Badge>
             )}
             {editable && !isEditing && !isNew && (
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={enterEditMode}>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={enterEditMode} title="Edit workout">
                 <Pencil className="h-4 w-4" />
+              </Button>
+            )}
+            {onDiscuss && !isEditing && !isNew && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-violet-500 hover:text-violet-600 hover:bg-violet-50"
+                onClick={() => onDiscuss(workout)}
+                title="Discuss with AI Coach"
+              >
+                <Sparkles className="h-4 w-4" />
               </Button>
             )}
             {onDeleted && !isEditing && !isNew && (
@@ -1096,6 +1130,7 @@ export function WorkoutCard({
                 className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
                 disabled={isDeleting}
                 onClick={handleDelete}
+                title="Delete workout"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -1260,15 +1295,6 @@ export function WorkoutCard({
           )}
 
           <div className="flex gap-2 pt-2">
-            {onDiscuss && (
-              <Button
-                onClick={() => onDiscuss(workout)}
-                variant="default"
-                className="flex-1"
-              >
-                Discuss with AI Coach
-              </Button>
-            )}
             {onClose && (
               <Button onClick={onClose} variant="outline">
                 Close

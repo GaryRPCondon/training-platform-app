@@ -8,7 +8,7 @@ import {
     LayoutDashboard,
     Calendar,
     User,
-    MessageSquare,
+    Sparkles,
     Activity,
     ClipboardList,
     Menu
@@ -45,7 +45,7 @@ const navItems = [
     {
         title: 'AI Coach',
         href: '/dashboard/chat',
-        icon: MessageSquare,
+        icon: Sparkles,
     },
     {
         title: 'Profile',
@@ -83,7 +83,7 @@ function NavContent({ className, onNavigate }: NavProps) {
                                 pathname === item.href ? "bg-accent text-accent-foreground" : "transparent"
                             )}
                         >
-                            <Icon className="mr-2 h-4 w-4" />
+                            <Icon className={cn("mr-2 h-4 w-4", item.title === 'AI Coach' && "text-violet-500")} />
                             <span>{item.title}</span>
                         </span>
                     </Link>

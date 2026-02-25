@@ -49,9 +49,10 @@ export default function PlansPage() {
     }
 
     async function handleDelete(planId: number, isActive: boolean) {
-        const message = isActive
+        const base = isActive
             ? 'Are you sure you want to delete this active plan? All workouts and progress will be lost. This cannot be undone.'
             : 'Are you sure you want to delete this draft plan? This cannot be undone.'
+        const message = base + '\n\nNote: any workouts already sent to Garmin Connect will NOT be removed automatically. Use "Remove all from Garmin Connect" in your Profile before deleting if you want them cleared.'
 
         if (!confirm(message)) {
             return

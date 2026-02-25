@@ -211,8 +211,15 @@ export function CoachInterface({ sessionId: propSessionId, onSessionChange, work
                             }
                         } else if (event.type === 'done') {
                             setMessages(prev => {
-                                const last = prev[prev.length - 1]
-                                return [...prev.slice(0, -1), {
+                                // If the LLM responded with only tool calls (no text), no 'text'
+                                // event was sent, so no assistant message was added.  We must
+                                // create one now so the proposal cards have somewhere to attach.
+                                const lastMsg = prev[prev.length - 1]
+                                const base = lastMsg?.role !== 'assistant'
+                                    ? [...prev, { role: 'assistant' as const, content: '' }]
+                                    : prev
+                                const last = base[base.length - 1]
+                                return [...base.slice(0, -1), {
                                     ...last,
                                     messageId: event.messageId,
                                     proposals: event.proposals?.length > 0 ? event.proposals : undefined,
@@ -278,19 +285,21 @@ export function CoachInterface({ sessionId: propSessionId, onSessionChange, work
 
                     {messages.map((msg, msgIdx) => (
                         <div key={msgIdx} className="space-y-2">
-                            {/* Message bubble */}
-                            <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`max-w-[85%] p-3 rounded-lg ${
-                                    msg.role === 'user'
-                                        ? 'bg-primary text-primary-foreground'
-                                        : 'bg-muted'
-                                }`}>
-                                    {msg.role === 'assistant'
-                                        ? <AssistantMessage content={msg.content} />
-                                        : <div className="whitespace-pre-wrap text-sm">{msg.content}</div>
-                                    }
+                            {/* Message bubble — skip when empty (tool-call-only assistant response) */}
+                            {msg.content && (
+                                <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                    <div className={`max-w-[85%] p-3 rounded-lg ${
+                                        msg.role === 'user'
+                                            ? 'bg-primary text-primary-foreground'
+                                            : 'bg-muted'
+                                    }`}>
+                                        {msg.role === 'assistant'
+                                            ? <AssistantMessage content={msg.content} />
+                                            : <div className="whitespace-pre-wrap text-sm">{msg.content}</div>
+                                        }
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
                             {/* Proposal cards — rendered after the assistant bubble */}
                             {msg.role === 'assistant' && msg.proposals && msg.proposals.length > 0 && (

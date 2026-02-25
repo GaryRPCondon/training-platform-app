@@ -87,9 +87,11 @@ USER CONSTRAINTS:
 MEASUREMENT UNITS:
 - Athlete's preferred unit system: ${preferred_units === 'imperial' ? 'Imperial (miles)' : 'Metric (km)'}
 - distance_meters field: ALWAYS in meters regardless of preference
-- description field: include distance in the athlete's preferred unit
-  - Metric: "Easy 13 km", "Tempo 13 km", "Long run 29 km", "6 × 1600m with 400m recovery"
-  - Imperial: "Easy 8 miles", "Tempo 8 miles", "Long run 18 miles", "6 × 1 mile with 400m recovery"
+- description field: follow the template's dual-unit style for continuous runs, mile-based for intervals
+  - Continuous runs: "Easy 8 mi. (13 km)", "Tempo 8 mi. (13 km)", "Long 16 mi. (27 km)"
+  - Intervals: use miles for rep distances, metres for short recoveries — "6 × 1 mi., 400 recovery"
+  - Sub-mile track distances always in metres: 400m, 800m, 1200m
+  Scale distances to fit the athlete's load, but always use this style — never raw metre conversions like "4828m"
 - pace_guidance field: use min/km for metric, min/mile for imperial
 
 TASK:
@@ -111,15 +113,16 @@ KEY PRINCIPLES:
 1. Follow the template's training philosophy throughout
 2. Maintain the core workout structure and progression patterns
 3. Adapt phase lengths proportionally to fit ${weeksNeeded} weeks
-4. Respect the weekly mileage ceiling (${criteria.comfortable_peak_mileage}km)
-5. Schedule workouts on ${criteria.days_per_week} days per week (rest days on others)${criteria.preferred_rest_days && criteria.preferred_rest_days.length > 0 ? `
-6. MANDATORY: Schedule rest days on: ${criteria.preferred_rest_days.map(d => dayNames[d]).join(', ')}
+4. HARD VOLUME CEILING: No week may exceed ${criteria.comfortable_peak_mileage}km total — not even by 1km
+5. WEEK 1 ANCHOR: Week 1 total must be at or below the athlete's current weekly mileage (${criteria.current_weekly_mileage}km). Never start higher than where the athlete is now.
+6. Schedule workouts on ${criteria.days_per_week} days per week (rest days on others)${criteria.preferred_rest_days && criteria.preferred_rest_days.length > 0 ? `
+7. MANDATORY: Schedule rest days on: ${criteria.preferred_rest_days.map(d => dayNames[d]).join(', ')}
    - These are the athlete's REQUIRED non-training days
    - You MUST place rest days on these specific days of the week
    - Adjust the template's workout schedule to accommodate this requirement
    - The athlete's schedule preferences override the template's default rest day placement
-7. Build appropriately from current ${criteria.current_weekly_mileage}km base` : `
-6. Build appropriately from current ${criteria.current_weekly_mileage}km base`}
+8. Build progressively from the Week 1 base toward the peak, following the template's volume curve` : `
+7. Build progressively from the Week 1 base toward the peak, following the template's volume curve`}
 
 ⚠️  CRITICAL WORKOUT SCHEDULING RULE - ABSOLUTE REQUIREMENT ⚠️
 
@@ -238,7 +241,8 @@ REQUIRED FIELDS per workout:
 - type (easy_run/recovery/long_run/tempo/intervals/rest/cross_training)
 - description (human-readable label including distance in the athlete's preferred units. Format: "{Type} {distance} {unit}" for continuous runs. For intervals: "{N} × {distance} with {recovery}")
 - distance_meters (required for running workouts, null for rest/cross-training)
-- intensity (easy/moderate/hard/recovery)
+- intensity (easy/moderate/marathon/hard/recovery)
+  Use "marathon" for marathon-pace tempo workouts (e.g. Hanson's, where pace_guidance.tempo_interval_intensity = "marathon")
 - pace_guidance (descriptive guidance: "conversational pace", "comfortably hard", "5K race pace", etc.)
 - notes (optional coaching notes)
 - structured_workout (required for all workouts — see STRUCTURED WORKOUT RULES below)
@@ -274,11 +278,15 @@ TYPE: tempo
 → 10-minute warmup + 10-minute cooldown (fixed — do not change).
   The template distance IS the tempo segment. Set main_set distance_meters = distance_meters exactly.
   Do NOT subtract warmup/cooldown — they are time-based additions, not deductions from the target.
+  Interval intensity depends on the template's methodology:
+  - If pace_guidance.tempo_interval_intensity = "marathon": use "marathon" for the interval intensity
+    AND set the top-level intensity field to "marathon" (not "hard").
+  - Otherwise (threshold/T-pace methodology): use "tempo" for the interval intensity and "hard" top-level.
   "structured_workout": {
     "warmup": { "duration_minutes": 10, "intensity": "easy" },
     "main_set": [
       { "repeat": 1, "intervals": [
-        { "distance_meters": XXXXX, "intensity": "tempo" }
+        { "distance_meters": XXXXX, "intensity": "tempo"  }  // or "marathon" — see rule above
       ]}
     ],
     "cooldown": { "duration_minutes": 10, "intensity": "easy" },
@@ -291,7 +299,7 @@ WORKED EXAMPLES — follow these exactly as templates:
 Example A — easy_run: Template says "Easy 8 mi. (13 km)"
 {
   "type": "easy_run",
-  "description": "Easy 8 miles",
+  "description": "Easy 8 mi. (13 km)",
   "distance_meters": 12875,
   "intensity": "easy",
   "pace_guidance": "Conversational pace, heart rate zone 2",
@@ -305,7 +313,7 @@ Example A — easy_run: Template says "Easy 8 mi. (13 km)"
 Example B — intervals: Template says "Strength: 3 × 2 mi., 800 recovery"
 {
   "type": "intervals",
-  "description": "3 × 2 mile intervals with 800m recovery jog",
+  "description": "Strength: 3 × 2 mi., 800 recovery",
   "distance_meters": 16000,
   "intensity": "hard",
   "pace_guidance": "Intervals at 10K effort. Recovery jog at very easy pace.",
@@ -324,13 +332,13 @@ Example B — intervals: Template says "Strength: 3 × 2 mi., 800 recovery"
   }
 }
 
-Example C — tempo: Template says "Tempo 10 mi. (16 km)"
+Example C — tempo (threshold, e.g. Pfitzinger/Daniels): Template says "Tempo 10 mi. (16 km)"
 {
   "type": "tempo",
-  "description": "Tempo 10 miles",
+  "description": "Tempo 10 mi. (16 km)",
   "distance_meters": 16000,
   "intensity": "hard",
-  "pace_guidance": "Comfortably hard, sustained marathon-to-threshold effort",
+  "pace_guidance": "Comfortably hard, sustained threshold effort",
   "notes": "Maintain steady pace throughout the tempo segment",
   "structured_workout": {
     "warmup": { "duration_minutes": 10, "intensity": "easy" },
@@ -340,8 +348,30 @@ Example C — tempo: Template says "Tempo 10 mi. (16 km)"
       ]}
     ],
     "cooldown": { "duration_minutes": 10, "intensity": "easy" },
-    "pace_guidance": "Comfortably hard, sustained marathon-to-threshold effort",
+    "pace_guidance": "Comfortably hard, sustained threshold effort",
     "notes": "Maintain steady pace throughout the tempo segment"
+  }
+}
+
+Example D — tempo (marathon pace, Hanson's — pace_guidance.tempo_interval_intensity = "marathon"):
+Template says "Tempo 10 mi. (16 km)"
+{
+  "type": "tempo",
+  "description": "Tempo 10 mi. (16 km)",
+  "distance_meters": 16000,
+  "intensity": "marathon",
+  "pace_guidance": "Sustained marathon race pace — goal race pace throughout",
+  "notes": "Hanson's SOS tempo. Practice goal marathon pace on moderately tired legs.",
+  "structured_workout": {
+    "warmup": { "duration_minutes": 10, "intensity": "easy" },
+    "main_set": [
+      { "repeat": 1, "intervals": [
+        { "distance_meters": 16000, "intensity": "marathon" }
+      ]}
+    ],
+    "cooldown": { "duration_minutes": 10, "intensity": "easy" },
+    "pace_guidance": "Sustained marathon race pace — goal race pace throughout",
+    "notes": "Hanson's SOS tempo. Practice goal marathon pace on moderately tired legs."
   }
 }
 
