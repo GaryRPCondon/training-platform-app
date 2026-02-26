@@ -70,7 +70,7 @@ export default function ProfilePage() {
                 </Button>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid gap-6 md:grid-cols-2 [&>*]:min-w-0">
                 <PreferencesCard />
                 <PerformanceMetricsCard initialData={vdotData} />
                 <AISettingsCard />

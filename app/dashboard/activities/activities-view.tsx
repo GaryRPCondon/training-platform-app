@@ -381,61 +381,121 @@ export function ActivitiesView({ initialActivities }: ActivitiesViewProps) {
                             No activities found. Try adjusting your filters or sync your activities.
                         </div>
                     ) : (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="w-10">
-                                        <Checkbox
-                                            checked={allFilteredSelected ? true : someFilteredSelected ? "indeterminate" : false}
-                                            onCheckedChange={toggleSelectAll}
-                                            aria-label="Select all"
-                                        />
-                                    </TableHead>
-                                    <TableHead>Date</TableHead>
-                                    <TableHead>Name</TableHead>
-                                    <TableHead>Type</TableHead>
-                                    <TableHead className="text-right">Distance</TableHead>
-                                    <TableHead className="text-right">Duration</TableHead>
-                                    <TableHead>Source</TableHead>
-                                    <TableHead className="w-10"></TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
+                        <div className="space-y-4">
+                            {/* Desktop Table */}
+                            <div className="hidden md:block overflow-x-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="w-10">
+                                                <Checkbox
+                                                    checked={allFilteredSelected ? true : someFilteredSelected ? "indeterminate" : false}
+                                                    onCheckedChange={toggleSelectAll}
+                                                    aria-label="Select all"
+                                                />
+                                            </TableHead>
+                                            <TableHead>Date</TableHead>
+                                            <TableHead>Name</TableHead>
+                                            <TableHead>Type</TableHead>
+                                            <TableHead className="text-right">Distance</TableHead>
+                                            <TableHead className="text-right">Duration</TableHead>
+                                            <TableHead>Source</TableHead>
+                                            <TableHead className="w-10"></TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {filteredActivities.map((activity) => (
+                                            <TableRow key={activity.id}>
+                                                <TableCell>
+                                                    <Checkbox
+                                                        checked={selectedIds.has(activity.id)}
+                                                        onCheckedChange={() => toggleSelect(activity.id)}
+                                                        aria-label={`Select ${activity.activity_name || 'activity'}`}
+                                                    />
+                                                </TableCell>
+                                                <TableCell className="font-medium">
+                                                    {format(new Date(activity.start_time), 'EEE, MMM d, yyyy')}
+                                                </TableCell>
+                                                <TableCell>{activity.activity_name || 'Untitled'}</TableCell>
+                                                <TableCell>{formatActivityType(activity.activity_type)}</TableCell>
+                                                <TableCell className="text-right">{activity.distance_meters ? formatDistance(activity.distance_meters) : '-'}</TableCell>
+                                                <TableCell className="text-right">{formatDuration(activity.duration_seconds)}</TableCell>
+                                                <TableCell>
+                                                    <Badge className={getSourceBadgeColor(activity.source)}>
+                                                        {activity.source}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                                        onClick={() => handleSingleDelete(activity.id)}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+
+                            {/* Mobile Card View */}
+                            <div className="grid md:hidden gap-4">
                                 {filteredActivities.map((activity) => (
-                                    <TableRow key={activity.id}>
-                                        <TableCell>
-                                            <Checkbox
-                                                checked={selectedIds.has(activity.id)}
-                                                onCheckedChange={() => toggleSelect(activity.id)}
-                                                aria-label={`Select ${activity.activity_name || 'activity'}`}
-                                            />
-                                        </TableCell>
-                                        <TableCell className="font-medium">
-                                            {format(new Date(activity.start_time), 'EEE, MMM d, yyyy')}
-                                        </TableCell>
-                                        <TableCell>{activity.activity_name || 'Untitled'}</TableCell>
-                                        <TableCell>{formatActivityType(activity.activity_type)}</TableCell>
-                                        <TableCell className="text-right">{activity.distance_meters ? formatDistance(activity.distance_meters) : '-'}</TableCell>
-                                        <TableCell className="text-right">{formatDuration(activity.duration_seconds)}</TableCell>
-                                        <TableCell>
-                                            <Badge className={getSourceBadgeColor(activity.source)}>
-                                                {activity.source}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                                onClick={() => handleSingleDelete(activity.id)}
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
+                                    <Card key={activity.id} className="overflow-hidden">
+                                        <div className="p-4 space-y-3">
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex items-start gap-3">
+                                                    <Checkbox
+                                                        checked={selectedIds.has(activity.id)}
+                                                        onCheckedChange={() => toggleSelect(activity.id)}
+                                                        className="mt-1"
+                                                    />
+                                                    <div>
+                                                        <p className="font-semibold">{activity.activity_name || 'Untitled'}</p>
+                                                        <p className="text-sm text-muted-foreground">
+                                                            {format(new Date(activity.start_time), 'EEE, MMM d, yyyy')}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <Badge className={getSourceBadgeColor(activity.source)}>
+                                                    {activity.source}
+                                                </Badge>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-2 text-sm">
+                                                <div>
+                                                    <span className="text-muted-foreground">Type: </span>
+                                                    {formatActivityType(activity.activity_type)}
+                                                </div>
+                                                <div>
+                                                    <span className="text-muted-foreground">Distance: </span>
+                                                    {activity.distance_meters ? formatDistance(activity.distance_meters) : '-'}
+                                                </div>
+                                                <div>
+                                                    <span className="text-muted-foreground">Duration: </span>
+                                                    {formatDuration(activity.duration_seconds)}
+                                                </div>
+                                            </div>
+
+                                            <div className="flex justify-end pt-2 border-t">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="text-muted-foreground hover:text-destructive gap-2 h-8"
+                                                    onClick={() => handleSingleDelete(activity.id)}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                    Delete
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </Card>
                                 ))}
-                            </TableBody>
-                        </Table>
+                            </div>
+                        </div>
                     )}
                 </CardContent>
             </Card>

@@ -94,7 +94,7 @@ export function WeeklyTotals({ workouts, activities = [], currentDate, weekStart
     }, [workouts, activities, currentDate, weekStartsOn])
 
     return (
-        <div className="h-full flex flex-col bg-muted/20 border-l">
+        <div className="hidden landscape:flex md:flex flex-col h-full bg-muted/20 border-l-0 landscape:border-l md:border-l">
             {/* Header - fixed height to match calendar header row */}
             <div className="bg-muted/30 border-b px-3 text-sm font-semibold text-center h-[40px] flex items-center justify-center box-border selection:bg-none">
                 Weekly Totals

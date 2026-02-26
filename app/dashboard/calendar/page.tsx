@@ -13,13 +13,13 @@ const TrainingCalendar = dynamic(
 
 export default function CalendarPage() {
     return (
-        <div className="h-full flex flex-col overflow-hidden">
+        <div className="flex flex-col h-full md:overflow-hidden min-h-screen md:min-h-0">
             <h1 className="text-3xl font-bold tracking-tight mb-6">Training Calendar</h1>
 
             {/* CRITICAL: React Big Calendar requires Grid layout with min-w-0 for proper width constraints.
                 Flexbox alone causes the calendar to expand beyond viewport bounds (~1652px locked width).
                 This pattern matches the working review page. DO NOT change to flex-1 min-h-0 only. */}
-            <div className="flex-1 grid grid-cols-1 overflow-hidden">
+            <div className="flex-1 grid grid-cols-1 overflow-visible md:overflow-hidden">
                 <div className="h-full w-full min-w-0">
                     <TrainingCalendar />
                 </div>

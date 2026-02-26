@@ -141,14 +141,14 @@ export default function ActivitySyncPage() {
     }
 
     return (
-        <div className="container mx-auto p-6 space-y-8">
+        <div className="space-y-8">
             <div>
                 <h1 className="text-3xl font-bold tracking-tight">Activity Sync</h1>
                 <p className="text-muted-foreground">Sync your activities from Garmin and Strava</p>
             </div>
 
             {/* Date Range & Sync */}
-            <Card className="w-1/2">
+            <Card className="w-full md:w-1/2">
                 <CardHeader>
                     <CardTitle>Sync Activities</CardTitle>
                 </CardHeader>

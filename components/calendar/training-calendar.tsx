@@ -500,8 +500,8 @@ export function TrainingCalendar() {
                 isAutoMatching={isAutoMatching}
             />
 
-            <div className="flex-1 w-full grid grid-cols-[1fr_220px] overflow-hidden border rounded-md">
-                <div className="h-full w-full bg-background overflow-hidden relative min-w-0 border-r">
+            <div className="flex-1 w-full flex flex-col landscape:grid landscape:grid-cols-[1fr_220px] md:grid md:grid-cols-[1fr_220px] overflow-visible landscape:overflow-hidden md:overflow-hidden border rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] ring-1 ring-black/5 dark:ring-white/10 dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)]">
+                <div className="h-[550px] landscape:h-full md:h-full w-full bg-background overflow-hidden relative min-w-0 border-b landscape:border-b-0 landscape:border-r md:border-b-0 md:border-r">
                     <style>{calendarStyles}</style>
                     <DnDCalendar
                         localizer={localizer}

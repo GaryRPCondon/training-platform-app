@@ -16,6 +16,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Switch } from '@/components/ui/switch'
 import { CheckCircle2, Loader2, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface GarminConnectProps {
   isConnected: boolean
@@ -125,13 +126,13 @@ export function GarminConnect({
   }
 
   return (
-    <div className="p-4 border rounded-lg space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="bg-[#000000] text-white p-2 rounded w-10 h-10 flex items-center justify-center">
+    <div className="p-3 sm:p-4 border rounded-lg space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+          <div className="bg-[#000000] text-white p-2 rounded w-10 h-10 flex items-center justify-center shrink-0">
             <span className="font-bold">G</span>
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="font-medium">Garmin Connect</div>
             <div className="text-sm text-muted-foreground">
               {isConnected ? 'Connected' : 'Not connected'}
@@ -246,20 +247,25 @@ export function GarminConnect({
       {/* Remove all plan workouts */}
       {isConnected && (
         <div className="pt-2 border-t">
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full text-destructive hover:text-destructive"
-            disabled={removing}
-            onClick={handleRemoveAllWorkouts}
-          >
-            {removing ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Trash2 className="mr-2 h-4 w-4" />
-            )}
-            {removing ? 'Removing...' : 'Remove all plan workouts from Garmin Connect'}
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full text-destructive hover:text-destructive"
+                disabled={removing}
+                onClick={handleRemoveAllWorkouts}
+              >
+                {removing ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="mr-2 h-4 w-4" />
+                )}
+                {removing ? 'Removing...' : 'Remove workouts from Garmin'}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Remove all TrAIner App workouts from Garmin Connect</TooltipContent>
+          </Tooltip>
         </div>
       )}
     </div>

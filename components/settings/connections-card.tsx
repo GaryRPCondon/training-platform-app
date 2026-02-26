@@ -124,13 +124,13 @@ export function ConnectionsCard({ stravaConnected, garminConnected, onRefresh }:
                 />
 
                 {/* Strava */}
-                <div className="p-4 border rounded-lg space-y-3">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <div className="bg-[#FC4C02] text-white p-2 rounded w-10 h-10 flex items-center justify-center">
+                <div className="p-3 sm:p-4 border rounded-lg space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+                            <div className="bg-[#FC4C02] text-white p-2 rounded w-10 h-10 flex items-center justify-center shrink-0">
                                 <span className="font-bold">S</span>
                             </div>
-                            <div>
+                            <div className="min-w-0">
                                 <div className="font-medium">Strava</div>
                                 <div className="text-sm text-muted-foreground">
                                     {stravaConnected ? 'Connected' : 'Not connected'}

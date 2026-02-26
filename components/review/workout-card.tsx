@@ -12,8 +12,11 @@ import type { TrainingPaces } from '@/types/database'
 import {
   Calendar, Clock, TrendingUp, Target, Gauge, Flag, RotateCcw,
   CheckCircle, AlertCircle, XCircle, Pencil, Plus,
-  ChevronUp, Repeat2, Trash2, Sparkles,
+  ChevronUp, Repeat2, Trash2, Sparkles, Loader2,
 } from 'lucide-react'
+import { format, parseISO } from 'date-fns'
+import { Calendar as CalendarPicker } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Checkbox } from '@/components/ui/checkbox'
 import { estimateDuration, getWorkoutPaceType } from '@/lib/training/vdot'
 import { useUnits } from '@/lib/hooks/use-units'
@@ -831,6 +834,8 @@ export function WorkoutCard({
   const [isSendingToGarmin, setIsSendingToGarmin] = useState(false)
   const [isRemovingFromGarmin, setIsRemovingFromGarmin] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [datePickerOpen, setDatePickerOpen] = useState(false)
+  const [isRescheduling, setIsRescheduling] = useState(false)
 
   // Edit state — initialized from workout when edit mode is toggled on
   const [editDescription, setEditDescription] = useState(workout.description ?? '')
@@ -1095,6 +1100,36 @@ export function WorkoutCard({
     }
   }
 
+  const handleReschedule = async (newDate: Date) => {
+    const newDateStr = format(newDate, 'yyyy-MM-dd')
+    if (newDateStr === workout.scheduled_date) {
+      setDatePickerOpen(false)
+      return
+    }
+    setIsRescheduling(true)
+    try {
+      const res = await fetch('/api/workouts/reschedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workoutId: workout.id, newDate: newDateStr }),
+      })
+      if (!res.ok) throw new Error('Failed to reschedule')
+      queryClient.invalidateQueries({ queryKey: ['workouts'] })
+      toast.success('Workout rescheduled')
+      setDatePickerOpen(false)
+      onSaved?.({
+        ...workout,
+        scheduled_date: newDateStr,
+        date: newDate,
+        formatted_date: format(newDate, 'EEE, MMM d'),
+      })
+    } catch {
+      toast.error('Failed to reschedule workout')
+    } finally {
+      setIsRescheduling(false)
+    }
+  }
+
   return (
     <div className="space-y-4 pt-4">
       {/* Header */}
@@ -1138,10 +1173,32 @@ export function WorkoutCard({
           </div>
         </div>
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <Calendar className="h-4 w-4" />
-            {workout.formatted_date}
-          </div>
+          {editable ? (
+            <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+              <PopoverTrigger asChild>
+                <button className="flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer">
+                  {isRescheduling
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : <Calendar className="h-4 w-4" />
+                  }
+                  {workout.formatted_date}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CalendarPicker
+                  mode="single"
+                  selected={parseISO(workout.scheduled_date)}
+                  onSelect={(date) => date && handleReschedule(date)}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          ) : (
+            <div className="flex items-center gap-1">
+              <Calendar className="h-4 w-4" />
+              {workout.formatted_date}
+            </div>
+          )}
           <Badge variant="secondary">{workout.phase_name}</Badge>
         </div>
       </div>

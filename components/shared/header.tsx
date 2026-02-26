@@ -11,6 +11,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
     LayoutDashboard,
     Calendar,
@@ -45,7 +46,7 @@ export function Header() {
 
     return (
         <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
-            <div className="container flex h-14 items-center justify-between px-4">
+            <div className="w-full max-w-7xl flex h-14 items-center justify-between px-4">
                 <div className="flex items-center gap-4">
                     <MobileNavigation />
                     <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
@@ -54,11 +55,16 @@ export function Header() {
                 </div>
                 <div className="flex items-center gap-2">
                     <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                                <User className="h-5 w-5" />
-                            </Button>
-                        </DropdownMenuTrigger>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon">
+                                        <User className="h-5 w-5" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom">Profile & logout</TooltipContent>
+                        </Tooltip>
                         <DropdownMenuContent align="end">
                             <DropdownMenuItem asChild>
                                 <Link href="/dashboard/profile" className="cursor-pointer">

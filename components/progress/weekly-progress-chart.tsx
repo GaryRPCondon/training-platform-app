@@ -45,7 +45,7 @@ export function WeeklyProgressChart() {
                                     {/* Planned Bar (Background) - More visible with pattern */}
                                     {day.plannedDistance > 0 && (
                                         <div
-                                            className="absolute bottom-0 left-1/2 -translate-x-1/2 bg-blue-100 dark:bg-blue-950 rounded-t-sm border-2 border-blue-300 dark:border-blue-800 border-dashed"
+                                            className="absolute bottom-0 left-1/2 -translate-x-1/2 bg-blue-100/50 dark:bg-blue-900/30 rounded-t-full border border-blue-200 dark:border-blue-800 border-dashed"
                                             style={{
                                                 width: '24px',
                                                 height: `${Math.max(plannedHeight, 2)}%`,
@@ -54,13 +54,13 @@ export function WeeklyProgressChart() {
                                             title={`Planned: ${Math.round(toDisplayDistance(day.plannedDistance * 1000))}${distanceLabel()}`}
                                         />
                                     )}
-                                    {/* Actual Bar (Foreground) - Solid colors */}
+                                    {/* Actual Bar (Foreground) - Soft Gradients */}
                                     {day.actualDistance > 0 && (
                                         <div
                                             className={cn(
-                                                "absolute bottom-0 left-1/2 -translate-x-1/2 rounded-t-sm transition-all border-2",
-                                                day.status === 'completed' ? "bg-green-500 border-green-600" :
-                                                    day.status === 'missed' ? "bg-red-400 border-red-500" : "bg-gray-400 border-gray-500"
+                                                "absolute bottom-0 left-1/2 -translate-x-1/2 rounded-t-full transition-all shadow-sm",
+                                                day.status === 'completed' ? "bg-gradient-to-t from-emerald-500 to-emerald-300" :
+                                                    day.status === 'missed' ? "bg-gradient-to-t from-rose-500 to-rose-300" : "bg-gradient-to-t from-gray-400 to-gray-300"
                                             )}
                                             style={{
                                                 width: '24px',
@@ -82,17 +82,17 @@ export function WeeklyProgressChart() {
                         )
                     })}
                 </div>
-                <div className="flex justify-center gap-4 mt-4 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                        <div className="w-3 h-3 bg-green-500 border-2 border-green-600 rounded-sm" />
+                <div className="flex justify-center gap-6 mt-6 text-xs text-muted-foreground font-medium">
+                    <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-gradient-to-t from-emerald-500 to-emerald-300 rounded-full shadow-sm" />
                         <span>Completed</span>
                     </div>
-                    <div className="flex items-center gap-1">
-                        <div className="w-3 h-3 bg-blue-100 dark:bg-blue-950 border-2 border-blue-300 dark:border-blue-800 border-dashed rounded-sm" />
+                    <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-blue-100/50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 border-dashed rounded-full" />
                         <span>Planned</span>
                     </div>
-                    <div className="flex items-center gap-1">
-                        <div className="w-3 h-3 bg-red-400 border-2 border-red-500 rounded-sm" />
+                    <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-gradient-to-t from-rose-500 to-rose-300 rounded-full shadow-sm" />
                         <span>Missed</span>
                     </div>
                 </div>

@@ -107,7 +107,7 @@ export default function PlansPage() {
                                 {activePlans.map(plan => (
                                     <Card key={plan.id}>
                                         <CardHeader>
-                                            <div className="flex items-start justify-between">
+                                            <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
                                                 <div>
                                                     <CardTitle className="text-lg">{plan.name}</CardTitle>
                                                     <CardDescription>
@@ -118,12 +118,12 @@ export default function PlansPage() {
                                             </div>
                                         </CardHeader>
                                         <CardContent>
-                                            <div className="flex items-center justify-between">
+                                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                                                 <div className="text-sm text-muted-foreground">
                                                     <div>Type: {plan.plan_type}</div>
                                                     <div>Created: {format(new Date(plan.created_at), 'MMM d, yyyy')}</div>
                                                 </div>
-                                                <div className="flex gap-2">
+                                                <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2">
                                                     <Button
                                                         variant="outline"
                                                         onClick={() => {
@@ -168,7 +168,7 @@ export default function PlansPage() {
                                 {draftPlans.map(plan => (
                                     <Card key={plan.id}>
                                         <CardHeader>
-                                            <div className="flex items-start justify-between">
+                                            <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
                                                 <div>
                                                     <CardTitle className="text-lg">{plan.name}</CardTitle>
                                                     <CardDescription>
@@ -179,12 +179,12 @@ export default function PlansPage() {
                                             </div>
                                         </CardHeader>
                                         <CardContent>
-                                            <div className="flex items-center justify-between">
+                                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                                                 <div className="text-sm text-muted-foreground">
                                                     <div>Type: {plan.plan_type}</div>
                                                     <div>Created: {format(new Date(plan.created_at), 'MMM d, yyyy')}</div>
                                                 </div>
-                                                <div className="flex flex-col gap-2">
+                                                <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2">
                                                     <Button asChild>
                                                         <Link href={`/dashboard/plans/review/${plan.id}`}>
                                                             Review Plan

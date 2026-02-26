@@ -52,29 +52,29 @@ export default async function DashboardPage() {
     return (
         <div className="space-y-6">
             <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card>
+            <div className="grid gap-6 md:grid-cols-2">
+                <Card className="flex flex-col justify-center min-h-[160px]">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">
                             Total Distance
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{totalDistanceDisplay} {distUnit}</div>
-                        <p className="text-xs text-muted-foreground">
-                            All time
+                        <div className="text-4xl font-bold tracking-tight">{totalDistanceDisplay} <span className="text-2xl text-muted-foreground">{distUnit}</span></div>
+                        <p className="text-sm text-muted-foreground mt-1">
+                            All time distance tracked
                         </p>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="flex flex-col justify-center min-h-[160px]">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">
                             Active Plan
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{activePlan?.name || 'None'}</div>
-                        <p className="text-xs text-muted-foreground">
+                        <div className="text-2xl sm:text-3xl font-bold tracking-tight truncate">{activePlan?.name || 'None'}</div>
+                        <p className="text-sm text-muted-foreground mt-1">
                             {activePlan ? 'Keep it up!' : 'Create a plan to get started'}
                         </p>
                     </CardContent>
