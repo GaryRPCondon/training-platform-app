@@ -1,14 +1,22 @@
 import { NextResponse } from 'next/server'
 import { StravaClient } from '@/lib/strava/client'
 
-export async function GET(request: Request) {
+export async function GET() {
     const client = new StravaClient()
 
-    // Generate state for CSRF protection
-    // In a production app, store this in a secure httpOnly cookie and verify in callback
-    const state = Math.random().toString(36).substring(7)
-
+    const state = crypto.randomUUID()
     const url = client.getAuthorizationUrl(state)
 
-    return NextResponse.redirect(url)
+    const response = NextResponse.redirect(url)
+
+    // Store state in a short-lived httpOnly cookie for CSRF verification in the callback
+    response.cookies.set('strava_oauth_state', state, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 600, // 10 minutes
+        path: '/',
+    })
+
+    return response
 }

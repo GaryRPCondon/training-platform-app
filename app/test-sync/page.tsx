@@ -16,6 +16,7 @@ interface SyncResult {
 }
 
 export default function SyncTestPage() {
+    if (process.env.NODE_ENV === 'production') return null
     const [garminResult, setGarminResult] = useState<SyncResult | null>(null)
     const [stravaResult, setStravaResult] = useState<SyncResult | null>(null)
     const [garminLoading, setGarminLoading] = useState(false)

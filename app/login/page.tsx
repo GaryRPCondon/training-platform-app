@@ -132,12 +132,6 @@ export default function LoginPage() {
                             </Button>
                         </div>
                     </form>
-                    <div className="mt-4 p-3 bg-muted rounded-md text-sm">
-                        <p className="font-medium mb-1">Development Mode</p>
-                        <p className="text-muted-foreground text-xs">
-                            Use NEXT_PUBLIC_ATHLETE_ID from .env.local or create a new account
-                        </p>
-                    </div>
                 </CardContent>
             </Card>
         </div>

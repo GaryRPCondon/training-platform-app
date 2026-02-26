@@ -12,8 +12,7 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        // Use service role client to bypass RLS policies
-        // This is necessary because the user session may not be fully established yet
+        // Use service role client to bypass RLS policies and to verify the auth user
         const supabaseAdmin = createClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -24,6 +23,13 @@ export async function POST(request: NextRequest) {
                 }
             }
         )
+
+        // Verify the userId/email actually exist in auth.users before inserting.
+        // This prevents unauthenticated callers from injecting arbitrary athlete records.
+        const { data: authUserData, error: authLookupError } = await supabaseAdmin.auth.admin.getUserById(userId)
+        if (authLookupError || !authUserData?.user || authUserData.user.email !== email) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
 
         // Insert athlete record with default values
         const { data, error } = await supabaseAdmin

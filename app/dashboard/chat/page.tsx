@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { Suspense, useState, useMemo, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { CoachInterface } from '@/components/chat/coach-interface'
 import { SessionList } from '@/components/chat/session-list'
@@ -59,7 +59,7 @@ function formatDuration(seconds: number) {
     return h > 0 ? `${h}h ${m}m` : `${m} min`
 }
 
-export default function ChatPage() {
+function ChatPageInner() {
     const searchParams = useSearchParams()
     const router = useRouter()
     const [selectedSessionId, setSelectedSessionId] = useState<number | null>(null)
@@ -181,5 +181,13 @@ export default function ChatPage() {
                 </div>
             </div>
         </div>
+    )
+}
+
+export default function ChatPage() {
+    return (
+        <Suspense>
+            <ChatPageInner />
+        </Suspense>
     )
 }

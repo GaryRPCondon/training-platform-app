@@ -13,6 +13,7 @@ interface TestResult {
 }
 
 export default function TestCorePage() {
+    if (process.env.NODE_ENV === 'production') return null
     const [results, setResults] = useState<TestResult[]>([])
 
     const runTests = () => {

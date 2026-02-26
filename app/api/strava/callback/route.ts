@@ -1,14 +1,21 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { StravaClient } from '@/lib/strava/client'
 import { createClient } from '@/lib/supabase/server'
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const code = searchParams.get('code')
+    const state = searchParams.get('state')
     const error = searchParams.get('error')
 
     if (error) {
         return NextResponse.redirect(new URL('/dashboard/profile?error=strava_auth_failed', request.url))
+    }
+
+    // Verify CSRF state matches the value stored in the cookie
+    const storedState = request.cookies.get('strava_oauth_state')?.value
+    if (!storedState || !state || state !== storedState) {
+        return NextResponse.redirect(new URL('/dashboard/profile?error=strava_state_mismatch', request.url))
     }
 
     if (!code) {
@@ -70,7 +77,9 @@ export async function GET(request: Request) {
 
         await client.saveTokens(athlete.id, tokens, supabase)
 
-        return NextResponse.redirect(new URL('/dashboard/profile?success=strava_connected', request.url))
+        const successResponse = NextResponse.redirect(new URL('/dashboard/profile?success=strava_connected', request.url))
+        successResponse.cookies.delete('strava_oauth_state')
+        return successResponse
     } catch (err) {
         console.error('Strava callback error:', err)
         return NextResponse.redirect(new URL('/dashboard/profile?error=internal_error', request.url))

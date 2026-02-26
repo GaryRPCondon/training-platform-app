@@ -138,9 +138,10 @@
 
 /* Day-of-week header row */
 .dark .rbc-header {
-  background-color: var(--muted) !important;
-  color: var(--muted-foreground) !important;
+  background-color: oklch(0.22 0.05 265) !important;
+  color: var(--foreground) !important;
   border-color: var(--border) !important;
+  font-weight: 600 !important;
 }
 
 /* Regular day cells and rows */

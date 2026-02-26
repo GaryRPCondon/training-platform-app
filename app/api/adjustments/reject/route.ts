@@ -17,6 +17,18 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Adjustment ID required' }, { status: 400 })
         }
 
+        // Verify ownership before rejecting — return 404 to avoid leaking existence
+        const { data: owned } = await supabase
+            .from('plan_adjustments')
+            .select('id')
+            .eq('id', adjustmentId)
+            .eq('athlete_id', user.id)
+            .single()
+
+        if (!owned) {
+            return NextResponse.json({ error: 'Not found' }, { status: 404 })
+        }
+
         await rejectAdjustment(adjustmentId)
 
         return NextResponse.json({ success: true })

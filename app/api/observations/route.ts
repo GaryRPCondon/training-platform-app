@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { detectWorkoutFlags } from '@/lib/analysis/flag-detector'
-import { getActiveObservations, dismissObservation } from '@/lib/analysis/observation-manager'
+import { getActiveObservations } from '@/lib/analysis/observation-manager'
 import { proposeAdjustments } from '@/lib/analysis/adjustment-proposer'
 import { createClient } from '@/lib/supabase/server'
 
@@ -46,7 +46,14 @@ export async function POST(request: Request) {
         const { action, observationId } = await request.json()
 
         if (action === 'dismiss' && observationId) {
-            await dismissObservation(observationId)
+            // Ownership-verified dismiss: only update if the flag belongs to this athlete
+            const { error: dismissError } = await supabase
+                .from('workout_flags')
+                .update({ acknowledged: true })
+                .eq('id', parseInt(observationId))
+                .eq('athlete_id', user.id)
+
+            if (dismissError) throw dismissError
             return NextResponse.json({ success: true })
         }
 

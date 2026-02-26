@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase, getCurrentAthleteId } from '@/lib/supabase/client'
 
 export default function TestDB() {
+  if (process.env.NODE_ENV === 'production') return null
   const [athlete, setAthlete] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
 

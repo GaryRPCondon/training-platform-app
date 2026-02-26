@@ -77,8 +77,7 @@ export async function POST(request: Request) {
     }
 
   } catch (error: any) {
-    console.error('Garmin auth error:', error.message)
-    console.error('Full error:', error)
+    console.error('Garmin auth error:', error instanceof Error ? error.message : 'Unknown error')
 
     // Handle specific error types
     if (error.message?.includes('credentials') || error.message?.includes('password')) {
