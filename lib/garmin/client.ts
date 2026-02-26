@@ -21,10 +21,12 @@ export class GarminClient {
     requestsThisHour: 0,
     lastRequestTime: 0
   }
+  private static minuteWindowStart = 0
+  private static hourWindowStart = 0
 
   // Limits (conservative estimates based on community experience)
-  private static readonly MAX_REQUESTS_PER_MINUTE = 20
-  private static readonly MAX_REQUESTS_PER_HOUR = 200
+  private static readonly MAX_REQUESTS_PER_MINUTE = 60
+  private static readonly MAX_REQUESTS_PER_HOUR = 500
 
   constructor() {
     // Client will be initialized lazily when needed (during login or token loading)
@@ -226,14 +228,16 @@ export class GarminClient {
   private checkRateLimit(): void {
     const now = Date.now()
 
-    // Reset minute counter if a minute has passed
-    if (now - GarminClient.rateLimit.lastRequestTime > 60000) {
+    // Reset minute counter when the 60s window has elapsed since it opened
+    if (now - GarminClient.minuteWindowStart > 60000) {
       GarminClient.rateLimit.requestsThisMinute = 0
+      GarminClient.minuteWindowStart = now
     }
 
-    // Reset hour counter if an hour has passed
-    if (now - GarminClient.rateLimit.lastRequestTime > 3600000) {
+    // Reset hour counter when the 3600s window has elapsed since it opened
+    if (now - GarminClient.hourWindowStart > 3600000) {
       GarminClient.rateLimit.requestsThisHour = 0
+      GarminClient.hourWindowStart = now
     }
 
     if (GarminClient.rateLimit.requestsThisMinute >= GarminClient.MAX_REQUESTS_PER_MINUTE) {
