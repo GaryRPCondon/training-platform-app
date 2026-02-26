@@ -6,12 +6,10 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Calendar } from '@/components/ui/calendar'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Activity, CheckCircle2, Loader2, CalendarIcon, RefreshCw } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Activity, CheckCircle2, Loader2, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays } from 'date-fns'
-import { cn } from '@/lib/utils'
+import { format, startOfYear, endOfYear, subDays } from 'date-fns'
 
 type DateRangeOption = 'latest' | 'week' | 'month' | 'year' | 'custom'
 
@@ -181,56 +179,34 @@ export default function ActivitySyncPage() {
                             </RadioGroup>
 
                             {dateRange === 'custom' && (
-                                <div className="grid grid-cols-2 gap-4 pl-6">
+                                <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label>Start Date</Label>
-                                        <Popover>
-                                            <PopoverTrigger asChild>
-                                                <Button
-                                                    variant="outline"
-                                                    className={cn(
-                                                        "w-full justify-start text-left font-normal",
-                                                        !customStartDate && "text-muted-foreground"
-                                                    )}
-                                                >
-                                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                                    {customStartDate ? format(customStartDate, 'PPP') : 'Pick a date'}
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0">
-                                                <Calendar
-                                                    mode="single"
-                                                    selected={customStartDate}
-                                                    onSelect={setCustomStartDate}
-                                                    initialFocus
-                                                />
-                                            </PopoverContent>
-                                        </Popover>
+                                        <Label htmlFor="start-date">Start Date</Label>
+                                        <Input
+                                            id="start-date"
+                                            type="date"
+                                            className="h-10 text-base"
+                                            value={customStartDate ? format(customStartDate, 'yyyy-MM-dd') : ''}
+                                            onChange={(e) =>
+                                                setCustomStartDate(
+                                                    e.target.value ? new Date(e.target.value + 'T12:00:00') : undefined
+                                                )
+                                            }
+                                        />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>End Date</Label>
-                                        <Popover>
-                                            <PopoverTrigger asChild>
-                                                <Button
-                                                    variant="outline"
-                                                    className={cn(
-                                                        "w-full justify-start text-left font-normal",
-                                                        !customEndDate && "text-muted-foreground"
-                                                    )}
-                                                >
-                                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                                    {customEndDate ? format(customEndDate, 'PPP') : 'Pick a date'}
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0">
-                                                <Calendar
-                                                    mode="single"
-                                                    selected={customEndDate}
-                                                    onSelect={setCustomEndDate}
-                                                    initialFocus
-                                                />
-                                            </PopoverContent>
-                                        </Popover>
+                                        <Label htmlFor="end-date">End Date</Label>
+                                        <Input
+                                            id="end-date"
+                                            type="date"
+                                            className="h-10 text-base"
+                                            value={customEndDate ? format(customEndDate, 'yyyy-MM-dd') : ''}
+                                            onChange={(e) =>
+                                                setCustomEndDate(
+                                                    e.target.value ? new Date(e.target.value + 'T12:00:00') : undefined
+                                                )
+                                            }
+                                        />
                                     </div>
                                 </div>
                             )}
