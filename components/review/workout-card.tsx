@@ -7,6 +7,7 @@ import { Separator } from '@/components/ui/separator'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { WorkoutWithDetails } from '@/types/review'
 import type { TrainingPaces } from '@/types/database'
 import {
@@ -343,7 +344,13 @@ function WarmupCooldownStep({
         {data.intensity && (
           <Badge variant="outline" className="text-xs h-5 px-1.5 shrink-0">{data.intensity}</Badge>
         )}
-        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onToggle}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0"
+          onClick={onToggle}
+          aria-label={isExpanded ? `Collapse ${label}` : `Edit ${label}`}
+        >
           {isExpanded ? <ChevronUp className="h-3 w-3" /> : <Pencil className="h-3 w-3" />}
         </Button>
       </div>
@@ -512,7 +519,13 @@ function IntervalStep({
         {interval.intensity && (
           <Badge variant="outline" className="text-xs h-5 px-1.5 shrink-0">{interval.intensity}</Badge>
         )}
-        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onToggle}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0"
+          onClick={onToggle}
+          aria-label={isExpanded ? 'Collapse step' : 'Edit step'}
+        >
           {isExpanded ? <ChevronUp className="h-3 w-3" /> : <Pencil className="h-3 w-3" />}
         </Button>
       </div>
@@ -1143,32 +1156,47 @@ export function WorkoutCard({
               <Badge variant="outline">{workout.workout_index}</Badge>
             )}
             {editable && !isEditing && !isNew && (
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={enterEditMode} title="Edit workout">
-                <Pencil className="h-4 w-4" />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={enterEditMode} aria-label="Edit workout">
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Edit workout</TooltipContent>
+              </Tooltip>
             )}
             {onDiscuss && !isEditing && !isNew && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-violet-500 hover:text-violet-600 hover:bg-violet-50"
-                onClick={() => onDiscuss(workout)}
-                title="Discuss with AI Coach"
-              >
-                <Sparkles className="h-4 w-4" />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-violet-500 hover:text-violet-600 hover:bg-violet-50"
+                    onClick={() => onDiscuss(workout)}
+                    aria-label="Discuss with AI Coach"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Discuss with AI Coach</TooltipContent>
+              </Tooltip>
             )}
             {onDeleted && !isEditing && !isNew && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                disabled={isDeleting}
-                onClick={handleDelete}
-                title="Delete workout"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    disabled={isDeleting}
+                    onClick={handleDelete}
+                    aria-label="Delete workout"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Delete workout</TooltipContent>
+              </Tooltip>
             )}
           </div>
         </div>

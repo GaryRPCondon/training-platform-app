@@ -9,10 +9,12 @@ import { Button } from '@/components/ui/button'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { getAthleteProfile } from '@/lib/supabase/queries'
 import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Sun, Moon, Monitor } from 'lucide-react'
+import { useTheme } from 'next-themes'
 
 export function PreferencesCard() {
     const queryClient = useQueryClient()
+    const { theme, setTheme } = useTheme()
     const { data: athlete } = useQuery({
         queryKey: ['athlete'],
         queryFn: getAthleteProfile,
@@ -137,6 +139,46 @@ export function PreferencesCard() {
                                     <SelectItem value="6">Saturday</SelectItem>
                                 </SelectContent>
                             </Select>
+                        </div>
+                    </div>
+
+                    {/* Appearance */}
+                    <div className="space-y-2">
+                        <Label>Appearance</Label>
+                        <div className="flex gap-2">
+                            <Button
+                                type="button"
+                                variant={theme === 'light' ? 'default' : 'outline'}
+                                size="sm"
+                                className="flex-1 gap-1.5"
+                                onClick={() => setTheme('light')}
+                                aria-pressed={theme === 'light'}
+                            >
+                                <Sun className="h-3.5 w-3.5" />
+                                Light
+                            </Button>
+                            <Button
+                                type="button"
+                                variant={theme === 'dark' ? 'default' : 'outline'}
+                                size="sm"
+                                className="flex-1 gap-1.5"
+                                onClick={() => setTheme('dark')}
+                                aria-pressed={theme === 'dark'}
+                            >
+                                <Moon className="h-3.5 w-3.5" />
+                                Dark
+                            </Button>
+                            <Button
+                                type="button"
+                                variant={theme === 'system' ? 'default' : 'outline'}
+                                size="sm"
+                                className="flex-1 gap-1.5"
+                                onClick={() => setTheme('system')}
+                                aria-pressed={theme === 'system'}
+                            >
+                                <Monitor className="h-3.5 w-3.5" />
+                                System
+                            </Button>
                         </div>
                     </div>
                 </div>

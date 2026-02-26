@@ -1,6 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { ChevronLeft, ChevronRight, Link2 } from 'lucide-react'
 import { format } from 'date-fns'
 
@@ -25,22 +26,34 @@ export function CustomToolbar({ date, onNavigate, onAutoMatch, isAutoMatching }:
                         Today
                     </Button>
                     <div className="h-4 w-[1px] bg-border mx-1" />
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onNavigate('PREV')}
-                        className="h-7 w-7"
-                    >
-                        <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onNavigate('NEXT')}
-                        className="h-7 w-7"
-                    >
-                        <ChevronRight className="h-4 w-4" />
-                    </Button>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => onNavigate('PREV')}
+                                className="h-7 w-7"
+                                aria-label="Previous month"
+                            >
+                                <ChevronLeft className="h-4 w-4" />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Previous month</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => onNavigate('NEXT')}
+                                className="h-7 w-7"
+                                aria-label="Next month"
+                            >
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Next month</TooltipContent>
+                    </Tooltip>
                 </div>
                 <h2 className="text-xl font-semibold ml-2">
                     {format(date, 'MMMM yyyy')}

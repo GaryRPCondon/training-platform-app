@@ -120,3 +120,79 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ============================================================
+   React Big Calendar — dark mode overrides
+   The library ships with a light-only stylesheet. !important is
+   required so these rules win regardless of CSS bundle order.
+   ============================================================ */
+
+/* Base calendar surfaces */
+.dark .rbc-calendar,
+.dark .rbc-month-view,
+.dark .rbc-time-view,
+.dark .rbc-agenda-view {
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
+}
+
+/* Day-of-week header row */
+.dark .rbc-header {
+  background-color: var(--muted) !important;
+  color: var(--muted-foreground) !important;
+  border-color: var(--border) !important;
+}
+
+/* Regular day cells and rows */
+.dark .rbc-month-row,
+.dark .rbc-day-bg,
+.dark .rbc-day-slot {
+  background-color: var(--background) !important;
+  border-color: var(--border) !important;
+}
+
+/* Internal grid lines */
+.dark .rbc-month-view .rbc-header + .rbc-header,
+.dark .rbc-month-view .rbc-month-row + .rbc-month-row {
+  border-color: var(--border) !important;
+}
+
+/* Off-range days (outside current month) — visibly darker than regular cells.
+   Uses an explicit darker shade since there is no CSS variable below --background. */
+.dark .rbc-off-range-bg {
+  background-color: oklch(0.085 0.035 265) !important;
+}
+
+/* Off-range date numbers — dimmed */
+.dark .rbc-date-cell.rbc-off-range {
+  color: var(--muted-foreground) !important;
+  opacity: 0.5;
+}
+
+/* Today — subtle accent blue, blended into the dark background */
+.dark .rbc-today {
+  background-color: color-mix(in oklch, var(--sidebar-primary) 22%, var(--background)) !important;
+}
+
+/* Regular date numbers */
+.dark .rbc-date-cell {
+  color: var(--foreground) !important;
+}
+
+/* "X more" overflow link */
+.dark .rbc-show-more {
+  color: var(--primary) !important;
+  background-color: transparent !important;
+}
+
+/* Toolbar buttons (unused since toolbar=false, kept for safety) */
+.dark .rbc-toolbar button {
+  color: var(--foreground);
+  border-color: var(--border);
+}
+
+.dark .rbc-toolbar button:hover,
+.dark .rbc-toolbar button.rbc-active {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
