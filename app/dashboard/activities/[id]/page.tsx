@@ -25,7 +25,12 @@ export default async function ActivityDetailPage({
     .from('activities')
     .select(`
       *,
-      planned_workouts!fk_activities_planned_workout (*)
+      planned_workouts!fk_activities_planned_workout (*),
+      laps (
+        lap_index, distance_meters, duration_seconds,
+        avg_hr, max_hr, avg_pace,
+        intensity_type, compliance_score
+      )
     `)
     .eq('id', resolvedParams.id)
     .eq('athlete_id', user.id)

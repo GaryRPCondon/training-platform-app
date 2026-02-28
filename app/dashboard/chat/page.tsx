@@ -6,7 +6,19 @@ import { CoachInterface } from '@/components/chat/coach-interface'
 import { SessionList } from '@/components/chat/session-list'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { PlusCircle, X, Calendar, Ruler, Clock } from 'lucide-react'
+import { PlusCircle, X, Calendar, Ruler, Clock, TrendingUp } from 'lucide-react'
+
+interface ActivityContext {
+    id: number
+    activity_name: string | null
+    activity_type: string | null
+    start_time: string
+    distance_meters: number | null
+    duration_seconds: number | null
+    avg_hr: number | null
+    max_hr: number | null
+    source: string
+}
 
 interface WorkoutContext {
     id: number
@@ -64,9 +76,17 @@ function ChatPageInner() {
     const router = useRouter()
     const [selectedSessionId, setSelectedSessionId] = useState<number | null>(null)
     const [workoutContext, setWorkoutContext] = useState<WorkoutContext | null>(null)
+    const [activityContext, setActivityContext] = useState<ActivityContext | null>(null)
 
     const workoutId = useMemo(() => {
         const raw = searchParams.get('workoutId')
+        if (!raw) return null
+        const id = parseInt(raw, 10)
+        return isNaN(id) ? null : id
+    }, [searchParams])
+
+    const activityId = useMemo(() => {
+        const raw = searchParams.get('activityId')
         if (!raw) return null
         const id = parseInt(raw, 10)
         return isNaN(id) ? null : id
@@ -85,14 +105,33 @@ function ChatPageInner() {
         return () => { cancelled = true }
     }, [workoutId])
 
+    // Fetch activity details when activityId is set
+    useEffect(() => {
+        if (!activityId) return
+        let cancelled = false
+        fetch(`/api/activities/${activityId}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (!cancelled && data?.activity) setActivityContext(data.activity)
+            })
+            .catch(() => { /* non-critical */ })
+        return () => { cancelled = true }
+    }, [activityId])
+
     const handleNewChat = () => {
         setSelectedSessionId(null)
         setWorkoutContext(null)
+        setActivityContext(null)
         router.replace('/dashboard/chat')
     }
 
     const dismissWorkoutContext = () => {
         setWorkoutContext(null)
+        router.replace('/dashboard/chat')
+    }
+
+    const dismissActivityContext = () => {
+        setActivityContext(null)
         router.replace('/dashboard/chat')
     }
 
@@ -159,6 +198,57 @@ function ChatPageInner() {
                 </div>
             )}
 
+            {activityContext && (
+                <div className="flex items-start gap-3 px-4 py-3 rounded-lg border bg-card shadow-sm">
+                    <div className="flex-1 min-w-0 space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                Activity context
+                            </span>
+                            <Badge variant="secondary" className="text-xs capitalize">
+                                {activityContext.source}
+                            </Badge>
+                        </div>
+                        <p className="text-sm font-medium truncate">
+                            {activityContext.activity_name || 'Activity'}
+                        </p>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                            <span className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                {new Date(activityContext.start_time).toLocaleDateString(undefined, {
+                                    weekday: 'short', day: 'numeric', month: 'short'
+                                })}
+                            </span>
+                            {activityContext.distance_meters && (
+                                <span className="flex items-center gap-1">
+                                    <Ruler className="h-3 w-3" />
+                                    {formatDistance(activityContext.distance_meters)}
+                                </span>
+                            )}
+                            {activityContext.duration_seconds && (
+                                <span className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    {formatDuration(activityContext.duration_seconds)}
+                                </span>
+                            )}
+                            {activityContext.avg_hr && (
+                                <span className="flex items-center gap-1">
+                                    <TrendingUp className="h-3 w-3" />
+                                    {activityContext.avg_hr}{activityContext.max_hr ? `/${activityContext.max_hr}` : ''} bpm
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                    <button
+                        onClick={dismissActivityContext}
+                        className="text-muted-foreground hover:text-foreground transition-colors mt-0.5 shrink-0"
+                        aria-label="Dismiss activity context"
+                    >
+                        <X className="h-4 w-4" />
+                    </button>
+                </div>
+            )}
+
             <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-6 min-h-0 h-[calc(100vh-12rem)]">
                 {/* Sidebar */}
                 <div className="hidden md:block border rounded-lg p-2 bg-card">
@@ -177,6 +267,7 @@ function ChatPageInner() {
                         sessionId={selectedSessionId}
                         onSessionChange={setSelectedSessionId}
                         workoutId={workoutId ?? undefined}
+                        activityId={activityId ?? undefined}
                     />
                 </div>
             </div>

@@ -105,6 +105,46 @@ function formatContext(context: any): string {
     if (context.weekly) {
         parts.push(`\nCurrent Week: ${context.weekly.completedWorkouts}/${context.weekly.totalWorkouts} workouts completed`)
         parts.push(`Weekly Volume Target: ${context.weekly.volumeTarget}km`)
+
+        // Most recent activity's lap breakdown (only when lap detail is available)
+        const activities = context.weekly?.completedActivities
+        if (activities?.length > 0) {
+            const mostRecent = [...activities].sort(
+                (a: any, b: any) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
+            )[0]
+            if (mostRecent?.laps?.length > 0) {
+                const laps = mostRecent.laps as any[]
+                const warmup = laps.find((l: any) => l.intensity_type === 'WARMUP')
+                const cooldown = laps.find((l: any) => l.intensity_type === 'COOLDOWN')
+                const activeLaps = laps.filter((l: any) =>
+                    l.intensity_type === 'ACTIVE' || l.intensity_type === 'INTERVAL' || !l.intensity_type
+                )
+                const formatPace = (secsPerKm: number | null) =>
+                    secsPerKm ? `${Math.floor(secsPerKm / 60)}:${String(Math.round(secsPerKm % 60)).padStart(2, '0')}/km` : 'N/A'
+                const formatDist = (m: number | null) => m ? `${(m / 1000).toFixed(2)}km` : 'N/A'
+
+                parts.push(`\nMost Recent Activity (${mostRecent.activity_name}):`)
+                if (warmup) {
+                    parts.push(`  Warmup: ${formatDist(warmup.distance_meters)} @ ${formatPace(warmup.avg_pace)}, HR ${warmup.avg_hr ?? 'N/A'}`)
+                }
+                if (activeLaps.length > 0) {
+                    const hrVals = activeLaps.map((l: any) => l.avg_hr).filter(Boolean)
+                    const paceVals = activeLaps.map((l: any) => l.avg_pace).filter(Boolean)
+                    const complianceVals = activeLaps.map((l: any) => l.compliance_score).filter((v: any) => v != null)
+                    const minHR = hrVals.length ? Math.min(...hrVals) : null
+                    const maxHR = hrVals.length ? Math.max(...hrVals) : null
+                    const minPace = paceVals.length ? Math.min(...paceVals) : null
+                    const maxPace = paceVals.length ? Math.max(...paceVals) : null
+                    parts.push(
+                        `  Active: ${activeLaps.length} laps, pace ${formatPace(minPace)}–${formatPace(maxPace)}, HR ${minHR ?? 'N/A'}–${maxHR ?? 'N/A'}bpm` +
+                        (complianceVals.length ? `, compliance ${Math.min(...complianceVals)}–${Math.max(...complianceVals)}` : '')
+                    )
+                }
+                if (cooldown) {
+                    parts.push(`  Cooldown: ${formatDist(cooldown.distance_meters)} @ ${formatPace(cooldown.avg_pace)}`)
+                }
+            }
+        }
     }
 
     if (context.monthly) {

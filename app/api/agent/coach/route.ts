@@ -154,7 +154,7 @@ export async function PATCH(request: Request) {
 }
 
 export async function POST(request: Request) {
-    const { messages, sessionId, workoutId } = await request.json()
+    const { messages, sessionId, workoutId, activityId } = await request.json()
 
     // -----------------------------------------------------------------------
     // Auth + athlete (must complete before streaming starts)
@@ -270,6 +270,68 @@ export async function POST(request: Request) {
                     }
                 }
 
+                if (activityId) {
+                    const { data: focusActivity } = await supabase
+                        .from('activities')
+                        .select(`
+                            id, activity_name, activity_type, start_time,
+                            distance_meters, duration_seconds, avg_hr, max_hr, source,
+                            laps (
+                                lap_index, distance_meters, avg_pace, avg_hr,
+                                intensity_type, compliance_score
+                            )
+                        `)
+                        .eq('id', activityId)
+                        .eq('athlete_id', athleteId)
+                        .single()
+
+                    if (focusActivity) {
+                        const fmtPace = (secPerKm: number | null) => {
+                            if (!secPerKm) return null
+                            const m = Math.floor(secPerKm / 60)
+                            const s = Math.round(secPerKm % 60)
+                            return `${m}:${s.toString().padStart(2, '0')}/km`
+                        }
+                        const fmtDist = (m: number | null) => m ? `${(m / 1000).toFixed(1)}km` : null
+                        const fmtDur = (s: number | null) => {
+                            if (!s) return null
+                            const h = Math.floor(s / 3600)
+                            const min = Math.floor((s % 3600) / 60)
+                            return h > 0 ? `${h}h ${min}m` : `${min}min`
+                        }
+
+                        const date = new Date(focusActivity.start_time).toLocaleDateString('en-GB', {
+                            weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'
+                        })
+                        const avgPace = (focusActivity.distance_meters && focusActivity.duration_seconds)
+                            ? focusActivity.duration_seconds / (focusActivity.distance_meters / 1000)
+                            : null
+
+                        systemPrompt += `\n\n## Activity in Focus\nThe athlete navigated here from this specific activity. Address it directly in your first response.\n`
+                        systemPrompt += `Date: ${date}\n`
+                        if (focusActivity.activity_name) systemPrompt += `Name: ${focusActivity.activity_name}\n`
+                        if (focusActivity.source) systemPrompt += `Source: ${focusActivity.source}\n`
+                        if (focusActivity.distance_meters) systemPrompt += `Distance: ${fmtDist(focusActivity.distance_meters)}\n`
+                        if (focusActivity.duration_seconds) systemPrompt += `Duration: ${fmtDur(focusActivity.duration_seconds)}\n`
+                        if (avgPace) systemPrompt += `Average Pace: ${fmtPace(avgPace)}\n`
+                        if (focusActivity.avg_hr) systemPrompt += `Average HR: ${focusActivity.avg_hr} bpm${focusActivity.max_hr ? ` (max ${focusActivity.max_hr})` : ''}\n`
+
+                        const laps = ((focusActivity.laps ?? []) as any[])
+                            .filter(l => l.distance_meters !== null || l.avg_pace !== null)
+                        if (laps.length > 0) {
+                            systemPrompt += `Laps (${laps.length}):\n`
+                            for (const l of laps) {
+                                const type = l.intensity_type ? `[${l.intensity_type}] ` : ''
+                                const d = l.distance_meters ? `${(l.distance_meters / 1000).toFixed(2)}km` : '?'
+                                const p = l.avg_pace ? ` @ ${fmtPace(l.avg_pace)}` : ''
+                                const hr = l.avg_hr ? `, HR ${l.avg_hr}` : ''
+                                const comp = l.compliance_score != null ? `, compliance ${l.compliance_score}` : ''
+                                systemPrompt += `  Lap ${l.lap_index + 1}: ${type}${d}${p}${hr}${comp}\n`
+                            }
+                        }
+                    }
+                }
+
                 const estimatedInputTokens = estimateTokens(systemPrompt + JSON.stringify(messages))
                 const maxTokens = calculateMaxTokens(estimatedInputTokens, providerName, 'coach')
                 const allMessages = [...sessionHistory, ...messages]
@@ -324,6 +386,7 @@ export async function POST(request: Request) {
                     sessionId: currentSessionId,
                     athleteId,
                     workoutId: workoutId ?? null,
+                    activityId: activityId ?? null,
                     provider: providerName,
                     model: llmResponse.model,
                     generationTimeSeconds: parseFloat(llmDurationSec),

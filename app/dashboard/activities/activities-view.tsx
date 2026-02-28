@@ -25,7 +25,10 @@ import {
     TableRow,
 } from '@/components/ui/table'
 import { format, startOfWeek, endOfWeek, isWithinInterval, subDays, startOfYear } from 'date-fns'
-import { Trash2, Loader2, X } from 'lucide-react'
+import { Trash2, Loader2, X, Sparkles } from 'lucide-react'
+import { getGarminActivityUrl, getStravaActivityUrl } from '@/lib/utils/activity-links'
+import { GarminIcon, StravaIcon } from '@/components/activities/platform-icons'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { toast } from 'sonner'
 import { useUnits } from '@/lib/hooks/use-units'
 
@@ -400,6 +403,8 @@ export function ActivitiesView({ initialActivities }: ActivitiesViewProps) {
                                             <TableHead className="text-right">Distance</TableHead>
                                             <TableHead className="text-right">Duration</TableHead>
                                             <TableHead>Source</TableHead>
+                                            <TableHead>Links</TableHead>
+                                            <TableHead className="w-10"></TableHead>
                                             <TableHead className="w-10"></TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -424,6 +429,50 @@ export function ActivitiesView({ initialActivities }: ActivitiesViewProps) {
                                                     <Badge className={getSourceBadgeColor(activity.source)}>
                                                         {activity.source}
                                                     </Badge>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex gap-2">
+                                                        {activity.garmin_id && (
+                                                            <a
+                                                                href={getGarminActivityUrl(activity.garmin_id)}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                title="Garmin Connect"
+                                                                onClick={e => e.stopPropagation()}
+                                                                className="opacity-70 hover:opacity-100 transition-opacity"
+                                                            >
+                                                                <GarminIcon size={13} />
+                                                            </a>
+                                                        )}
+                                                        {activity.strava_id && (
+                                                            <a
+                                                                href={getStravaActivityUrl(activity.strava_id)}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                title="Strava"
+                                                                onClick={e => e.stopPropagation()}
+                                                                className="opacity-70 hover:opacity-100 transition-opacity"
+                                                            >
+                                                                <StravaIcon size={13} />
+                                                            </a>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-8 w-8 text-violet-500 hover:text-violet-600 hover:bg-violet-50"
+                                                                aria-label="Discuss with AI Coach"
+                                                                onClick={() => router.push(`/dashboard/chat?activityId=${activity.id}`)}
+                                                            >
+                                                                <Sparkles className="h-4 w-4" />
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>Discuss with AI Coach</TooltipContent>
+                                                    </Tooltip>
                                                 </TableCell>
                                                 <TableCell>
                                                     <Button
@@ -480,7 +529,41 @@ export function ActivitiesView({ initialActivities }: ActivitiesViewProps) {
                                                 </div>
                                             </div>
 
-                                            <div className="flex justify-end pt-2 border-t">
+                                            <div className="flex items-center justify-between pt-2 border-t">
+                                                <div className="flex items-center gap-3">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="text-violet-500 hover:text-violet-600 hover:bg-violet-50 gap-1.5 h-8 px-2"
+                                                        aria-label="Discuss with AI Coach"
+                                                        onClick={() => router.push(`/dashboard/chat?activityId=${activity.id}`)}
+                                                    >
+                                                        <Sparkles className="h-3.5 w-3.5" />
+                                                        <span className="text-xs">AI Coach</span>
+                                                    </Button>
+                                                    {activity.garmin_id && (
+                                                        <a
+                                                            href={getGarminActivityUrl(activity.garmin_id)}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                                                        >
+                                                            <GarminIcon size={12} />
+                                                            Garmin Connect
+                                                        </a>
+                                                    )}
+                                                    {activity.strava_id && (
+                                                        <a
+                                                            href={getStravaActivityUrl(activity.strava_id)}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                                                        >
+                                                            <StravaIcon size={12} />
+                                                            Strava
+                                                        </a>
+                                                    )}
+                                                </div>
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"

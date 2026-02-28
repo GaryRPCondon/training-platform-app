@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { GarminClient } from '@/lib/garmin/client'
+import { mapGarminLapToRow } from '@/lib/garmin/lap-mapper'
 import { findMergeCandidates, shouldAutoMerge } from '@/lib/activities/merge-detector'
 import { findExistingMatch } from '@/lib/sync/pre-insert-dedup'
 import { acquireSyncLock, releaseSyncLock } from '@/lib/sync/sync-lock'
 import { format, subHours, addHours } from 'date-fns'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 export async function POST(request: Request) {
   try {
@@ -104,6 +106,8 @@ export async function POST(request: Request) {
       let mergedCount = 0
       let pendingReviewCount = 0
       let skippedCount = 0
+      let totalLapsInserted = 0
+      let backfillCount = 0
 
       if (garminActivities.length === 0) {
         return NextResponse.json({
@@ -123,13 +127,24 @@ export async function POST(request: Request) {
         // Check if already exists
         const { data: existing } = await supabase
           .from('activities')
-          .select('id, source')
+          .select('id, source, has_detail_data')
           .eq('athlete_id', athleteId)
           .eq('garmin_id', activityIdStr)
           .single()
 
         if (existing) {
-          console.log(`Garmin activity ${activityIdStr} already exists (ID: ${existing.id}), skipping`)
+          // Backfill lap detail for existing activities that were synced before this feature existed
+          // Cap at 10 activities per sync run (= ~20 extra API calls) to stay within rate limits
+          if (!existing.has_detail_data && backfillCount < 10) {
+            console.log(`Backfilling lap detail for existing activity ${existing.id}`)
+            const { lapsInserted } = await fetchAndStoreLapDetail(
+              activity.activityId, existing.id, garminClient, supabase
+            )
+            totalLapsInserted += lapsInserted
+            backfillCount++
+          } else {
+            console.log(`Garmin activity ${activityIdStr} already exists (ID: ${existing.id}), skipping`)
+          }
           skippedCount++
           continue
         }
@@ -202,6 +217,10 @@ export async function POST(request: Request) {
           if (!updateError) {
             console.log(`Pre-insert merged into existing activity ${existingMatch.id}`)
             mergedCount++
+            const { lapsInserted } = await fetchAndStoreLapDetail(
+              activity.activityId, existingMatch.id, garminClient, supabase
+            )
+            totalLapsInserted += lapsInserted
           } else {
             console.error('Pre-insert merge failed:', updateError)
           }
@@ -222,6 +241,11 @@ export async function POST(request: Request) {
 
         console.log(`Synced Garmin activity ${activityIdStr} -> DB ID ${inserted.id}`)
         syncedCount++
+
+        const { lapsInserted: newLaps } = await fetchAndStoreLapDetail(
+          activity.activityId, inserted.id, garminClient, supabase
+        )
+        totalLapsInserted += newLaps
 
         // Check for merge candidates (fallback for edge cases not caught by pre-insert dedup)
         const searchStartTime = new Date(activity.startTimeLocal)
@@ -282,6 +306,10 @@ export async function POST(request: Request) {
                   console.log(`Merged into existing activity ${mergeCandidate.activity2.id}`)
                   mergedCount++
                   syncedCount-- // Adjust count since we deleted
+                  const { lapsInserted: mergeLaps } = await fetchAndStoreLapDetail(
+                    activity.activityId, mergeCandidate.activity2.id!, garminClient, supabase
+                  )
+                  totalLapsInserted += mergeLaps
                 }
               }
             } else {
@@ -316,7 +344,8 @@ export async function POST(request: Request) {
         synced: syncedCount,
         merged: mergedCount,
         pendingReview: pendingReviewCount,
-        skipped: skippedCount
+        skipped: skippedCount,
+        lapsInserted: totalLapsInserted
       })
     } finally {
       // Always release sync lock
@@ -330,6 +359,51 @@ export async function POST(request: Request) {
       { status: 500 }
     )
   }
+}
+
+/**
+ * Fetch and store per-lap splits + HR zones for a Garmin activity.
+ * Non-fatal: any error is logged and the function returns lapsInserted = 0.
+ */
+async function fetchAndStoreLapDetail(
+  garminActivityId: number,
+  dbActivityId: number,
+  garminClient: GarminClient,
+  supabase: SupabaseClient
+): Promise<{ lapsInserted: number }> {
+  let lapsInserted = 0
+  try {
+    // Fetch splits — preferred over splitSummaries (has wktStepIndex, intensityType, complianceScore)
+    const splitsData = await garminClient.getActivitySplits(garminActivityId)
+
+    if (splitsData?.lapDTOs?.length) {
+      const lapRows = splitsData.lapDTOs.map((lap: unknown) =>
+        mapGarminLapToRow(dbActivityId, lap as Record<string, unknown>)
+      )
+      const { error } = await supabase
+        .from('laps')
+        .upsert(lapRows, { onConflict: 'activity_id,lap_index' })
+      if (!error) lapsInserted = lapRows.length
+      else console.error(`Lap upsert failed for activity ${dbActivityId}:`, error)
+    }
+
+    // Fetch HR zones
+    const hrZones = await garminClient.getActivityHRZones(garminActivityId)
+
+    // Update activity record with detail metadata
+    await supabase
+      .from('activities')
+      .update({
+        has_detail_data: true,
+        ...(hrZones ? { hr_zones: hrZones } : {})
+      })
+      .eq('id', dbActivityId)
+
+  } catch (err) {
+    // Non-fatal: activity summary is still saved
+    console.error(`Detail fetch failed for Garmin activity ${garminActivityId}:`, err)
+  }
+  return { lapsInserted }
 }
 
 /**

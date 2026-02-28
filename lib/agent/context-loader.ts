@@ -90,10 +90,19 @@ async function loadWeeklyContext(athleteId: string) {
         .lte('scheduled_date', weekEnd)
         .order('scheduled_date', { ascending: true })
 
-    // Completed activities this week
+    // Completed activities this week (with lap detail for AI coach context)
     const { data: completedActivities } = await supabase
         .from('activities')
-        .select('*')
+        .select(`
+            id, activity_name, activity_type, start_time,
+            distance_meters, duration_seconds, avg_hr, max_hr, avg_cadence,
+            has_detail_data,
+            laps (
+                lap_index, distance_meters, duration_seconds,
+                avg_hr, max_hr, avg_pace, avg_cadence,
+                split_type, intensity_type, compliance_score, wkt_step_index
+            )
+        `)
         .eq('athlete_id', athleteId)
         .gte('start_time', weekStart)
         .lte('start_time', weekEnd)

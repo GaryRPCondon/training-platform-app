@@ -49,6 +49,31 @@ export interface AthleteConstraint {
     updated_at: string
 }
 
+export interface Lap {
+    id: number
+    activity_id: number
+    lap_index: number
+    distance_meters: number | null
+    duration_seconds: number | null
+    avg_hr: number | null
+    max_hr: number | null
+    avg_power: number | null
+    avg_pace: number | null       // seconds per km
+    elevation_gain_meters: number | null
+    raw_data: Record<string, unknown> | null
+    source: string | null
+    split_type: string | null
+    intensity_type: string | null
+    avg_cadence: number | null
+    max_speed: number | null
+    normalized_power: number | null
+    ground_contact_time: number | null
+    stride_length: number | null
+    vertical_oscillation: number | null
+    wkt_step_index: number | null
+    compliance_score: number | null
+}
+
 export interface Activity {
     id: number
     athlete_id: string
@@ -79,6 +104,8 @@ export interface Activity {
     strava_data: any | null
     synced_from_garmin: string | null
     synced_from_strava: string | null
+    hr_zones: unknown[] | null           // HR zone distribution
+    has_detail_data: boolean | null      // Whether lap detail has been fetched
     // Phase 6: Activity matching metadata
     match_confidence: number | null
     match_method: 'auto_time' | 'auto_distance' | 'manual' | null

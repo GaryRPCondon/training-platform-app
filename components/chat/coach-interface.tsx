@@ -43,6 +43,7 @@ interface CoachInterfaceProps {
     sessionId?: number | null
     onSessionChange?: (sessionId: number) => void
     workoutId?: number
+    activityId?: number
 }
 
 // ---------------------------------------------------------------------------
@@ -65,7 +66,7 @@ function AssistantMessage({ content }: { content: string }) {
 // Component
 // ---------------------------------------------------------------------------
 
-export function CoachInterface({ sessionId: propSessionId, onSessionChange, workoutId }: CoachInterfaceProps = {}) {
+export function CoachInterface({ sessionId: propSessionId, onSessionChange, workoutId, activityId }: CoachInterfaceProps = {}) {
     const [messages, setMessages] = useState<CoachMessage[]>([])
     const [input, setInput] = useState('')
     const [internalSessionId, setInternalSessionId] = useState<number | null>(null)
@@ -167,7 +168,7 @@ export function CoachInterface({ sessionId: propSessionId, onSessionChange, work
             const res = await fetch('/api/agent/coach', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ messages: outgoing, sessionId: activeSessionId, workoutId }),
+                body: JSON.stringify({ messages: outgoing, sessionId: activeSessionId, workoutId, activityId }),
             })
 
             if (!res.ok || !res.body) throw new Error('Stream unavailable')
@@ -248,7 +249,7 @@ export function CoachInterface({ sessionId: propSessionId, onSessionChange, work
             setIsSending(false)
             setLoadingStatus(null)
         }
-    }, [input, isSending, messages, activeSessionId, onSessionChange, workoutId])
+    }, [input, isSending, messages, activeSessionId, onSessionChange, workoutId, activityId])
 
     // -----------------------------------------------------------------------
     // Render

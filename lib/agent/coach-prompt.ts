@@ -18,6 +18,7 @@ export function buildCoachSystemPrompt(context: CoachContext): string {
         buildAthleteSection(context),
         buildPlanSection(context),
         buildThisWeekSection(context),
+        buildRecentActivitiesSection(context),
         buildPhaseExecutionSection(context),
         buildUpcomingWeeksSection(context),
         buildConstraintsSection(context),
@@ -131,6 +132,9 @@ function buildThisWeekSection(context: CoachContext): string {
                 ? ` ${Math.round(w.duration_target_seconds / 60)}min`
                 : ''
         const desc = w.description ? ` — ${w.description}` : ''
+        // Always include intensity_target so the LLM doesn't infer the target
+        // pace from workout_type alone (e.g. "Tempo" type at marathon intensity).
+        const intensity = w.intensity_target ? ` [${w.intensity_target} pace]` : ''
 
         let statusStr = ''
         if (w.completion_status === 'completed') {
@@ -144,7 +148,7 @@ function buildThisWeekSection(context: CoachContext): string {
             statusStr = '[skipped]'
         }
 
-        lines.push(`${dayName}: ${type}${distance}${desc} ${statusStr}`.trim())
+        lines.push(`${dayName}: ${type}${distance}${desc}${intensity} ${statusStr}`.trim())
     }
 
     return lines.join('\n')
@@ -211,7 +215,8 @@ function buildUpcomingWeeksSection(context: CoachContext): string {
                     ? ` ${Math.round(w.duration_target_seconds / 60)}min`
                     : ''
             const desc = w.description ? ` — ${w.description}` : ''
-            lines.push(`  ${dayName}: ${type}${distance}${desc}`)
+            const intensity = w.intensity_target ? ` [${w.intensity_target} pace]` : ''
+            lines.push(`  ${dayName}: ${type}${distance}${desc}${intensity}`)
         }
     }
 
@@ -270,6 +275,71 @@ function buildPersonalRecordsSection(context: CoachContext): string {
         const pace = formatPace(pr.pace_per_km, athlete.preferred_units)
         const date = format(new Date(pr.date), 'MMM yyyy')
         lines.push(`${label}: ${time} (${pace}/km) — ${date}`)
+    }
+
+    return lines.join('\n')
+}
+
+function buildRecentActivitiesSection(context: CoachContext): string {
+    const { recentActivities, athlete } = context
+    if (!recentActivities || recentActivities.length === 0) return ''
+
+    const lines = ['## Recent Activities (Last 14 Days)']
+
+    for (const a of recentActivities) {
+        const dateLabel = format(new Date(a.date + 'T12:00:00'), 'EEE d MMM')
+        const name = a.name ?? 'Activity'
+        const distStr = a.distance_km ? ` ${a.distance_km.toFixed(1)}km` : ''
+        const durStr = a.duration_minutes ? ` ${Math.floor(a.duration_minutes / 60) > 0 ? `${Math.floor(a.duration_minutes / 60)}h ` : ''}${Math.round(a.duration_minutes % 60)}min` : ''
+        const paceStr = a.avg_pace_sec_per_km ? ` @ ${formatPace(a.avg_pace_sec_per_km, athlete.preferred_units)}` : ''
+        const hrStr = a.avg_hr ? ` HR ${a.avg_hr}${a.max_hr ? `/${a.max_hr}` : ''} avg/max` : ''
+        lines.push(`${dateLabel}: ${name}${distStr}${durStr}${paceStr}${hrStr}`)
+
+        if (a.laps.length > 0) {
+            const warmup = a.laps.find(l => l.intensity_type === 'WARMUP')
+            const cooldown = a.laps.find(l => l.intensity_type === 'COOLDOWN')
+            const active = a.laps.filter(l =>
+                l.intensity_type === 'ACTIVE' || l.intensity_type === 'INTERVAL' || !l.intensity_type
+            )
+
+            if (warmup) {
+                const d = warmup.distance_km ? `${warmup.distance_km.toFixed(2)}km` : '?'
+                const p = warmup.avg_pace_sec_per_km ? ` @ ${formatPace(warmup.avg_pace_sec_per_km, athlete.preferred_units)}` : ''
+                const hr = warmup.avg_hr ? `, HR ${warmup.avg_hr}` : ''
+                lines.push(`  Warmup: ${d}${p}${hr}`)
+            }
+
+            if (active.length > 0) {
+                const paces = active.map(l => l.avg_pace_sec_per_km).filter((v): v is number => v !== null)
+                const hrs = active.map(l => l.avg_hr).filter((v): v is number => v !== null)
+                const complianceVals = active.map(l => l.compliance_score).filter((v): v is number => v !== null)
+                const paceRange = paces.length > 0
+                    ? `${formatPace(Math.min(...paces), athlete.preferred_units)}–${formatPace(Math.max(...paces), athlete.preferred_units)}`
+                    : null
+                const hrRange = hrs.length > 0 ? `HR ${Math.min(...hrs)}–${Math.max(...hrs)}` : null
+                const compStr = complianceVals.length > 0
+                    ? `, compliance ${Math.min(...complianceVals)}–${Math.max(...complianceVals)}`
+                    : ''
+                lines.push(
+                    `  Active (${active.length} laps): ${[paceRange, hrRange].filter(Boolean).join(', ')}${compStr}`
+                )
+            }
+
+            if (cooldown) {
+                const d = cooldown.distance_km ? `${cooldown.distance_km.toFixed(2)}km` : '?'
+                const p = cooldown.avg_pace_sec_per_km ? ` @ ${formatPace(cooldown.avg_pace_sec_per_km, athlete.preferred_units)}` : ''
+                lines.push(`  Cooldown: ${d}${p}`)
+            }
+
+            // For runs with no intensity types (plain GPS laps), show a brief summary
+            if (!warmup && !cooldown && active.length > 0) {
+                const distKms = active.map(l => l.distance_km).filter((v): v is number => v !== null)
+                const lapDist = distKms.length > 0
+                    ? `${(distKms.reduce((s, v) => s + v, 0) / distKms.length).toFixed(2)}km avg/lap`
+                    : null
+                if (lapDist) lines[lines.length - 1] += ` (${lapDist})`
+            }
+        }
     }
 
     return lines.join('\n')

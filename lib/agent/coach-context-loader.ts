@@ -105,6 +105,7 @@ export interface CoachUpcomingWeek {
         description: string | null
         distance_target_meters: number | null
         duration_target_seconds: number | null
+        intensity_target: string | null
     }>
 }
 
@@ -128,6 +129,27 @@ export interface CoachPersonalRecord {
     date: string
 }
 
+export interface CoachLapSummary {
+    lap_index: number
+    distance_km: number | null
+    avg_pace_sec_per_km: number | null
+    avg_hr: number | null
+    intensity_type: string | null
+    compliance_score: number | null
+}
+
+export interface CoachActivitySummary {
+    id: number
+    date: string          // YYYY-MM-DD derived from start_time
+    name: string | null
+    distance_km: number | null
+    duration_minutes: number | null
+    avg_pace_sec_per_km: number | null   // computed from distance + duration
+    avg_hr: number | null
+    max_hr: number | null
+    laps: CoachLapSummary[]
+}
+
 export interface CoachContext {
     athlete: CoachAthleteProfile
     plan: CoachPlanContext | null
@@ -138,6 +160,7 @@ export interface CoachContext {
     constraints: CoachConstraint[]
     recentFeedback: CoachFeedback[]
     personalRecords: Record<string, CoachPersonalRecord>
+    recentActivities: CoachActivitySummary[]
 }
 
 // ---------------------------------------------------------------------------
@@ -158,7 +181,7 @@ export async function loadCoachContext(
     ])
 
     // Round 2: everything that depends on plan.id or just needs athleteId + today
-    const [currentPhase, thisWeek, upcomingWeeks, constraints, recentFeedback, personalRecords] =
+    const [currentPhase, thisWeek, upcomingWeeks, constraints, recentFeedback, personalRecords, recentActivities] =
         await Promise.all([
             plan ? loadCurrentPhase(supabase, plan.id, todayStr) : Promise.resolve(null),
             loadThisWeek(supabase, athleteId, today),
@@ -166,6 +189,7 @@ export async function loadCoachContext(
             loadConstraints(supabase, athleteId),
             loadRecentFeedback(supabase, athleteId),
             loadPersonalRecords(supabase, athleteId),
+            loadRecentActivities(supabase, athleteId, today),
         ])
 
     // Round 3: phase execution (needs phase start/end dates)
@@ -183,6 +207,7 @@ export async function loadCoachContext(
         constraints,
         recentFeedback,
         personalRecords,
+        recentActivities,
     }
 }
 
@@ -401,7 +426,7 @@ async function loadUpcomingWeeks(
     const [{ data: workouts }, { data: weeklyPlans }] = await Promise.all([
         supabase
             .from('planned_workouts')
-            .select('scheduled_date, workout_type, description, distance_target_meters, duration_target_seconds')
+            .select('scheduled_date, workout_type, description, distance_target_meters, duration_target_seconds, intensity_target')
             .eq('athlete_id', athleteId)
             .gte('scheduled_date', rangeStart)
             .lte('scheduled_date', rangeEnd)
@@ -441,6 +466,7 @@ async function loadUpcomingWeeks(
             description: w.description,
             distance_target_meters: w.distance_target_meters,
             duration_target_seconds: w.duration_target_seconds,
+            intensity_target: w.intensity_target ?? null,
         })
     }
 
@@ -486,6 +512,63 @@ async function loadRecentFeedback(supabase: SupabaseClient, athleteId: string): 
         injury_concern: f.injury_concern,
         feedback_text: f.feedback_text,
     }))
+}
+
+async function loadRecentActivities(
+    supabase: SupabaseClient,
+    athleteId: string,
+    today: Date
+): Promise<CoachActivitySummary[]> {
+    const since = format(subDays(today, 14), 'yyyy-MM-dd')
+
+    const { data } = await supabase
+        .from('activities')
+        .select(`
+            id, activity_name, start_time,
+            distance_meters, duration_seconds,
+            avg_hr, max_hr,
+            laps (
+                lap_index, distance_meters, avg_pace, avg_hr,
+                intensity_type, compliance_score
+            )
+        `)
+        .eq('athlete_id', athleteId)
+        .gte('start_time', since)
+        .order('start_time', { ascending: false })
+        .limit(20)
+
+    if (!data) return []
+
+    return data.map(a => {
+        const distKm = a.distance_meters ? a.distance_meters / 1000 : null
+        const durMin = a.duration_seconds ? a.duration_seconds / 60 : null
+        const avgPace = (a.distance_meters && a.duration_seconds)
+            ? a.duration_seconds / (a.distance_meters / 1000)
+            : null
+
+        const laps: CoachLapSummary[] = ((a.laps ?? []) as any[])
+            .filter(l => l.distance_meters !== null || l.avg_pace !== null)
+            .map(l => ({
+                lap_index: l.lap_index,
+                distance_km: l.distance_meters ? l.distance_meters / 1000 : null,
+                avg_pace_sec_per_km: l.avg_pace ?? null,
+                avg_hr: l.avg_hr ?? null,
+                intensity_type: l.intensity_type ?? null,
+                compliance_score: l.compliance_score ?? null,
+            }))
+
+        return {
+            id: a.id,
+            date: a.start_time.substring(0, 10),
+            name: a.activity_name,
+            distance_km: distKm,
+            duration_minutes: durMin,
+            avg_pace_sec_per_km: avgPace,
+            avg_hr: a.avg_hr,
+            max_hr: a.max_hr,
+            laps,
+        }
+    })
 }
 
 async function loadPersonalRecords(

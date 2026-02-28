@@ -317,6 +317,45 @@ export class GarminClient {
   }
 
   /**
+   * Get split/lap data for a single activity.
+   * Preferred over splitSummaries — includes wktStepIndex, intensityType, directWorkoutComplianceScore.
+   */
+  async getActivitySplits(activityId: number): Promise<{ lapDTOs: unknown[] } | null> {
+    await this.ensureAuthenticated()
+    this.checkRateLimit()
+    if (!this.client) throw new Error('Client not initialized')
+    try {
+      const data = await this.client.get<{ lapDTOs: unknown[] }>(
+        `${GarminClient.GC_API}/activity-service/activity/${activityId}/splits`
+      )
+      await this.updateTokensIfChanged()
+      return data
+    } catch (error) {
+      console.error(`Error fetching splits for activity ${activityId}:`, error)
+      return null
+    }
+  }
+
+  /**
+   * Get HR time-in-zones for a single activity.
+   */
+  async getActivityHRZones(activityId: number): Promise<unknown[] | null> {
+    await this.ensureAuthenticated()
+    this.checkRateLimit()
+    if (!this.client) throw new Error('Client not initialized')
+    try {
+      const data = await this.client.get<unknown[]>(
+        `${GarminClient.GC_API}/activity-service/activity/${activityId}/hrTimeInZones`
+      )
+      await this.updateTokensIfChanged()
+      return data
+    } catch (error) {
+      console.error(`Error fetching HR zones for activity ${activityId}:`, error)
+      return null
+    }
+  }
+
+  /**
    * Get a single activity by ID
    */
   async getActivity(activityId: number): Promise<GarminActivity | null> {
