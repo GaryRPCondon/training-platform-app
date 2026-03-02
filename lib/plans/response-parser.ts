@@ -4,7 +4,7 @@ export interface ParsedWorkout {
   day: number
   workout_index: string
   type: string
-  description: string
+  description: string   // populated server-side by enrichParsedWorkouts if not in LLM output
   distance_meters: number | null
   intensity: string
   pace_guidance: string | null
@@ -108,17 +108,26 @@ export function parseLLMResponse(responseText: string): ParsedPlan {
       }
 
       if (!workout.description) {
-        throw new Error(`Missing description in workout ${workout.workout_index}`)
+        // LLM occasionally omits description — generate a fallback rather than failing the plan
+        const typeLabel: Record<string, string> = {
+          easy_run: 'Easy run', recovery: 'Recovery run', long_run: 'Long run',
+          tempo: 'Tempo run', intervals: 'Intervals', rest: 'Rest day',
+          cross_training: 'Cross training', race: 'Race day',
+        }
+        const label = typeLabel[workout.type?.toLowerCase()] ?? workout.type ?? 'Workout'
+        workout.description = workout.distance_meters
+          ? `${label} ${(workout.distance_meters / 1000).toFixed(1)} km`
+          : label
+        console.warn(`Workout ${workout.workout_index} missing description — generated fallback: "${workout.description}"`)
       }
 
-      // Warn if interval/tempo workout is missing structured main_set
-      const needsStructure = ['intervals', 'tempo'].includes(workout.type)
-      const hasMainSet = workout.structured_workout?.main_set &&
-        Array.isArray(workout.structured_workout.main_set)
-      if (needsStructure && !hasMainSet) {
-        console.warn(
-          `Workout ${workout.workout_index} (${workout.type}) missing structured_workout.main_set`
-        )
+      // Warn if interval workout is missing structured main_set (tempo is generated server-side)
+      if (workout.type === 'intervals') {
+        const hasMainSet = workout.structured_workout?.main_set &&
+          Array.isArray(workout.structured_workout.main_set)
+        if (!hasMainSet) {
+          console.warn(`Workout ${workout.workout_index} (intervals) missing structured_workout.main_set`)
+        }
       }
     }
   }

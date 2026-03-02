@@ -19,7 +19,7 @@ import { format, parseISO } from 'date-fns'
 import { Calendar as CalendarPicker } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Checkbox } from '@/components/ui/checkbox'
-import { estimateDuration, getWorkoutPaceType } from '@/lib/training/vdot'
+import { estimateDuration, getWorkoutPaceType, calculateTotalWorkoutDistance } from '@/lib/training/vdot'
 import { useUnits } from '@/lib/hooks/use-units'
 import { formatDistance as fmtDist, type UnitSystem } from '@/lib/utils/units'
 import { toast } from 'sonner'
@@ -812,7 +812,7 @@ function StructuredWorkoutEditor({
 
       {totalMeters > 0 && (
         <div className="text-xs text-muted-foreground bg-muted/50 rounded px-2 py-1 mt-1">
-          Calculated total: {fmtDist(totalMeters, units, 1)}
+          Approx. distance: {fmtDist(totalMeters, units, 1)}
         </div>
       )}
     </div>
@@ -906,6 +906,15 @@ export function WorkoutCard({
     Array.isArray((workout.structured_workout as Record<string, unknown>).main_set)
   )
 
+  // Calculate total workout distance (includes warmup/cooldown/recovery for intervals and tempo)
+  const totalWorkoutDistance = calculateTotalWorkoutDistance(
+    workout.distance_target_meters,
+    workout.workout_type,
+    workout.structured_workout as Record<string, unknown> | null,
+    trainingPaces
+  )
+  const distanceIsTotalEstimate = totalWorkoutDistance > 0 && totalWorkoutDistance !== (workout.distance_target_meters ?? 0)
+
   // Calculate target pace and estimated duration if we have training paces
   let targetPace: number | null = null
   let estimatedDurationMinutes: number | null = null
@@ -918,7 +927,14 @@ export function WorkoutCard({
       ? 'marathon'
       : getWorkoutPaceType(workout.workout_type)
     targetPace = trainingPaces[paceType]
-    estimatedDurationMinutes = Math.round(estimateDuration(workout.distance_target_meters, targetPace) / 60)
+
+    // For intervals/tempo: estimate full session duration including warmup/cooldown minutes
+    const sw = workout.structured_workout as Record<string, unknown> | null
+    const warmupMin = (sw?.warmup as { duration_minutes?: number } | undefined)?.duration_minutes ?? 0
+    const cooldownMin = (sw?.cooldown as { duration_minutes?: number } | undefined)?.duration_minutes ?? 0
+    const mainSeconds = estimateDuration(workout.distance_target_meters, targetPace)
+    estimatedDurationMinutes = Math.round(mainSeconds / 60) + warmupMin + cooldownMin
+
     paceLabel = paceType.charAt(0).toUpperCase() + paceType.slice(1)
   }
 
@@ -1319,10 +1335,10 @@ export function WorkoutCard({
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Target className="h-4 w-4" />
-                  Distance Target
+                  {distanceIsTotalEstimate ? 'Approx. distance' : 'Distance Target'}
                 </div>
                 <div className="text-lg font-medium">
-                  {formatDistance(workout.distance_target_meters, 1)}
+                  {formatDistance(distanceIsTotalEstimate ? totalWorkoutDistance : workout.distance_target_meters, 1)}
                 </div>
               </div>
             )}
@@ -1458,7 +1474,7 @@ export function WorkoutCard({
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-sm">
+                <Label className={`text-sm ${editStructured ? 'text-muted-foreground' : ''}`}>
                   Distance ({distanceLabel()})
                 </Label>
                 <Input
@@ -1468,14 +1484,16 @@ export function WorkoutCard({
                   value={editDistanceDisplay}
                   onChange={e => setEditDistanceDisplay(e.target.value)}
                   placeholder="e.g. 10"
+                  disabled={!!editStructured}
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-sm">Intensity</Label>
+                <Label className={`text-sm ${editStructured ? 'text-muted-foreground' : ''}`}>Intensity</Label>
                 <Select
                   value={editIntensity}
                   onValueChange={setEditIntensity}
+                  disabled={!!editStructured}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select intensity" />
@@ -1489,13 +1507,14 @@ export function WorkoutCard({
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-sm">Duration (minutes)</Label>
+                <Label className={`text-sm ${editStructured ? 'text-muted-foreground' : ''}`}>Duration (minutes)</Label>
                 <Input
                   type="number"
                   min={0}
                   value={editDurationMinutes}
                   onChange={e => setEditDurationMinutes(e.target.value)}
                   placeholder="e.g. 60"
+                  disabled={!!editStructured}
                 />
               </div>
 

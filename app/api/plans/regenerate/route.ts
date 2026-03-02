@@ -120,20 +120,24 @@ export async function POST(request: Request) {
     // Get LLM provider and settings from user
     const { data: athlete } = await supabase
       .from('athletes')
-      .select('preferred_llm_provider, use_fast_model_for_operations')
+      .select('preferred_llm_provider')
       .eq('id', user.id)
       .maybeSingle()
 
-    const providerName = athlete?.preferred_llm_provider || 'deepseek'
-    const useFastModel = athlete?.use_fast_model_for_operations ?? true
-    console.log(`[Regenerate] Using LLM provider: ${providerName}`)
+    const userProviderName = athlete?.preferred_llm_provider || 'deepseek'
 
-    // For operations mode with DeepSeek, use faster chat model if setting is enabled
+    let providerName: string = userProviderName
     let modelOverride: string | undefined
-    if (mode === 'operations' && providerName === 'deepseek' && useFastModel) {
+
+    if (providerName === 'deepseek') {
+      // Always use deepseek-chat for both operations and full regeneration.
+      // deepseek-reasoner is too slow (5-20 min, Vercel timeout). deepseek-chat
+      // correctly follows format instructions and has 8K output tokens — sufficient
+      // for ~18-week plans (~3-4K tokens in the regenerated_weeks format).
       modelOverride = 'deepseek-chat'
-      console.log(`[Regenerate] Using fast model: ${modelOverride} for operations mode`)
     }
+
+    console.log(`[Regenerate] Using LLM provider: ${providerName}${modelOverride ? ` (${modelOverride})` : ''}`)
 
     // Create LLM provider
     const provider = createLLMProvider(providerName, modelOverride)
@@ -373,12 +377,13 @@ export async function POST(request: Request) {
       !parsedResponse.affected_weeks ||
       !parsedResponse.regenerated_weeks
     ) {
+      console.error('[Regenerate] LLM returned wrong structure. Keys found:', Object.keys(parsedResponse))
       return NextResponse.json(
         {
-          error: 'Invalid LLM response structure',
-          details: 'Missing required fields: intent_summary, affected_weeks, or regenerated_weeks'
+          error: 'The AI returned an unexpected response format. Please try again.',
+          details: `Missing required fields. Got keys: ${Object.keys(parsedResponse).join(', ')}`
         },
-        { status: 500 }
+        { status: 422 }
       )
     }
 

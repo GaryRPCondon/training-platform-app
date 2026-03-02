@@ -269,6 +269,65 @@ export function getWorkoutPaceType(workoutType: string): keyof TrainingPaces {
   return 'easy'
 }
 
+// Default easy pace (6:00/km) used when no training paces are available
+const DEFAULT_EASY_PACE_SEC_PER_KM = 360
+
+/**
+ * Calculate total workout distance including warmup, cooldown, and recovery intervals.
+ *
+ * For intervals: warmup (time-based → distance) + all main_set distances (work + recovery) + cooldown
+ * For tempo:     warmup (time-based → distance) + tempo segment distance + cooldown
+ * For others:    distance_target_meters as-is
+ *
+ * @param distanceTargetMeters - The workout's distance_target_meters field
+ * @param workoutType - The workout type string
+ * @param structuredWorkout - The structured_workout JSONB from the database
+ * @param trainingPaces - Optional training paces (uses 6:00/km easy pace fallback)
+ * @returns Total estimated distance in meters
+ */
+export function calculateTotalWorkoutDistance(
+  distanceTargetMeters: number | null | undefined,
+  workoutType: string | null | undefined,
+  structuredWorkout: Record<string, unknown> | null | undefined,
+  trainingPaces?: TrainingPaces | null
+): number {
+  if (!distanceTargetMeters) return 0
+  if (!workoutType || !structuredWorkout) return distanceTargetMeters
+
+  const easyPace = trainingPaces?.easy ?? DEFAULT_EASY_PACE_SEC_PER_KM
+  const metersPerMin = (1000 / easyPace) * 60
+
+  const type = workoutType.toLowerCase()
+  const warmup = structuredWorkout.warmup as { duration_minutes?: number } | undefined
+  const cooldown = structuredWorkout.cooldown as { duration_minutes?: number } | undefined
+  const warmupMeters = (warmup?.duration_minutes ?? 0) * metersPerMin
+  const cooldownMeters = (cooldown?.duration_minutes ?? 0) * metersPerMin
+
+  if (type === 'intervals') {
+    const mainSet = structuredWorkout.main_set as Array<{
+      repeat?: number
+      intervals?: Array<{ distance_meters?: number }>
+    }> | undefined
+
+    let mainSetMeters = 0
+    if (Array.isArray(mainSet)) {
+      for (const group of mainSet) {
+        const repeats = group.repeat ?? 1
+        for (const interval of group.intervals ?? []) {
+          mainSetMeters += repeats * (interval.distance_meters ?? 0)
+        }
+      }
+    }
+    return Math.round(warmupMeters + mainSetMeters + cooldownMeters)
+  }
+
+  if (type === 'tempo') {
+    return Math.round(warmupMeters + distanceTargetMeters + cooldownMeters)
+  }
+
+  return distanceTargetMeters
+}
+
 /**
  * Map workout intensity to pace type (fallback method)
  * @deprecated Use getWorkoutPaceType instead

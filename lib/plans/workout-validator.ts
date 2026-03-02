@@ -16,14 +16,14 @@ export interface WorkoutValidationWarning {
  * Based on common training plan patterns
  */
 const DISTANCE_RANGES: Record<string, { min: number; max: number }> = {
-  intervals: { min: 8000, max: 18000 },      // 8-18km (Speed workouts)
-  tempo: { min: 10000, max: 22000 },         // 10-22km (Tempo/threshold runs)
-  easy_run: { min: 3000, max: 20000 },       // 3-20km (allows taper shakeout runs)
-  long_run: { min: 15000, max: 50000 },      // 15-50km (accommodates ultra training)
-  recovery: { min: 3000, max: 12000 },       // 3-12km (allows short recovery runs)
+  intervals: { min: 3000, max: 25000 },      // 3-25km (work distance only, excl. recovery; early speed sessions can be short)
+  tempo: { min: 5000, max: 35000 },          // 5-35km (work segment only; warmup/cooldown added server-side)
+  easy_run: { min: 3000, max: 25000 },       // 3-25km (allows taper shakeout runs)
+  long_run: { min: 10000, max: 50000 },      // 10-50km (early plan long runs can be ~10km)
+  recovery: { min: 3000, max: 12000 },       // 3-12km
   cross_training: { min: 0, max: 0 },        // No distance validation
   rest: { min: 0, max: 0 },                  // No distance validation
-  race: { min: 5000, max: 100000 }           // 5km (5K) to 100km (ultra marathons)
+  race: { min: 5000, max: 100000 }           // 5km to 100km
 }
 
 /**

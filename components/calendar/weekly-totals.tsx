@@ -4,11 +4,14 @@ import { useMemo, useState } from 'react'
 import { startOfWeek, endOfWeek, format, eachWeekOfInterval, startOfMonth, endOfMonth } from 'date-fns'
 import { useUnits } from '@/lib/hooks/use-units'
 import { Button } from '@/components/ui/button'
+import { calculateTotalWorkoutDistance } from '@/lib/training/vdot'
 
 interface WorkoutRow {
     scheduled_date?: string | null
     date?: Date | string | null
     distance_target_meters?: number | null
+    workout_type?: string | null
+    structured_workout?: Record<string, unknown> | null
     garmin_workout_id?: string | null
 }
 
@@ -61,9 +64,14 @@ export function WeeklyTotals({ workouts, activities = [], currentDate, weekStart
                 return workoutDate >= weekStart && workoutDate <= weekEnd
             })
 
-            // Calculate planned distance
+            // Calculate planned distance (includes warmup/cooldown/recovery for intervals/tempo)
             const plannedMeters = weekWorkouts.reduce((sum, w) => {
-                return sum + (w.distance_target_meters ?? 0)
+                return sum + calculateTotalWorkoutDistance(
+                    w.distance_target_meters,
+                    w.workout_type,
+                    w.structured_workout,
+                    null  // no training paces available; falls back to 6:00/km easy pace
+                )
             }, 0)
 
             // Calculate actual distance (from ALL activities in this week)

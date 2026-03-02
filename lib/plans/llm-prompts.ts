@@ -209,11 +209,7 @@ Return a JSON object with this structure:
           "distance_meters": 8000,
           "intensity": "easy",
           "pace_guidance": "Conversational pace, heart rate zone 2",
-          "notes": "Focus on form and comfort",
-          "structured_workout": {
-            "pace_guidance": "Conversational pace, heart rate zone 2",
-            "notes": "Focus on form and comfort"
-          }
+          "notes": "Focus on form and comfort"
         }
       ]
     }
@@ -242,75 +238,25 @@ REQUIRED FIELDS per workout:
 - description (human-readable label including distance in the athlete's preferred units. Format: "{Type} {distance} {unit}" for continuous runs. For intervals: "{N} × {distance} with {recovery}")
 - distance_meters (required for running workouts, null for rest/cross-training)
 - intensity (easy/moderate/marathon/hard/recovery)
-  Use "marathon" for marathon-pace tempo workouts (e.g. Hanson's, where pace_guidance.tempo_interval_intensity = "marathon")
+  Use "marathon" for marathon-pace tempo workouts (e.g. Hanson's)
 - pace_guidance (descriptive guidance: "conversational pace", "comfortably hard", "5K race pace", etc.)
 - notes (optional coaching notes)
-- structured_workout (required for all workouts — see STRUCTURED WORKOUT RULES below)
+- structured_workout (intervals only — see STRUCTURED WORKOUT below)
 
-STRUCTURED WORKOUT RULES:
-
-Every workout MUST include a "structured_workout" field. The schema depends on workout type.
-
-TYPE: easy_run, recovery, long_run, rest, cross_training, race
-→ Simple format. No warmup/main_set/cooldown keys.
+STRUCTURED WORKOUT:
+Only include "structured_workout" for type "intervals". Provide only "main_set":
   "structured_workout": {
-    "pace_guidance": "(same value as the top-level pace_guidance field)",
-    "notes": "(same value as the top-level notes field, or null)"
-  }
-
-TYPE: intervals
-→ 15-minute warmup + 10-minute cooldown (fixed — do not change).
-  Parse the description to extract repeat count, interval distance, and recovery distance.
-  "structured_workout": {
-    "warmup": { "duration_minutes": 15, "intensity": "easy" },
     "main_set": [
       { "repeat": N, "intervals": [
         { "distance_meters": XXXXX, "intensity": "hard" },
         { "distance_meters": XXXXX, "intensity": "recovery" }
       ]}
-    ],
-    "cooldown": { "duration_minutes": 10, "intensity": "easy" },
-    "pace_guidance": "(same value as the top-level pace_guidance field)",
-    "notes": "(same value as the top-level notes field, or null)"
+    ]
   }
+For all other types (easy_run, recovery, long_run, tempo, rest, cross_training, race):
+Omit "structured_workout" entirely — the server generates it automatically.
 
-TYPE: tempo
-→ 10-minute warmup + 10-minute cooldown (fixed — do not change).
-  The template distance IS the tempo segment. Set main_set distance_meters = distance_meters exactly.
-  Do NOT subtract warmup/cooldown — they are time-based additions, not deductions from the target.
-  Interval intensity depends on the template's methodology:
-  - If pace_guidance.tempo_interval_intensity = "marathon": use "marathon" for the interval intensity
-    AND set the top-level intensity field to "marathon" (not "hard").
-  - Otherwise (threshold/T-pace methodology): use "tempo" for the interval intensity and "hard" top-level.
-  "structured_workout": {
-    "warmup": { "duration_minutes": 10, "intensity": "easy" },
-    "main_set": [
-      { "repeat": 1, "intervals": [
-        { "distance_meters": XXXXX, "intensity": "tempo"  }  // or "marathon" — see rule above
-      ]}
-    ],
-    "cooldown": { "duration_minutes": 10, "intensity": "easy" },
-    "pace_guidance": "(same value as the top-level pace_guidance field)",
-    "notes": "(same value as the top-level notes field, or null)"
-  }
-
-WORKED EXAMPLES — follow these exactly as templates:
-
-Example A — easy_run: Template says "Easy 8 mi. (13 km)"
-{
-  "type": "easy_run",
-  "description": "Easy 8 mi. (13 km)",
-  "distance_meters": 12875,
-  "intensity": "easy",
-  "pace_guidance": "Conversational pace, heart rate zone 2",
-  "notes": "Stay comfortable throughout",
-  "structured_workout": {
-    "pace_guidance": "Conversational pace, heart rate zone 2",
-    "notes": "Stay comfortable throughout"
-  }
-}
-
-Example B — intervals: Template says "Strength: 3 × 2 mi., 800 recovery"
+EXAMPLE — intervals: Template says "Strength: 3 × 2 mi., 800 recovery"
 {
   "type": "intervals",
   "description": "Strength: 3 × 2 mi., 800 recovery",
@@ -319,59 +265,12 @@ Example B — intervals: Template says "Strength: 3 × 2 mi., 800 recovery"
   "pace_guidance": "Intervals at 10K effort. Recovery jog at very easy pace.",
   "notes": "Focus on consistent effort across all repetitions",
   "structured_workout": {
-    "warmup": { "duration_minutes": 15, "intensity": "easy" },
     "main_set": [
       { "repeat": 3, "intervals": [
         { "distance_meters": 3219, "intensity": "hard" },
         { "distance_meters": 800, "intensity": "recovery" }
       ]}
-    ],
-    "cooldown": { "duration_minutes": 10, "intensity": "easy" },
-    "pace_guidance": "Intervals at 10K effort. Recovery jog at very easy pace.",
-    "notes": "Focus on consistent effort across all repetitions"
-  }
-}
-
-Example C — tempo (threshold, e.g. Pfitzinger/Daniels): Template says "Tempo 10 mi. (16 km)"
-{
-  "type": "tempo",
-  "description": "Tempo 10 mi. (16 km)",
-  "distance_meters": 16000,
-  "intensity": "hard",
-  "pace_guidance": "Comfortably hard, sustained threshold effort",
-  "notes": "Maintain steady pace throughout the tempo segment",
-  "structured_workout": {
-    "warmup": { "duration_minutes": 10, "intensity": "easy" },
-    "main_set": [
-      { "repeat": 1, "intervals": [
-        { "distance_meters": 16000, "intensity": "tempo" }
-      ]}
-    ],
-    "cooldown": { "duration_minutes": 10, "intensity": "easy" },
-    "pace_guidance": "Comfortably hard, sustained threshold effort",
-    "notes": "Maintain steady pace throughout the tempo segment"
-  }
-}
-
-Example D — tempo (marathon pace, Hanson's — pace_guidance.tempo_interval_intensity = "marathon"):
-Template says "Tempo 10 mi. (16 km)"
-{
-  "type": "tempo",
-  "description": "Tempo 10 mi. (16 km)",
-  "distance_meters": 16000,
-  "intensity": "marathon",
-  "pace_guidance": "Sustained marathon race pace — goal race pace throughout",
-  "notes": "Hanson's SOS tempo. Practice goal marathon pace on moderately tired legs.",
-  "structured_workout": {
-    "warmup": { "duration_minutes": 10, "intensity": "easy" },
-    "main_set": [
-      { "repeat": 1, "intervals": [
-        { "distance_meters": 16000, "intensity": "marathon" }
-      ]}
-    ],
-    "cooldown": { "duration_minutes": 10, "intensity": "easy" },
-    "pace_guidance": "Sustained marathon race pace — goal race pace throughout",
-    "notes": "Hanson's SOS tempo. Practice goal marathon pace on moderately tired legs."
+    ]
   }
 }
 

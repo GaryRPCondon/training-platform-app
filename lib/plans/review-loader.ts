@@ -2,12 +2,13 @@ import { createClient } from '@/lib/supabase/client'
 import type { PlanReviewContext, WeekViewData, WorkoutWithDetails } from '@/types/review'
 import { parseISO, format, endOfWeek } from 'date-fns'
 
-// Distance ranges for validation (same as workout-validator.ts)
+// Distance ranges for validation — keep in sync with workout-validator.ts
+// Note: for intervals/tempo, distance_target_meters is the work segment only (warmup/cooldown added server-side)
 const DISTANCE_RANGES: Record<string, { min: number; max: number }> = {
-  intervals: { min: 8000, max: 18000 },
-  tempo: { min: 10000, max: 22000 },
-  easy_run: { min: 3000, max: 20000 },
-  long_run: { min: 15000, max: 50000 },
+  intervals: { min: 3000, max: 25000 },
+  tempo: { min: 5000, max: 35000 },
+  easy_run: { min: 3000, max: 25000 },
+  long_run: { min: 10000, max: 50000 },
   recovery: { min: 3000, max: 12000 },
   cross_training: { min: 0, max: 0 },
   rest: { min: 0, max: 0 },

@@ -5,6 +5,7 @@ import { buildGenerationSystemPrompt, buildGenerationUserMessage } from '@/lib/p
 import { parseLLMResponse } from '@/lib/plans/response-parser'
 import { writePlanToDatabase } from '@/lib/plans/plan-writer'
 import { validateWorkoutDistances } from '@/lib/plans/workout-validator'
+import { enrichParsedWorkouts, enrichPreWeekWorkouts } from '@/lib/plans/structured-workout-builder'
 import { createLLMProvider } from '@/lib/agent/factory'
 import { calculateTrainingPaces } from '@/lib/training/vdot'
 import type { UserCriteria } from '@/lib/templates/types'
@@ -111,25 +112,37 @@ export async function POST(request: Request) {
     const estimatedTokens = Math.ceil((systemPromptLength + userMessageLength) / 4)
     console.log(`LLM Request - System: ${systemPromptLength} chars, User: ${userMessageLength} chars, Est tokens: ${estimatedTokens}`)
 
-    // For plan generation, use provider with sufficient token limits
-    // Old deepseek-chat had 8192 limit, but deepseek-reasoner has higher limits
-    const providerName = athlete?.preferred_llm_provider || 'deepseek'
+    // For plan generation, use a provider with high output token limits and fast response.
+    // Gemini Flash is preferred: ~30s response time, 65K output tokens, low cost.
+    // Falls back to the user's preferred provider if Gemini is not configured.
+    const userProviderName = athlete?.preferred_llm_provider || 'deepseek'
+    const userModelName = athlete?.preferred_llm_model || undefined
 
-    const modelName = athlete?.preferred_llm_model || undefined
+    let planProviderName: string
+    let planModelName: string | undefined
 
-    console.log(`Using LLM provider: ${providerName}${modelName ? ` with model: ${modelName}` : ''}`)
-    const provider = createLLMProvider(providerName, modelName)
-
-    // Call LLM
-    // Note: Token limits vary by provider - these are output (completion) limits
-    const maxTokensMap: Record<string, number> = {
-      'deepseek': 32768,  // DeepSeek R1 (deepseek-reasoner) supports up to 32K output tokens
-      'gemini': 65536,    // Gemini 2.5 Flash supports up to 65536 output tokens
-      'anthropic': 64000, // Claude Sonnet 4.5 supports up to 64K output tokens
-      'openai': 16000,
-      'grok': 131072      // Grok 4.1 Fast supports up to 131K output tokens
+    if (process.env.GEMINI_API_KEY) {
+      planProviderName = 'gemini'
+      planModelName = 'gemini-2.5-flash-lite'  // non-thinking model; avoids thinking tokens consuming output budget
+    } else {
+      // Fall back to user's provider; prefer deepseek-chat over deepseek-reasoner
+      // (reasoner exceeds Vercel's 300s timeout; chat is faster but has 8192 token limit)
+      planProviderName = userProviderName
+      planModelName = (userProviderName === 'deepseek' && !userModelName) ? 'deepseek-chat' : userModelName
     }
-    const maxTokens = maxTokensMap[providerName] || 8192
+
+    console.log(`Using LLM provider for plan generation: ${planProviderName}${planModelName ? ` (${planModelName})` : ''}`)
+    const provider = createLLMProvider(planProviderName, planModelName)
+
+    // Output token limits per provider
+    const maxTokensMap: Record<string, number> = {
+      'gemini':    65536,
+      'anthropic': 64000,
+      'grok':      131072,
+      'openai':    16000,
+      'deepseek':  8192,
+    }
+    const maxTokens = maxTokensMap[planProviderName] || 8192
 
     const llmStartTime = Date.now()
     const response = await provider.generateResponse({
@@ -149,8 +162,8 @@ export async function POST(request: Request) {
     console.log('Response end:', response.content.substring(response.content.length - 200))
 
     writeLLMLog('plan-generate', {
-      provider: providerName,
-      model: modelName,
+      provider: planProviderName,
+      model: planModelName,
       generationTimeSeconds: parseFloat(llmDurationSec),
       systemPrompt,
       userMessage,
@@ -177,6 +190,14 @@ export async function POST(request: Request) {
       }
 
       throw parseError
+    }
+
+    // Enrich parsed workouts: build full structured_workout from LLM's main_set + derived fields.
+    for (const week of parsedPlan.weeks) {
+      enrichParsedWorkouts(week.workouts)
+    }
+    if (parsedPlan.preWeekWorkouts) {
+      enrichPreWeekWorkouts(parsedPlan.preWeekWorkouts)
     }
 
     // Validate workout distances for potential LLM hallucinations
