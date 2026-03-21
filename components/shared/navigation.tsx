@@ -11,12 +11,20 @@ import {
     Sparkles,
     Activity,
     ClipboardList,
-    Menu
+    Menu,
+    Wrench
 } from 'lucide-react'
 import { Dialog, DialogContent, DialogTrigger, DialogTitle } from '@/components/ui/dialog'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
-const navItems = [
+interface NavItem {
+    title: string
+    href: string
+    icon: typeof LayoutDashboard
+    adminOnly?: boolean
+}
+
+const navItems: NavItem[] = [
     {
         title: 'Dashboard',
         href: '/dashboard',
@@ -55,21 +63,25 @@ const navItems = [
     {
         title: 'Diagnostics',
         href: '/dashboard/diagnostics',
-        icon: Activity,
+        icon: Wrench,
+        adminOnly: true,
     },
 ]
 
 interface NavProps {
     className?: string
     onNavigate?: () => void
+    isAdmin?: boolean
 }
 
-function NavContent({ className, onNavigate }: NavProps) {
+function NavContent({ className, onNavigate, isAdmin }: NavProps) {
     const pathname = usePathname()
+
+    const visibleItems = navItems.filter(item => !item.adminOnly || isAdmin)
 
     return (
         <nav className={cn("grid items-start gap-2 p-4", className)} aria-label="Main navigation">
-            {navItems.map((item, index) => {
+            {visibleItems.map((item, index) => {
                 const Icon = item.icon
                 const isActive = pathname === item.href
                 return (
@@ -95,12 +107,25 @@ function NavContent({ className, onNavigate }: NavProps) {
     )
 }
 
+function useIsAdmin() {
+    const [isAdmin, setIsAdmin] = useState(false)
+    useEffect(() => {
+        fetch('/api/settings/get')
+            .then(res => res.json())
+            .then(data => setIsAdmin(data.isAdmin ?? false))
+            .catch(() => setIsAdmin(false))
+    }, [])
+    return isAdmin
+}
+
 export function Navigation() {
-    return <NavContent />
+    const isAdmin = useIsAdmin()
+    return <NavContent isAdmin={isAdmin} />
 }
 
 export function MobileNavigation() {
     const [open, setOpen] = useState(false)
+    const isAdmin = useIsAdmin()
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -118,7 +143,7 @@ export function MobileNavigation() {
                         </Link>
                     </DialogTitle>
                 </div>
-                <NavContent onNavigate={() => setOpen(false)} />
+                <NavContent onNavigate={() => setOpen(false)} isAdmin={isAdmin} />
             </DialogContent>
         </Dialog>
     )

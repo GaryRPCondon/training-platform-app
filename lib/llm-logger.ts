@@ -16,6 +16,7 @@ function timestamp() {
 }
 
 export function writeLLMLog(prefix: string, data: Record<string, unknown>): void {
+    if (process.env.NODE_ENV === 'production') return
     ensureLogDir()
     const filename = `${prefix}-${timestamp()}.json`
     const path = join(LOG_DIR, filename)

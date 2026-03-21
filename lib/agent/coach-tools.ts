@@ -33,7 +33,7 @@ You may call this multiple times to propose alternatives.`,
                 },
                 distance_target_meters: {
                     type: 'number',
-                    description: 'Target distance in meters. Omit for time-based workouts.'
+                    description: 'Total target distance in meters (including warmup/cooldown). Required for all running workouts. For time-based workouts, estimate the equivalent distance.'
                 },
                 duration_target_seconds: {
                     type: 'number',
@@ -81,9 +81,45 @@ Schema:
 For tempo runs use a single main_set repeat with repeat:1.
 For easy/long runs, omit structured_workout entirely.`,
                     properties: {
-                        warmup: { type: 'object' },
-                        main_set: { type: 'array' },
-                        cooldown: { type: 'object' },
+                        warmup: {
+                            type: 'object',
+                            properties: {
+                                duration_minutes: { type: 'number' },
+                                distance_meters: { type: 'number' },
+                                intensity: { type: 'string' }
+                            }
+                        },
+                        main_set: {
+                            type: 'array',
+                            items: {
+                                type: 'object',
+                                properties: {
+                                    repeat: { type: 'number' },
+                                    skip_last_recovery: { type: 'boolean' },
+                                    intervals: {
+                                        type: 'array',
+                                        items: {
+                                            type: 'object',
+                                            properties: {
+                                                distance_meters: { type: 'number' },
+                                                duration_seconds: { type: 'number' },
+                                                duration_minutes: { type: 'number' },
+                                                intensity: { type: 'string' },
+                                                target_pace: { type: 'string' }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        cooldown: {
+                            type: 'object',
+                            properties: {
+                                duration_minutes: { type: 'number' },
+                                distance_meters: { type: 'number' },
+                                intensity: { type: 'string' }
+                            }
+                        },
                         pace_guidance: { type: 'string' },
                         notes: { type: 'string' }
                     }
@@ -101,7 +137,7 @@ For easy/long runs, omit structured_workout entirely.`,
                     description: 'If this workout is intended to replace an existing planned workout, provide that workout\'s ID. The UI will offer to remove the old workout after applying the new one, but the athlete decides.'
                 }
             },
-            required: ['scheduled_date', 'workout_type', 'description', 'rationale']
+            required: ['scheduled_date', 'workout_type', 'description', 'distance_target_meters', 'rationale']
         }
     }
 ]

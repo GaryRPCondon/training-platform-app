@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -10,6 +11,7 @@ import { Loader2, CheckCircle, AlertCircle } from 'lucide-react'
 function GeneratePageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const queryClient = useQueryClient()
   const [status, setStatus] = useState<'loading' | 'generating' | 'success' | 'error'>('loading')
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
@@ -128,6 +130,9 @@ function GeneratePageContent() {
         setPlanId(data.plan_id)
         setWarnings(data.warnings || [])
         setStatus('success')
+
+        // Invalidate athlete cache so updated VDOT is reflected immediately
+        queryClient.invalidateQueries({ queryKey: ['athlete'] })
 
         // Navigate to review page after delay (longer if warnings present)
         const delay = data.warnings && data.warnings.length > 0 ? 5000 : 1500

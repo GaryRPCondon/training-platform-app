@@ -89,9 +89,22 @@ export async function POST(request: Request) {
     // Get athlete's preferred LLM provider, model, and unit preference
     const { data: athlete } = await supabase
       .from('athletes')
-      .select('preferred_llm_provider, preferred_llm_model, preferred_units')
+      .select('preferred_llm_provider, preferred_llm_model, preferred_units, vdot')
       .eq('id', athleteId)
       .single()
+
+    // If athlete has no VDOT in profile but one was provided for this plan, save it
+    if (vdot && athlete && !athlete.vdot) {
+      await supabase
+        .from('athletes')
+        .update({
+          vdot,
+          training_paces: trainingPaces,
+          pace_source: paceSource,
+          pace_source_data: paceSourceData,
+        })
+        .eq('id', athleteId)
+    }
 
     // Build LLM prompts FIRST (before creating any database records)
     const context = {

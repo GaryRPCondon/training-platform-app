@@ -4,10 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import { Badge } from '@/components/ui/badge'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { CheckCircle2, XCircle, Loader2, Wifi } from 'lucide-react'
 import { GarminConnect } from './garmin-connect'
 import { getAthleteProfile } from '@/lib/supabase/queries'
 
@@ -17,10 +19,33 @@ interface ConnectionsCardProps {
     onRefresh?: () => void
 }
 
+interface TestResult {
+    status: 'idle' | 'loading' | 'success' | 'error'
+    message?: string
+}
+
 export function ConnectionsCard({ stravaConnected, garminConnected, onRefresh }: ConnectionsCardProps) {
     const router = useRouter()
     const queryClient = useQueryClient()
     const [loading, setLoading] = useState<string | null>(null)
+    const [garminTest, setGarminTest] = useState<TestResult>({ status: 'idle' })
+    const [stravaTest, setStravaTest] = useState<TestResult>({ status: 'idle' })
+
+    const testConnection = async (platform: 'garmin' | 'strava') => {
+        const setter = platform === 'garmin' ? setGarminTest : setStravaTest
+        setter({ status: 'loading' })
+        try {
+            const res = await fetch(`/api/diagnostics/${platform}`)
+            const data = await res.json()
+            if (data.connected) {
+                setter({ status: 'success', message: data.displayName ? `Connected as ${data.displayName}` : 'Connection OK' })
+            } else {
+                setter({ status: 'error', message: data.error || 'Connection failed' })
+            }
+        } catch {
+            setter({ status: 'error', message: 'Connection test failed' })
+        }
+    }
 
     // Fetch current athlete profile for data source preference
     const { data: athlete, refetch } = useQuery({
@@ -122,6 +147,34 @@ export function ConnectionsCard({ stravaConnected, garminConnected, onRefresh }:
                     stravaPreferred={stravaPreferred}
                     onPreferenceChange={handleGarminPreferenceChange}
                 />
+                {garminConnected && (
+                    <div className="flex items-center gap-2 px-4 -mt-2">
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => testConnection('garmin')}
+                            disabled={garminTest.status === 'loading'}
+                        >
+                            {garminTest.status === 'loading' ? (
+                                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                            ) : (
+                                <Wifi className="mr-1 h-3 w-3" />
+                            )}
+                            Test Connection
+                        </Button>
+                        {garminTest.status === 'success' && (
+                            <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                                <CheckCircle2 className="h-3 w-3" /> {garminTest.message}
+                            </span>
+                        )}
+                        {garminTest.status === 'error' && (
+                            <span className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+                                <XCircle className="h-3 w-3" /> {garminTest.message}
+                            </span>
+                        )}
+                    </div>
+                )}
 
                 {/* Strava */}
                 <div className="p-3 sm:p-4 border rounded-lg space-y-3">
@@ -170,6 +223,34 @@ export function ConnectionsCard({ stravaConnected, garminConnected, onRefresh }:
                         </div>
                     )}
                 </div>
+                {stravaConnected && (
+                    <div className="flex items-center gap-2 px-4 -mt-2">
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => testConnection('strava')}
+                            disabled={stravaTest.status === 'loading'}
+                        >
+                            {stravaTest.status === 'loading' ? (
+                                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                            ) : (
+                                <Wifi className="mr-1 h-3 w-3" />
+                            )}
+                            Test Connection
+                        </Button>
+                        {stravaTest.status === 'success' && (
+                            <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                                <CheckCircle2 className="h-3 w-3" /> {stravaTest.message}
+                            </span>
+                        )}
+                        {stravaTest.status === 'error' && (
+                            <span className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+                                <XCircle className="h-3 w-3" /> {stravaTest.message}
+                            </span>
+                        )}
+                    </div>
+                )}
             </CardContent>
         </Card>
     )

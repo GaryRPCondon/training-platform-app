@@ -9,17 +9,41 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 
+interface ProviderAvailability {
+    name: string
+    available: boolean
+}
+
 export function AISettingsCard() {
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [provider, setProvider] = useState('deepseek')
     const [model, setModel] = useState('')
     const [useFastModel, setUseFastModel] = useState(true)
+    const [availableProviders, setAvailableProviders] = useState<ProviderAvailability[]>([])
     const savedValues = useRef({ provider: 'deepseek', model: '', useFastModel: true })
 
     useEffect(() => {
         fetchSettings()
+        fetchAvailableProviders()
     }, [])
+
+    const fetchAvailableProviders = async () => {
+        try {
+            const response = await fetch('/api/settings/available-providers')
+            if (response.ok) {
+                const data = await response.json()
+                setAvailableProviders(data.providers || [])
+            }
+        } catch {
+            // Silently fail — all providers will appear available
+        }
+    }
+
+    const isProviderAvailable = (name: string) => {
+        if (availableProviders.length === 0) return true // Not loaded yet, don't block
+        return availableProviders.find(p => p.name === name)?.available ?? false
+    }
 
     const fetchSettings = async () => {
         try {
@@ -104,14 +128,30 @@ export function AISettingsCard() {
                             <SelectValue placeholder="Select a provider" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="deepseek">DeepSeek (Recommended)</SelectItem>
-                            <SelectItem value="gemini">Google Gemini</SelectItem>
-                            <SelectItem value="anthropic">Anthropic Claude</SelectItem>
-                            <SelectItem value="openai">OpenAI GPT-4</SelectItem>
-                            <SelectItem value="grok">xAI Grok</SelectItem>
+                            {[
+                                { value: 'deepseek', label: 'DeepSeek (Recommended)' },
+                                { value: 'gemini', label: 'Google Gemini' },
+                                { value: 'anthropic', label: 'Anthropic Claude' },
+                                { value: 'openai', label: 'OpenAI GPT-4' },
+                                { value: 'grok', label: 'xAI Grok' },
+                            ].map(p => (
+                                <SelectItem
+                                    key={p.value}
+                                    value={p.value}
+                                    disabled={!isProviderAvailable(p.value)}
+                                >
+                                    {p.label}{!isProviderAvailable(p.value) ? ' (Not available)' : ''}
+                                </SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
                 </div>
+
+                {availableProviders.length > 0 && !isProviderAvailable(provider) && (
+                    <div className="p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md text-sm text-amber-800 dark:text-amber-200">
+                        The selected provider is no longer available. Please choose a different one.
+                    </div>
+                )}
 
                 <div className="space-y-2">
                     <Label htmlFor="model">Model Name (Optional)</Label>

@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { notifyAdminOfSignup } from '@/lib/email/notify-admin'
 
 export async function POST(request: NextRequest) {
     try {
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        // Insert athlete record with default values
+        // Insert athlete record with pending_approval status
         const { data, error } = await supabaseAdmin
             .from('athletes')
             .insert({
@@ -40,7 +41,9 @@ export async function POST(request: NextRequest) {
                 name: null,
                 preferred_units: 'metric',
                 preferred_llm_provider: 'deepseek',
-                week_starts_on: 1
+                week_starts_on: 1,
+                account_status: 'pending_approval',
+                profile_completed: false,
             })
             .select()
             .single()
@@ -55,6 +58,11 @@ export async function POST(request: NextRequest) {
                 { status: 500 }
             )
         }
+
+        // Send admin notification email (non-blocking)
+        notifyAdminOfSignup(userId, email).catch(err => {
+            console.warn('Failed to send admin notification email:', err.message)
+        })
 
         return NextResponse.json({ success: true, athlete: data })
     } catch (error: any) {

@@ -6,13 +6,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { Clock } from 'lucide-react'
 
 export default function LoginPage() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [loading, setLoading] = useState(false)
+    const [signupComplete, setSignupComplete] = useState(false)
     const router = useRouter()
     const supabase = createClient()
 
@@ -78,7 +81,8 @@ export default function LoginPage() {
                 }
             }
 
-            toast.success('Account created! Please check your email to verify.')
+            setSignupComplete(true)
+            toast.success('Account created! Awaiting admin approval.')
         } catch (error: any) {
             toast.error(error.message || 'Sign up failed')
         } finally {
@@ -94,6 +98,15 @@ export default function LoginPage() {
                     <CardDescription>Sign in to access your training platform</CardDescription>
                 </CardHeader>
                 <CardContent>
+                    {signupComplete && (
+                        <Alert className="mb-4">
+                            <Clock className="h-4 w-4" />
+                            <AlertDescription>
+                                Your account has been created and is awaiting admin approval.
+                                You&apos;ll receive access once an administrator approves your account.
+                            </AlertDescription>
+                        </Alert>
+                    )}
                     <form onSubmit={handleLogin} className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="email">Email</Label>

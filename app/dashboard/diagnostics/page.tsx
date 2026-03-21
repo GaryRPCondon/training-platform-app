@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Activity, CheckCircle2, XCircle, RefreshCw, AlertCircle } from 'lucide-react'
+import { Activity, CheckCircle2, XCircle, RefreshCw, AlertCircle, ShieldAlert } from 'lucide-react'
 
 interface TestResult {
     status: 'idle' | 'loading' | 'success' | 'error'
@@ -18,8 +18,31 @@ interface TestResult {
 }
 
 export default function DiagnosticsPage() {
+    const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
     const [garmin, setGarmin] = useState<TestResult>({ status: 'idle' })
     const [strava, setStrava] = useState<TestResult>({ status: 'idle' })
+
+    useEffect(() => {
+        fetch('/api/settings/get')
+            .then(res => res.json())
+            .then(data => setIsAdmin(data.isAdmin ?? false))
+            .catch(() => setIsAdmin(false))
+    }, [])
+
+    if (isAdmin === null) return null
+    if (!isAdmin) {
+        return (
+            <div className="container mx-auto p-6 flex items-center justify-center min-h-[50vh]">
+                <Card className="w-full max-w-md text-center">
+                    <CardContent className="pt-6 space-y-4">
+                        <ShieldAlert className="h-12 w-12 mx-auto text-muted-foreground" />
+                        <h2 className="text-xl font-semibold">Access Denied</h2>
+                        <p className="text-muted-foreground">This page is only available to administrators.</p>
+                    </CardContent>
+                </Card>
+            </div>
+        )
+    }
 
     const runTest = async (url: string, setResult: (r: TestResult) => void) => {
         setResult({ status: 'loading' })

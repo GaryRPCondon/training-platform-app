@@ -54,6 +54,7 @@ interface TrainingCalendarProps {
   trainingPaces?: TrainingPaces | null
   vdot?: number | null
   onWorkoutSelect?: (workout: WorkoutWithDetails) => void
+  modifyButton?: React.ReactNode
 }
 
 function formatWorkoutTitle(workout: WorkoutWithDetails, units: UnitSystem = 'metric'): string {
@@ -80,7 +81,7 @@ function formatWorkoutTitle(workout: WorkoutWithDetails, units: UnitSystem = 'me
   return title
 }
 
-export function TrainingCalendar({ workouts, trainingPaces, vdot, onWorkoutSelect }: TrainingCalendarProps) {
+export function TrainingCalendar({ workouts, trainingPaces, vdot, onWorkoutSelect, modifyButton }: TrainingCalendarProps) {
   const [selectedWorkout, setSelectedWorkout] = useState<WorkoutWithDetails | null>(null)
   const [view, setView] = useState<View>('month')
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -156,10 +157,17 @@ export function TrainingCalendar({ workouts, trainingPaces, vdot, onWorkoutSelec
   return (
     <>
       <div className="h-full w-full flex flex-col overflow-hidden">
-        <CustomToolbar
-          date={currentDate}
-          onNavigate={handleNavigate}
-        />
+        <div className="w-full grid grid-cols-[1fr_220px] items-center">
+          <CustomToolbar
+            date={currentDate}
+            onNavigate={handleNavigate}
+          />
+          {modifyButton ? (
+            <div className="px-1 py-1">
+              {modifyButton}
+            </div>
+          ) : <div />}
+        </div>
 
         <div className="flex-1 w-full grid grid-cols-[1fr_220px] overflow-hidden border rounded-md">
           <div className="h-full min-w-0 border-r">

@@ -119,4 +119,76 @@ export class GeminiProvider implements LLMProvider {
             toolCalls: toolCalls.length > 0 ? toolCalls : undefined
         }
     }
+
+    async generateStream(request: LLMRequest, onChunk: (text: string) => void): Promise<LLMResponse> {
+        const tools = request.tools ? [{
+            functionDeclarations: request.tools.map(tool => ({
+                name: tool.name,
+                description: tool.description,
+                parameters: cleanSchemaForGemini(tool.parameters)
+            }))
+        }] : undefined
+
+        const model = this.client.getGenerativeModel({
+            model: this.modelName,
+            generationConfig: {
+                maxOutputTokens: request.maxTokens || 8192,
+                temperature: request.temperature ?? 1.0,
+            },
+            tools: tools as any
+        })
+
+        const chat = model.startChat({
+            history: request.messages
+                .filter(m => m.role !== 'system')
+                .map(m => ({
+                    role: m.role === 'assistant' ? 'model' : 'user',
+                    parts: [{ text: m.content }],
+                })),
+        })
+
+        let lastMessage = request.messages[request.messages.length - 1].content
+        if (request.systemPrompt) {
+            lastMessage = `${request.systemPrompt}\n\nUser: ${lastMessage}`
+        }
+
+        const result = await chat.sendMessageStream(lastMessage)
+
+        let fullText = ''
+        const toolCalls: ToolCall[] = []
+
+        for await (const chunk of result.stream) {
+            // Extract text chunks
+            const chunkText = chunk.text()
+            if (chunkText) {
+                fullText += chunkText
+                onChunk(chunkText)
+            }
+
+            // Extract function calls from streamed chunks
+            const parts = chunk.candidates?.[0]?.content?.parts || []
+            for (const part of parts) {
+                if ('functionCall' in part && part.functionCall) {
+                    toolCalls.push({
+                        id: `call_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                        name: part.functionCall.name,
+                        arguments: (part.functionCall.args || {}) as Record<string, unknown>
+                    })
+                }
+            }
+        }
+
+        // Get final usage from the aggregated response
+        const aggregated = await result.response
+        const usageMetadata = aggregated.usageMetadata
+        const inputTokens = usageMetadata?.promptTokenCount || 0
+        const outputTokens = usageMetadata?.candidatesTokenCount || 0
+
+        return {
+            content: fullText,
+            model: this.modelName,
+            usage: { inputTokens, outputTokens },
+            toolCalls: toolCalls.length > 0 ? toolCalls : undefined
+        }
+    }
 }

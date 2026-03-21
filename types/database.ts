@@ -25,6 +25,9 @@ export interface Athlete {
     pace_source: string | null
     pace_source_data: any | null
     sync_locked_at: string | null
+    is_admin: boolean
+    account_status: 'pending_approval' | 'approved' | 'suspended'
+    profile_completed: boolean
     created_at: string
     updated_at: string
 }

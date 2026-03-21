@@ -8,6 +8,7 @@
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { calculateTotalWorkoutDistance } from '@/lib/training/vdot'
 
 export async function POST(request: Request) {
   try {
@@ -26,6 +27,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'scheduled_date and workout_type are required' }, { status: 400 })
     }
 
+    // If distance_target_meters is missing but structured_workout has distance data,
+    // derive it so the field is always populated for display and weekly totals.
+    let resolvedDistance = distance_target_meters || null
+    if (!resolvedDistance && structured_workout && workout_type) {
+      const computed = calculateTotalWorkoutDistance(null, workout_type, structured_workout, null)
+      if (computed > 0) resolvedDistance = computed
+    }
+
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
@@ -40,7 +49,7 @@ export async function POST(request: Request) {
         scheduled_date,
         workout_type,
         description: description || null,
-        distance_target_meters: distance_target_meters || null,
+        distance_target_meters: resolvedDistance,
         duration_target_seconds: duration_target_seconds || null,
         intensity_target: intensity_target || null,
         structured_workout: structured_workout || null,

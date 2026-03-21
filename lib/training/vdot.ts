@@ -291,41 +291,60 @@ export function calculateTotalWorkoutDistance(
   structuredWorkout: Record<string, unknown> | null | undefined,
   trainingPaces?: TrainingPaces | null
 ): number {
-  if (!distanceTargetMeters) return 0
-  if (!workoutType || !structuredWorkout) return distanceTargetMeters
+  const type = (workoutType ?? '').toLowerCase()
 
-  const easyPace = trainingPaces?.easy ?? DEFAULT_EASY_PACE_SEC_PER_KM
-  const metersPerMin = (1000 / easyPace) * 60
+  // If we have a structured workout, try to compute distance from it
+  if (structuredWorkout && (type === 'intervals' || type === 'tempo')) {
+    const easyPace = trainingPaces?.easy ?? DEFAULT_EASY_PACE_SEC_PER_KM
+    const metersPerMin = (1000 / easyPace) * 60
 
-  const type = workoutType.toLowerCase()
-  const warmup = structuredWorkout.warmup as { duration_minutes?: number } | undefined
-  const cooldown = structuredWorkout.cooldown as { duration_minutes?: number } | undefined
-  const warmupMeters = (warmup?.duration_minutes ?? 0) * metersPerMin
-  const cooldownMeters = (cooldown?.duration_minutes ?? 0) * metersPerMin
+    const warmup = structuredWorkout.warmup as { duration_minutes?: number; distance_meters?: number } | undefined
+    const cooldown = structuredWorkout.cooldown as { duration_minutes?: number; distance_meters?: number } | undefined
+    const warmupMeters = warmup?.distance_meters ?? (warmup?.duration_minutes ?? 0) * metersPerMin
+    const cooldownMeters = cooldown?.distance_meters ?? (cooldown?.duration_minutes ?? 0) * metersPerMin
 
-  if (type === 'intervals') {
-    const mainSet = structuredWorkout.main_set as Array<{
-      repeat?: number
-      intervals?: Array<{ distance_meters?: number }>
-    }> | undefined
+    if (type === 'intervals') {
+      const mainSet = structuredWorkout.main_set as Array<{
+        repeat?: number
+        intervals?: Array<{ distance_meters?: number }>
+      }> | undefined
 
-    let mainSetMeters = 0
-    if (Array.isArray(mainSet)) {
-      for (const group of mainSet) {
-        const repeats = group.repeat ?? 1
-        for (const interval of group.intervals ?? []) {
-          mainSetMeters += repeats * (interval.distance_meters ?? 0)
+      let mainSetMeters = 0
+      if (Array.isArray(mainSet)) {
+        for (const group of mainSet) {
+          const repeats = group.repeat ?? 1
+          for (const interval of group.intervals ?? []) {
+            mainSetMeters += repeats * (interval.distance_meters ?? 0)
+          }
         }
       }
+      const total = Math.round(warmupMeters + mainSetMeters + cooldownMeters)
+      return total > 0 ? total : (distanceTargetMeters ?? 0)
     }
-    return Math.round(warmupMeters + mainSetMeters + cooldownMeters)
+
+    if (type === 'tempo') {
+      // Extract main set distance from structured workout if distance_target_meters is missing
+      let mainDistance = distanceTargetMeters ?? 0
+      if (!mainDistance) {
+        const mainSet = structuredWorkout.main_set as Array<{
+          repeat?: number
+          intervals?: Array<{ distance_meters?: number }>
+        }> | undefined
+        if (Array.isArray(mainSet)) {
+          for (const group of mainSet) {
+            const repeats = group.repeat ?? 1
+            for (const interval of group.intervals ?? []) {
+              mainDistance += repeats * (interval.distance_meters ?? 0)
+            }
+          }
+        }
+      }
+      const total = Math.round(warmupMeters + mainDistance + cooldownMeters)
+      return total > 0 ? total : (distanceTargetMeters ?? 0)
+    }
   }
 
-  if (type === 'tempo') {
-    return Math.round(warmupMeters + distanceTargetMeters + cooldownMeters)
-  }
-
-  return distanceTargetMeters
+  return distanceTargetMeters ?? 0
 }
 
 /**

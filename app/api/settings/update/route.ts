@@ -2,10 +2,18 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { ensureAthleteExists } from '@/lib/supabase/ensure-athlete'
 
+const PROVIDER_ENV_MAP: Record<string, string> = {
+    deepseek: 'DEEPSEEK_API_KEY',
+    anthropic: 'ANTHROPIC_API_KEY',
+    openai: 'OPENAI_API_KEY',
+    gemini: 'GEMINI_API_KEY',
+    grok: 'XAI_API_KEY',
+}
+
 export async function POST(request: Request) {
     try {
         const body = await request.json()
-        const { provider, model, preferred_units, week_starts_on, useFastModelForOperations, preferred_activity_data_source, first_name, last_name } = body
+        const { provider, model, preferred_units, week_starts_on, useFastModelForOperations, preferred_activity_data_source, first_name, last_name, profile_completed } = body
 
         const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()
@@ -20,6 +28,17 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: athleteError }, { status: 500 })
         }
 
+        // Validate provider availability before saving
+        if (provider !== undefined) {
+            const envVar = PROVIDER_ENV_MAP[provider]
+            if (envVar && !process.env[envVar]) {
+                return NextResponse.json(
+                    { error: `The ${provider} provider is not available on this instance.` },
+                    { status: 400 }
+                )
+            }
+        }
+
         // Build update object with only provided fields
         const updates: any = {}
         if (provider !== undefined) updates.preferred_llm_provider = provider
@@ -30,6 +49,7 @@ export async function POST(request: Request) {
         if (preferred_activity_data_source !== undefined) updates.preferred_activity_data_source = preferred_activity_data_source
         if (first_name !== undefined) updates.first_name = first_name
         if (last_name !== undefined) updates.last_name = last_name
+        if (profile_completed !== undefined) updates.profile_completed = profile_completed
 
         const { error } = await supabase
             .from('athletes')

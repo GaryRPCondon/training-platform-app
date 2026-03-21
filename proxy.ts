@@ -78,6 +78,61 @@ export async function proxy(request: NextRequest) {
         return redirectResponse
     }
 
+    // Multi-user checks for dashboard routes
+    if (pathname.startsWith('/dashboard')) {
+        const { data: athlete } = await supabase
+            .from('athletes')
+            .select('account_status, profile_completed')
+            .eq('id', user.id)
+            .single()
+
+        if (athlete) {
+            // Pending approval — redirect to pending page
+            if (athlete.account_status === 'pending_approval' && !pathname.startsWith('/dashboard/profile')) {
+                const pendingUrl = request.nextUrl.clone()
+                pendingUrl.pathname = '/pending-approval'
+                pendingUrl.search = ''
+                const redirectResponse = NextResponse.redirect(pendingUrl)
+                supabaseResponse.cookies.getAll().forEach((cookie) => {
+                    redirectResponse.cookies.set(cookie.name, cookie.value)
+                })
+                return redirectResponse
+            }
+
+            // Approved but profile not completed — redirect to profile onboarding
+            if (athlete.account_status === 'approved' && !athlete.profile_completed && !pathname.startsWith('/dashboard/profile')) {
+                const onboardUrl = request.nextUrl.clone()
+                onboardUrl.pathname = '/dashboard/profile'
+                onboardUrl.search = '?onboarding=true'
+                const redirectResponse = NextResponse.redirect(onboardUrl)
+                supabaseResponse.cookies.getAll().forEach((cookie) => {
+                    redirectResponse.cookies.set(cookie.name, cookie.value)
+                })
+                return redirectResponse
+            }
+        }
+    }
+
+    // Redirect /pending-approval to dashboard if already approved
+    if (pathname === '/pending-approval') {
+        const { data: athlete } = await supabase
+            .from('athletes')
+            .select('account_status')
+            .eq('id', user.id)
+            .single()
+
+        if (athlete?.account_status === 'approved') {
+            const dashUrl = request.nextUrl.clone()
+            dashUrl.pathname = '/dashboard'
+            dashUrl.search = ''
+            const redirectResponse = NextResponse.redirect(dashUrl)
+            supabaseResponse.cookies.getAll().forEach((cookie) => {
+                redirectResponse.cookies.set(cookie.name, cookie.value)
+            })
+            return redirectResponse
+        }
+    }
+
     return supabaseResponse
 }
 

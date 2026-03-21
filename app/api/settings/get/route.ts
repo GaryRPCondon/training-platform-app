@@ -19,7 +19,7 @@ export async function GET() {
 
         const { data: athlete } = await supabase
             .from('athletes')
-            .select('preferred_llm_provider, preferred_llm_model, use_fast_model_for_operations, vdot, training_paces')
+            .select('preferred_llm_provider, preferred_llm_model, use_fast_model_for_operations, vdot, training_paces, is_admin, account_status, profile_completed')
             .eq('id', athleteId)
             .single()
 
@@ -30,6 +30,9 @@ export async function GET() {
             useFastModelForOperations: athlete?.use_fast_model_for_operations ?? true,
             vdot: athlete?.vdot ?? null,
             training_paces: athlete?.training_paces ?? null,
+            isAdmin: athlete?.is_admin ?? false,
+            accountStatus: athlete?.account_status ?? 'approved',
+            profileCompleted: athlete?.profile_completed ?? true,
         })
     } catch (error) {
         console.error('Get settings error:', error)

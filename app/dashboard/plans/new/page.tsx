@@ -359,7 +359,7 @@ function NewPlanPageContent() {
                         <div className="space-y-2">
                             <Label>Training Paces (Optional)</Label>
                             <p className="text-sm text-muted-foreground">
-                                Provide race time or VDOT to calculate target paces
+                                Provide race time or VDOT to calculate target paces - will be captured in your user profile
                             </p>
                             <VDOTInput value={vdotInput || undefined} onChange={setVDOTInput} />
                         </div>
