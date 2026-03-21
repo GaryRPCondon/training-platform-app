@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Activity, CheckCircle2, Loader2, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { format, startOfYear, endOfYear, subDays } from 'date-fns'
+import { useQueryClient } from '@tanstack/react-query'
 
 type DateRangeOption = 'latest' | 'week' | 'month' | 'year' | 'custom'
 
@@ -22,6 +23,7 @@ interface SyncResult {
 }
 
 export default function ActivitySyncPage() {
+    const queryClient = useQueryClient()
     const [dateRange, setDateRange] = useState<DateRangeOption>('latest')
     const [customStartDate, setCustomStartDate] = useState<Date>()
     const [customEndDate, setCustomEndDate] = useState<Date>()
@@ -72,6 +74,22 @@ export default function ActivitySyncPage() {
         }
     }
 
+    const autoMatchActivities = async (startDate: string, endDate: string) => {
+        try {
+            const res = await fetch('/api/activities/match', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ startDate, endDate })
+            })
+            const data = await res.json()
+            if (data.matchCount > 0) {
+                toast.success(`${data.matchCount} activit${data.matchCount === 1 ? 'y' : 'ies'} matched to workouts`)
+            }
+        } catch {
+            // Non-critical - don't block sync results
+        }
+    }
+
     const syncGarmin = async () => {
         setGarminLoading(true)
         setGarminResult(null)
@@ -90,6 +108,10 @@ export default function ActivitySyncPage() {
             }
             setGarminResult(data)
             if (data.success) {
+                const { startDate, endDate } = getDateRange()
+                await autoMatchActivities(startDate, endDate)
+                queryClient.invalidateQueries({ queryKey: ['activities'] })
+                queryClient.invalidateQueries({ queryKey: ['workouts'] })
                 toast.success(`Garmin sync complete: ${data.synced} activities`)
             } else {
                 toast.error(data.error || 'Sync failed')
@@ -120,6 +142,10 @@ export default function ActivitySyncPage() {
             }
             setStravaResult(data)
             if (data.success) {
+                const { startDate, endDate } = getDateRange()
+                await autoMatchActivities(startDate, endDate)
+                queryClient.invalidateQueries({ queryKey: ['activities'] })
+                queryClient.invalidateQueries({ queryKey: ['workouts'] })
                 toast.success(`Strava sync complete: ${data.synced} activities`)
             } else {
                 toast.error(data.error || 'Sync failed')

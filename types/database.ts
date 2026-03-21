@@ -27,6 +27,7 @@ export interface Athlete {
     sync_locked_at: string | null
     is_admin: boolean
     account_status: 'pending_approval' | 'approved' | 'suspended'
+    sync_on_login: boolean
     profile_completed: boolean
     created_at: string
     updated_at: string

@@ -35,6 +35,7 @@ export function Header() {
                 throw new Error('Logout failed')
             }
 
+            sessionStorage.removeItem('auto_sync_done')
             toast.success('Logged out successfully')
             router.push('/login')
             router.refresh()

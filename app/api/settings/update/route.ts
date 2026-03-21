@@ -13,7 +13,7 @@ const PROVIDER_ENV_MAP: Record<string, string> = {
 export async function POST(request: Request) {
     try {
         const body = await request.json()
-        const { provider, model, preferred_units, week_starts_on, useFastModelForOperations, preferred_activity_data_source, first_name, last_name, profile_completed } = body
+        const { provider, model, preferred_units, week_starts_on, useFastModelForOperations, preferred_activity_data_source, first_name, last_name, profile_completed, sync_on_login } = body
 
         const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()
@@ -50,6 +50,7 @@ export async function POST(request: Request) {
         if (first_name !== undefined) updates.first_name = first_name
         if (last_name !== undefined) updates.last_name = last_name
         if (profile_completed !== undefined) updates.profile_completed = profile_completed
+        if (sync_on_login !== undefined) updates.sync_on_login = sync_on_login
 
         const { error } = await supabase
             .from('athletes')

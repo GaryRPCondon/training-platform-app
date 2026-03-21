@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Switch } from '@/components/ui/switch'
-import { CheckCircle2, Loader2, Trash2 } from 'lucide-react'
+import { CheckCircle2, Loader2, Trash2, Wifi, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
@@ -42,6 +42,26 @@ export function GarminConnect({
   const [removing, setRemoving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [testStatus, setTestStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const [testMessage, setTestMessage] = useState<string | undefined>()
+
+  const handleTestConnection = async () => {
+    setTestStatus('loading')
+    try {
+      const res = await fetch('/api/diagnostics/garmin')
+      const data = await res.json()
+      if (data.connected) {
+        setTestStatus('success')
+        setTestMessage(data.displayName ? `Connected as ${data.displayName}` : 'Connected')
+      } else {
+        setTestStatus('error')
+        setTestMessage(data.error || 'Connection failed')
+      }
+    } catch {
+      setTestStatus('error')
+      setTestMessage('Connection test failed')
+    }
+  }
 
   const handleRemoveAllWorkouts = async () => {
     if (!confirm('Remove all plan workouts from Garmin Connect? This cannot be undone.')) return
@@ -140,17 +160,43 @@ export function GarminConnect({
           </div>
         </div>
 
-        {/* Show button for connect/disconnect */}
+        {/* Show buttons for test/disconnect or connect */}
         {isConnected ? (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleDisconnect}
-            disabled={loading}
-          >
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Disconnect
-          </Button>
+          <div className="flex items-center gap-2">
+            {testStatus === 'success' ? (
+              <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                <CheckCircle2 className="h-3 w-3" /> Connected
+              </span>
+            ) : testStatus === 'error' ? (
+              <span className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+                <XCircle className="h-3 w-3" /> {testMessage}
+              </span>
+            ) : (
+              <Button
+                variant="secondary"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={handleTestConnection}
+                disabled={testStatus === 'loading'}
+              >
+                {testStatus === 'loading' ? (
+                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                ) : (
+                  <Wifi className="mr-1 h-3 w-3" />
+                )}
+                Test
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDisconnect}
+              disabled={loading}
+            >
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Disconnect
+            </Button>
+          </div>
         ) : (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>

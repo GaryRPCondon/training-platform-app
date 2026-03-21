@@ -38,6 +38,12 @@ export async function DELETE(request: Request) {
             }
         }
 
+        // Clear references from planned_workouts before deleting
+        await supabase
+            .from('planned_workouts')
+            .update({ completed_activity_id: null, status: 'scheduled' })
+            .in('completed_activity_id', ids)
+
         // Delete activities by IDs, scoped to this athlete for security
         const { error, count } = await supabase
             .from('activities')

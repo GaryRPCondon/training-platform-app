@@ -1,5 +1,6 @@
 import { Header } from '@/components/shared/header'
 import { Navigation } from '@/components/shared/navigation'
+import { AutoSync } from '@/components/dashboard/auto-sync'
 
 export default function DashboardLayout({
     children,
@@ -14,6 +15,7 @@ export default function DashboardLayout({
                     <Navigation />
                 </aside>
                 <main className="flex-1 p-4 md:p-6 md:pl-[216px] max-w-7xl md:border-r md:border-border/50">
+                    <AutoSync />
                     {children}
                 </main>
             </div>
