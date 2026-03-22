@@ -111,3 +111,13 @@ export function normalizeActivityType(
 
   return typeMap[normalized] || 'default'
 }
+
+const RUNNING_TYPES = new Set(['easy_run', 'long_run', 'tempo', 'intervals', 'race_pace', 'recovery', 'race'])
+
+export function isRunningActivityType(
+  activityType: string | null,
+  stravaData?: { workout_type?: number | null } | null
+): boolean {
+  const normalized = normalizeActivityType(activityType, stravaData)
+  return RUNNING_TYPES.has(normalized)
+}

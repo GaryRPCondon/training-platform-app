@@ -5,6 +5,7 @@ import { startOfWeek, endOfWeek, format, eachWeekOfInterval, startOfMonth, endOf
 import { useUnits } from '@/lib/hooks/use-units'
 import { Button } from '@/components/ui/button'
 import { calculateTotalWorkoutDistance } from '@/lib/training/vdot'
+import { isRunningActivityType } from '@/lib/constants/workout-colors'
 
 interface WorkoutRow {
     scheduled_date?: string | null
@@ -18,6 +19,8 @@ interface WorkoutRow {
 interface ActivityRow {
     start_time?: string | null
     distance_meters?: number | null
+    activity_type?: string | null
+    strava_data?: { workout_type?: number | null } | null
 }
 
 interface WeeklyTotalsProps {
@@ -29,9 +32,10 @@ interface WeeklyTotalsProps {
     garminConnected?: boolean
     onSendToGarmin?: (weekStart: Date, weekEnd: Date) => Promise<void>
     onRemoveFromGarmin?: (weekStart: Date, weekEnd: Date) => Promise<void>
+    runningOnly?: boolean
 }
 
-export function WeeklyTotals({ workouts, activities = [], currentDate, weekStartsOn, showActual = false, garminConnected, onSendToGarmin, onRemoveFromGarmin }: WeeklyTotalsProps) {
+export function WeeklyTotals({ workouts, activities = [], currentDate, weekStartsOn, showActual = false, garminConnected, onSendToGarmin, onRemoveFromGarmin, runningOnly }: WeeklyTotalsProps) {
     const [sendingWeek, setSendingWeek] = useState<string | null>(null)
     const [removingWeek, setRemovingWeek] = useState<string | null>(null)
     const { toDisplayDistance, distanceLabel } = useUnits()
@@ -74,11 +78,13 @@ export function WeeklyTotals({ workouts, activities = [], currentDate, weekStart
                 )
             }, 0)
 
-            // Calculate actual distance (from ALL activities in this week)
+            // Calculate actual distance (from activities in this week, optionally filtered to running only)
             const weekActivities = activities.filter(a => {
                 if (!a.start_time) return false
                 const activityDate = new Date(a.start_time)
-                return activityDate >= weekStart && activityDate <= weekEnd
+                if (activityDate < weekStart || activityDate > weekEnd) return false
+                if (runningOnly && !isRunningActivityType(a.activity_type ?? null, a.strava_data)) return false
+                return true
             })
 
             const actualMeters = weekActivities.reduce((sum, a) => {
@@ -99,7 +105,7 @@ export function WeeklyTotals({ workouts, activities = [], currentDate, weekStart
                 hasSyncedWorkouts,
             }
         })
-    }, [workouts, activities, currentDate, weekStartsOn])
+    }, [workouts, activities, currentDate, weekStartsOn, runningOnly])
 
     return (
         <div className="hidden landscape:flex md:flex flex-col h-full bg-muted/20 border-l-0 landscape:border-l md:border-l">

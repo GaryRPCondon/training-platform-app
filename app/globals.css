@@ -186,6 +186,27 @@
   background-color: transparent !important;
 }
 
+/* "+N more" popup overlay */
+.rbc-overlay {
+  z-index: 50;
+  border-radius: 8px;
+}
+
+.rbc-overlay .rbc-event {
+  opacity: 1 !important;
+}
+
+.dark .rbc-overlay {
+  background-color: var(--popover) !important;
+  border-color: var(--border) !important;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.5) !important;
+}
+
+.dark .rbc-overlay-header {
+  border-bottom-color: var(--border) !important;
+  color: var(--foreground) !important;
+}
+
 /* Toolbar buttons (unused since toolbar=false, kept for safety) */
 .dark .rbc-toolbar button {
   color: var(--foreground);

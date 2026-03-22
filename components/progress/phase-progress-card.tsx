@@ -53,7 +53,7 @@ export function PhaseProgressCard() {
                 <div>
                     <div className="flex items-center gap-2 mb-2">
                         <Target className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm font-medium">This Week's Volume</span>
+                        <span className="text-sm font-medium">This Week's Plan Volume</span>
                     </div>
                     <div className="flex items-baseline gap-2 mb-2">
                         <span className="text-3xl font-bold">{Math.round(toDisplayDistance(progress.weeklyVolumeActual * 1000))}{distanceLabel()}</span>

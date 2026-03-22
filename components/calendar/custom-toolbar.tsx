@@ -2,6 +2,8 @@
 
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import { ChevronLeft, ChevronRight, Link2 } from 'lucide-react'
 import { format } from 'date-fns'
 
@@ -10,9 +12,11 @@ interface CustomToolbarProps {
     onNavigate: (action: 'PREV' | 'NEXT' | 'TODAY') => void
     onAutoMatch?: () => void
     isAutoMatching?: boolean
+    runningOnly?: boolean
+    onRunningOnlyChange?: (value: boolean) => void
 }
 
-export function CustomToolbar({ date, onNavigate, onAutoMatch, isAutoMatching }: CustomToolbarProps) {
+export function CustomToolbar({ date, onNavigate, onAutoMatch, isAutoMatching, runningOnly, onRunningOnlyChange }: CustomToolbarProps) {
     return (
         <div className="flex items-center justify-between mb-4 px-2">
             <div className="flex items-center gap-2">
@@ -71,6 +75,21 @@ export function CustomToolbar({ date, onNavigate, onAutoMatch, isAutoMatching }:
                     </Button>
                 )}
             </div>
+            {onRunningOnlyChange && (
+                <div className="flex items-center gap-2">
+                    <Label
+                        htmlFor="running-only"
+                        className="text-xs text-muted-foreground cursor-pointer select-none"
+                    >
+                        Running only
+                    </Label>
+                    <Switch
+                        id="running-only"
+                        checked={runningOnly}
+                        onCheckedChange={onRunningOnlyChange}
+                    />
+                </div>
+            )}
         </div>
     )
 }

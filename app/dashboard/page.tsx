@@ -31,11 +31,12 @@ export default async function DashboardPage() {
     const athleteId = athlete.id
     const units: UnitSystem = (athlete.preferred_units as UnitSystem) || 'metric'
 
-    // Fetch total distance (all time)
+    // Fetch total running distance (all time)
     const { data: activities } = await supabase
         .from('activities')
         .select('distance_meters')
-        .eq('athlete_id', athleteId)  // Use athleteId instead of user.id
+        .eq('athlete_id', athleteId)
+        .in('activity_type', ['running', 'Run'])
 
     const totalDistanceMeters = activities?.reduce((acc: number, curr: { distance_meters: number | null }) => acc + (curr.distance_meters || 0), 0) || 0
     const totalDistanceDisplay = toDisplayDistance(totalDistanceMeters, units).toFixed(1)

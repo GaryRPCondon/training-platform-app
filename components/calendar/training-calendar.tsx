@@ -15,7 +15,7 @@ import { WorkoutCard } from '@/components/review/workout-card'
 import { ActivityDetail } from '@/components/activities/activity-detail'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { getWorkoutColor, normalizeActivityType } from '@/lib/constants/workout-colors'
+import { getWorkoutColor, normalizeActivityType, isRunningActivityType } from '@/lib/constants/workout-colors'
 import { toDisplayDistance, distanceLabel, type UnitSystem } from '@/lib/utils/units'
 import { WeeklyTotals } from './weekly-totals'
 import { CustomToolbar } from './custom-toolbar'
@@ -27,19 +27,30 @@ import { useRouter } from 'next/navigation'
 // Custom styles to enable text wrapping in calendar events (max 2 lines)
 const calendarStyles = `
   .rbc-event {
-    display: -webkit-box !important;
-    -webkit-line-clamp: 2 !important;
-    -webkit-box-orient: vertical !important;
     overflow: hidden !important;
-    line-height: 1.3 !important;
-    white-space: normal !important;
+    white-space: nowrap !important;
+    text-overflow: ellipsis !important;
+    line-height: 1.4 !important;
   }
   .rbc-event-content {
-    display: -webkit-box !important;
-    -webkit-line-clamp: 2 !important;
-    -webkit-box-orient: vertical !important;
     overflow: hidden !important;
+    white-space: nowrap !important;
+    text-overflow: ellipsis !important;
+  }
+  /* Inside the popup overlay, show full event text */
+  .rbc-overlay .rbc-event {
     white-space: normal !important;
+    text-overflow: unset !important;
+  }
+  .rbc-overlay .rbc-event-content {
+    white-space: normal !important;
+    text-overflow: unset !important;
+  }
+  /* Allow the "+N more" popup to escape overflow clipping */
+  .rbc-month-view,
+  .rbc-month-row,
+  .rbc-row-content {
+    overflow: visible !important;
   }
   /* Force RBC Header height to match WeeklyTotals header */
   .rbc-header {
@@ -134,6 +145,17 @@ export function TrainingCalendar() {
     const [isAutoMatching, setIsAutoMatching] = useState(false)
     const [createDate, setCreateDate] = useState<Date | null>(null)
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+    const [runningOnly, setRunningOnly] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('calendar-running-only') === 'true'
+        }
+        return false
+    })
+
+    const handleRunningOnlyChange = useCallback((value: boolean) => {
+        setRunningOnly(value)
+        localStorage.setItem('calendar-running-only', String(value))
+    }, [])
     const queryClient = useQueryClient()
     const supabase = createClient()
     const router = useRouter()
@@ -279,6 +301,7 @@ export function TrainingCalendar() {
 
         const activityEvents = rawActivities
             ?.filter(a => a.start_time)
+            .filter(a => !runningOnly || isRunningActivityType(a.activity_type, a.strava_data))
             .map(a => ({
                 id: `activity-${a.id}`,
                 title: a.activity_name || a.activity_type || 'Activity',
@@ -292,7 +315,7 @@ export function TrainingCalendar() {
             })) || []
 
         return [...workoutEvents, ...activityEvents]
-    }, [workouts, rawActivities, preferredUnits])
+    }, [workouts, rawActivities, preferredUnits, runningOnly])
 
     const handleSelectEvent = useCallback(async (event: any) => {
         // Phase 6: Handle both workouts and activities
@@ -359,10 +382,7 @@ export function TrainingCalendar() {
                     color: '#ffffff', // white text to match planned workouts
                     display: 'block',
                     fontSize: '0.75rem', // Slightly smaller
-                    padding: '2px 4px',
-                    whiteSpace: 'normal',
-                    overflow: 'visible',
-                    lineHeight: '1.2'
+                    padding: '2px 4px'
                 }
             }
         }
@@ -398,10 +418,7 @@ export function TrainingCalendar() {
                 borderLeft: borderLeft || '0px',
                 display: 'block',
                 fontSize: '0.875rem',
-                padding: '2px 4px',
-                whiteSpace: 'normal',
-                overflow: 'visible',
-                lineHeight: '1.2'
+                padding: '2px 4px'
             }
         }
     }
@@ -498,10 +515,12 @@ export function TrainingCalendar() {
                 onNavigate={handleNavigate}
                 onAutoMatch={handleAutoMatch}
                 isAutoMatching={isAutoMatching}
+                runningOnly={runningOnly}
+                onRunningOnlyChange={handleRunningOnlyChange}
             />
 
             <div className="flex-1 w-full flex flex-col landscape:grid landscape:grid-cols-[1fr_220px] md:grid md:grid-cols-[1fr_220px] overflow-visible landscape:overflow-hidden md:overflow-hidden rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] ring-1 ring-black/8 dark:ring-white/20 dark:shadow-[0_8px_30px_rgb(0,0,0,0.35)]">
-                <div className="h-[550px] landscape:h-full md:h-full w-full bg-background overflow-hidden relative min-w-0 border-b landscape:border-b-0 landscape:border-r md:border-b-0 md:border-r">
+                <div className="h-[550px] landscape:h-full md:h-full w-full bg-background overflow-visible relative min-w-0 border-b landscape:border-b-0 landscape:border-r md:border-b-0 md:border-r">
                     <style>{calendarStyles}</style>
                     <DnDCalendar
                         localizer={localizer}
@@ -525,6 +544,7 @@ export function TrainingCalendar() {
                         resizable={false}
                         eventPropGetter={eventStyleGetter}
                         toolbar={false}
+                        popup={true}
                     />
                 </div>
 
@@ -537,6 +557,7 @@ export function TrainingCalendar() {
                     garminConnected={garminConnected ?? false}
                     onSendToGarmin={handleSendWeekToGarmin}
                     onRemoveFromGarmin={handleRemoveWeekFromGarmin}
+                    runningOnly={runningOnly}
                 />
             </div>
 

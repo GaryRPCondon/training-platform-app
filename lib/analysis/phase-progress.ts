@@ -1,6 +1,10 @@
 import { createClient } from '@/lib/supabase/client'
 import { differenceInWeeks, format } from 'date-fns'
 
+// Activity types stored in DB that count as "running"
+// Garmin: 'running' (from mapGarminActivityType). Strava: 'Run' (raw type).
+const RUNNING_ACTIVITY_TYPES = ['running', 'Run']
+
 export interface PhaseProgress {
     phaseName: string
     phaseDescription: string
@@ -62,6 +66,7 @@ export async function getPhaseProgress(athleteId: string): Promise<PhaseProgress
             .select('distance_meters')
             .eq('athlete_id', athleteId)
             .gte('start_time', weeklyPlan.week_start_date)
+            .in('activity_type', RUNNING_ACTIVITY_TYPES)
 
         weeklyVolumeActual = (thisWeekActivities?.reduce((sum, a) => sum + (a.distance_meters || 0), 0) || 0) / 1000
     }
@@ -140,6 +145,7 @@ export async function getWeeklyProgress(athleteId: string): Promise<DailyProgres
         .eq('athlete_id', athleteId)
         .gte('start_time', startDateStr)
         .lte('start_time', endDateStr + 'T23:59:59')
+        .in('activity_type', RUNNING_ACTIVITY_TYPES)
 
     const progress: DailyProgress[] = []
     // Day labels starting from Sunday (0) through Saturday (6)
