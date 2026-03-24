@@ -24,7 +24,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table'
-import { format, startOfWeek, endOfWeek, isWithinInterval, subDays, startOfYear } from 'date-fns'
+import { format, startOfWeek, endOfWeek, isWithinInterval, subDays } from 'date-fns'
 import { Trash2, Loader2, X, Sparkles } from 'lucide-react'
 import { getGarminActivityUrl, getStravaActivityUrl } from '@/lib/utils/activity-links'
 import { GarminIcon, StravaIcon } from '@/components/activities/platform-icons'
@@ -46,6 +46,8 @@ interface Activity {
 
 interface ActivitiesViewProps {
     initialActivities: Activity[]
+    selectedYear: number
+    availableYears: number[]
 }
 
 function formatDuration(seconds: number | null): string {
@@ -87,7 +89,7 @@ function getSourceBadgeColor(source: string): string {
     }
 }
 
-export function ActivitiesView({ initialActivities }: ActivitiesViewProps) {
+export function ActivitiesView({ initialActivities, selectedYear, availableYears }: ActivitiesViewProps) {
     const { formatDistance, toDisplayDistance, distanceLabel } = useUnits()
     const router = useRouter()
     const [dateFilter, setDateFilter] = useState<string>('all')
@@ -114,7 +116,7 @@ export function ActivitiesView({ initialActivities }: ActivitiesViewProps) {
             const activityDate = new Date(activity.start_time)
             const now = new Date()
 
-            // Date filter
+            // Date filter (within selected year)
             if (dateFilter !== 'all') {
                 let isInRange = false
                 switch (dateFilter) {
@@ -126,12 +128,6 @@ export function ActivitiesView({ initialActivities }: ActivitiesViewProps) {
                         break
                     case '90days':
                         isInRange = activityDate >= subDays(now, 90)
-                        break
-                    case 'thisYear':
-                        isInRange = activityDate >= startOfYear(now)
-                        break
-                    case '365days':
-                        isInRange = activityDate >= subDays(now, 365)
                         break
                 }
                 if (!isInRange) return false
@@ -254,29 +250,29 @@ export function ActivitiesView({ initialActivities }: ActivitiesViewProps) {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Activities</CardTitle>
+                        <CardTitle className="text-sm font-medium">Activities</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{stats.totalActivities}</div>
-                        <p className="text-xs text-muted-foreground">All time</p>
+                        <p className="text-xs text-muted-foreground">{selectedYear}</p>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Distance</CardTitle>
+                        <CardTitle className="text-sm font-medium">Distance</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{stats.totalDistance} {distanceLabel()}</div>
-                        <p className="text-xs text-muted-foreground">All time</p>
+                        <p className="text-xs text-muted-foreground">{selectedYear}</p>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Duration</CardTitle>
+                        <CardTitle className="text-sm font-medium">Duration</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{stats.totalDuration} hrs</div>
-                        <p className="text-xs text-muted-foreground">All time</p>
+                        <p className="text-xs text-muted-foreground">{selectedYear}</p>
                     </CardContent>
                 </Card>
                 <Card>
@@ -296,7 +292,19 @@ export function ActivitiesView({ initialActivities }: ActivitiesViewProps) {
                     <CardTitle>Filters</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="grid gap-4 md:grid-cols-4">
+                    <div className="grid gap-4 md:grid-cols-5">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Year</label>
+                            <select
+                                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                value={selectedYear}
+                                onChange={(e) => router.push(`/dashboard/activities?year=${e.target.value}`)}
+                            >
+                                {availableYears.map(y => (
+                                    <option key={y} value={y}>{y}</option>
+                                ))}
+                            </select>
+                        </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Search Name</label>
                             <Input
@@ -314,12 +322,10 @@ export function ActivitiesView({ initialActivities }: ActivitiesViewProps) {
                                 value={dateFilter}
                                 onChange={(e) => setDateFilter(e.target.value)}
                             >
-                                <option value="all">All Time</option>
+                                <option value="all">Full Year</option>
                                 <option value="7days">Last 7 Days</option>
                                 <option value="30days">Last 30 Days</option>
                                 <option value="90days">Last 90 Days</option>
-                                <option value="thisYear">This Year</option>
-                                <option value="365days">Last 365 Days</option>
                             </select>
                         </div>
                         <div className="space-y-2">

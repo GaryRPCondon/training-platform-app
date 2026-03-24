@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { Calendar, momentLocalizer } from 'react-big-calendar'
 import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop'
 import moment from 'moment'
@@ -136,7 +136,11 @@ function makeNewWorkout(date: Date): WorkoutWithDetails {
     } as WorkoutWithDetails
 }
 
-export function TrainingCalendar() {
+interface TrainingCalendarProps {
+    openWorkoutId?: number
+}
+
+export function TrainingCalendar({ openWorkoutId }: TrainingCalendarProps = {}) {
     const [currentDate, setCurrentDate] = useState(new Date())
     const [selectedWorkout, setSelectedWorkout] = useState<WorkoutWithDetails | null>(null)
     const [selectedActivity, setSelectedActivity] = useState<any | null>(null)
@@ -235,6 +239,18 @@ export function TrainingCalendar() {
             week_of_plan: 0 // Not used in dashboard view
         }))
     }, [rawWorkouts])
+
+    // Auto-open workout dialog when navigated with ?workoutId= param
+    const openedWorkoutRef = useRef<number | undefined>(undefined)
+    useEffect(() => {
+        if (!openWorkoutId || !workouts.length || openedWorkoutRef.current === openWorkoutId) return
+        const workout = workouts.find(w => w.id === openWorkoutId)
+        if (workout) {
+            openedWorkoutRef.current = openWorkoutId
+            setSelectedWorkout(workout)
+            setIsWorkoutDialogOpen(true)
+        }
+    }, [openWorkoutId, workouts])
 
     const rescheduleMutation = useMutation({
         mutationFn: async ({ workoutId, newDate }: { workoutId: number, newDate: string }) => {

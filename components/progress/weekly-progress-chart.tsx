@@ -34,14 +34,14 @@ export function WeeklyProgressChart() {
                 </CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="flex items-end justify-between gap-2 pt-4" style={{ height: '192px' }}>
+                <div className="flex items-end justify-between gap-2 pt-4" style={{ height: '140px' }}>
                     {weeklyData.map((day) => {
                         const plannedHeight = (day.plannedDistance / maxDistance) * 100
                         const actualHeight = (day.actualDistance / maxDistance) * 100
 
                         return (
                             <div key={day.date} className="flex flex-col items-center gap-2 flex-1 min-w-0" style={{ height: '100%' }}>
-                                <div className="relative w-full flex justify-center items-end" style={{ height: '160px' }}>
+                                <div className="relative w-full flex justify-center items-end" style={{ height: '110px' }}>
                                     {/* Planned Bar (Background) - More visible with pattern */}
                                     {day.plannedDistance > 0 && (
                                         <div

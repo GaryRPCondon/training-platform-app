@@ -3,7 +3,7 @@ import type { PlanReviewContext, WeekViewData, WorkoutWithDetails } from '@/type
 import { parseISO, format, endOfWeek } from 'date-fns'
 
 // Distance ranges for validation — keep in sync with workout-validator.ts
-// Note: for intervals/tempo, distance_target_meters is the work segment only (warmup/cooldown added server-side)
+// Note: distance_target_meters is the total workout distance including warmup/cooldown
 const DISTANCE_RANGES: Record<string, { min: number; max: number }> = {
   intervals: { min: 3000, max: 25000 },
   tempo: { min: 5000, max: 35000 },
