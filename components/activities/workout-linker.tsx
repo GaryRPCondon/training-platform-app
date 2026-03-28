@@ -12,6 +12,8 @@ import { format, parseISO, subDays, addDays } from 'date-fns'
 import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { useUnits } from '@/lib/hooks/use-units'
+import { calculateTotalWorkoutDistance } from '@/lib/training/vdot'
+import { interpretAccuracyScore } from '@/lib/activities/scoring'
 
 interface WorkoutLinkerProps {
   activity: Activity
@@ -188,38 +190,86 @@ export function WorkoutLinker({ activity, currentWorkout, onClose }: WorkoutLink
                   </Button>
                 </div>
 
-                {/* Show target vs actual comparison */}
-                {currentWorkout.distance_target_meters && activity.distance_meters && (
+                {/* Show target vs actual comparison — each metric independent */}
+                {(() => {
+                  const effectiveDistance = calculateTotalWorkoutDistance(
+                    currentWorkout.distance_target_meters,
+                    currentWorkout.workout_type,
+                    currentWorkout.structured_workout as Record<string, unknown> | null,
+                    null
+                  ) || currentWorkout.distance_target_meters
+                  const variancePercent = (effectiveDistance && activity.distance_meters)
+                    ? ((activity.distance_meters - effectiveDistance) / effectiveDistance) * 100
+                    : null
+                  const hasAnyMetric = effectiveDistance || currentWorkout.duration_target_seconds || (currentWorkout.completion_metadata as any)?.accuracy_score != null
+                  if (!hasAnyMetric) return null
+                  return (
                   <div className="text-sm border-t pt-2">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Target Distance:</span>
-                      <span className="font-medium">
-                        {formatDistance(currentWorkout.distance_target_meters, 1)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Actual Distance:</span>
-                      <span className="font-medium">
-                        {formatDistance(activity.distance_meters, 1)}
-                      </span>
-                    </div>
-                    {activity.match_metadata?.distance_diff_percent !== undefined && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Variance:</span>
-                        <span className={`font-medium ${
-                          Math.abs(activity.match_metadata.distance_diff_percent) > 20
-                            ? 'text-red-600'
-                            : Math.abs(activity.match_metadata.distance_diff_percent) > 10
-                            ? 'text-yellow-600'
-                            : 'text-green-600'
-                        }`}>
-                          {activity.match_metadata.distance_diff_percent > 0 ? '+' : ''}
-                          {activity.match_metadata.distance_diff_percent.toFixed(1)}%
-                        </span>
-                      </div>
+                    {effectiveDistance && activity.distance_meters && (
+                      <>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Target Distance:</span>
+                          <span className="font-medium">
+                            {formatDistance(effectiveDistance, 1)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Actual Distance:</span>
+                          <span className="font-medium">
+                            {formatDistance(activity.distance_meters, 1)}
+                          </span>
+                        </div>
+                        {variancePercent !== null && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Variance:</span>
+                            <span className={`font-medium ${
+                              Math.abs(variancePercent) > 20
+                                ? 'text-red-600'
+                                : Math.abs(variancePercent) > 10
+                                ? 'text-yellow-600'
+                                : 'text-green-600'
+                            }`}>
+                              {variancePercent > 0 ? '+' : ''}
+                              {variancePercent.toFixed(1)}%
+                            </span>
+                          </div>
+                        )}
+                      </>
                     )}
+                    {currentWorkout.duration_target_seconds && activity.duration_seconds && (
+                      <>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Target Duration:</span>
+                          <span className="font-medium">
+                            {Math.round(currentWorkout.duration_target_seconds / 60)} min
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Actual Duration:</span>
+                          <span className="font-medium">
+                            {Math.round(activity.duration_seconds / 60)} min
+                          </span>
+                        </div>
+                      </>
+                    )}
+                    {(() => {
+                      const display = interpretAccuracyScore(
+                        (currentWorkout.completion_metadata as any)?.accuracy_score ?? null,
+                        currentWorkout.workout_type
+                      )
+                      if (!display?.show) return null
+                      return (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">{display.label}:</span>
+                          <span className={`font-medium ${display.colorClass}`}>
+                            {display.score}%
+                          </span>
+                        </div>
+                      )
+                    })()}
                   </div>
-                )}
+                  )
+                })()}
               </div>
             </AlertDescription>
           </Alert>

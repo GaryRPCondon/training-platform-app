@@ -221,9 +221,8 @@ export interface PlannedWorkout {
         distance_variance_percent?: number
         duration_variance_percent?: number
         notes?: string
-        scoring_method?: 'compliance' | 'distance_duration'
-        compliance_score?: number
-        compliance_lap_count?: number
+        accuracy_score?: number | null
+        compliance_lap_count?: number | null
         active_lap_avg_score?: number | null
     } | null
     agent_rationale: string | null

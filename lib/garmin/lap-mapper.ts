@@ -14,7 +14,7 @@ export function mapGarminLapToRow(
 
   return {
     activity_id: dbActivityId,
-    lap_index: lap.lapIndex as number,
+    lap_index: ((lap.lapIndex as number) ?? 1) - 1, // Garmin is 1-based; store as 0-based
     distance_meters: distance,
     duration_seconds: duration,
     avg_hr: (lap.averageHR as number | null) ?? null,

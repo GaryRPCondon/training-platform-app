@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useUnits } from '@/lib/hooks/use-units'
 import { getActivityLinks } from '@/lib/utils/activity-links'
+import { getComplianceColorClass } from '@/lib/activities/scoring'
 import { GarminIcon, StravaIcon } from './platform-icons'
 
 type LapRow = Pick<Lap, 'lap_index' | 'distance_meters' | 'duration_seconds' | 'avg_hr' | 'max_hr' | 'avg_pace' | 'intensity_type' | 'compliance_score'>
@@ -46,12 +47,6 @@ function intensityBadgeVariant(type: string | null): 'secondary' | 'default' | '
   }
 }
 
-function complianceClasses(score: number | null): string | null {
-  if (score === null) return null
-  if (score >= 90) return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-  if (score >= 70) return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-  return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-}
 
 export function ActivityDetail({ activity, onClose }: ActivityDetailProps) {
   const router = useRouter()
@@ -237,7 +232,7 @@ export function ActivityDetail({ activity, onClose }: ActivityDetailProps) {
                 <TableBody>
                   {laps.map((lap) => {
                     const variant = intensityBadgeVariant(lap.intensity_type)
-                    const compClass = complianceClasses(lap.compliance_score)
+                    const compClass = getComplianceColorClass(lap.compliance_score, activity.planned_workouts?.workout_type)
                     return (
                       <TableRow key={lap.lap_index}>
                         <TableCell className="font-medium">{lap.lap_index + 1}</TableCell>

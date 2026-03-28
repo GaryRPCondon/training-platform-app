@@ -20,6 +20,7 @@ import { Calendar as CalendarPicker } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Checkbox } from '@/components/ui/checkbox'
 import { estimateDuration, getWorkoutPaceType, calculateTotalWorkoutDistance } from '@/lib/training/vdot'
+import { interpretAccuracyScore } from '@/lib/activities/scoring'
 import { useUnits } from '@/lib/hooks/use-units'
 import { formatDistance as fmtDist, type UnitSystem } from '@/lib/utils/units'
 import { toast } from 'sonner'
@@ -915,6 +916,20 @@ export function WorkoutCard({
   )
   const distanceIsTotalEstimate = totalWorkoutDistance > 0 && totalWorkoutDistance !== (workout.distance_target_meters ?? 0)
 
+  // Check if structured workout has explicit per-interval target_pace values
+  const structuredHasExplicitPace = hasStructuredWorkout && (() => {
+    const sw = workout.structured_workout as Record<string, unknown> | null
+    const mainSet = sw?.main_set
+    if (!Array.isArray(mainSet)) return false
+    return mainSet.some((s: any) =>
+      Array.isArray(s.intervals) && s.intervals.some((i: any) => i.target_pace)
+    )
+  })()
+
+  // Extract accuracy display from completion metadata (workout-type-aware)
+  const accuracyScore: number | null = (workout.completion_metadata as any)?.accuracy_score ?? null
+  const accuracyDisplay = interpretAccuracyScore(accuracyScore, workout.workout_type)
+
   // Calculate target pace and estimated duration if we have training paces
   let targetPace: number | null = null
   let estimatedDurationMinutes: number | null = null
@@ -1072,6 +1087,21 @@ export function WorkoutCard({
 
       if (structuredWorkoutValue !== null) {
         updates.structured_workout = structuredWorkoutValue
+
+        // Recalculate distance_target_meters from main_set (excludes warmup/cooldown
+        // since calculateTotalWorkoutDistance adds those for display)
+        if (editStructured && editStructured.main_set.length > 0) {
+          let mainSetMeters = 0
+          for (const set of editStructured.main_set) {
+            const repeats = set.repeat || 1
+            for (const interval of set.intervals) {
+              mainSetMeters += repeats * (interval.distance_meters || 0)
+            }
+          }
+          if (mainSetMeters > 0) {
+            updates.distance_target_meters = mainSetMeters
+          }
+        }
       }
 
       if (Object.keys(updates).length === 0) {
@@ -1279,6 +1309,26 @@ export function WorkoutCard({
         </div>
       )}
 
+      {accuracyDisplay && accuracyDisplay.show && (
+        <div className="flex items-center gap-2 text-sm">
+          <Target className="h-4 w-4 text-muted-foreground" />
+          <span className="text-muted-foreground">{accuracyDisplay.label}:</span>
+          <span className={`font-medium ${accuracyDisplay.colorClass}`}>
+            {accuracyDisplay.score}%
+          </span>
+          {accuracyDisplay.caveat && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <AlertCircle className="h-3 w-3 text-muted-foreground cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-xs text-xs">
+                {accuracyDisplay.caveat}
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </div>
+      )}
+
       <Separator />
 
       {/* Validation Warning */}
@@ -1353,7 +1403,7 @@ export function WorkoutCard({
               </div>
             )}
 
-            {targetPace !== null && (
+            {targetPace !== null && !structuredHasExplicitPace && (
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Gauge className="h-4 w-4" />
@@ -1381,6 +1431,7 @@ export function WorkoutCard({
                 </div>
               </div>
             )}
+
           </div>
 
           {hasStructuredWorkout && (

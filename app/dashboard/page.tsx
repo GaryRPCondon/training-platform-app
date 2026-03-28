@@ -37,7 +37,7 @@ export default async function DashboardPage() {
     // Fetch active plan first (need start_date for stats RPC)
     const { data: activePlan } = await supabase
         .from('training_plans')
-        .select('name, start_date')
+        .select('name, start_date, end_date')
         .eq('athlete_id', athleteId)
         .eq('status', 'active')
         .single()
@@ -102,7 +102,9 @@ export default async function DashboardPage() {
                         <CardContent>
                             <div className="text-2xl sm:text-3xl font-bold tracking-tight truncate">{activePlan?.name || 'None'}</div>
                             <p className="text-sm text-muted-foreground mt-1">
-                                {activePlan ? 'Keep it up!' : 'Create a plan to get started'}
+                                {activePlan
+                                    ? `${new Date(activePlan.start_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${new Date(activePlan.end_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+                                    : 'Create a plan to get started'}
                             </p>
                         </CardContent>
                     </Card>

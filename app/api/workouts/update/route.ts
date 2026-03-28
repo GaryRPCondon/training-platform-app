@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { rescoreCompletion } from '@/lib/activities/rescore-completion'
 
 const VALID_INTENSITIES = ['easy', 'moderate', 'hard', 'tempo', 'threshold', 'interval', 'recovery', 'custom']
 
@@ -97,6 +98,16 @@ export async function PATCH(request: Request) {
     if (updateError) {
       console.error('Failed to update workout:', updateError)
       return NextResponse.json({ error: 'Failed to update workout' }, { status: 500 })
+    }
+
+    // Re-score completion if workout has a linked activity (targets may have changed)
+    if (updated.completed_activity_id) {
+      try {
+        await rescoreCompletion(supabase, updated.completed_activity_id, updated.id)
+      } catch (e) {
+        console.error('Failed to re-score completion:', e)
+        // Non-fatal — the update itself succeeded
+      }
     }
 
     return NextResponse.json({ success: true, workout: updated })
