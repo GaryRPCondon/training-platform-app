@@ -106,6 +106,7 @@ async function loadWeeklyContext(athleteId: string) {
         .eq('athlete_id', athleteId)
         .gte('start_time', weekStart)
         .lte('start_time', weekEnd)
+        .order('lap_index', { referencedTable: 'laps', ascending: true })
 
     const completedWorkouts = completedActivities?.length || 0
     const totalWorkouts = plannedWorkouts?.length || 0

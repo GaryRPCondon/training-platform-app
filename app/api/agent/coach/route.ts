@@ -283,6 +283,7 @@ export async function POST(request: Request) {
                         `)
                         .eq('id', activityId)
                         .eq('athlete_id', athleteId)
+                        .order('lap_index', { referencedTable: 'laps', ascending: true })
                         .single()
 
                     if (focusActivity) {

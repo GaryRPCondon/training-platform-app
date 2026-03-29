@@ -34,6 +34,7 @@ export default async function ActivityDetailPage({
     `)
     .eq('id', resolvedParams.id)
     .eq('athlete_id', user.id)
+    .order('lap_index', { referencedTable: 'laps', ascending: true })
     .single()
 
   if (error) {

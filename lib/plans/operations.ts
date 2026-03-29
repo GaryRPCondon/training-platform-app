@@ -18,6 +18,11 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { FullPlanContext } from '@/lib/chat/plan-context-loader'
+import {
+  scaleStructuredWorkoutDistance,
+  rebuildStructuredWorkoutForType,
+  updateStructuredWorkoutIntensity,
+} from '@/lib/plans/structured-workout-builder'
 
 // ============================================================================
 // Operation Types
@@ -1213,10 +1218,10 @@ async function executeChangeWorkoutType(
     }
   }
 
-  // Get current workout to access distance for smart description generation
+  // Get current workout to access distance and structured_workout
   const { data: workout, error: fetchError } = await supabase
     .from('planned_workouts')
-    .select('distance_target_meters')
+    .select('distance_target_meters, intensity_target, garmin_workout_id, garmin_sync_status')
     .eq('id', workoutId)
     .single()
 
@@ -1236,6 +1241,19 @@ async function executeChangeWorkoutType(
       : null
     const defaults = getWorkoutTypeDefaults(op.newType, distanceKm)
     Object.assign(update, defaults)
+  }
+
+  // Rebuild structured_workout for the new type
+  const intensity = update.intensity_target ?? workout?.intensity_target ?? 'moderate'
+  update.structured_workout = rebuildStructuredWorkoutForType(
+    op.newType,
+    workout?.distance_target_meters ?? null,
+    intensity
+  )
+
+  // Mark garmin as stale if synced
+  if (workout?.garmin_workout_id && workout.garmin_sync_status === 'synced') {
+    update.garmin_sync_status = 'stale'
   }
 
   const { error } = await supabase
@@ -1277,9 +1295,34 @@ async function executeChangeDistance(
     }
   }
 
+  // Fetch current workout to scale structured_workout if present
+  const { data: workout, error: fetchError } = await supabase
+    .from('planned_workouts')
+    .select('distance_target_meters, structured_workout, garmin_workout_id, garmin_sync_status')
+    .eq('id', workoutId)
+    .single()
+
+  if (fetchError || !workout) {
+    return { success: false, workoutsModified: 0, errors: [fetchError?.message ?? 'Workout not found'] }
+  }
+
+  const update: Record<string, any> = { distance_target_meters: op.newDistanceMeters }
+
+  // Scale structured_workout if it has a main_set
+  const sw = workout.structured_workout as Record<string, unknown> | null
+  if (sw?.main_set !== undefined && workout.distance_target_meters && workout.distance_target_meters > 0) {
+    const factor = op.newDistanceMeters / workout.distance_target_meters
+    update.structured_workout = scaleStructuredWorkoutDistance(sw, factor)
+  }
+
+  // Mark garmin as stale if synced
+  if (workout.garmin_workout_id && workout.garmin_sync_status === 'synced') {
+    update.garmin_sync_status = 'stale'
+  }
+
   const { error } = await supabase
     .from('planned_workouts')
-    .update({ distance_target_meters: op.newDistanceMeters })
+    .update(update)
     .eq('id', workoutId)
 
   if (error) {
@@ -1316,10 +1359,10 @@ async function executeScaleDistance(
     }
   }
 
-  // Get current distance
+  // Get current workout
   const { data: workout, error: fetchError } = await supabase
     .from('planned_workouts')
-    .select('distance_target_meters')
+    .select('distance_target_meters, structured_workout, garmin_workout_id, garmin_sync_status')
     .eq('id', workoutId)
     .single()
 
@@ -1328,10 +1371,22 @@ async function executeScaleDistance(
   }
 
   const newDistance = Math.round((workout.distance_target_meters || 0) * op.factor)
+  const update: Record<string, any> = { distance_target_meters: newDistance }
+
+  // Scale structured_workout if it has a main_set
+  const sw = workout.structured_workout as Record<string, unknown> | null
+  if (sw?.main_set !== undefined) {
+    update.structured_workout = scaleStructuredWorkoutDistance(sw, op.factor)
+  }
+
+  // Mark garmin as stale if synced
+  if (workout.garmin_workout_id && workout.garmin_sync_status === 'synced') {
+    update.garmin_sync_status = 'stale'
+  }
 
   const { error } = await supabase
     .from('planned_workouts')
-    .update({ distance_target_meters: newDistance })
+    .update(update)
     .eq('id', workoutId)
 
   if (error) {
@@ -1368,9 +1423,33 @@ async function executeChangeIntensity(
     }
   }
 
+  // Fetch current workout to update structured_workout intensities
+  const { data: workout, error: fetchError } = await supabase
+    .from('planned_workouts')
+    .select('structured_workout, garmin_workout_id, garmin_sync_status')
+    .eq('id', workoutId)
+    .single()
+
+  if (fetchError || !workout) {
+    return { success: false, workoutsModified: 0, errors: [fetchError?.message ?? 'Workout not found'] }
+  }
+
+  const update: Record<string, any> = { intensity_target: op.newIntensity }
+
+  // Update intensity labels inside structured_workout if it has a main_set
+  const sw = workout.structured_workout as Record<string, unknown> | null
+  if (sw?.main_set !== undefined) {
+    update.structured_workout = updateStructuredWorkoutIntensity(sw, op.newIntensity)
+  }
+
+  // Mark garmin as stale if synced
+  if (workout.garmin_workout_id && workout.garmin_sync_status === 'synced') {
+    update.garmin_sync_status = 'stale'
+  }
+
   const { error } = await supabase
     .from('planned_workouts')
-    .update({ intensity_target: op.newIntensity })
+    .update(update)
     .eq('id', workoutId)
 
   if (error) {
@@ -1394,10 +1473,22 @@ async function executeScaleWeekVolume(
   for (const workout of workoutsForWeek) {
     if (workout.distance_target_meters && workout.workout_type !== 'rest') {
       const newDistance = Math.round(workout.distance_target_meters * op.factor)
+      const update: Record<string, any> = { distance_target_meters: newDistance }
+
+      // Scale structured_workout if it has a main_set
+      const sw = workout.structured_workout as Record<string, unknown> | null
+      if (sw?.main_set !== undefined) {
+        update.structured_workout = scaleStructuredWorkoutDistance(sw, op.factor)
+      }
+
+      // Mark garmin as stale if synced
+      if (workout.garmin_workout_id && workout.garmin_sync_status === 'synced') {
+        update.garmin_sync_status = 'stale'
+      }
 
       const { error } = await supabase
         .from('planned_workouts')
-        .update({ distance_target_meters: newDistance })
+        .update(update)
         .eq('id', workout.id)
 
       if (error) {
@@ -1447,9 +1538,23 @@ async function executeRemoveWorkoutType(
 
     for (const workout of workoutsForWeek) {
       if (workout.workout_type === op.workoutType) {
+        const update: Record<string, any> = {
+          workout_type: op.replacement,
+          structured_workout: rebuildStructuredWorkoutForType(
+            op.replacement,
+            workout.distance_target_meters,
+            'moderate'
+          ),
+        }
+
+        // Mark garmin as stale if synced
+        if (workout.garmin_workout_id && workout.garmin_sync_status === 'synced') {
+          update.garmin_sync_status = 'stale'
+        }
+
         const { error } = await supabase
           .from('planned_workouts')
-          .update({ workout_type: op.replacement })
+          .update(update)
           .eq('id', workout.id)
 
         if (error) {
@@ -1657,6 +1762,9 @@ async function getWorkoutsForWeek(
   scheduled_date: string
   workout_type: string
   distance_target_meters: number | null
+  structured_workout: Record<string, unknown> | null
+  garmin_workout_id: string | null
+  garmin_sync_status: string | null
 }>> {
   const { data, error } = await supabase
     .from('planned_workouts')
@@ -1666,6 +1774,9 @@ async function getWorkoutsForWeek(
       workout_type,
       workout_index,
       distance_target_meters,
+      structured_workout,
+      garmin_workout_id,
+      garmin_sync_status,
       weekly_plans!inner (
         week_number,
         training_phases!inner (
@@ -1691,7 +1802,10 @@ async function getWorkoutsForWeek(
       day,
       scheduled_date: workout.scheduled_date,
       workout_type: workout.workout_type,
-      distance_target_meters: workout.distance_target_meters
+      distance_target_meters: workout.distance_target_meters,
+      structured_workout: workout.structured_workout as Record<string, unknown> | null,
+      garmin_workout_id: workout.garmin_workout_id as string | null,
+      garmin_sync_status: workout.garmin_sync_status as string | null,
     }
   })
 }

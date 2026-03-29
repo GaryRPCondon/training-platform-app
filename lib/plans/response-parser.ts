@@ -74,7 +74,7 @@ export function parseLLMResponse(responseText: string): ParsedPlan {
       }
       return {
         type: workout.type,
-        distance_km: workout.distance_km || workout.distance_meters ? (workout.distance_meters / 1000) : undefined,
+        distance_km: workout.distance_km ?? (workout.distance_meters ? workout.distance_meters / 1000 : undefined),
         intensity: workout.intensity,
         description: workout.description,
         pace_guidance: workout.pace_guidance || null,

@@ -535,6 +535,7 @@ async function loadRecentActivities(
         .eq('athlete_id', athleteId)
         .gte('start_time', since)
         .order('start_time', { ascending: false })
+        .order('lap_index', { referencedTable: 'laps', ascending: true })
         .limit(20)
 
     if (!data) return []

@@ -226,7 +226,7 @@ export function ActivityDetail({ activity, onClose }: ActivityDetailProps) {
                     <TableHead className="text-right">Avg HR</TableHead>
                     <TableHead className="text-right">Max HR</TableHead>
                     <TableHead>Type</TableHead>
-                    <TableHead className="text-right">Compliance</TableHead>
+                    <TableHead className="text-right">Adherence</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

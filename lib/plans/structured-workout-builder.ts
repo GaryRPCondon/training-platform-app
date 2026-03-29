@@ -65,3 +65,161 @@ export function enrichPreWeekWorkouts(workouts: PreWeekWorkout[]): void {
     w.structured_workout = buildStructuredWorkout(w)
   }
 }
+
+// ---------------------------------------------------------------------------
+// Sync helpers — keep structured_workout ↔ scalar fields consistent
+// ---------------------------------------------------------------------------
+
+type StructuredWorkout = Record<string, unknown>
+
+interface MainSetInterval {
+  distance_meters?: number
+  duration_minutes?: number
+  duration_seconds?: number
+  intensity?: string
+  target_pace?: string
+}
+
+interface MainSetGroup {
+  repeat?: number
+  intervals?: MainSetInterval[]
+  skip_last_recovery?: boolean
+  distance_meters?: number
+  duration_minutes?: number
+  duration_seconds?: number
+  intensity?: string
+  target_pace?: string
+}
+
+/**
+ * Scale all distance_meters values inside a structured workout proportionally.
+ * Returns a new object (does not mutate the input).
+ */
+export function scaleStructuredWorkoutDistance(
+  sw: StructuredWorkout,
+  factor: number
+): StructuredWorkout {
+  const result = { ...sw }
+
+  // Scale warmup distance if present
+  if (result.warmup && typeof result.warmup === 'object') {
+    const warmup = { ...(result.warmup as MainSetInterval) }
+    if (warmup.distance_meters) {
+      warmup.distance_meters = Math.round(warmup.distance_meters * factor)
+    }
+    result.warmup = warmup
+  }
+
+  // Scale cooldown distance if present
+  if (result.cooldown && typeof result.cooldown === 'object') {
+    const cooldown = { ...(result.cooldown as MainSetInterval) }
+    if (cooldown.distance_meters) {
+      cooldown.distance_meters = Math.round(cooldown.distance_meters * factor)
+    }
+    result.cooldown = cooldown
+  }
+
+  // Scale main_set interval distances
+  if (result.main_set) {
+    const mainSet = Array.isArray(result.main_set)
+      ? (result.main_set as MainSetGroup[])
+      : [result.main_set as MainSetGroup]
+
+    result.main_set = mainSet.map(group => {
+      const g = { ...group }
+      if (g.distance_meters) {
+        g.distance_meters = Math.round(g.distance_meters * factor)
+      }
+      if (g.intervals) {
+        g.intervals = g.intervals.map(interval => {
+          const i = { ...interval }
+          if (i.distance_meters) {
+            i.distance_meters = Math.round(i.distance_meters * factor)
+          }
+          return i
+        })
+      }
+      return g
+    })
+  }
+
+  return result
+}
+
+/**
+ * Calculate the total main_set distance from a structured workout.
+ * Only counts distance_meters in interval groups (repeat × interval distances).
+ * Does NOT include warmup/cooldown (those are time-based).
+ */
+export function getMainSetDistance(sw: StructuredWorkout): number {
+  if (!sw.main_set) return 0
+
+  const mainSet = Array.isArray(sw.main_set)
+    ? (sw.main_set as MainSetGroup[])
+    : [sw.main_set as MainSetGroup]
+
+  let total = 0
+  for (const group of mainSet) {
+    const repeats = group.repeat ?? 1
+    if (group.intervals) {
+      for (const interval of group.intervals) {
+        total += repeats * (interval.distance_meters ?? 0)
+      }
+    } else if (group.distance_meters) {
+      total += repeats * group.distance_meters
+    }
+  }
+  return total
+}
+
+/**
+ * Rebuild structured_workout when workout type changes.
+ * Generates a fresh structure appropriate for the new type.
+ */
+export function rebuildStructuredWorkoutForType(
+  newType: string,
+  distanceMeters: number | null,
+  intensity: string
+): StructuredWorkout {
+  return buildStructuredWorkout({
+    type: newType,
+    distance_meters: distanceMeters,
+    intensity,
+  })
+}
+
+/**
+ * Update intensity labels on all main_set intervals.
+ * Returns a new object (does not mutate the input).
+ */
+export function updateStructuredWorkoutIntensity(
+  sw: StructuredWorkout,
+  newIntensity: string
+): StructuredWorkout {
+  if (!sw.main_set) return sw
+
+  const result = { ...sw }
+  const mainSet = Array.isArray(result.main_set)
+    ? (result.main_set as MainSetGroup[])
+    : [result.main_set as MainSetGroup]
+
+  result.main_set = mainSet.map(group => {
+    const g = { ...group }
+    if (g.intensity) {
+      g.intensity = newIntensity
+    }
+    if (g.intervals) {
+      g.intervals = g.intervals.map(interval => {
+        const i = { ...interval }
+        // Only update non-recovery intervals — recovery stays as-is
+        if (i.intensity && !i.intensity.toLowerCase().includes('recovery') && !i.intensity.toLowerCase().includes('rest')) {
+          i.intensity = newIntensity
+        }
+        return i
+      })
+    }
+    return g
+  })
+
+  return result
+}
