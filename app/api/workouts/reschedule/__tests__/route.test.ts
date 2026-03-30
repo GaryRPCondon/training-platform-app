@@ -44,7 +44,7 @@ describe('POST /api/workouts/reschedule', () => {
     const res = await POST(req)
     expect(res.status).toBe(400)
     const body = await res.json()
-    expect(body.error).toContain('required')
+    expect(body.error).toContain('Invalid request')
   })
 
   it('returns 400 when newDate is missing', async () => {

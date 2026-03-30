@@ -7,23 +7,35 @@ import { writePlanToDatabase } from '@/lib/plans/plan-writer'
 import { validateWorkoutDistances } from '@/lib/plans/workout-validator'
 import { enrichParsedWorkouts, enrichPreWeekWorkouts } from '@/lib/plans/structured-workout-builder'
 import { createLLMProvider } from '@/lib/agent/factory'
-import { calculateTrainingPaces } from '@/lib/training/vdot'
+import { calculateTrainingPaces, RACE_DISTANCES } from '@/lib/training/vdot'
 import type { UserCriteria } from '@/lib/templates/types'
 import type { TrainingPaces } from '@/types/database'
-import { writeLLMLog } from '@/lib/llm-logger'
+import { writeLLMLog } from '@/lib/agent/llm-logger'
+import { z } from 'zod'
+
+const generateSchema = z.object({
+  template_id: z.string().min(1),
+  goal_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  goal_type: z.string().min(1),
+  goal_name: z.string().max(200).optional(),
+  user_criteria: z.record(z.string(), z.unknown()),
+  first_day_of_week: z.number().int().min(0).max(6).optional(),
+  vdot_data: z.object({
+    vdot: z.number(),
+    source: z.string().optional(),
+    sourceData: z.record(z.string(), z.unknown()).optional(),
+  }).nullable().optional(),
+})
 
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { template_id, goal_date, start_date, goal_type, goal_name, user_criteria, first_day_of_week, vdot_data } = body
-
-    // Validate request
-    if (!template_id || !goal_date || !start_date || !goal_type || !user_criteria) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      )
+    const parsed = generateSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
     }
+    const { template_id, goal_date, start_date, goal_type, goal_name, user_criteria, first_day_of_week, vdot_data } = parsed.data
 
     // Calculate training paces if VDOT data provided
     let vdot: number | null = null
@@ -109,7 +121,7 @@ export async function POST(request: Request) {
     // Build LLM prompts FIRST (before creating any database records)
     const context = {
       template: fullTemplate,
-      criteria: user_criteria as UserCriteria,
+      criteria: user_criteria as unknown as UserCriteria,
       goal_date,
       start_date,
       first_day_of_week: firstDayOfWeek as 0 | 1,
@@ -237,13 +249,6 @@ export async function POST(request: Request) {
     }
 
     // Create goal
-    const goalDistances: Record<string, number> = {
-      'marathon': 42195,
-      'half_marathon': 21097,
-      '10k': 10000,
-      '5k': 5000
-    }
-
     const { data: goal, error: goalError } = await supabase
       .from('athlete_goals')
       .insert({
@@ -252,7 +257,7 @@ export async function POST(request: Request) {
         goal_name: goal_name || `${goal_type.replace('_', ' ')} - ${summary.name}`,
         target_date: goal_date,
         target_value: {
-          distance_meters: goalDistances[goal_type]
+          distance_meters: RACE_DISTANCES[goal_type as keyof typeof RACE_DISTANCES]
         },
         status: 'active',
         priority: 1

@@ -59,7 +59,7 @@ export function Header() {
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon">
+                                    <Button variant="ghost" size="icon" aria-label="Profile & logout">
                                         <User className="h-5 w-5" />
                                     </Button>
                                 </DropdownMenuTrigger>

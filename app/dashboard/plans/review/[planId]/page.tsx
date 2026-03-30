@@ -54,6 +54,7 @@ export default function ReviewPage({ params }: PageProps) {
       await activatePlan(planId, athleteId)
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['plan-review', planId] })
       toast.success('Plan activated successfully!')
       router.push('/dashboard/plans')
     },
@@ -76,6 +77,7 @@ export default function ReviewPage({ params }: PageProps) {
       return response.json()
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['plan-review', planId] })
       toast.success('Plan deleted successfully')
       router.push('/dashboard/plans')
     },

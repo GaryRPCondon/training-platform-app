@@ -7,6 +7,13 @@ import { findExistingMatch } from '@/lib/sync/pre-insert-dedup'
 import { acquireSyncLock, releaseSyncLock } from '@/lib/sync/sync-lock'
 import { format, subHours, addHours } from 'date-fns'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { z } from 'zod'
+
+const syncSchema = z.object({
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  limit: z.number().int().positive().optional(),
+})
 
 export async function POST(request: Request) {
   try {
@@ -17,16 +24,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const body = await request.json()
-    const startDate = body.startDate
-      ? new Date(body.startDate)
+    const rawBody = await request.json()
+    const parsed = syncSchema.safeParse(rawBody)
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Invalid request', details: parsed.error.flatten().fieldErrors },
+        { status: 400 }
+      )
+    }
+
+    const startDate = parsed.data.startDate
+      ? new Date(parsed.data.startDate)
       : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
 
     // Set endDate to end of day (23:59:59) to include activities throughout the entire day
-    const endDate = body.endDate
-      ? new Date(new Date(body.endDate).setHours(23, 59, 59, 999))
+    const endDate = parsed.data.endDate
+      ? new Date(new Date(parsed.data.endDate).setHours(23, 59, 59, 999))
       : new Date()
-    const limit = body.limit || 400  // ~1 activity/day for a year + margin for multi-activity days
+    const limit = parsed.data.limit || 400  // ~1 activity/day for a year + margin for multi-activity days
 
     // Get athlete record
     let { data: athlete } = await supabase

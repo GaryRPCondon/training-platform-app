@@ -31,6 +31,16 @@ import {
   validateOperations,
   type PlanOperation
 } from '@/lib/plans/operations'
+import { z } from 'zod'
+
+const applyChangesSchema = z.object({
+  planId: z.number().int().positive(),
+  operations: z.array(z.record(z.string(), z.unknown())).min(1).optional(),
+  regeneratedWeeks: z.array(z.record(z.string(), z.unknown())).min(1).optional(),
+}).refine(
+  (data) => data.operations || data.regeneratedWeeks,
+  { message: 'Either operations or regeneratedWeeks must be provided' }
+)
 
 export async function POST(request: Request) {
   try {
@@ -46,27 +56,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
-    // Parse request body
-    const body = await request.json()
-    const { planId, operations, regeneratedWeeks } = body
+    // Parse and validate request body
+    const rawBody = await request.json()
+    const parsed = applyChangesSchema.safeParse(rawBody)
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Invalid request', details: parsed.error.flatten().fieldErrors },
+        { status: 400 }
+      )
+    }
+
+    const { planId, operations, regeneratedWeeks } = parsed.data
 
     // Determine mode based on request body
     const isOperationsMode = Array.isArray(operations) && operations.length > 0
     const isFullMode = Array.isArray(regeneratedWeeks) && regeneratedWeeks.length > 0
-
-    if (!planId) {
-      return NextResponse.json(
-        { error: 'Missing required field: planId' },
-        { status: 400 }
-      )
-    }
-
-    if (!isOperationsMode && !isFullMode) {
-      return NextResponse.json(
-        { error: 'Missing required field: operations (array) or regeneratedWeeks (array)' },
-        { status: 400 }
-      )
-    }
 
     // Verify plan ownership
     const { data: plan, error: planError } = await supabase
@@ -162,13 +166,13 @@ export async function POST(request: Request) {
     // FULL REGENERATION MODE (Fallback)
     // ============================================================================
     console.log(
-      `[ApplyChanges] Plan ${planId} - Applying ${regeneratedWeeks.length} regenerated weeks`
+      `[ApplyChanges] Plan ${planId} - Applying ${regeneratedWeeks!.length} regenerated weeks`
     )
 
     // Validate regenerated weeks
     console.log(`[ApplyChanges] Validating regenerated weeks...`)
     const validation = validateWeeksForReplacement(
-      regeneratedWeeks as RegeneratedWeek[],
+      regeneratedWeeks as unknown as RegeneratedWeek[],
       planContext
     )
 
@@ -189,7 +193,7 @@ export async function POST(request: Request) {
 
     const result = await replaceWeeksInPlan(
       planId,
-      regeneratedWeeks as RegeneratedWeek[],
+      regeneratedWeeks as unknown as RegeneratedWeek[],
       planContext
     )
 

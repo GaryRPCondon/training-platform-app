@@ -5,10 +5,26 @@ import { getSystemPrompt } from '@/lib/agent/prompts'
 import { createChatSession, getChatSession, saveMessage } from '@/lib/agent/session-manager'
 import { createClient } from '@/lib/supabase/server'
 import { ensureAthleteExists } from '@/lib/supabase/ensure-athlete'
+import { generateTitle } from '@/lib/agent/session-title'
+import { z } from 'zod'
+
+const chatSchema = z.object({
+    messages: z.array(z.object({
+        role: z.enum(['user', 'assistant']),
+        content: z.string().max(10000),
+    })).min(1),
+    sessionId: z.number().nullable().optional(),
+    sessionType: z.enum(['weekly_planning', 'workout_modification', 'feedback', 'general']).default('general'),
+})
 
 export async function POST(request: Request) {
     try {
-        const { messages, sessionId, sessionType = 'general' } = await request.json()
+        const body = await request.json()
+        const parsed = chatSchema.safeParse(body)
+        if (!parsed.success) {
+            return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
+        }
+        const { messages, sessionId, sessionType } = parsed.data
 
         const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()
@@ -28,6 +44,7 @@ export async function POST(request: Request) {
         // Get or create session
         let currentSessionId = sessionId
         let sessionHistory: any[] = []
+        const userMessage = messages[messages.length - 1]
 
         if (sessionId) {
             try {
@@ -40,17 +57,15 @@ export async function POST(request: Request) {
                 console.error('Error loading session:', error)
             }
         } else {
-            // Create new session
+            // Create new session with title from first message
             const newSession = await createChatSession({
                 athleteId,
-                sessionType
+                sessionType,
+                title: generateTitle(userMessage.content),
             }, supabase)
             currentSessionId = newSession.id
         }
-
-        // Save user message
-        const userMessage = messages[messages.length - 1]
-        await saveMessage(currentSessionId, 'user', userMessage.content, undefined, supabase)
+        await saveMessage(currentSessionId!, 'user', userMessage.content, undefined, supabase)
 
         // Load multi-timescale context
         const context = await loadAgentContext(athleteId)
@@ -81,7 +96,7 @@ export async function POST(request: Request) {
         })
 
         // Save assistant message
-        await saveMessage(currentSessionId, 'assistant', response.content, {
+        await saveMessage(currentSessionId!, 'assistant', response.content, {
             provider: providerName,
             model: response.model,
             tokenUsage: response.usage

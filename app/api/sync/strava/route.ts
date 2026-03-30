@@ -4,6 +4,13 @@ import { findMergeCandidates, shouldAutoMerge } from '@/lib/activities/merge-det
 import { findExistingMatch } from '@/lib/sync/pre-insert-dedup'
 import { acquireSyncLock, releaseSyncLock } from '@/lib/sync/sync-lock'
 import { format, subMinutes, addMinutes, subDays, addDays, subHours, addHours } from 'date-fns'
+import { z } from 'zod'
+
+const syncSchema = z.object({
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  limit: z.number().int().positive().optional(),
+})
 
 export async function POST(request: Request) {
     try {
@@ -14,10 +21,18 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        const body = await request.json()
-        const startDate = body.startDate || format(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
-        const endDate = body.endDate || format(new Date(), 'yyyy-MM-dd')
-        const limit = body.limit // Optional limit for number of activities
+        const rawBody = await request.json()
+        const parsed = syncSchema.safeParse(rawBody)
+        if (!parsed.success) {
+            return NextResponse.json(
+                { error: 'Invalid request', details: parsed.error.flatten().fieldErrors },
+                { status: 400 }
+            )
+        }
+
+        const startDate = parsed.data.startDate || format(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
+        const endDate = parsed.data.endDate || format(new Date(), 'yyyy-MM-dd')
+        const limit = parsed.data.limit // Optional limit for number of activities
 
         // Ensure athlete record exists - check by ID first
         let { data: athlete } = await supabase

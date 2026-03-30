@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { z } from 'zod'
+
+const deleteSchema = z.object({
+    ids: z.array(z.number()).min(1),
+})
 
 export async function DELETE(request: Request) {
     try {
@@ -11,11 +16,11 @@ export async function DELETE(request: Request) {
         }
 
         const body = await request.json()
-        const ids: number[] = body.ids
-
-        if (!Array.isArray(ids) || ids.length === 0) {
-            return NextResponse.json({ error: 'ids must be a non-empty array' }, { status: 400 })
+        const parsed = deleteSchema.safeParse(body)
+        if (!parsed.success) {
+            return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
         }
+        const { ids } = parsed.data
 
         // Get athlete ID
         let { data: athlete } = await supabase

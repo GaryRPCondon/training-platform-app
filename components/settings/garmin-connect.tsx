@@ -48,7 +48,7 @@ export function GarminConnect({
   const handleTestConnection = async () => {
     setTestStatus('loading')
     try {
-      const res = await fetch('/api/diagnostics/garmin')
+      const res = await fetch('/api/connections/test/garmin')
       const data = await res.json()
       if (data.connected) {
         setTestStatus('success')

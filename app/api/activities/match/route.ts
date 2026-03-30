@@ -9,10 +9,21 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { matchActivitiesToWorkouts } from '@/lib/activities/workout-matcher'
 import { rescoreCompletion } from '@/lib/activities/rescore-completion'
+import { z } from 'zod'
+
+const matchSchema = z.object({
+    startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+})
 
 export async function POST(request: Request) {
     try {
-        const { startDate, endDate } = await request.json()
+        const body = await request.json()
+        const parsed = matchSchema.safeParse(body)
+        if (!parsed.success) {
+            return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
+        }
+        const { startDate, endDate } = parsed.data
 
         const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()
@@ -21,7 +32,9 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        const matches = await matchActivitiesToWorkouts(supabase, user.id, startDate, endDate)
+        const resolvedStart = startDate ?? new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+        const resolvedEnd = endDate ?? new Date().toISOString().slice(0, 10)
+        const matches = await matchActivitiesToWorkouts(supabase, user.id, resolvedStart, resolvedEnd)
 
         return NextResponse.json({
             success: true,

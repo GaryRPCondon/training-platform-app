@@ -38,7 +38,7 @@ describe('POST /api/activities/merge/approve', () => {
     const res = await POST(req)
     expect(res.status).toBe(400)
     const body = await res.json()
-    expect(body.error).toContain('activity IDs required')
+    expect(body.error).toContain('Invalid request')
   })
 
   it('returns 400 when activity2Id is missing', async () => {

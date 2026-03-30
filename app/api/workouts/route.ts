@@ -9,10 +9,29 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { calculateTotalWorkoutDistance } from '@/lib/training/vdot'
+import { z } from 'zod'
+
+const createWorkoutSchema = z.object({
+  scheduled_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  workout_type: z.string().min(1),
+  description: z.string().nullable().optional(),
+  distance_target_meters: z.number().nonnegative().nullable().optional(),
+  duration_target_seconds: z.number().nonnegative().nullable().optional(),
+  intensity_target: z.string().nullable().optional(),
+  structured_workout: z.record(z.string(), z.unknown()).nullable().optional(),
+})
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
+    const rawBody = await request.json()
+    const parsed = createWorkoutSchema.safeParse(rawBody)
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Invalid request', details: parsed.error.flatten().fieldErrors },
+        { status: 400 }
+      )
+    }
+
     const {
       scheduled_date,
       workout_type,
@@ -21,11 +40,7 @@ export async function POST(request: Request) {
       duration_target_seconds,
       intensity_target,
       structured_workout,
-    } = body
-
-    if (!scheduled_date || !workout_type) {
-      return NextResponse.json({ error: 'scheduled_date and workout_type are required' }, { status: 400 })
-    }
+    } = parsed.data
 
     // If distance_target_meters is missing but structured_workout has distance data,
     // derive it so the field is always populated for display and weekly totals.

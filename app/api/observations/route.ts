@@ -3,6 +3,12 @@ import { detectWorkoutFlags } from '@/lib/analysis/flag-detector'
 import { getActiveObservations } from '@/lib/analysis/observation-manager'
 import { proposeAdjustments } from '@/lib/analysis/adjustment-proposer'
 import { createClient } from '@/lib/supabase/server'
+import { z } from 'zod'
+
+const observationActionSchema = z.object({
+  action: z.literal('dismiss'),
+  observationId: z.union([z.number().int().positive(), z.string().regex(/^\d+$/)]),
+})
 
 export async function GET() {
     try {
@@ -43,21 +49,28 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        const { action, observationId } = await request.json()
-
-        if (action === 'dismiss' && observationId) {
-            // Ownership-verified dismiss: only update if the flag belongs to this athlete
-            const { error: dismissError } = await supabase
-                .from('workout_flags')
-                .update({ acknowledged: true })
-                .eq('id', parseInt(observationId))
-                .eq('athlete_id', user.id)
-
-            if (dismissError) throw dismissError
-            return NextResponse.json({ success: true })
+        const rawBody = await request.json()
+        const parsed = observationActionSchema.safeParse(rawBody)
+        if (!parsed.success) {
+            return NextResponse.json(
+                { error: 'Invalid action', details: parsed.error.flatten().fieldErrors },
+                { status: 400 }
+            )
         }
 
-        return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
+        const obsId = typeof parsed.data.observationId === 'string'
+            ? parseInt(parsed.data.observationId, 10)
+            : parsed.data.observationId
+
+        // Ownership-verified dismiss: only update if the flag belongs to this athlete
+        const { error: dismissError } = await supabase
+            .from('workout_flags')
+            .update({ acknowledged: true })
+            .eq('id', obsId)
+            .eq('athlete_id', user.id)
+
+        if (dismissError) throw dismissError
+        return NextResponse.json({ success: true })
     } catch (error) {
         console.error('Failed to process observation action:', error)
         return NextResponse.json(

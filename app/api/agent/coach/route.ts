@@ -16,6 +16,7 @@
  */
 
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { ensureAthleteExists } from '@/lib/supabase/ensure-athlete'
 import { createLLMProvider } from '@/lib/agent/factory'
@@ -24,7 +25,8 @@ import { buildCoachSystemPrompt } from '@/lib/agent/coach-prompt'
 import { COACH_TOOLS, WorkoutProposal } from '@/lib/agent/coach-tools'
 import { createChatSession, getChatSession, saveMessage } from '@/lib/agent/session-manager'
 import { calculateMaxTokens, estimateTokens } from '@/lib/chat/token-budget'
-import { writeLLMLog } from '@/lib/llm-logger'
+import { writeLLMLog } from '@/lib/agent/llm-logger'
+import { generateTitle } from '@/lib/agent/session-title'
 
 // ---------------------------------------------------------------------------
 // Format a structured_workout JSONB into readable text for the system prompt.
@@ -98,13 +100,30 @@ export interface CoachAPIResponse {
  *
  * Body: { messageId: number, proposalIndex: number, status: 'applied' | 'dismissed' }
  */
+const patchSchema = z.object({
+    messageId: z.number(),
+    proposalIndex: z.number().int().min(0),
+    status: z.enum(['applied', 'dismissed']),
+})
+
+const postSchema = z.object({
+    messages: z.array(z.object({
+        role: z.enum(['user', 'assistant']),
+        content: z.string().max(10000),
+    })).min(1),
+    sessionId: z.number().nullable().optional(),
+    workoutId: z.number().nullable().optional(),
+    activityId: z.number().nullable().optional(),
+})
+
 export async function PATCH(request: Request) {
     try {
-        const { messageId, proposalIndex, status } = await request.json()
-
-        if (!messageId || proposalIndex === undefined || !status) {
-            return NextResponse.json({ error: 'messageId, proposalIndex and status are required' }, { status: 400 })
+        const body = await request.json()
+        const parsed = patchSchema.safeParse(body)
+        if (!parsed.success) {
+            return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
         }
+        const { messageId, proposalIndex, status } = parsed.data
 
         const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()
@@ -154,7 +173,12 @@ export async function PATCH(request: Request) {
 }
 
 export async function POST(request: Request) {
-    const { messages, sessionId, workoutId, activityId } = await request.json()
+    const body = await request.json()
+    const parsed = postSchema.safeParse(body)
+    if (!parsed.success) {
+        return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
+    }
+    const { messages, sessionId, workoutId, activityId } = parsed.data
 
     // -----------------------------------------------------------------------
     // Auth + athlete (must complete before streaming starts)
@@ -188,6 +212,7 @@ export async function POST(request: Request) {
                 // ---------------------------------------------------------------
                 let currentSessionId: number
                 let sessionHistory: { role: 'user' | 'assistant'; content: string }[] = []
+                const userMessage = messages[messages.length - 1]
 
                 if (sessionId) {
                     try {
@@ -197,16 +222,19 @@ export async function POST(request: Request) {
                             .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }))
                         currentSessionId = sessionId
                     } catch {
-                        const newSession = await createChatSession({ athleteId, sessionType: 'coach' }, supabase)
+                        const newSession = await createChatSession({
+                            athleteId, sessionType: 'coach',
+                            title: generateTitle(userMessage.content),
+                        }, supabase)
                         currentSessionId = newSession.id
                     }
                 } else {
-                    const newSession = await createChatSession({ athleteId, sessionType: 'coach' }, supabase)
+                    const newSession = await createChatSession({
+                        athleteId, sessionType: 'coach',
+                        title: generateTitle(userMessage.content),
+                    }, supabase)
                     currentSessionId = newSession.id
                 }
-
-                // Save incoming user message
-                const userMessage = messages[messages.length - 1]
                 await saveMessage(currentSessionId, 'user', userMessage.content, undefined, supabase)
 
                 // ---------------------------------------------------------------

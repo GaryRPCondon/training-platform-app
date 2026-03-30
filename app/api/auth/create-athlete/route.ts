@@ -1,17 +1,21 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { notifyAdminOfSignup } from '@/lib/email/notify-admin'
+import { z } from 'zod'
+
+const createAthleteSchema = z.object({
+    userId: z.string().uuid(),
+    email: z.string().email(),
+})
 
 export async function POST(request: NextRequest) {
     try {
-        const { userId, email } = await request.json()
-
-        if (!userId || !email) {
-            return NextResponse.json(
-                { error: 'User ID and email are required' },
-                { status: 400 }
-            )
+        const body = await request.json()
+        const parsed = createAthleteSchema.safeParse(body)
+        if (!parsed.success) {
+            return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
         }
+        const { userId, email } = parsed.data
 
         // Use service role client to bypass RLS policies and to verify the auth user
         const supabaseAdmin = createClient(

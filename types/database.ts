@@ -320,6 +320,7 @@ export interface ChatSession {
     context: any | null
     started_at: string
     ended_at: string | null
+    title: string | null
 }
 
 export interface ChatMessage {

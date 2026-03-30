@@ -32,7 +32,7 @@ export function ConnectionsCard({ stravaConnected, garminConnected, onRefresh }:
     const testStravaConnection = async () => {
         setStravaTest({ status: 'loading' })
         try {
-            const res = await fetch('/api/diagnostics/strava')
+            const res = await fetch('/api/connections/test/strava')
             const data = await res.json()
             if (data.connected) {
                 setStravaTest({ status: 'success', message: data.displayName ? `Connected as ${data.displayName}` : 'Connected' })

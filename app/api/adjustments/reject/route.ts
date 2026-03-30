@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { rejectAdjustment } from '@/lib/analysis/adjustment-persistence'
 import { createClient } from '@/lib/supabase/server'
+import { z } from 'zod'
+
+const rejectSchema = z.object({ adjustmentId: z.number() })
 
 export async function POST(request: Request) {
     try {
@@ -11,11 +14,12 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        const { adjustmentId } = await request.json()
-
-        if (!adjustmentId) {
-            return NextResponse.json({ error: 'Adjustment ID required' }, { status: 400 })
+        const body = await request.json()
+        const parsed = rejectSchema.safeParse(body)
+        if (!parsed.success) {
+            return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
         }
+        const { adjustmentId } = parsed.data
 
         // Verify ownership before rejecting — return 404 to avoid leaking existence
         const { data: owned } = await supabase

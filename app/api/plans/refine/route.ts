@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { z } from 'zod'
+
+const refineSchema = z.object({
+  plan_id: z.number().int().positive().optional(),
+  session_id: z.number().int().positive(),
+  message: z.string().min(1),
+  context: z.record(z.string(), z.unknown()).optional(),
+})
 
 /**
  * PHASE 3 STUB: Plan refinement via conversational chat
@@ -13,14 +21,16 @@ import { createClient } from '@/lib/supabase/server'
  */
 export async function POST(request: NextRequest) {
   try {
-    const { plan_id, session_id, message, context } = await request.json()
-
-    if (!session_id || !message) {
+    const rawBody = await request.json()
+    const parsed = refineSchema.safeParse(rawBody)
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Missing required fields: session_id, message' },
+        { error: 'Invalid request', details: parsed.error.flatten().fieldErrors },
         { status: 400 }
       )
     }
+
+    const { session_id, message } = parsed.data
 
     const supabase = await createClient()
 

@@ -192,6 +192,7 @@ function ProfileContent() {
                                         Type <strong>DELETE</strong> to confirm:
                                     </p>
                                     <Input
+                                        aria-label="Type DELETE to confirm account deletion"
                                         value={deleteConfirm}
                                         onChange={(e) => setDeleteConfirm(e.target.value)}
                                         placeholder="Type DELETE to confirm"

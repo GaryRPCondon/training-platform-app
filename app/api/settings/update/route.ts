@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { ensureAthleteExists } from '@/lib/supabase/ensure-athlete'
+import { z } from 'zod'
 
 const PROVIDER_ENV_MAP: Record<string, string> = {
     deepseek: 'DEEPSEEK_API_KEY',
@@ -10,10 +11,27 @@ const PROVIDER_ENV_MAP: Record<string, string> = {
     grok: 'XAI_API_KEY',
 }
 
+const settingsSchema = z.object({
+    provider: z.enum(['deepseek', 'anthropic', 'openai', 'gemini', 'grok']).optional(),
+    model: z.string().max(100).nullable().optional(),
+    preferred_units: z.enum(['metric', 'imperial']).optional(),
+    week_starts_on: z.number().int().min(0).max(6).optional(),
+    useFastModelForOperations: z.boolean().optional(),
+    preferred_activity_data_source: z.enum(['strava', 'garmin', 'most_recent']).optional(),
+    first_name: z.string().max(100).optional(),
+    last_name: z.string().max(100).optional(),
+    profile_completed: z.boolean().optional(),
+    sync_on_login: z.boolean().optional(),
+})
+
 export async function POST(request: Request) {
     try {
         const body = await request.json()
-        const { provider, model, preferred_units, week_starts_on, useFastModelForOperations, preferred_activity_data_source, first_name, last_name, profile_completed, sync_on_login } = body
+        const parsed = settingsSchema.safeParse(body)
+        if (!parsed.success) {
+            return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
+        }
+        const { provider, model, preferred_units, week_starts_on, useFastModelForOperations, preferred_activity_data_source, first_name, last_name, profile_completed, sync_on_login } = parsed.data
 
         const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()

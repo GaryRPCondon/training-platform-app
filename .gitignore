@@ -66,4 +66,5 @@ bugscreens/
 temp_strava_original.txt
 build_log.txt
 build_output.txt
+remote_schema.sql
 *.code-workspace

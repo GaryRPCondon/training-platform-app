@@ -1,5 +1,11 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { z } from 'zod'
+
+const mergeApproveSchema = z.object({
+    activity1Id: z.number(),
+    activity2Id: z.number(),
+})
 
 export async function POST(request: Request) {
     try {
@@ -10,11 +16,12 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        const { activity1Id, activity2Id } = await request.json()
-
-        if (!activity1Id || !activity2Id) {
-            return NextResponse.json({ error: 'Both activity IDs required' }, { status: 400 })
+        const body = await request.json()
+        const parsed = mergeApproveSchema.safeParse(body)
+        if (!parsed.success) {
+            return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
         }
+        const { activity1Id, activity2Id } = parsed.data
 
         // Fetch both activities
         const { data: activities } = await supabase

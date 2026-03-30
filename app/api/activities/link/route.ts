@@ -8,10 +8,24 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { manuallyLinkWorkout, unlinkWorkout } from '@/lib/activities/workout-matcher'
+import { z } from 'zod'
+
+const linkSchema = z.object({
+    activityId: z.number(),
+    workoutId: z.number(),
+    reason: z.string().max(200).optional(),
+})
+
+const unlinkSchema = z.object({ activityId: z.number() })
 
 export async function POST(request: Request) {
     try {
-        const { activityId, workoutId, reason } = await request.json()
+        const body = await request.json()
+        const parsed = linkSchema.safeParse(body)
+        if (!parsed.success) {
+            return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
+        }
+        const { activityId, workoutId, reason } = parsed.data
 
         const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()
@@ -31,7 +45,12 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
     try {
-        const { activityId } = await request.json()
+        const body = await request.json()
+        const parsed = unlinkSchema.safeParse(body)
+        if (!parsed.success) {
+            return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
+        }
+        const { activityId } = parsed.data
 
         const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()

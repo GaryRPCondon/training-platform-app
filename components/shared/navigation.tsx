@@ -12,7 +12,6 @@ import {
     Activity,
     ClipboardList,
     Menu,
-    Wrench
 } from 'lucide-react'
 import { Dialog, DialogContent, DialogTrigger, DialogTitle } from '@/components/ui/dialog'
 import { useState, useEffect } from 'react'
@@ -59,12 +58,6 @@ const navItems: NavItem[] = [
         title: 'Profile',
         href: '/dashboard/profile',
         icon: User,
-    },
-    {
-        title: 'Diagnostics',
-        href: '/dashboard/diagnostics',
-        icon: Wrench,
-        adminOnly: true,
     },
 ]
 

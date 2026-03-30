@@ -1,7 +1,8 @@
 'use client'
 
-import { Suspense, useState, useMemo, useEffect } from 'react'
+import { Suspense, useState, useMemo, useEffect, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import { CoachInterface } from '@/components/chat/coach-interface'
 import { SessionList } from '@/components/chat/session-list'
 import { Button } from '@/components/ui/button'
@@ -74,7 +75,14 @@ function formatDuration(seconds: number) {
 function ChatPageInner() {
     const searchParams = useSearchParams()
     const router = useRouter()
+    const queryClient = useQueryClient()
     const [selectedSessionId, setSelectedSessionId] = useState<number | null>(null)
+
+    // When a new session is created by the coach, refresh the sidebar list
+    const handleSessionChange = useCallback((id: number) => {
+        setSelectedSessionId(id)
+        queryClient.invalidateQueries({ queryKey: ['chat-sessions'] })
+    }, [queryClient])
     const [workoutContext, setWorkoutContext] = useState<WorkoutContext | null>(null)
     const [activityContext, setActivityContext] = useState<ActivityContext | null>(null)
 
@@ -265,7 +273,7 @@ function ChatPageInner() {
                 <div className="md:col-span-3 h-full">
                     <CoachInterface
                         sessionId={selectedSessionId}
-                        onSessionChange={setSelectedSessionId}
+                        onSessionChange={handleSessionChange}
                         workoutId={workoutId ?? undefined}
                         activityId={activityId ?? undefined}
                     />

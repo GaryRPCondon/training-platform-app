@@ -45,7 +45,14 @@ import {
 } from '@/lib/plans/operations'
 import { OPERATION_TOOLS } from '@/lib/plans/operation-tools'
 import { calculateMaxTokens, estimateTokens } from '@/lib/chat/token-budget'
-import { writeLLMLog } from '@/lib/llm-logger'
+import { writeLLMLog } from '@/lib/agent/llm-logger'
+import { z } from 'zod'
+
+const regenerateSchema = z.object({
+  planId: z.union([z.number().int().positive(), z.string().regex(/^\d+$/)]),
+  userMessage: z.string().min(1).max(2000),
+  mode: z.enum(['operations', 'full']).optional(),
+})
 
 type RegenerateMode = 'operations' | 'full'
 
@@ -73,40 +80,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
-    // Parse request body
-    const body = await request.json()
-    const { planId, userMessage, mode: requestedMode } = body
-
-    // Mode: 'operations' (default) or 'full' (fallback)
-    const mode: RegenerateMode = requestedMode === 'full' ? 'full' : 'operations'
-
-    // Validation: Required fields
-    if (!planId || !userMessage) {
+    // Parse and validate request body
+    const rawBody = await request.json()
+    const parsed = regenerateSchema.safeParse(rawBody)
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Missing required fields: planId, userMessage' },
+        { error: 'Invalid request', details: parsed.error.flatten().fieldErrors },
         { status: 400 }
       )
     }
 
-    // Validation: planId must be a number
-    const planIdNum = typeof planId === 'number' ? planId : parseInt(planId, 10)
-    if (isNaN(planIdNum) || planIdNum <= 0) {
-      return NextResponse.json({ error: 'Invalid planId' }, { status: 400 })
-    }
-
-    // Validation: userMessage must be non-empty after trim
-    const trimmedMessage = userMessage.trim()
-    if (trimmedMessage.length === 0) {
-      return NextResponse.json({ error: 'Message cannot be empty' }, { status: 400 })
-    }
-
-    // Validation: Message length limit (prevent token overflow)
-    if (trimmedMessage.length > 2000) {
-      return NextResponse.json(
-        { error: 'Message too long (max 2000 characters)' },
-        { status: 400 }
-      )
-    }
+    const planIdNum = typeof parsed.data.planId === 'string'
+      ? parseInt(parsed.data.planId, 10)
+      : parsed.data.planId
+    const trimmedMessage = parsed.data.userMessage.trim()
+    const mode: RegenerateMode = parsed.data.mode === 'full' ? 'full' : 'operations'
 
     console.log(`[Regenerate] Plan ${planIdNum} - Mode: ${mode} - Request: "${trimmedMessage}"`)
 

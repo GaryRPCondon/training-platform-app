@@ -1,1 +1,8 @@
-npm test
+#!/bin/sh
+# node_modules has Linux binaries (installed in WSL).
+# When invoked from Windows Git (Cursor), delegate to WSL so the right Node is used.
+if [ -n "$WINDIR" ]; then
+  wsl node node_modules/vitest/vitest.mjs run
+else
+  node node_modules/vitest/vitest.mjs run
+fi

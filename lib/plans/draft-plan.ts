@@ -1,5 +1,6 @@
 import { supabase, getCurrentAthleteId } from '@/lib/supabase/client'
 import type { UserCriteria } from '@/lib/templates/types'
+import { RACE_DISTANCES } from '@/lib/training/vdot'
 
 export interface DraftPlanData {
   template_id: string
@@ -32,13 +33,6 @@ export async function createDraftPlan(data: DraftPlanData) {
   }
 
   // Create goal
-  const goalDistances: Record<string, number> = {
-    'marathon': 42195,
-    'half_marathon': 21097,
-    '10k': 10000,
-    '5k': 5000
-  }
-
   const { data: goal, error: goalError } = await supabase
     .from('athlete_goals')
     .insert({
@@ -47,7 +41,7 @@ export async function createDraftPlan(data: DraftPlanData) {
       goal_name: data.goal_name || `${data.goal_type.replace('_', ' ')} - ${data.template_name}`,
       target_date: data.goal_date,
       target_value: {
-        distance_meters: goalDistances[data.goal_type]
+        distance_meters: RACE_DISTANCES[data.goal_type as keyof typeof RACE_DISTANCES]
       },
       status: 'active',
       priority: 1

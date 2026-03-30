@@ -54,6 +54,7 @@ The AI coach is provider-agnostic with a factory pattern:
 - **Context Management**: `lib/agent/context-manager.ts` and `context-loader.ts` - Load athlete data, plans, activities for AI context
 - **Session Management**: `lib/agent/session-manager.ts` - Persist chat history to database
 - **Prompts**: `lib/agent/prompts.ts` - System prompts for coaching behavior
+- **LLM Logger**: `lib/agent/llm-logger.ts` - Logs LLM calls for debugging
 
 To add a new LLM provider:
 1. Create provider class in `lib/agent/providers/` implementing `LLMProvider` interface
@@ -61,9 +62,7 @@ To add a new LLM provider:
 3. Add API key environment variable
 
 ### Training Plan System
-- **Generator**: `lib/planning/plan-generator.ts` - Main plan generation logic
-- **Periodization**: `lib/planning/periodization.ts` - Phase distribution and volume calculations
-- **Templates**: `lib/planning/workout-templates.ts` - Workout types for each phase (base, build, peak, taper)
+- **Operations**: `lib/plans/operations/` - Modular plan modification system (split into types, helpers, describe, validate, preview, apply)
 - **Activation**: `lib/supabase/plan-activation.ts` - Activates a plan (deactivates others)
 - **Queries**: `lib/supabase/plan-queries.ts` - Database queries for plans and workouts
 
@@ -92,7 +91,7 @@ Plan generation flow:
 **Activity Merging**:
 - `lib/activities/merge-detector.ts` - Detects duplicate activities from different sources
 - Matching criteria: time within 2 minutes, distance within 0.5%, duration within 1%
-- `lib/activity-matcher.ts` - Additional matching logic for workout associations
+- `lib/activities/activity-matcher.ts` - Additional matching logic for workout associations
 - UI: `app/dashboard/activities/merge/page.tsx` - Review and approve merges
 
 ### Observations & Adjustments System
@@ -116,6 +115,7 @@ All API routes follow Next.js App Router conventions in `app/api/`:
 - `sync/garmin/` and `sync/strava/` - Activity sync endpoints
 - `activities/merge/` - Merge approval/rejection
 - `settings/` - User preferences and LLM provider selection
+- `connections/test/` - Integration connection tests (Garmin, Strava)
 
 ### Frontend Structure
 - **Dashboard**: `app/dashboard/page.tsx` - Overview with phase progress, weekly chart
@@ -176,7 +176,7 @@ Training plans use classical periodization with four phases:
 3. **Peak** - Race-specific work, highest intensity (10-15% of plan)
 4. **Taper** - Recovery before race (5-10% of plan, 50-70% volume)
 
-See `lib/planning/periodization.ts` for phase distribution logic.
+Phase distribution is handled by the template catalog and LLM-based plan generation.
 
 ### Activity Matching
 Activities from different sources (Garmin/Strava) are matched using fuzzy logic:
@@ -202,20 +202,31 @@ Uses Supabase Auth with email/password. The app expects:
 2. Athlete record in database with matching user.id
 3. Helper: `lib/supabase/ensure-athlete.ts` creates athlete record if missing
 
-## Testing Pages
+## Testing
 
-Several test pages exist for debugging:
-- `/test-core` - Test core planning functions
-- `/test-db` - Test database connectivity
-- `/test-sync` - Test activity sync
+```bash
+npm test                 # Run vitest test suite (183 characterization tests)
+npm run test:watch       # Run vitest in watch mode
+```
+
+Test failures indicate regressions — do NOT update tests to match broken code.
+
+### API Route Validation
+All API routes use Zod schemas for request validation. Validation errors return `{ error: 'Invalid request', details: {...} }` with status 400.
+
+### Environment Validation
+Required environment variables are validated at startup via `instrumentation.ts` → `lib/env.ts`. LLM API keys are validated at point-of-use in `lib/agent/factory.ts`.
+
+### Query Keys
+Centralized query key definitions available in `lib/query-keys.ts` for React Query consistency.
 
 ## Common Patterns
 
 **Server-side data fetching**:
 ```typescript
-import { createServerClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 
-const supabase = await createServerClient()
+const supabase = await createClient()
 const { data } = await supabase.from('table').select('*')
 ```
 

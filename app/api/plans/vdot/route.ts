@@ -2,6 +2,13 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { ensureAthleteExists } from '@/lib/supabase/ensure-athlete'
 import { calculateTrainingPaces } from '@/lib/training/vdot'
+import { z } from 'zod'
+
+const vdotSchema = z.object({
+  vdot: z.number().min(20).max(100),
+  source: z.string().optional(),
+  sourceData: z.record(z.string(), z.unknown()).optional(),
+})
 
 export async function GET() {
   try {
@@ -38,12 +45,16 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
-    const { vdot, source, sourceData } = body
-
-    if (!vdot || typeof vdot !== 'number' || vdot < 20 || vdot > 100) {
-      return NextResponse.json({ error: 'Invalid VDOT value (must be 20-100)' }, { status: 400 })
+    const rawBody = await request.json()
+    const parsed = vdotSchema.safeParse(rawBody)
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Invalid VDOT value (must be 20-100)', details: parsed.error.flatten().fieldErrors },
+        { status: 400 }
+      )
     }
+
+    const { vdot, source, sourceData } = parsed.data
 
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()

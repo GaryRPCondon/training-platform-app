@@ -1,5 +1,54 @@
 import { createClient } from './client'
-import { GeneratedPlan } from '@/lib/planning/plan-generator'
+
+export interface GeneratedPlan {
+    goal: {
+        athlete_id: string
+        goal_type: string
+        goal_name: string
+        target_date: string
+        target_value: {
+            distance: number
+            target_time: null
+        }
+        status: string
+        priority: number
+    }
+    plan: {
+        athlete_id: string
+        goal_id?: number
+        start_date: string
+        end_date: string
+        plan_type: string
+        name: string
+        status: 'draft' | 'active'
+    }
+    phases: Array<{
+        phase_name: string
+        phase_order: number
+        start_date: string
+        end_date: string
+        weekly_volume_target: number
+        max_weekly_volume: number
+        description: string
+    }>
+    weeklyPlans: Array<{
+        phase_id?: number
+        week_start_date: string
+        week_number: number
+        weekly_volume_target: number
+        status: 'planned'
+    }>
+    workouts: Array<{
+        weekly_plan_id?: number
+        scheduled_date: string
+        workout_type: string
+        description: string
+        distance_target_meters: number | null
+        intensity_target: string
+        structured_workout: any | null
+        status: 'scheduled'
+    }>
+}
 
 /**
  * Save a complete training plan with all phases, weekly plans, and workouts

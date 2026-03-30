@@ -1,20 +1,32 @@
 import { NextResponse } from 'next/server'
 import { loadCatalog } from '@/lib/templates/template-loader'
 import { rankAndRecommend } from '@/lib/templates/catalog-filter'
-import type { UserCriteria, RecommendationResponse } from '@/lib/templates/types'
+import type { RecommendationResponse } from '@/lib/templates/types'
+import { z } from 'zod'
+
+const criteriaSchema = z.object({
+  experience_level: z.enum(['first_marathon', 'beginner', 'intermediate', 'advanced']),
+  current_weekly_mileage: z.number().nonnegative(),
+  comfortable_peak_mileage: z.number().positive(),
+  days_per_week: z.number().int().min(1).max(7),
+  weeks_available: z.number().int().positive(),
+  preferred_methodology: z.string().optional(),
+  force_methodology: z.boolean().optional(),
+  preferred_rest_days: z.array(z.number().int().min(0).max(6)).optional(),
+})
 
 export async function POST(request: Request) {
   try {
-    const criteria: UserCriteria = await request.json()
-
-    // Validate criteria
-    if (!criteria.experience_level || !criteria.weeks_available ||
-        !criteria.comfortable_peak_mileage || !criteria.days_per_week) {
+    const rawBody = await request.json()
+    const parsed = criteriaSchema.safeParse(rawBody)
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Missing required criteria' },
+        { error: 'Invalid request', details: parsed.error.flatten().fieldErrors },
         { status: 400 }
       )
     }
+
+    const criteria = parsed.data
 
     // Load catalog
     const catalog = await loadCatalog()

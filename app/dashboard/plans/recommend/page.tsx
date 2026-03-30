@@ -211,7 +211,9 @@ function RecommendPageContent() {
               <p className="text-sm text-yellow-800 dark:text-yellow-300">
                 {goalType === 'marathon'
                   ? `Marathon training typically requires 12+ weeks. You have ${weeksAvailable} weeks available.`
-                  : `Your timeline of ${weeksAvailable} weeks is shorter than typical.`
+                  : goalType === 'half_marathon'
+                  ? `Half marathon training typically requires 8+ weeks. You have ${weeksAvailable} weeks available.`
+                  : `Your timeline of ${weeksAvailable} weeks is shorter than typical for ${goalType} training.`
                 } The AI coach will adapt the selected plan to fit your schedule, but consider that compressed training increases injury risk.
               </p>
             </div>

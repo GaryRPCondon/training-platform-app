@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { matchActivities } from '../../activity-matcher'
+import { matchActivities } from '../activity-matcher'
 import type { Activity } from '@/types/database'
 
 function makeActivity(overrides: Partial<Activity> = {}): Activity {

@@ -306,8 +306,9 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
                             </select>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Search Name</label>
+                            <label htmlFor="activity-name-filter" className="text-sm font-medium">Search Name</label>
                             <Input
+                                id="activity-name-filter"
                                 type="text"
                                 placeholder="Filter by name..."
                                 value={nameFilter}

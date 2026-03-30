@@ -8,6 +8,7 @@ export interface CreateSessionParams {
     weeklyPlanId?: number
     workoutId?: number
     context?: Record<string, unknown>
+    title?: string
 }
 
 function getClient(supabase?: SupabaseClient): SupabaseClient {
@@ -28,6 +29,7 @@ export async function createChatSession(params: CreateSessionParams, supabase?: 
             weekly_plan_id: params.weeklyPlanId || null,
             specific_workout_id: params.workoutId || null,
             context: params.context || null,
+            title: params.title || null,
             started_at: new Date().toISOString()
         })
         .select()

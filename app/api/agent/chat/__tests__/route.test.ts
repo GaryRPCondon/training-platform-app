@@ -69,7 +69,7 @@ describe('POST /api/agent/chat', () => {
     // vi.clearAllMocks() clears call history only — implementations from vi.mock() persist
     vi.clearAllMocks()
     // Re-apply implementations that were cleared by clearAllMocks
-    mockGetChatSession.mockResolvedValue({ messages: [] })
+    mockGetChatSession.mockResolvedValue({ id: 1, athlete_id: 'a1', session_type: 'general', weekly_plan_id: null, specific_workout_id: null, context: null, started_at: new Date().toISOString(), ended_at: null, title: null, messages: [] })
   })
 
   it('returns 401 when not authenticated', async () => {

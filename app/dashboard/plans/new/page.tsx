@@ -37,7 +37,7 @@ function NewPlanPageContent() {
         return nextWeekStart.toISOString().split('T')[0]
     }
 
-    const [goalName, setGoalName] = useState('My Marathon Plan')
+    const [goalName, setGoalName] = useState('My Training Plan')
     const [goalDate, setGoalDate] = useState(getDefaultDate())
     const [startDate, setStartDate] = useState(getDefaultStartDate())
     const [goalType, setGoalType] = useState('marathon')
@@ -142,8 +142,12 @@ function NewPlanPageContent() {
                 goalDate: goalDate,
                 startDate: startDate,
                 goalType: goalType,
-                // Pass warning flag for short timeline
-                shortTimeline: (goalType === 'marathon' && weeksAvailable < 12).toString()
+                // Pass warning flag for short timeline (minimum varies by distance)
+                shortTimeline: (
+                    (goalType === 'marathon' && weeksAvailable < 12) ||
+                    (goalType === 'half_marathon' && weeksAvailable < 8) ||
+                    (goalType === '10k' && weeksAvailable < 6)
+                ).toString()
             })
 
             // Add VDOT data if provided

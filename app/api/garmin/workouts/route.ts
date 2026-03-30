@@ -2,12 +2,21 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { GarminClient } from '@/lib/garmin/client'
 import { mapToGarminWorkout } from '@/lib/garmin/workout-mapper'
+import { z } from 'zod'
 
 const DELAY_BETWEEN_REQUESTS_MS = 500
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
+
+const garminWorkoutSchema = z.object({
+  action: z.enum(['send', 'delete', 'delete-all']),
+  workoutIds: z.array(z.number()).optional(),
+}).refine(
+  (data) => data.action === 'delete-all' || (data.workoutIds && data.workoutIds.length > 0),
+  { message: 'workoutIds array required for send/delete actions' }
+)
 
 export async function POST(request: Request) {
   try {
@@ -18,15 +27,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { workoutIds, action } = await request.json()
-
-    if (!['send', 'delete', 'delete-all'].includes(action)) {
-      return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
+    const body = await request.json()
+    const parsed = garminWorkoutSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
     }
-
-    if (action !== 'delete-all' && (!workoutIds || !Array.isArray(workoutIds) || workoutIds.length === 0)) {
-      return NextResponse.json({ error: 'workoutIds array required' }, { status: 400 })
-    }
+    const { workoutIds, action } = parsed.data
 
     // -------------------------------------------------------------------------
     // DELETE / DELETE-ALL actions
@@ -40,7 +46,7 @@ export async function POST(request: Request) {
         .not('garmin_workout_id', 'is', null)
 
       if (action === 'delete') {
-        query = query.in('id', workoutIds)
+        query = query.in('id', workoutIds!)
       }
 
       const { data: toDelete, error: fetchErr } = await query
@@ -97,7 +103,7 @@ export async function POST(request: Request) {
     const { data: workouts, error: workoutsError } = await supabase
       .from('planned_workouts')
       .select('*')
-      .in('id', workoutIds)
+      .in('id', workoutIds!)
       .eq('athlete_id', user.id)
 
     if (workoutsError || !workouts) {
