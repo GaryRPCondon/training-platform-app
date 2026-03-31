@@ -1,6 +1,6 @@
 import type { ParsedPlan } from './response-parser'
 import { calculateWorkoutDate } from './response-parser'
-import { addDays, format } from 'date-fns'
+import { addDays, format, parseISO } from 'date-fns'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 
@@ -56,7 +56,11 @@ export async function writePlanToDatabase(
   for (let i = 0; i < phases.length; i++) {
     const phase = phases[i]
     const startDate = weekStartDates.find(w => w.week_number === phase.start)?.date
-    const endDate = weekStartDates.find(w => w.week_number === phase.end)?.date
+    const endDateWeekStart = weekStartDates.find(w => w.week_number === phase.end)?.date
+    // end_date should be the last day of the phase's final week (start + 6 days)
+    const endDate = endDateWeekStart
+      ? format(addDays(parseISO(endDateWeekStart), 6), 'yyyy-MM-dd')
+      : undefined
 
     if (!startDate || !endDate) continue
 

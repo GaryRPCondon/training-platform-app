@@ -38,7 +38,7 @@ export async function getPhaseProgress(athleteId: string): Promise<PhaseProgress
         .eq('plan_id', activePlan.id)
         .lte('start_date', today)
         .gte('end_date', today)
-        .single()
+        .maybeSingle()
 
     if (!currentPhase) return null
 

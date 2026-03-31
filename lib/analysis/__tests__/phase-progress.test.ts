@@ -33,6 +33,7 @@ function makeQueryMock(data: any, error: any = null) {
     order: vi.fn().mockReturnThis(),
     limit: vi.fn().mockReturnThis(),
     single: vi.fn().mockResolvedValue(result),
+    maybeSingle: vi.fn().mockResolvedValue(result),
   }
   mock.then = (onfulfilled: any, onrejected?: any) =>
     Promise.resolve(result).then(onfulfilled, onrejected)
