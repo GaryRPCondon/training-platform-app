@@ -94,11 +94,10 @@ function findBestWorkoutMatch(
 
   const sameDayWorkouts = workouts.filter(w => w.scheduled_date === activityDay)
 
-  console.log('[AutoMatch] Day check: activity', activity.id, 'start_time=', activity.start_time,
-    'parsed day=', activityDay, 'workout dates=', workouts.map(w => w.scheduled_date),
-    'same-day matches=', sameDayWorkouts.length)
-
   if (sameDayWorkouts.length === 0) return null
+
+  console.log('[AutoMatch] Day check: activity', activity.id,
+    'parsed day=', activityDay, 'same-day matches=', sameDayWorkouts.length)
 
   if (sameDayWorkouts.length === 1) {
     const workout = sameDayWorkouts[0]
