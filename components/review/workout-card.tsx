@@ -200,11 +200,17 @@ function serializePaceInputs(
 }
 
 /** Format stored target_pace (or VDOT fallback) for the collapsed row */
+function isRecoveryIntensity(intensity: string): boolean {
+  const l = intensity.toLowerCase()
+  return l.includes('recovery') || l.includes('rest') || l.includes('easy')
+}
+
 function fmtPaceRangeDisplay(
   targetPace: string | undefined,
   trainingPaces: TrainingPaces | null | undefined,
   intensity: string | undefined,
-  units: UnitSystem
+  units: UnitSystem,
+  stampedPaceSec?: number
 ): string {
   let fKm: number | null = null; let sKm: number | null = null
   if (targetPace) {
@@ -216,6 +222,9 @@ function fmtPaceRangeDisplay(
       const c = parseSinglePaceSec(targetPace)
       if (c !== null) { fKm = c - 15; sKm = c + 15 }
     }
+  } else if (stampedPaceSec && intensity && !isRecoveryIntensity(intensity)) {
+    // Use methodology-specific stamped pace for work intervals
+    fKm = stampedPaceSec - 15; sKm = stampedPaceSec + 15
   } else if (trainingPaces && intensity) {
     const c = trainingPaces[intensityToPaceKey(intensity)]
     if (c) { fKm = c - 15; sKm = c + 15 }
@@ -234,7 +243,7 @@ function intensityToPaceKey(intensity: string): keyof TrainingPaces {
   const l = intensity.toLowerCase()
   if (l.includes('recovery') || l.includes('easy')) return 'easy'
   if (l.includes('moderate')) return 'marathon'
-  if (l.includes('marathon')) return 'marathon'
+  if (l.includes('marathon') || l === 'race') return 'marathon'
   if (l.includes('tempo') || l.includes('threshold')) return 'tempo'
   if (l.includes('interval') || l.includes('hard') || l.includes('repetition')) return 'interval'
   return 'easy'
@@ -455,7 +464,7 @@ function IntervalStep({
   set, interval, isFirstInSet,
   rowKey, expandedKey, onToggle,
   onChange, onChangeSet, onRemove,
-  trainingPaces, units,
+  trainingPaces, units, stampedPaceSec,
 }: {
   set: EditableSet
   interval: EditableInterval
@@ -468,6 +477,7 @@ function IntervalStep({
   onRemove: () => void
   trainingPaces: TrainingPaces | null | undefined
   units: UnitSystem
+  stampedPaceSec?: number
 }) {
   const isExpanded = expandedKey === rowKey
   const isIndented = !isFirstInSet
@@ -485,19 +495,30 @@ function IntervalStep({
   const label = showRepeat ? `${set.repeat} × ${distLabel}` : distLabel
 
   const paceDisplay = isFirstInSet
-    ? fmtPaceRangeDisplay(interval.target_pace, trainingPaces, interval.intensity, units)
+    ? fmtPaceRangeDisplay(interval.target_pace, trainingPaces, interval.intensity, units, stampedPaceSec)
     : ''
 
   const vdotLabel = (() => {
-    if (!trainingPaces || !interval.intensity) return null
+    if (!interval.intensity) return null
+    // Prefer stamped methodology pace for work intervals
+    if (stampedPaceSec && !isRecoveryIntensity(interval.intensity)) {
+      return fmtCenterPace(stampedPaceSec, units)
+    }
+    if (!trainingPaces) return null
     const sec = trainingPaces[intensityToPaceKey(interval.intensity)]
     return sec ? fmtCenterPace(sec, units) : null
   })()
 
-  // Pace inputs — local state, initialized from target_pace on mount
-  const [paceInputs, setPaceInputs] = useState(() =>
-    parsePaceToDisplayInputs(interval.target_pace, units)
-  )
+  // Pace inputs — local state, initialized from target_pace or stamped pace
+  const [paceInputs, setPaceInputs] = useState(() => {
+    if (interval.target_pace) return parsePaceToDisplayInputs(interval.target_pace, units)
+    // Pre-populate from stamped methodology pace for work intervals
+    if (stampedPaceSec && interval.intensity && !isRecoveryIntensity(interval.intensity)) {
+      const synth = `${Math.floor(stampedPaceSec / 60)}:${String(Math.round(stampedPaceSec % 60)).padStart(2, '0')}`
+      return parsePaceToDisplayInputs(synth, units)
+    }
+    return parsePaceToDisplayInputs(undefined, units)
+  })
 
   const handlePaceInput = (field: keyof typeof paceInputs, val: string) => {
     const next = { ...paceInputs, [field]: val }
@@ -684,11 +705,13 @@ function StructuredWorkoutEditor({
   onChange,
   trainingPaces,
   units,
+  stampedPaceSec,
 }: {
   structured: EditableStructured
   onChange: (v: EditableStructured) => void
   trainingPaces: TrainingPaces | null | undefined
   units: UnitSystem
+  stampedPaceSec?: number
 }) {
   const [expandedKey, setExpandedKey] = useState<string | null>(null)
   const totalMeters = useMemo(
@@ -775,6 +798,7 @@ function StructuredWorkoutEditor({
               onRemove={() => removeInterval(setIdx, intIdx)}
               trainingPaces={trainingPaces}
               units={units}
+              stampedPaceSec={stampedPaceSec}
             />
           )
         })
@@ -897,10 +921,13 @@ export function WorkoutCard({
       const stored = `${Math.floor(secKm / 60)}:${String(Math.round(secKm % 60)).padStart(2, '0')}`
       return fmtPaceRangeDisplay(stored, undefined, undefined, units)
     }
+    // Use stamped pace from structured_workout for methodology-specific labels
+    const swPace = (workout.structured_workout as Record<string, unknown> | null)?.target_pace_sec_per_km
+    const stamped = typeof swPace === 'number' ? swPace as number : undefined
     return editIntensity
-      ? fmtPaceRangeDisplay(undefined, trainingPaces, editIntensity, units)
+      ? fmtPaceRangeDisplay(undefined, trainingPaces, editIntensity, units, stamped)
       : ''
-  }, [isEditing, editIntensity, editCustomPaceM, editCustomPaceS, trainingPaces, units])
+  }, [isEditing, editIntensity, editCustomPaceM, editCustomPaceS, trainingPaces, units, workout.structured_workout])
 
   const hasStructuredWorkout = !!(
     workout.structured_workout?.main_set &&
@@ -935,31 +962,38 @@ export function WorkoutCard({
   let estimatedDurationMinutes: number | null = null
   let paceLabel: string | null = null
 
-  if (trainingPaces && workout.distance_target_meters && workout.workout_type) {
-    // Prefer intensity_target when it is explicitly "marathon" — this handles plans like
-    // Hanson's where tempo workouts run at marathon race pace, not threshold pace.
-    const paceType = workout.intensity_target?.toLowerCase().includes('marathon')
-      ? 'marathon'
-      : getWorkoutPaceType(workout.workout_type)
-    targetPace = trainingPaces[paceType]
-
-    // For intervals/tempo: estimate full session duration including warmup/cooldown minutes
+  if (workout.distance_target_meters && workout.workout_type) {
+    // Prefer methodology-specific stamped pace from structured_workout (e.g. Hansons "strength" → marathon-6)
     const sw = workout.structured_workout as Record<string, unknown> | null
-    const warmupMin = (sw?.warmup as { duration_minutes?: number } | undefined)?.duration_minutes ?? 0
-    const cooldownMin = (sw?.cooldown as { duration_minutes?: number } | undefined)?.duration_minutes ?? 0
-    const mainSeconds = estimateDuration(workout.distance_target_meters, targetPace)
-    estimatedDurationMinutes = Math.round(mainSeconds / 60) + warmupMin + cooldownMin
+    if (sw?.target_pace_sec_per_km && typeof sw.target_pace_sec_per_km === 'number') {
+      targetPace = sw.target_pace_sec_per_km as number
+      const label = typeof sw.pace_label === 'string' ? sw.pace_label : 'target'
+      paceLabel = label.charAt(0).toUpperCase() + label.slice(1)
+    } else if (trainingPaces) {
+      const paceType = getWorkoutPaceType(workout.workout_type)
+      targetPace = trainingPaces[paceType]
+      paceLabel = paceType.charAt(0).toUpperCase() + paceType.slice(1)
+    }
 
-    paceLabel = paceType.charAt(0).toUpperCase() + paceType.slice(1)
+    if (targetPace) {
+      // For intervals/tempo: estimate full session duration including warmup/cooldown minutes
+      const swDur = workout.structured_workout as Record<string, unknown> | null
+      const warmupMin = (swDur?.warmup as { duration_minutes?: number } | undefined)?.duration_minutes ?? 0
+      const cooldownMin = (swDur?.cooldown as { duration_minutes?: number } | undefined)?.duration_minutes ?? 0
+      const mainSeconds = estimateDuration(workout.distance_target_meters, targetPace)
+      estimatedDurationMinutes = Math.round(mainSeconds / 60) + warmupMin + cooldownMin
+    }
   }
 
   const enterEditMode = () => {
     setEditDescription(workout.description ?? '')
-    setEditDistanceDisplay(
-      workout.distance_target_meters
+    // For structured workouts, show the total distance (inc. warmup/cooldown/recovery)
+    const displayDist = hasStructuredWorkout && totalWorkoutDistance > 0
+      ? toDisplayDistance(totalWorkoutDistance).toFixed(1)
+      : workout.distance_target_meters
         ? toDisplayDistance(workout.distance_target_meters).toFixed(2)
         : ''
-    )
+    setEditDistanceDisplay(displayDist)
     setEditIntensity(workout.intensity_target ?? '')
     setEditDurationMinutes(
       workout.duration_target_seconds ? String(Math.round(workout.duration_target_seconds / 60)) : ''
@@ -1069,12 +1103,15 @@ export function WorkoutCard({
         updates.description = editDescription
       }
 
-      if (meters !== null) {
-        if (Math.abs(meters - (workout.distance_target_meters ?? 0)) > 1) {
-          updates.distance_target_meters = meters
+      // Skip distance updates when structured workout drives the distance (field is display-only)
+      if (!editStructured) {
+        if (meters !== null) {
+          if (Math.abs(meters - (workout.distance_target_meters ?? 0)) > 1) {
+            updates.distance_target_meters = meters
+          }
+        } else if (editDistanceDisplay === '' && workout.distance_target_meters !== null) {
+          updates.distance_target_meters = null
         }
-      } else if (editDistanceDisplay === '' && workout.distance_target_meters !== null) {
-        updates.distance_target_meters = null
       }
 
       if (editIntensity !== (workout.intensity_target ?? '')) {
@@ -1526,7 +1563,7 @@ export function WorkoutCard({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className={`text-sm ${editStructured ? 'text-muted-foreground' : ''}`}>
-                  Distance ({distanceLabel()})
+                  {editStructured ? `Approx. distance (${distanceLabel()})` : `Distance (${distanceLabel()})`}
                 </Label>
                 <Input
                   type="number"
@@ -1624,6 +1661,11 @@ export function WorkoutCard({
                   onChange={setEditStructured}
                   trainingPaces={trainingPaces}
                   units={units}
+                  stampedPaceSec={
+                    typeof (workout.structured_workout as Record<string, unknown> | null)?.target_pace_sec_per_km === 'number'
+                      ? (workout.structured_workout as Record<string, unknown>).target_pace_sec_per_km as number
+                      : undefined
+                  }
                 />
               </div>
             ) : (

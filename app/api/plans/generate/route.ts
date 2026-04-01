@@ -7,7 +7,7 @@ import { writePlanToDatabase } from '@/lib/plans/plan-writer'
 import { validateWorkoutDistances } from '@/lib/plans/workout-validator'
 import { enrichParsedWorkouts, enrichPreWeekWorkouts } from '@/lib/plans/structured-workout-builder'
 import { createLLMProvider } from '@/lib/agent/factory'
-import { calculateTrainingPaces, RACE_DISTANCES } from '@/lib/training/vdot'
+import { calculateTrainingPaces, calculateRacePaces, RACE_DISTANCES } from '@/lib/training/vdot'
 import type { UserCriteria } from '@/lib/templates/types'
 import type { TrainingPaces } from '@/types/database'
 import { writeLLMLog } from '@/lib/agent/llm-logger'
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
     if (vdot_data && typeof vdot_data === 'object' && typeof vdot_data.vdot === 'number') {
       const vdotValue = vdot_data.vdot
       vdot = vdotValue
-      trainingPaces = calculateTrainingPaces(vdotValue)
+      trainingPaces = { ...calculateTrainingPaces(vdotValue), ...calculateRacePaces(vdotValue) }
       paceSource = vdot_data.source || 'vdot_direct'
       paceSourceData = vdot_data.sourceData || { vdot: vdotValue }
 
@@ -292,13 +292,15 @@ export async function POST(request: Request) {
 
     if (planError) throw planError
 
-    // Write workouts to database
+    // Write workouts to database (with resolved methodology paces)
     const writeResult = await writePlanToDatabase(parsedPlan, {
       planId: plan.id,
       planStartDate: planStartDate,  // Week 1 starts on next Monday/Sunday
       userStartDate: start_date,      // User's selected start date (for pre-week workouts)
       goalDate: goal_date,
-      supabase: supabase
+      supabase: supabase,
+      paceTargets: fullTemplate.pace_targets,
+      athletePaces: trainingPaces,
     })
 
     return NextResponse.json({

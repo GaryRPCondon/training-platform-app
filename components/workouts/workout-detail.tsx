@@ -23,12 +23,21 @@ export function WorkoutDetail({ workout, trainingPaces, vdot, onEdit, onDelete }
     let estimatedDurationMinutes: number | null = null
     let paceLabel: string | null = null
 
-    if (trainingPaces && workout.distance_target_meters && workout.workout_type) {
-        const paceType = getWorkoutPaceType(workout.workout_type)
-        targetPace = trainingPaces[paceType]
-        estimatedDurationMinutes = Math.round(estimateDuration(workout.distance_target_meters, targetPace) / 60)
-        // Capitalize pace type for display (e.g., "interval" -> "Interval")
-        paceLabel = paceType.charAt(0).toUpperCase() + paceType.slice(1)
+    if (workout.distance_target_meters && workout.workout_type) {
+        // Prefer methodology-specific stamped pace from structured_workout (e.g. Hansons "strength" → marathon-6)
+        const sw = workout.structured_workout as Record<string, unknown> | null
+        if (sw?.target_pace_sec_per_km && typeof sw.target_pace_sec_per_km === 'number') {
+            targetPace = sw.target_pace_sec_per_km as number
+            const label = typeof sw.pace_label === 'string' ? sw.pace_label : 'target'
+            paceLabel = label.charAt(0).toUpperCase() + label.slice(1)
+        } else if (trainingPaces) {
+            const paceType = getWorkoutPaceType(workout.workout_type)
+            targetPace = trainingPaces[paceType]
+            paceLabel = paceType.charAt(0).toUpperCase() + paceType.slice(1)
+        }
+        if (targetPace) {
+            estimatedDurationMinutes = Math.round(estimateDuration(workout.distance_target_meters, targetPace) / 60)
+        }
     }
 
     return (

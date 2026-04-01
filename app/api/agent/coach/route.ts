@@ -299,20 +299,28 @@ export async function POST(request: Request) {
                 }
 
                 if (activityId) {
-                    const { data: focusActivity } = await supabase
-                        .from('activities')
-                        .select(`
-                            id, activity_name, activity_type, start_time,
-                            distance_meters, duration_seconds, avg_hr, max_hr, source,
-                            laps (
-                                lap_index, distance_meters, avg_pace, avg_hr,
-                                intensity_type, compliance_score
-                            )
-                        `)
-                        .eq('id', activityId)
-                        .eq('athlete_id', athleteId)
-                        .order('lap_index', { referencedTable: 'laps', ascending: true })
-                        .single()
+                    const [{ data: focusActivity }, { data: matchedWorkout }] = await Promise.all([
+                        supabase
+                            .from('activities')
+                            .select(`
+                                id, activity_name, activity_type, start_time,
+                                distance_meters, duration_seconds, avg_hr, max_hr, source,
+                                laps (
+                                    lap_index, distance_meters, avg_pace, avg_hr,
+                                    intensity_type, compliance_score
+                                )
+                            `)
+                            .eq('id', activityId)
+                            .eq('athlete_id', athleteId)
+                            .order('lap_index', { referencedTable: 'laps', ascending: true })
+                            .single(),
+                        supabase
+                            .from('planned_workouts')
+                            .select('id, scheduled_date, workout_type, description, distance_target_meters, intensity_target, structured_workout')
+                            .eq('completed_activity_id', activityId)
+                            .eq('athlete_id', athleteId)
+                            .single(),
+                    ])
 
                     if (focusActivity) {
                         const fmtPace = (secPerKm: number | null) => {
@@ -356,6 +364,31 @@ export async function POST(request: Request) {
                                 const hr = l.avg_hr ? `, HR ${l.avg_hr}` : ''
                                 const comp = l.compliance_score != null ? `, compliance ${l.compliance_score}` : ''
                                 systemPrompt += `  Lap ${l.lap_index + 1}: ${type}${d}${p}${hr}${comp}\n`
+                            }
+                        }
+
+                        // Cross-reference: show matched planned workout targets alongside the activity
+                        if (matchedWorkout) {
+                            const mw = matchedWorkout
+                            systemPrompt += `\n## Planned Workout for This Activity\n`
+                            systemPrompt += `Date: ${mw.scheduled_date} | Type: ${mw.workout_type}\n`
+                            if (mw.description) systemPrompt += `Description: ${mw.description}\n`
+                            if (mw.distance_target_meters) systemPrompt += `Planned Distance: ${(mw.distance_target_meters / 1000).toFixed(1)}km\n`
+                            if (mw.intensity_target) systemPrompt += `Intensity: ${mw.intensity_target}\n`
+                            const sw = mw.structured_workout as Record<string, unknown> | null
+                            if (sw) {
+                                if (typeof sw.target_pace_sec_per_km === 'number') {
+                                    const fmtP = (s: number) => `${Math.floor(s / 60)}:${Math.round(s % 60).toString().padStart(2, '0')}/km`
+                                    let paceStr = `Target Pace: ${fmtP(sw.target_pace_sec_per_km as number)}`
+                                    if (typeof sw.target_pace_upper_sec_per_km === 'number') {
+                                        paceStr += ` — ${fmtP(sw.target_pace_upper_sec_per_km as number)}`
+                                    }
+                                    if (typeof sw.pace_label === 'string') paceStr += ` (${sw.pace_label})`
+                                    systemPrompt += paceStr + '\n'
+                                }
+                                if (sw.main_set) {
+                                    systemPrompt += formatStructuredWorkoutForPrompt(sw) + '\n'
+                                }
                             }
                         }
                     }
@@ -406,6 +439,9 @@ export async function POST(request: Request) {
                         rationale: tc.arguments.rationale as string,
                         is_preferred: tc.arguments.is_preferred as boolean | undefined,
                         supersedes_workout_id: tc.arguments.supersedes_workout_id as number | undefined,
+                        target_pace_sec_per_km: tc.arguments.target_pace_sec_per_km as number | undefined,
+                        target_pace_min_sec_per_km: tc.arguments.target_pace_min_sec_per_km as number | undefined,
+                        target_pace_max_sec_per_km: tc.arguments.target_pace_max_sec_per_km as number | undefined,
                         proposal_status: 'pending' as const,
                     }))
 

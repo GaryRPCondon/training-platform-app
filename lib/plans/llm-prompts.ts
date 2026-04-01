@@ -132,7 +132,7 @@ Hard workouts are defined as:
 - type: "long_run"
 - type: "intervals"
 - type: "tempo"
-- ANY workout with intensity: "hard" or intensity: "moderate"
+- ANY workout with intensity that is NOT easy/recovery (e.g. "hard", "moderate", "strength", "speed", "tempo", "marathon_pace", "vo2max", "lactate_threshold")
 
 ABSOLUTE REQUIREMENTS - NO EXCEPTIONS:
 1. CHECK THE TEMPLATE: Does the template place hard workouts on back-to-back days?
@@ -237,8 +237,11 @@ REQUIRED FIELDS per workout:
 - type (easy_run/recovery/long_run/tempo/intervals/rest/cross_training)
 - description (human-readable label including distance in the athlete's preferred units. Format: "{Type} {distance} {unit}" for continuous runs. For intervals: "{N} × {distance} with {recovery}")
 - distance_meters (required for running workouts, null for rest/cross-training)
-- intensity (easy/moderate/marathon/hard/recovery)
-  Use "marathon" for marathon-pace tempo workouts (e.g. Hanson's)
+- intensity: Use one of these methodology-specific labels:
+${template.pace_targets
+  ? Object.entries(template.pace_targets).map(([key, target]) =>
+    `  "${key}" — ${(target as { description: string }).description}`).join('\n')
+  : '  "easy", "moderate", "marathon", "hard", "recovery"\n  Use "marathon" for marathon-pace tempo workouts (e.g. Hanson\'s)'}
 - pace_guidance (descriptive guidance: "conversational pace", "comfortably hard", "5K race pace", etc.)
 - notes (optional coaching notes)
 - structured_workout (intervals only — see STRUCTURED WORKOUT below)

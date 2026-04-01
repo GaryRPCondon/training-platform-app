@@ -242,6 +242,9 @@ export function ProposalCard({
                     duration_target_seconds: proposal.duration_target_seconds,
                     intensity_target: proposal.intensity_target,
                     structured_workout: proposal.structured_workout,
+                    target_pace_sec_per_km: proposal.target_pace_sec_per_km,
+                    target_pace_min_sec_per_km: proposal.target_pace_min_sec_per_km,
+                    target_pace_max_sec_per_km: proposal.target_pace_max_sec_per_km,
                 }),
             })
 

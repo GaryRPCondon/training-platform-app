@@ -60,6 +60,7 @@ export interface FullTemplate {
     approach: string
     key_features: string[]
   }
+  pace_targets?: Record<string, PaceTarget>
   weekly_schedule: WeekSchedule[]
 }
 
@@ -89,6 +90,14 @@ export interface WorkoutDetail {
   description?: string
   intensity?: string
   pace?: string
+}
+
+// Pace target types (methodology-specific intensity → athlete pace mapping)
+export interface PaceTarget {
+  reference_pace: string           // key into AllTrainingPaces (e.g. "easy", "race_5k")
+  offset_sec_per_km?: number       // negative=faster, positive=slower. Default 0
+  reference_pace_upper?: string    // for range targets (e.g. Pfitz LT: race_15k → race_half_marathon)
+  description: string              // human-readable, shown in coach prompt
 }
 
 // Recommendation types

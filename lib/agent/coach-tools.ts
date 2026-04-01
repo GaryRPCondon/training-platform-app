@@ -135,6 +135,18 @@ For easy/long runs, omit structured_workout entirely.`,
                 supersedes_workout_id: {
                     type: 'number',
                     description: 'If this workout is intended to replace an existing planned workout, provide that workout\'s ID. The UI will offer to remove the old workout after applying the new one, but the athlete decides.'
+                },
+                target_pace_sec_per_km: {
+                    type: 'number',
+                    description: 'Athlete-specified target pace in seconds per km. Only use when the athlete explicitly provides a pace number (e.g. "I want to run at 5:00/km" → 300). Do not calculate — transcribe what the athlete says.'
+                },
+                target_pace_min_sec_per_km: {
+                    type: 'number',
+                    description: 'Faster bound of athlete-specified pace range in seconds per km. Use with target_pace_max_sec_per_km for range targets (e.g. "5:00-6:00/km" → min 300, max 360).'
+                },
+                target_pace_max_sec_per_km: {
+                    type: 'number',
+                    description: 'Slower bound of athlete-specified pace range in seconds per km.'
                 }
             },
             required: ['scheduled_date', 'workout_type', 'description', 'distance_target_meters', 'rationale']
@@ -157,6 +169,10 @@ export interface WorkoutProposal {
     rationale: string
     is_preferred?: boolean
     supersedes_workout_id?: number
+    /** Athlete-specified pace overrides (seconds per km) */
+    target_pace_sec_per_km?: number
+    target_pace_min_sec_per_km?: number
+    target_pace_max_sec_per_km?: number
     /** Set by the UI after the athlete acts on the card */
     proposal_status?: 'pending' | 'applied' | 'dismissed'
 }

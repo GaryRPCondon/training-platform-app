@@ -64,6 +64,7 @@ export interface CoachWorkoutSummary {
     distance_target_meters: number | null
     duration_target_seconds: number | null
     intensity_target: string | null
+    structured_workout: Record<string, unknown> | null
     status: string
     completion_status: string
     actual_distance_meters: number | null
@@ -312,7 +313,7 @@ async function loadThisWeek(
             .single(),
         supabase
             .from('planned_workouts')
-            .select('id, scheduled_date, workout_type, description, distance_target_meters, duration_target_seconds, intensity_target, status, completion_status, completion_metadata')
+            .select('id, scheduled_date, workout_type, description, distance_target_meters, duration_target_seconds, intensity_target, structured_workout, status, completion_status, completion_metadata')
             .eq('athlete_id', athleteId)
             .gte('scheduled_date', weekStart)
             .lte('scheduled_date', weekEnd)
@@ -333,6 +334,7 @@ async function loadThisWeek(
             distance_target_meters: w.distance_target_meters,
             duration_target_seconds: w.duration_target_seconds,
             intensity_target: w.intensity_target,
+            structured_workout: w.structured_workout ?? null,
             status: w.status,
             completion_status: w.completion_status,
             actual_distance_meters: w.completion_metadata?.actual_distance_meters ?? null,
