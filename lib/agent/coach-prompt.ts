@@ -132,9 +132,8 @@ function buildThisWeekSection(context: CoachContext): string {
                 ? ` ${Math.round(w.duration_target_seconds / 60)}min`
                 : ''
         const desc = w.description ? ` — ${w.description}` : ''
-        // Always include intensity_target so the LLM doesn't infer the target
-        // pace from workout_type alone (e.g. "Tempo" type at marathon intensity).
-        const intensity = w.intensity_target ? ` [${w.intensity_target} pace]` : ''
+        // Show resolved pace if stamped on structured_workout, else fall back to intensity label
+        const intensity = formatWorkoutPaceTag(w.structured_workout, w.intensity_target, context.athlete.preferred_units)
 
         let statusStr = ''
         if (w.completion_status === 'completed') {
@@ -392,4 +391,32 @@ function formatDate(dateStr: string): string {
 /** Convert snake_case workout type to Title Case */
 function formatWorkoutType(type: string): string {
     return type.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+}
+
+/**
+ * Format a workout's pace tag for the coach prompt.
+ * Prefers resolved pace from structured_workout (e.g. "[strength @ 4:13/km]"),
+ * falls back to intensity label (e.g. "[hard pace]").
+ */
+function formatWorkoutPaceTag(
+    sw: Record<string, unknown> | null,
+    intensityTarget: string | null,
+    units: string
+): string {
+    if (sw && typeof sw.target_pace_sec_per_km === 'number') {
+        const label = typeof sw.pace_label === 'string' ? sw.pace_label : intensityTarget ?? 'target'
+        const pace = formatPace(sw.target_pace_sec_per_km as number, units)
+        if (typeof sw.target_pace_upper_sec_per_km === 'number') {
+            const upper = formatPace(sw.target_pace_upper_sec_per_km as number, units)
+            return ` [${label} @ ${pace}-${upper}]`
+        }
+        return ` [${label} @ ${pace}]`
+    }
+    if (sw && typeof sw.pace_source === 'string' && sw.pace_source === 'athlete_override') {
+        // Athlete override without numeric stamp — show description
+        if (typeof sw.pace_description === 'string') {
+            return ` [athlete target: ${sw.pace_description}]`
+        }
+    }
+    return intensityTarget ? ` [${intensityTarget} pace]` : ''
 }

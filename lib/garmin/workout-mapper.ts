@@ -112,7 +112,7 @@ function resolvePaceFromIntensity(
     const lower = intensity.toLowerCase()
     if (lower.includes('easy') || lower.includes('recovery')) {
       paceType = 'easy'
-    } else if (lower.includes('marathon')) {
+    } else if (lower.includes('marathon') || lower === 'race') {
       paceType = 'marathon'
     } else if (lower.includes('tempo') || lower.includes('threshold')) {
       paceType = 'tempo'
@@ -223,7 +223,8 @@ function buildRepeatStep(
   stepOrder: number,
   workoutType: string,
   trainingPaces: TrainingPaces | null | undefined,
-  smartRepeat?: boolean
+  smartRepeat?: boolean,
+  stampedPaceStr?: string
 ): GarminWorkoutStep {
   const childSteps: GarminWorkoutStep[] = set.intervals.map((interval, idx) => {
     const isRecovery = interval.intensity?.toLowerCase().includes('recovery') ||
@@ -238,7 +239,7 @@ function buildRepeatStep(
       workoutType,
       trainingPaces,
       interval.intensity,
-      interval.target_pace
+      interval.target_pace ?? (isRecovery ? undefined : stampedPaceStr)
     )
   })
 
@@ -285,12 +286,15 @@ export function mapToGarminWorkout(
   const workoutName = workout.description || formatWorkoutTypeName(workout.workout_type)
 
   // Only use structured steps if there's an actual main_set (not just the old {pace_guidance, notes} shape)
-  const sw = workout.structured_workout as WorkoutStructure | null
+  const sw = workout.structured_workout as (WorkoutStructure & StampedPace) | null
   const hasMainSet = sw?.main_set !== undefined
+
+  // Prefer stamped numeric pace from plan generation or athlete override
+  const stampedPaceStr = buildStampedPaceString(sw)
   // For simple workouts, pass through a custom pace override if intensity is 'custom'
-  const customPace = !hasMainSet && workout.intensity_target === 'custom' ? sw?.target_pace : undefined
+  const customPace = stampedPaceStr ?? (!hasMainSet && workout.intensity_target === 'custom' ? sw?.target_pace : undefined)
   const steps = hasMainSet
-    ? buildStructuredSteps(workout, trainingPaces)
+    ? buildStructuredSteps(workout, trainingPaces, stampedPaceStr)
     : buildSimpleSteps(workout, trainingPaces, customPace)
 
   return {
@@ -334,9 +338,31 @@ type WorkoutStructure = {
   target_pace?: string   // custom pace override for simple (non-structured) workouts
 }
 
+/** Fields stamped by pace-resolver at plan-write or proposal-apply time */
+type StampedPace = {
+  target_pace_sec_per_km?: number
+  target_pace_upper_sec_per_km?: number | null
+  pace_source?: string
+}
+
+/**
+ * Convert stamped numeric pace to a target_pace string that buildExecutableStep can consume.
+ * Returns "M:SS" for single pace, "M:SS-M:SS" for range (faster-slower), or undefined.
+ */
+function buildStampedPaceString(sw: (WorkoutStructure & StampedPace) | null): string | undefined {
+  if (!sw || typeof sw.target_pace_sec_per_km !== 'number') return undefined
+  const fmtP = (s: number) => `${Math.floor(s / 60)}:${Math.round(s % 60).toString().padStart(2, '0')}`
+  if (typeof sw.target_pace_upper_sec_per_km === 'number') {
+    // Range: faster (lower sec/km) - slower (higher sec/km)
+    return `${fmtP(sw.target_pace_sec_per_km)}-${fmtP(sw.target_pace_upper_sec_per_km)}`
+  }
+  return fmtP(sw.target_pace_sec_per_km)
+}
+
 function buildStructuredSteps(
   workout: Pick<PlannedWorkout, 'workout_type' | 'structured_workout' | 'intensity_target'>,
-  trainingPaces: TrainingPaces | null | undefined
+  trainingPaces: TrainingPaces | null | undefined,
+  stampedPaceStr?: string
 ): GarminWorkoutStep[] {
   const structure = workout.structured_workout as WorkoutStructure
   const steps: GarminWorkoutStep[] = []
@@ -368,7 +394,8 @@ function buildStructuredSteps(
         stepOrder++,
         workout.workout_type,
         trainingPaces,
-        set.skip_last_recovery ?? false
+        set.skip_last_recovery ?? false,
+        stampedPaceStr
       ))
     } else {
       const stepType = set.intensity?.toLowerCase().includes('recovery') ? 'recovery' : 'interval'
@@ -380,7 +407,7 @@ function buildStructuredSteps(
         workout.workout_type,
         trainingPaces,
         set.intensity,
-        set.target_pace
+        set.target_pace ?? stampedPaceStr
       ))
     }
   }

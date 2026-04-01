@@ -126,8 +126,11 @@ function calculatePaceForIntensity(vdot: number, intensityPct: number): number {
  * Based on current VDOT
  */
 export interface EquivalentTimes {
-  '5k': number          // seconds
+  'mile': number         // seconds
+  '3k': number
+  '5k': number
   '10k': number
+  '15k': number
   '10_mile': number
   'half_marathon': number
   'marathon': number
@@ -135,8 +138,11 @@ export interface EquivalentTimes {
 
 export function calculateEquivalentTimes(vdot: number): EquivalentTimes {
   return {
+    'mile': calculateRaceTime(vdot, RACE_DISTANCES['mile']),
+    '3k': calculateRaceTime(vdot, RACE_DISTANCES['3k']),
     '5k': calculateRaceTime(vdot, RACE_DISTANCES['5k']),
     '10k': calculateRaceTime(vdot, RACE_DISTANCES['10k']),
+    '15k': calculateRaceTime(vdot, RACE_DISTANCES['15k']),
     '10_mile': calculateRaceTime(vdot, RACE_DISTANCES['10_mile']),
     'half_marathon': calculateRaceTime(vdot, RACE_DISTANCES['half_marathon']),
     'marathon': calculateRaceTime(vdot, RACE_DISTANCES['marathon'])
@@ -144,50 +150,110 @@ export function calculateEquivalentTimes(vdot: number): EquivalentTimes {
 }
 
 /**
- * Calculate predicted race time for a given distance at current VDOT
+ * Calculate predicted race time for a given distance at current VDOT.
+ *
+ * Uses bisection search for robustness across all distances (mile through marathon).
+ * calculateVDOT is monotonically decreasing with time for a fixed distance:
+ * shorter time → faster velocity → higher VDOT.
  */
 function calculateRaceTime(vdot: number, distanceMeters: number): number {
-  // Reverse the VDOT calculation to find time
-  // This is an iterative approximation
+  // Bracket: world record pace (~6 m/s) to very slow (1 m/s)
+  let lo = distanceMeters / 6    // fastest plausible time
+  let hi = distanceMeters / 1    // slowest plausible time
 
-  let timeSeconds = distanceMeters / (vdot * 0.18) // Initial guess
+  // Bisection: find time where calculateVDOT(time, distance) ≈ target vdot
+  for (let i = 0; i < 50; i++) {
+    const mid = (lo + hi) / 2
+    const midVDOT = calculateVDOT(mid, distanceMeters)
 
-  // Newton's method iteration (3-5 iterations usually sufficient)
-  for (let i = 0; i < 5; i++) {
-    const calculatedVDOT = calculateVDOT(timeSeconds, distanceMeters)
-    const error = calculatedVDOT - vdot
+    if (Math.abs(midVDOT - vdot) < 0.01) {
+      return Math.round(mid)
+    }
 
-    if (Math.abs(error) < 0.01) break
-
-    // Adjust time based on error
-    const adjustment = error * (timeSeconds / 100)
-    timeSeconds -= adjustment
+    // Higher VDOT means faster (shorter time), so if midVDOT > target, we need more time
+    if (midVDOT > vdot) {
+      lo = mid
+    } else {
+      hi = mid
+    }
   }
 
-  return Math.round(timeSeconds)
+  return Math.round((lo + hi) / 2)
 }
 
 // ============================================================================
 // Helper Types & Constants
 // ============================================================================
 
-export type RaceDistance = '5k' | '10k' | '10_mile' | 'half_marathon' | 'marathon'
+export type RaceDistance = 'mile' | '3k' | '5k' | '10k' | '15k' | '10_mile' | 'half_marathon' | 'marathon'
 
 export const RACE_DISTANCES: Record<RaceDistance, number> = {
+  'mile': 1609.34,
+  '3k': 3000,
   '5k': 5000,
   '10k': 10000,
+  '15k': 15000,
   '10_mile': 16093.4,
   'half_marathon': 21097.5,
   'marathon': 42195
 }
 
 export const RACE_DISTANCE_LABELS: Record<RaceDistance, string> = {
+  'mile': 'Mile',
+  '3k': '3K',
   '5k': '5K',
   '10k': '10K',
+  '15k': '15K',
   '10_mile': '10 Mile',
   'half_marathon': 'Half Marathon',
   'marathon': 'Marathon'
 }
+
+// ============================================================================
+// Race Paces (sec/km at race effort for each distance)
+// ============================================================================
+
+/**
+ * Race equivalent paces in seconds per km.
+ * Used by methodology-specific pace targets (e.g. Pfitzinger LT = 15K-HM pace,
+ * Magness 3K/5K/10K efforts). Stored in athletes.training_paces JSONB.
+ */
+export interface RacePaces {
+  race_mile: number       // sec/km at mile race effort
+  race_3k: number         // sec/km at 3K race effort
+  race_5k: number         // sec/km at 5K race effort
+  race_10k: number        // sec/km at 10K race effort
+  race_15k: number        // sec/km at 15K race effort
+  race_half_marathon: number // sec/km at half marathon race effort
+}
+
+/**
+ * Calculate race-equivalent paces from VDOT.
+ * Returns pace in seconds/km for each race distance.
+ */
+export function calculateRacePaces(vdot: number): RacePaces {
+  const distances: { key: keyof RacePaces; distance: RaceDistance }[] = [
+    { key: 'race_mile', distance: 'mile' },
+    { key: 'race_3k', distance: '3k' },
+    { key: 'race_5k', distance: '5k' },
+    { key: 'race_10k', distance: '10k' },
+    { key: 'race_15k', distance: '15k' },
+    { key: 'race_half_marathon', distance: 'half_marathon' },
+  ]
+
+  const result = {} as RacePaces
+  for (const { key, distance } of distances) {
+    const timeSeconds = calculateRaceTime(vdot, RACE_DISTANCES[distance])
+    const distanceKm = RACE_DISTANCES[distance] / 1000
+    result[key] = Math.round(timeSeconds / distanceKm)
+  }
+  return result
+}
+
+/**
+ * Combined training + race paces. This is what gets stored in athletes.training_paces.
+ */
+export type AllTrainingPaces = TrainingPaces & Partial<RacePaces>
 
 /**
  * Parse race time string to seconds

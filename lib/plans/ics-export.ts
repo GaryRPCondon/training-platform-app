@@ -120,8 +120,12 @@ function formatICSDescription(
     lines.push(`Intensity: ${workout.intensity_target}`)
   }
 
-  // Pace target from training paces
-  if (trainingPaces) {
+  // Pace target: prefer stamped methodology pace, fall back to workout-type mapping
+  const sw = workout.structured_workout as Record<string, unknown> | null
+  if (sw?.target_pace_sec_per_km && typeof sw.target_pace_sec_per_km === 'number') {
+    const label = typeof sw.pace_label === 'string' ? sw.pace_label : 'target'
+    lines.push(`Target Pace: ${formatPace(sw.target_pace_sec_per_km as number, units)} (${label})`)
+  } else if (trainingPaces) {
     const paceType = getWorkoutPaceType(workout.workout_type)
     const paceSeconds = trainingPaces[paceType]
     if (paceSeconds) {

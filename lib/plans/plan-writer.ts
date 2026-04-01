@@ -1,7 +1,9 @@
 import type { ParsedPlan } from './response-parser'
 import { calculateWorkoutDate } from './response-parser'
+import { resolvePace, type PaceTarget } from './pace-resolver'
 import { addDays, format, parseISO } from 'date-fns'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { AllTrainingPaces } from '@/lib/training/vdot'
 
 
 export interface PlanWriteOptions {
@@ -10,6 +12,33 @@ export interface PlanWriteOptions {
   userStartDate?: string      // YYYY-MM-DD - User's selected start date (may be before planStartDate)
   goalDate: string           // YYYY-MM-DD
   supabase: SupabaseClient   // Supabase client to use (server or client)
+  paceTargets?: Record<string, PaceTarget>   // Template methodology pace targets
+  athletePaces?: AllTrainingPaces | null      // Athlete's training + race paces
+}
+
+/**
+ * Stamp resolved pace targets onto a structured_workout object.
+ * Adds target_pace_sec_per_km, pace_label, pace_description, pace_source if resolvable.
+ */
+function stampResolvedPace(
+  structuredWorkout: Record<string, unknown>,
+  intensityTarget: string | undefined,
+  paceTargets: Record<string, PaceTarget> | undefined,
+  athletePaces: AllTrainingPaces | null | undefined
+): Record<string, unknown> {
+  if (!paceTargets || !athletePaces || !intensityTarget) return structuredWorkout
+
+  const resolved = resolvePace(intensityTarget, paceTargets, athletePaces)
+  if (!resolved) return structuredWorkout
+
+  return {
+    ...structuredWorkout,
+    target_pace_sec_per_km: resolved.target_pace_sec_per_km,
+    target_pace_upper_sec_per_km: resolved.target_pace_upper_sec_per_km,
+    pace_label: resolved.pace_label,
+    pace_description: resolved.pace_description,
+    pace_source: resolved.pace_source,
+  }
 }
 
 /**
@@ -19,7 +48,7 @@ export async function writePlanToDatabase(
   parsedPlan: ParsedPlan,
   options: PlanWriteOptions
 ) {
-  const { planId, planStartDate, userStartDate, supabase } = options
+  const { planId, planStartDate, userStartDate, supabase, paceTargets, athletePaces } = options
 
   // Get athlete_id from plan
   const { data: planData } = await supabase
@@ -121,10 +150,12 @@ export async function writePlanToDatabase(
           distance_target_meters: workout.distance_km ? workout.distance_km * 1000 : null,
           duration_target_seconds: null,
           intensity_target: workout.intensity || 'easy',
-          structured_workout: workout.structured_workout ?? {
-            pace_guidance: workout.pace_guidance,
-            notes: workout.notes
-          },
+          structured_workout: stampResolvedPace(
+            workout.structured_workout ?? { pace_guidance: workout.pace_guidance, notes: workout.notes },
+            workout.intensity,
+            paceTargets,
+            athletePaces
+          ),
           status: 'scheduled'
         })
 
@@ -177,10 +208,12 @@ export async function writePlanToDatabase(
           distance_target_meters: workout.distance_meters,
           duration_target_seconds: null,  // Duration calculated from distance + pace
           intensity_target: workout.intensity,
-          structured_workout: workout.structured_workout ?? {
-            pace_guidance: workout.pace_guidance,
-            notes: workout.notes
-          },
+          structured_workout: stampResolvedPace(
+            workout.structured_workout ?? { pace_guidance: workout.pace_guidance, notes: workout.notes },
+            workout.intensity,
+            paceTargets,
+            athletePaces
+          ),
           status: 'scheduled'
         })
 
