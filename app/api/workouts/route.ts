@@ -19,6 +19,9 @@ const createWorkoutSchema = z.object({
   duration_target_seconds: z.number().nonnegative().nullable().optional(),
   intensity_target: z.string().nullable().optional(),
   structured_workout: z.record(z.string(), z.unknown()).nullable().optional(),
+  target_pace_sec_per_km: z.number().positive().nullable().optional(),
+  target_pace_min_sec_per_km: z.number().positive().nullable().optional(),
+  target_pace_max_sec_per_km: z.number().positive().nullable().optional(),
 })
 
 export async function POST(request: Request) {
@@ -40,6 +43,9 @@ export async function POST(request: Request) {
       duration_target_seconds,
       intensity_target,
       structured_workout,
+      target_pace_sec_per_km,
+      target_pace_min_sec_per_km,
+      target_pace_max_sec_per_km,
     } = parsed.data
 
     // If distance_target_meters is missing but structured_workout has distance data,
@@ -48,6 +54,24 @@ export async function POST(request: Request) {
     if (!resolvedDistance && structured_workout && workout_type) {
       const computed = calculateTotalWorkoutDistance(null, workout_type, structured_workout, null)
       if (computed > 0) resolvedDistance = computed
+    }
+
+    // Stamp athlete pace overrides onto structured_workout if provided
+    let resolvedSw = structured_workout || null
+    if (target_pace_sec_per_km || target_pace_min_sec_per_km) {
+      const paceTarget = target_pace_sec_per_km ?? target_pace_min_sec_per_km!
+      const paceUpper = target_pace_max_sec_per_km ?? null
+      const fmtP = (s: number) => `${Math.floor(s / 60)}:${Math.round(s % 60).toString().padStart(2, '0')}/km`
+      const paceDesc = paceUpper
+        ? `Athlete-specified: ${fmtP(paceTarget)}-${fmtP(paceUpper)}`
+        : `Athlete-specified: ${fmtP(paceTarget)}`
+      resolvedSw = {
+        ...(resolvedSw ?? {}),
+        target_pace_sec_per_km: paceTarget,
+        target_pace_upper_sec_per_km: paceUpper,
+        pace_source: 'athlete_override',
+        pace_description: paceDesc,
+      }
     }
 
     const supabase = await createClient()
@@ -67,7 +91,7 @@ export async function POST(request: Request) {
         distance_target_meters: resolvedDistance,
         duration_target_seconds: duration_target_seconds || null,
         intensity_target: intensity_target || null,
-        structured_workout: structured_workout || null,
+        structured_workout: resolvedSw,
         status: 'scheduled',
         completion_status: 'pending',
         version: 1,

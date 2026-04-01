@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { ensureAthleteExists } from '@/lib/supabase/ensure-athlete'
-import { calculateTrainingPaces } from '@/lib/training/vdot'
+import { calculateTrainingPaces, calculateRacePaces } from '@/lib/training/vdot'
 import { z } from 'zod'
 
 const vdotSchema = z.object({
@@ -68,8 +68,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: athleteError }, { status: 500 })
     }
 
-    // Calculate new training paces
-    const trainingPaces = calculateTrainingPaces(vdot)
+    // Calculate new training paces (base zones + race equivalents)
+    const trainingPaces = {
+      ...calculateTrainingPaces(vdot),
+      ...calculateRacePaces(vdot),
+    }
     const paceSource = source || 'vdot_direct'
     const paceSourceData = sourceData || { vdot }
 
