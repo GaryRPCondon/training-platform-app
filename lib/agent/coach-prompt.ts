@@ -14,7 +14,7 @@ import type { CoachContext } from './coach-context-loader'
 
 export function buildCoachSystemPrompt(context: CoachContext): string {
     const sections: string[] = [
-        buildRoleSection(context.athlete.preferred_units),
+        buildRoleSection(context.athlete.preferred_units, new Date()),
         buildAthleteSection(context),
         buildPlanSection(context),
         buildThisWeekSection(context),
@@ -34,11 +34,14 @@ export function buildCoachSystemPrompt(context: CoachContext): string {
 // Sections
 // ---------------------------------------------------------------------------
 
-function buildRoleSection(units: string): string {
+function buildRoleSection(units: string, today: Date): string {
     const paceUnit = units === 'imperial' ? 'min/mi' : 'min/km'
     const distanceUnit = units === 'imperial' ? 'miles' : 'km'
+    const todayStr = format(today, 'EEEE d MMMM yyyy')
 
     return `You are an AI running coach for a self-coached endurance athlete.
+
+Today's date: ${todayStr}
 
 ## Your Role
 - Analyse their training data and provide evidence-based, specific advice

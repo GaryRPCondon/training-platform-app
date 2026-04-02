@@ -33,7 +33,7 @@ You may call this multiple times to propose alternatives.`,
                 },
                 distance_target_meters: {
                     type: 'number',
-                    description: 'Total target distance in meters (including warmup/cooldown). Required for all running workouts. For time-based workouts, estimate the equivalent distance.'
+                    description: 'Total target distance in meters. Required for non-structured workouts (easy_run, long_run, recovery). Omit when structured_workout is provided — the app calculates distance from the structured parts.'
                 },
                 duration_target_seconds: {
                     type: 'number',
@@ -149,7 +149,7 @@ For easy/long runs, omit structured_workout entirely.`,
                     description: 'Slower bound of athlete-specified pace range in seconds per km.'
                 }
             },
-            required: ['scheduled_date', 'workout_type', 'description', 'distance_target_meters', 'rationale']
+            required: ['scheduled_date', 'workout_type', 'description', 'rationale']
         }
     }
 ]
