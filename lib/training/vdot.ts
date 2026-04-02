@@ -339,14 +339,16 @@ export function getWorkoutPaceType(workoutType: string): keyof TrainingPaces {
 const DEFAULT_EASY_PACE_SEC_PER_KM = 360
 
 /**
- * Calculate total workout distance including warmup, cooldown, and recovery intervals.
+ * Calculate total workout distance including warmup, cooldown, and all main_set intervals.
  *
- * For intervals: warmup (time-based → distance) + all main_set distances (work + recovery) + cooldown
- * For tempo:     warmup (time-based → distance) + tempo segment distance + cooldown
- * For others:    distance_target_meters as-is
+ * When a structured_workout with a main_set array is present, distance is always derived
+ * from the structured parts (warmup + all intervals × repeats + cooldown). This is the
+ * single source of truth shared by the workout card view, edit mode, and proposal card.
  *
- * @param distanceTargetMeters - The workout's distance_target_meters field
- * @param workoutType - The workout type string
+ * Fallback: returns distanceTargetMeters as-is for non-structured workouts.
+ *
+ * @param distanceTargetMeters - The workout's distance_target_meters field (fallback only)
+ * @param workoutType - Unused; kept for API compatibility
  * @param structuredWorkout - The structured_workout JSONB from the database
  * @param trainingPaces - Optional training paces (uses 6:00/km easy pace fallback)
  * @returns Total estimated distance in meters
@@ -357,11 +359,12 @@ export function calculateTotalWorkoutDistance(
   structuredWorkout: Record<string, unknown> | null | undefined,
   trainingPaces?: TrainingPaces | null
 ): number {
-  const type = (workoutType ?? '').toLowerCase()
+  const mainSet = structuredWorkout?.main_set
 
-  // If we have a structured workout, try to compute distance from it
-  if (structuredWorkout && (type === 'intervals' || type === 'tempo')) {
+  // Only compute from parts when there is a structured main_set to sum
+  if (structuredWorkout && Array.isArray(mainSet)) {
     const easyPace = trainingPaces?.easy ?? DEFAULT_EASY_PACE_SEC_PER_KM
+    const intervalPace = trainingPaces?.interval ?? DEFAULT_EASY_PACE_SEC_PER_KM
     const metersPerMin = (1000 / easyPace) * 60
 
     const warmup = structuredWorkout.warmup as { duration_minutes?: number; distance_meters?: number } | undefined
@@ -369,45 +372,26 @@ export function calculateTotalWorkoutDistance(
     const warmupMeters = warmup?.distance_meters ?? (warmup?.duration_minutes ?? 0) * metersPerMin
     const cooldownMeters = cooldown?.distance_meters ?? (cooldown?.duration_minutes ?? 0) * metersPerMin
 
-    if (type === 'intervals') {
-      const mainSet = structuredWorkout.main_set as Array<{
-        repeat?: number
-        intervals?: Array<{ distance_meters?: number }>
-      }> | undefined
-
-      let mainSetMeters = 0
-      if (Array.isArray(mainSet)) {
-        for (const group of mainSet) {
-          const repeats = group.repeat ?? 1
-          for (const interval of group.intervals ?? []) {
-            mainSetMeters += repeats * (interval.distance_meters ?? 0)
-          }
+    let mainSetMeters = 0
+    for (const group of mainSet as Array<{
+      repeat?: number
+      intervals?: Array<{ distance_meters?: number; duration_seconds?: number; intensity?: string }>
+    }>) {
+      const repeats = group.repeat ?? 1
+      for (const interval of group.intervals ?? []) {
+        if (interval.distance_meters) {
+          mainSetMeters += repeats * interval.distance_meters
+        } else if (interval.duration_seconds) {
+          // Time-based interval: estimate distance from pace (recovery uses easy, work uses interval)
+          const isRecovery = (interval.intensity ?? '').toLowerCase().includes('recovery')
+          const paceSecPerKm = isRecovery ? easyPace : intervalPace
+          mainSetMeters += repeats * (interval.duration_seconds / paceSecPerKm) * 1000
         }
       }
-      const total = Math.round(warmupMeters + mainSetMeters + cooldownMeters)
-      return total > 0 ? total : (distanceTargetMeters ?? 0)
     }
 
-    if (type === 'tempo') {
-      // Extract main set distance from structured workout if distance_target_meters is missing
-      let mainDistance = distanceTargetMeters ?? 0
-      if (!mainDistance) {
-        const mainSet = structuredWorkout.main_set as Array<{
-          repeat?: number
-          intervals?: Array<{ distance_meters?: number }>
-        }> | undefined
-        if (Array.isArray(mainSet)) {
-          for (const group of mainSet) {
-            const repeats = group.repeat ?? 1
-            for (const interval of group.intervals ?? []) {
-              mainDistance += repeats * (interval.distance_meters ?? 0)
-            }
-          }
-        }
-      }
-      const total = Math.round(warmupMeters + mainDistance + cooldownMeters)
-      return total > 0 ? total : (distanceTargetMeters ?? 0)
-    }
+    const total = Math.round(warmupMeters + mainSetMeters + cooldownMeters)
+    return total > 0 ? total : (distanceTargetMeters ?? 0)
   }
 
   return distanceTargetMeters ?? 0

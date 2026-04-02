@@ -88,52 +88,16 @@ interface EditableStructured {
 // Distance estimation for live total
 // ============================================================================
 
-function estimatePartDistance(
-  part: EditableWarmupCooldown,
-  trainingPaces: TrainingPaces | null | undefined
-): number {
-  if (part.distance_meters) return part.distance_meters
-  if (part.duration_minutes && trainingPaces) {
-    const easyPace = trainingPaces.easy
-    const km = (part.duration_minutes * 60) / easyPace
-    return km * 1000
-  }
-  return 0
-}
-
-function estimateIntervalDistance(
-  interval: EditableInterval,
-  trainingPaces: TrainingPaces | null | undefined
-): number {
-  if (interval.distance_meters) return interval.distance_meters
-  if (interval.duration_seconds && trainingPaces) {
-    const isRecovery = interval.intensity?.toLowerCase().includes('recovery')
-    const paceSecPerKm = isRecovery ? trainingPaces.easy : trainingPaces.interval
-    const km = interval.duration_seconds / paceSecPerKm
-    return km * 1000
-  }
-  return 0
-}
-
 function calcTotalDistance(
   structured: EditableStructured,
   trainingPaces: TrainingPaces | null | undefined
 ): number {
-  let total = 0
-  if (structured.warmup) {
-    total += estimatePartDistance(structured.warmup, trainingPaces)
-  }
-  for (const set of structured.main_set) {
-    const intervalTotal = set.intervals.reduce(
-      (sum, int) => sum + estimateIntervalDistance(int, trainingPaces),
-      0
-    )
-    total += set.repeat * intervalTotal
-  }
-  if (structured.cooldown) {
-    total += estimatePartDistance(structured.cooldown, trainingPaces)
-  }
-  return total
+  return calculateTotalWorkoutDistance(
+    null,
+    null,
+    structured as unknown as Record<string, unknown>,
+    trainingPaces
+  )
 }
 
 // ============================================================================

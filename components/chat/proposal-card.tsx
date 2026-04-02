@@ -11,6 +11,7 @@ import { WorkoutCard } from '@/components/review/workout-card'
 import type { WorkoutProposal } from '@/lib/agent/coach-tools'
 import type { WorkoutWithDetails } from '@/types/review'
 import type { TrainingPaces } from '@/types/database'
+import { calculateTotalWorkoutDistance } from '@/lib/training/vdot'
 import { useQueryClient } from '@tanstack/react-query'
 
 // ---------------------------------------------------------------------------
@@ -238,7 +239,7 @@ export function ProposalCard({
                     scheduled_date: proposal.scheduled_date,
                     workout_type: proposal.workout_type,
                     description: proposal.description,
-                    distance_target_meters: proposal.distance_target_meters,
+                    distance_target_meters: displayDistanceMeters,
                     duration_target_seconds: proposal.duration_target_seconds,
                     intensity_target: proposal.intensity_target,
                     structured_workout: proposal.structured_workout,
@@ -299,8 +300,18 @@ export function ProposalCard({
 
     const dateLabel = format(new Date(proposal.scheduled_date + 'T12:00:00'), 'EEE d MMM yyyy')
 
-    const distanceLabel = proposal.distance_target_meters
-        ? `${(proposal.distance_target_meters / 1000).toFixed(1)} km`
+    // For structured workouts, calculate distance from parts (more accurate than the LLM estimate).
+    // For non-structured workouts, fall back to the LLM-provided distance_target_meters.
+    const calculatedDistanceMeters = calculateTotalWorkoutDistance(
+        proposal.distance_target_meters ?? null,
+        proposal.workout_type,
+        (proposal.structured_workout as Record<string, unknown> | null) ?? null,
+        trainingPaces
+    )
+    const displayDistanceMeters = calculatedDistanceMeters > 0 ? calculatedDistanceMeters : (proposal.distance_target_meters ?? null)
+
+    const distanceLabel = displayDistanceMeters
+        ? `${(displayDistanceMeters / 1000).toFixed(1)} km`
         : proposal.duration_target_seconds
             ? `${Math.round(proposal.duration_target_seconds / 60)} min`
             : null
