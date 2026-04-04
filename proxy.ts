@@ -5,7 +5,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 const PUBLIC_PATHS = new Set(['/', '/login'])
 
 /** Prefixes that are always public regardless of the full path. */
-const PUBLIC_PREFIXES = ['/api/auth/', '/api/strava/callback']
+const PUBLIC_PREFIXES = ['/api/auth/', '/api/strava/callback', '/api/jobs/']
 
 function isPublic(pathname: string): boolean {
     if (PUBLIC_PATHS.has(pathname)) return true
