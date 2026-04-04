@@ -42,10 +42,6 @@ interface PendingActivity {
 export async function POST(request: Request) {
   // Verify cron secret
   const cronSecret = request.headers.get('x-cron-secret')
-  console.log('[Push Job] Auth debug:', {                                                                           hasHeader: !!cronSecret,                                                                                    
-    headerValue: JSON.stringify(cronSecret),                                                                    
-    envValue: JSON.stringify(process.env.CRON_SECRET),      
-  })
   if (!cronSecret || cronSecret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
