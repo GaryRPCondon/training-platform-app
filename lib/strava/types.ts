@@ -48,6 +48,7 @@ export interface StravaActivity {
     pr_count?: number
     total_photo_count?: number
     has_kudoed?: boolean
+    description?: string  // Only available from GET /activities/{id} detail endpoint
 }
 
 export interface StravaRateLimit {

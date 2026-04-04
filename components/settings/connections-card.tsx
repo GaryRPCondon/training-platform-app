@@ -9,6 +9,16 @@ import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { CheckCircle2, XCircle, Loader2, Wifi } from 'lucide-react'
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { GarminConnect } from './garmin-connect'
 import { getAthleteProfile } from '@/lib/supabase/queries'
 
@@ -28,6 +38,7 @@ export function ConnectionsCard({ stravaConnected, garminConnected, onRefresh }:
     const queryClient = useQueryClient()
     const [loading, setLoading] = useState<string | null>(null)
     const [stravaTest, setStravaTest] = useState<TestResult>({ status: 'idle' })
+    const [showStravaPushWarning, setShowStravaPushWarning] = useState(false)
 
     const testStravaConnection = async () => {
         setStravaTest({ status: 'loading' })
@@ -77,6 +88,26 @@ export function ConnectionsCard({ stravaConnected, garminConnected, onRefresh }:
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ sync_on_login })
+            })
+            if (!response.ok) throw new Error('Failed to update preference')
+            return response.json()
+        },
+        onSuccess: async () => {
+            await queryClient.invalidateQueries({ queryKey: ['athlete'] })
+            await refetch()
+        },
+        onError: () => {
+            toast.error('Failed to update preference')
+        }
+    })
+
+    // Mutation to update push summary preferences
+    const updatePushSummaryMutation = useMutation({
+        mutationFn: async (updates: { push_summary_to_garmin?: boolean; push_summary_to_strava?: boolean }) => {
+            const response = await fetch('/api/settings/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updates)
             })
             if (!response.ok) throw new Error('Failed to update preference')
             return response.json()
@@ -181,6 +212,11 @@ export function ConnectionsCard({ stravaConnected, garminConnected, onRefresh }:
                     garminPreferred={garminPreferred}
                     stravaPreferred={stravaPreferred}
                     onPreferenceChange={handleGarminPreferenceChange}
+                    pushSummaryToGarmin={athlete?.push_summary_to_garmin ?? false}
+                    onPushSummaryChange={(checked) => {
+                        updatePushSummaryMutation.mutate({ push_summary_to_garmin: checked })
+                        toast.success(checked ? 'Garmin summary push enabled' : 'Garmin summary push disabled')
+                    }}
                 />
 
                 {/* Strava */}
@@ -255,7 +291,49 @@ export function ConnectionsCard({ stravaConnected, garminConnected, onRefresh }:
                             />
                         </div>
                     )}
+
+                    {/* Write AI summaries toggle */}
+                    {stravaConnected && (
+                        <div className="flex items-center justify-between pt-2 border-t">
+                            <Label htmlFor="strava-push-summary" className="text-sm text-muted-foreground cursor-pointer">
+                                Write AI summaries to Strava
+                            </Label>
+                            <Switch
+                                id="strava-push-summary"
+                                checked={athlete?.push_summary_to_strava ?? false}
+                                onCheckedChange={(checked) => {
+                                    if (checked) {
+                                        setShowStravaPushWarning(true)
+                                    } else {
+                                        updatePushSummaryMutation.mutate({ push_summary_to_strava: false })
+                                        toast.success('Strava summary push disabled')
+                                    }
+                                }}
+                                disabled={updatePushSummaryMutation.isPending}
+                            />
+                        </div>
+                    )}
                 </div>
+
+                <AlertDialog open={showStravaPushWarning} onOpenChange={setShowStravaPushWarning}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Write AI Summaries to Strava</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                The AI summary will be prepended to your existing Strava activity description. If other third-party apps also write to your activity description, one may overwrite the other.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => {
+                                updatePushSummaryMutation.mutate({ push_summary_to_strava: true })
+                                toast.success('Strava summary push enabled')
+                            }}>
+                                Enable
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </CardContent>
         </Card>
     )

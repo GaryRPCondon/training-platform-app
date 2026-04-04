@@ -8,6 +8,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { manuallyLinkWorkout, unlinkWorkout } from '@/lib/activities/workout-matcher'
+import { captureDescriptionsForMatches } from '@/lib/activities/capture-descriptions'
+import { triggerSummaryGeneration } from '@/lib/activities/trigger-summary'
 import { z } from 'zod'
 
 const linkSchema = z.object({
@@ -35,6 +37,12 @@ export async function POST(request: Request) {
         }
 
         await manuallyLinkWorkout(supabase, activityId, workoutId, user.id, reason)
+
+        // Capture platform descriptions and generate AI summary
+        await captureDescriptionsForMatches(supabase, user.id, [activityId])
+        triggerSummaryGeneration(supabase, user.id, [activityId]).catch(err => {
+            console.error('[Link] Summary generation error:', err)
+        })
 
         return NextResponse.json({ success: true })
     } catch (error) {

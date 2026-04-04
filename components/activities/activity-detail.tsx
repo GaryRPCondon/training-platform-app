@@ -11,9 +11,10 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { WorkoutLinker } from './workout-linker'
+import { AISummaryPanel } from './ai-summary-panel'
 import { format, parseISO } from 'date-fns'
 import type { Activity, PlannedWorkout, Lap } from '@/types/database'
-import { Activity as ActivityIcon, Calendar, Clock, TrendingUp, Gauge, Mountain, Sparkles } from 'lucide-react'
+import { Activity as ActivityIcon, Calendar, Clock, TrendingUp, Gauge, Mountain, Sparkles, FileText } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -81,14 +82,14 @@ export function ActivityDetail({ activity, onClose }: ActivityDetailProps) {
                 {format(parseISO(activity.start_time), 'PPp')}
               </div>
             )}
-            <div className="flex items-center gap-3 mt-2">
+            <div className="flex items-center gap-3 mt-2 flex-wrap">
               {externalLinks.map(({ platform, url }) => (
                 <a
                   key={platform}
                   href={url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
                 >
                   {platform === 'garmin' ? <GarminIcon size={13} /> : <StravaIcon size={13} />}
                   {platform === 'garmin' ? 'Garmin Connect' : 'Strava'}
@@ -98,8 +99,8 @@ export function ActivityDetail({ activity, onClose }: ActivityDetailProps) {
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 text-violet-500 hover:text-violet-600 hover:bg-violet-50"
+                    size="sm"
+                    className="h-7 px-2 text-violet-500 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950 gap-1"
                     aria-label="Discuss with AI Coach"
                     onClick={() => {
                       onClose?.()
@@ -107,10 +108,33 @@ export function ActivityDetail({ activity, onClose }: ActivityDetailProps) {
                     }}
                   >
                     <Sparkles className="h-3.5 w-3.5" />
+                    <span className="text-xs">AI Coach</span>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Discuss with AI Coach</TooltipContent>
               </Tooltip>
+              {activity.planned_workout_id && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-amber-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950 gap-1"
+                      aria-label="AI Summary"
+                      onClick={() => {
+                        document.getElementById('ai-summary-panel')?.scrollIntoView({ behavior: 'smooth' })
+                      }}
+                    >
+                      <span className="relative">
+                        <FileText className="h-3.5 w-3.5" />
+                        <Sparkles className="h-2 w-2 absolute -top-0.5 -right-1" />
+                      </span>
+                      <span className="text-xs">AI Summary</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>View AI coaching summary</TooltipContent>
+                </Tooltip>
+              )}
             </div>
           </div>
           <div className="flex gap-2">
@@ -275,6 +299,21 @@ export function ActivityDetail({ activity, onClose }: ActivityDetailProps) {
           </div>
           <Separator />
         </>
+      )}
+
+      {/* AI Summary — only for activities matched to a planned workout */}
+      {activity.planned_workout_id && (
+        <div id="ai-summary-panel">
+          <AISummaryPanel
+            activityId={activity.id}
+            summary={activity.ai_summary}
+            status={activity.ai_summary_status}
+            starRating={activity.ai_star_rating}
+            generatedAt={activity.ai_summary_generated_at}
+            stravaPushedAt={activity.strava_summary_pushed_at}
+            garminPushedAt={activity.garmin_summary_pushed_at}
+          />
+        </div>
       )}
 
       {/* Workout Linker */}

@@ -5,7 +5,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
-import { Checkbox } from '@/components/ui/checkbox'
+import { Switch } from '@/components/ui/switch'
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 
@@ -20,8 +30,10 @@ export function AISettingsCard() {
     const [provider, setProvider] = useState('deepseek')
     const [model, setModel] = useState('')
     const [useFastModel, setUseFastModel] = useState(true)
+    const [aiSummariesEnabled, setAiSummariesEnabled] = useState(false)
+    const [showCostWarning, setShowCostWarning] = useState(false)
     const [availableProviders, setAvailableProviders] = useState<ProviderAvailability[]>([])
-    const savedValues = useRef({ provider: 'deepseek', model: '', useFastModel: true })
+    const savedValues = useRef({ provider: 'deepseek', model: '', useFastModel: true, aiSummariesEnabled: false })
 
     useEffect(() => {
         fetchSettings()
@@ -54,10 +66,12 @@ export function AISettingsCard() {
                     provider: data.provider || 'deepseek',
                     model: data.model || '',
                     useFastModel: data.useFastModelForOperations ?? true,
+                    aiSummariesEnabled: data.aiSummariesEnabled ?? false,
                 }
                 setProvider(vals.provider)
                 setModel(vals.model)
                 setUseFastModel(vals.useFastModel)
+                setAiSummariesEnabled(vals.aiSummariesEnabled)
                 savedValues.current = vals
             }
         } catch (error) {
@@ -70,7 +84,8 @@ export function AISettingsCard() {
 
     const hasChanges = provider !== savedValues.current.provider ||
         model !== savedValues.current.model ||
-        useFastModel !== savedValues.current.useFastModel
+        useFastModel !== savedValues.current.useFastModel ||
+        aiSummariesEnabled !== savedValues.current.aiSummariesEnabled
 
     const handleSave = async () => {
         setSaving(true)
@@ -81,13 +96,14 @@ export function AISettingsCard() {
                 body: JSON.stringify({
                     provider,
                     model,
-                    useFastModelForOperations: useFastModel
+                    useFastModelForOperations: useFastModel,
+                    ai_summaries_enabled: aiSummariesEnabled,
                 })
             })
 
             if (!response.ok) throw new Error('Failed to update settings')
 
-            savedValues.current = { provider, model, useFastModel }
+            savedValues.current = { provider, model, useFastModel, aiSummariesEnabled }
             toast.success('AI settings saved successfully')
         } catch (error) {
             console.error('Failed to save settings:', error)
@@ -170,24 +186,60 @@ export function AISettingsCard() {
                     </p>
                 </div>
 
-                <div className="flex items-center space-x-2">
-                    <Checkbox
-                        id="useFastModel"
-                        checked={useFastModel}
-                        onCheckedChange={(checked) => setUseFastModel(checked === true)}
-                    />
-                    <div className="grid gap-1.5 leading-none">
-                        <Label
-                            htmlFor="useFastModel"
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
+                <div className="flex items-center justify-between p-3 sm:p-4 border rounded-lg">
+                    <div>
+                        <Label htmlFor="useFastModel" className="cursor-pointer">
                             Use non-reasoning model for operations
                         </Label>
-                        <p className="text-xs text-muted-foreground">
-                            Uses faster models (e.g., deepseek-chat) for quick plan modifications instead of reasoning models. Recommended for faster response times.
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                            Faster models for quick plan modifications. Recommended.
                         </p>
                     </div>
+                    <Switch
+                        id="useFastModel"
+                        checked={useFastModel}
+                        onCheckedChange={(checked) => setUseFastModel(checked)}
+                    />
                 </div>
+
+                <div className="flex items-center justify-between p-3 sm:p-4 border rounded-lg">
+                    <div>
+                        <Label htmlFor="aiSummaries" className="cursor-pointer">
+                            AI Summaries on activity sync
+                        </Label>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                            Auto-generate coaching summaries when activities match planned workouts.
+                        </p>
+                    </div>
+                    <Switch
+                        id="aiSummaries"
+                        checked={aiSummariesEnabled}
+                        onCheckedChange={(checked) => {
+                            if (checked && !aiSummariesEnabled) {
+                                setShowCostWarning(true)
+                            } else {
+                                setAiSummariesEnabled(checked)
+                            }
+                        }}
+                    />
+                </div>
+
+                <AlertDialog open={showCostWarning} onOpenChange={setShowCostWarning}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Enable AI Summaries</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                AI summaries use your configured LLM provider to analyse each matched activity. This will consume API tokens and may incur additional costs depending on your provider and usage volume.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => setAiSummariesEnabled(true)}>
+                                Enable
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
 
                 <Button onClick={handleSave} disabled={saving || !hasChanges} className="w-full">
                     {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
