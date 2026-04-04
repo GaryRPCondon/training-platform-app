@@ -638,7 +638,7 @@ export function TrainingCalendar({ openWorkoutId }: TrainingCalendarProps = {}) 
 
             {/* Activity Dialog */}
             <Dialog open={isActivityDialogOpen} onOpenChange={setIsActivityDialogOpen}>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="sm:max-w-[595px] max-h-[90vh] overflow-y-auto">
                     <DialogTitle className="sr-only">Activity Details</DialogTitle>
                     {selectedActivity && (
                         <>

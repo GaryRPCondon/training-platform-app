@@ -22,6 +22,9 @@ const settingsSchema = z.object({
     last_name: z.string().max(100).optional(),
     profile_completed: z.boolean().optional(),
     sync_on_login: z.boolean().optional(),
+    ai_summaries_enabled: z.boolean().optional(),
+    push_summary_to_garmin: z.boolean().optional(),
+    push_summary_to_strava: z.boolean().optional(),
 })
 
 export async function POST(request: Request) {
@@ -31,7 +34,7 @@ export async function POST(request: Request) {
         if (!parsed.success) {
             return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
         }
-        const { provider, model, preferred_units, week_starts_on, useFastModelForOperations, preferred_activity_data_source, first_name, last_name, profile_completed, sync_on_login } = parsed.data
+        const { provider, model, preferred_units, week_starts_on, useFastModelForOperations, preferred_activity_data_source, first_name, last_name, profile_completed, sync_on_login, ai_summaries_enabled, push_summary_to_garmin, push_summary_to_strava } = parsed.data
 
         const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()
@@ -69,6 +72,9 @@ export async function POST(request: Request) {
         if (last_name !== undefined) updates.last_name = last_name
         if (profile_completed !== undefined) updates.profile_completed = profile_completed
         if (sync_on_login !== undefined) updates.sync_on_login = sync_on_login
+        if (ai_summaries_enabled !== undefined) updates.ai_summaries_enabled = ai_summaries_enabled
+        if (push_summary_to_garmin !== undefined) updates.push_summary_to_garmin = push_summary_to_garmin
+        if (push_summary_to_strava !== undefined) updates.push_summary_to_strava = push_summary_to_strava
 
         const { error } = await supabase
             .from('athletes')

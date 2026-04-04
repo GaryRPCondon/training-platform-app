@@ -13,6 +13,16 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Switch } from '@/components/ui/switch'
 import { CheckCircle2, Loader2, Trash2, Wifi, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
@@ -25,6 +35,8 @@ interface GarminConnectProps {
   garminPreferred?: boolean
   stravaPreferred?: boolean
   onPreferenceChange?: (checked: boolean) => void
+  pushSummaryToGarmin?: boolean
+  onPushSummaryChange?: (checked: boolean) => void
 }
 
 export function GarminConnect({
@@ -33,7 +45,9 @@ export function GarminConnect({
   stravaConnected,
   garminPreferred,
   stravaPreferred,
-  onPreferenceChange
+  onPreferenceChange,
+  pushSummaryToGarmin,
+  onPushSummaryChange,
 }: GarminConnectProps) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -44,6 +58,7 @@ export function GarminConnect({
   const [success, setSuccess] = useState<string | null>(null)
   const [testStatus, setTestStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [testMessage, setTestMessage] = useState<string | undefined>()
+  const [showPushWarning, setShowPushWarning] = useState(false)
 
   const handleTestConnection = async () => {
     setTestStatus('loading')
@@ -289,6 +304,43 @@ export function GarminConnect({
           />
         </div>
       )}
+
+      {/* Write AI summaries toggle */}
+      {isConnected && onPushSummaryChange && (
+        <div className="flex items-center justify-between pt-2 border-t">
+          <Label htmlFor="garmin-push-summary" className="text-sm text-muted-foreground cursor-pointer">
+            Write AI summaries to Garmin Connect
+          </Label>
+          <Switch
+            id="garmin-push-summary"
+            checked={pushSummaryToGarmin}
+            onCheckedChange={(checked) => {
+              if (checked) {
+                setShowPushWarning(true)
+              } else {
+                onPushSummaryChange(false)
+              }
+            }}
+          />
+        </div>
+      )}
+
+      <AlertDialog open={showPushWarning} onOpenChange={setShowPushWarning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Write AI Summaries to Garmin Connect</AlertDialogTitle>
+            <AlertDialogDescription>
+              The AI summary will be prepended to your existing Garmin Connect activity description. If other third-party apps also write to your activity description, one may overwrite the other.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => onPushSummaryChange?.(true)}>
+              Enable
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Remove all plan workouts */}
       {isConnected && (

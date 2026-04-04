@@ -9,6 +9,8 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { matchActivitiesToWorkouts } from '@/lib/activities/workout-matcher'
 import { rescoreCompletion } from '@/lib/activities/rescore-completion'
+import { captureDescriptionsForMatches } from '@/lib/activities/capture-descriptions'
+import { triggerSummaryGeneration } from '@/lib/activities/trigger-summary'
 import { z } from 'zod'
 
 const matchSchema = z.object({
@@ -35,6 +37,16 @@ export async function POST(request: Request) {
         const resolvedStart = startDate ?? new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
         const resolvedEnd = endDate ?? new Date().toISOString().slice(0, 10)
         const matches = await matchActivitiesToWorkouts(supabase, user.id, resolvedStart, resolvedEnd)
+
+        // For newly matched activities: capture platform descriptions and generate AI summaries
+        if (matches.length > 0) {
+            const matchedIds = matches.map(m => m.activityId)
+            await captureDescriptionsForMatches(supabase, user.id, matchedIds)
+            // Fire-and-forget: don't block the match response for LLM calls
+            triggerSummaryGeneration(supabase, user.id, matchedIds).catch(err => {
+                console.error('[Match] Summary generation error:', err)
+            })
+        }
 
         return NextResponse.json({
             success: true,

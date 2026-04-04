@@ -521,6 +521,25 @@ export class GarminClient {
   }
 
   /**
+   * Update an activity's description on Garmin Connect.
+   * Uses PUT /activity-service/activity/{activityId}
+   * (updateActivity is in README but not in garmin-connect@1.6.2 types)
+   */
+  async updateActivityDescription(activityId: number, description: string): Promise<void> {
+    await this.ensureAuthenticated()
+    this.checkRateLimit()
+    if (!this.client) throw new Error('Garmin client not initialized')
+
+    // Only send the fields we want to update — Garmin rejects read-only fields
+    // (beginLatitude, endLatitude, etc.) if included in the PUT payload.
+    await this.client.put(
+      `${GarminClient.GC_API}/activity-service/activity/${activityId}`,
+      { activityId, description }
+    )
+    await this.updateTokensIfChanged()
+  }
+
+  /**
    * Disconnect Garmin (remove tokens from DB)
    */
   async disconnect(): Promise<void> {

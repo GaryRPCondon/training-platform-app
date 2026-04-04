@@ -144,9 +144,11 @@ export function WorkoutLinker({ activity, currentWorkout, onClose }: WorkoutLink
               <Link2 className="h-5 w-5" />
               Workout Linking
             </CardTitle>
-            <CardDescription>
-              Link this activity to a planned workout
-            </CardDescription>
+            {!currentWorkout && (
+              <CardDescription>
+                Link this activity to a planned workout
+              </CardDescription>
+            )}
           </div>
         </div>
       </CardHeader>

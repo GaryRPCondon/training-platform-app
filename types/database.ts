@@ -29,6 +29,9 @@ export interface Athlete {
     account_status: 'pending_approval' | 'approved' | 'suspended'
     sync_on_login: boolean
     profile_completed: boolean
+    ai_summaries_enabled: boolean
+    push_summary_to_garmin: boolean
+    push_summary_to_strava: boolean
     created_at: string
     updated_at: string
 }
@@ -119,6 +122,17 @@ export interface Activity {
         duration_diff_percent?: number
         manual_link_reason?: string
     } | null
+    // AI Summary
+    ai_summary: string | null
+    ai_summary_status: 'none' | 'pending' | 'generated' | 'failed'
+    ai_star_rating: number | null
+    ai_summary_generated_at: string | null
+    garmin_description: string | null
+    strava_description: string | null
+    garmin_summary_pushed_at: string | null
+    strava_summary_pushed_at: string | null
+    garmin_push_failed_at: string | null
+    strava_push_failed_at: string | null
     // Merge tracking (virtual fields or stored in metadata/JSONB in real DB)
     merge_status?: 'pending_review' | 'merged' | 'auto_merged' | 'ignored'
     confidence_score?: number

@@ -192,7 +192,8 @@ export async function POST(request: Request) {
             activityTrainingLoad: activity.activityTrainingLoad,
             deviceId: activity.deviceId,
             eventType: activity.eventType?.typeKey,
-            steps: activity.steps
+            steps: activity.steps,
+            description: activity.description || null,
           },
           synced_from_garmin: new Date().toISOString()
         }
