@@ -159,16 +159,21 @@ export function ConnectionsCard({ stravaConnected, garminConnected, onRefresh }:
 
     const handleConnectStrava = () => {
         setLoading('strava')
-        router.push('/api/strava/auth')
+        window.location.href = '/api/strava/auth'
     }
 
     const handleDisconnectStrava = async () => {
-        if (!confirm('Are you sure you want to disconnect Strava?')) return
+        if (!confirm('Are you sure you want to disconnect Strava? You will need to re-authorize to reconnect.')) return
 
         try {
-            alert('Disconnect functionality coming in next step')
+            const response = await fetch('/api/strava/disconnect', { method: 'POST' })
+            if (!response.ok) throw new Error('Failed to disconnect')
+            toast.success('Strava disconnected')
+            await queryClient.invalidateQueries({ queryKey: ['athlete'] })
+            await queryClient.invalidateQueries({ queryKey: ['settings'] })
         } catch (error) {
-            console.error('Failed to disconnect', error)
+            console.error('Failed to disconnect Strava:', error)
+            toast.error('Failed to disconnect Strava')
         }
     }
 

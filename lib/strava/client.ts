@@ -35,7 +35,7 @@ export class StravaClient {
             redirect_uri: this.redirectUri,
             response_type: 'code',
             approval_prompt: 'force', // 'auto' or 'force'
-            scope: 'activity:read_all,profile:read_all',
+            scope: 'activity:read_all,activity:write,profile:read_all',
         })
 
         if (state) {
@@ -219,6 +219,29 @@ export class StravaClient {
         }
 
         return await response.json()
+    }
+
+    /**
+     * Update an activity's description on Strava.
+     * Requires activity:write scope.
+     */
+    async updateActivityDescription(accessToken: string, activityId: number, description: string): Promise<void> {
+        this.checkRateLimit()
+
+        const response = await fetch(`${STRAVA_API_URL}/activities/${activityId}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ description }),
+        })
+
+        this.updateRateLimit(response.headers)
+
+        if (!response.ok) {
+            throw new Error(`Strava update failed: ${response.status} ${response.statusText}`)
+        }
     }
 
     /**
