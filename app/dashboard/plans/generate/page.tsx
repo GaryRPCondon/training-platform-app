@@ -66,12 +66,12 @@ function GeneratePageContent() {
         }
 
         const userCriteria: any = {
+          goal_type: goalType,
           experience_level: experienceLevel,
           current_weekly_mileage: Number(currentMileage),
           comfortable_peak_mileage: Number(peakMileage),
           days_per_week: Number(daysPerWeek),
           weeks_available: Number(weeksAvailable),
-          preferred_methodology: methodology
         }
 
         // Add preferred rest days if provided

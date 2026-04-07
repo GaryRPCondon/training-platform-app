@@ -10,6 +10,13 @@ export function filterTemplates(
   return templates.filter(template => {
     const { characteristics, target_audience } = template
 
+    // Hard constraint 0: Distance must match
+    // Templates without a distance field default to 'marathon' (pre-migration data)
+    const templateDistance = template.distance || 'marathon'
+    if (templateDistance !== criteria.goal_type) {
+      return false
+    }
+
     // Hard constraint 1: Peak mileage (allow 10% buffer)
     // LLM will adapt duration, so we don't filter by weeks_available
     const peakKm = characteristics.peak_weekly_mileage.km
@@ -23,26 +30,10 @@ export function filterTemplates(
     }
 
     // Hard constraint 3: Experience level appropriateness
-    if (criteria.experience_level === 'first_marathon') {
-      // First-timers should not get advanced/competitive plans
+    if (criteria.experience_level === 'complete_beginner') {
+      // Complete beginners should not get advanced/competitive plans
       if (target_audience.experience_level === 'advanced' ||
           target_audience.experience_level === 'competitive') {
-        return false
-      }
-    }
-
-    // Hard constraint 4: Methodology filter (if forced)
-    if (criteria.force_methodology && criteria.preferred_methodology &&
-        criteria.preferred_methodology !== 'any') {
-      const normalizedMethodology = template.methodology.toLowerCase()
-      const normalizedPreference = criteria.preferred_methodology.toLowerCase()
-
-      // Handle aliases: "Luke" is Luke Humphrey's Hansons methodology
-      const isHansonsMatch =
-        (normalizedPreference === 'hansons' && normalizedMethodology === 'luke') ||
-        normalizedMethodology === normalizedPreference
-
-      if (!isHansonsMatch) {
         return false
       }
     }
@@ -53,7 +44,7 @@ export function filterTemplates(
 
 /**
  * Calculate fit score (0-100) for a template
- * Priority: 1) Methodology preference, 2) Experience level, 3) Mileage/Days equally
+ * Priority: 1) Experience level (0-40), 2) Buildup/Mileage/Days equally (0-20 each)
  */
 export function calculateFitScore(
   template: TemplateSummary,
@@ -62,32 +53,17 @@ export function calculateFitScore(
   let score = 0
   const { characteristics, target_audience } = template
 
-  // 1. Methodology preference (0-40 points) - HIGHEST PRIORITY
-  if (criteria.preferred_methodology && criteria.preferred_methodology !== 'any') {
-    const normalizedMethodology = template.methodology.toLowerCase()
-    const normalizedPreference = criteria.preferred_methodology.toLowerCase()
-
-    // Handle aliases: "Luke" is Luke Humphrey's Hansons methodology
-    const isHansonsMatch =
-      (normalizedPreference === 'hansons' && normalizedMethodology === 'luke') ||
-      normalizedMethodology === normalizedPreference
-
-    if (isHansonsMatch) {
-      score += 40  // Perfect methodology match
-    }
-    // No points if doesn't match (filtered out if force_methodology=true anyway)
-  } else {
-    score += 20  // Neutral - no preference specified
-  }
-
-  // 2. Experience match (0-30 points) - SECOND PRIORITY
+  // 1. Experience match (0-40 points) - HIGHEST PRIORITY
   const experienceMap: Record<string, number> = {
-    'first_marathon': 1,
+    'complete_beginner': 1,
     'novice': 1,
     'novice_plus': 1.5,
     'beginner': 2,
     'intermediate': 3,
+    'intermediate_to_advanced': 3.5,
     'advanced': 4,
+    'advanced_elite': 4.5,
+    'elite/advanced': 5,
     'competitive': 5
   }
 
@@ -96,54 +72,54 @@ export function calculateFitScore(
   const levelDiff = Math.abs(userLevel - templateLevel)
 
   if (levelDiff === 0) {
-    score += 30  // Perfect match
+    score += 40  // Perfect match
   } else if (levelDiff <= 0.5) {
-    score += 25  // Very close
+    score += 33  // Very close
   } else if (levelDiff <= 1) {
-    score += 20  // Close enough
+    score += 27  // Close enough
   } else if (levelDiff <= 1.5) {
-    score += 15  // Somewhat close
+    score += 20  // Somewhat close
   } else {
-    score += Math.max(0, 15 - (levelDiff * 3))  // Gentler penalty
+    score += Math.max(0, 20 - (levelDiff * 4))  // Gentler penalty
   }
 
-  // 3. Current mileage buildup (0-10 points) - EQUAL THIRD PRIORITY
+  // 2. Current mileage buildup (0-20 points)
   // Ideal buildup: 1.5x to 2.5x current mileage
   const peakKm = characteristics.peak_weekly_mileage.km
   const buildupRatio = peakKm / criteria.current_weekly_mileage
   if (buildupRatio >= 1.5 && buildupRatio <= 2.5) {
-    score += 10  // Ideal buildup
+    score += 20  // Ideal buildup
   } else if (buildupRatio >= 1.2 && buildupRatio <= 3.0) {
-    score += 7   // Acceptable buildup
+    score += 14  // Acceptable buildup
   } else if (buildupRatio < 1.2) {
-    score += 4   // Too easy, but safe
+    score += 8   // Too easy, but safe
   } else {
-    score += Math.max(0, 7 - ((buildupRatio - 2.5) * 2))  // Too aggressive
+    score += Math.max(0, 14 - ((buildupRatio - 2.5) * 4))  // Too aggressive
   }
 
-  // 4. Peak mileage fit (0-10 points) - EQUAL THIRD PRIORITY
+  // 3. Peak mileage fit (0-20 points)
   const mileageDiff = Math.abs(peakKm - criteria.comfortable_peak_mileage)
   const mileagePct = mileageDiff / criteria.comfortable_peak_mileage
   if (mileagePct <= 0.05) {
-    score += 10  // Within 5% = perfect
+    score += 20  // Within 5% = perfect
   } else if (mileagePct <= 0.15) {
-    score += 8   // Within 15% = excellent
+    score += 16  // Within 15% = excellent
   } else if (mileagePct <= 0.25) {
-    score += 6   // Within 25% = good
+    score += 12  // Within 25% = good
   } else {
-    score += Math.max(0, 6 - (mileagePct * 15))  // Gentler penalty
+    score += Math.max(0, 12 - (mileagePct * 30))  // Gentler penalty
   }
 
-  // 5. Training days match (0-10 points) - EQUAL THIRD PRIORITY
+  // 4. Training days match (0-20 points)
   const daysDiff = Math.abs(characteristics.training_days_per_week - criteria.days_per_week)
   if (daysDiff === 0) {
-    score += 10  // Exact match
+    score += 20  // Exact match
   } else if (daysDiff === 1) {
-    score += 8   // One day off
+    score += 16  // One day off
   } else if (daysDiff === 2) {
-    score += 5   // Two days off
+    score += 10  // Two days off
   } else {
-    score += Math.max(0, 5 - (daysDiff * 2))  // Much gentler penalty
+    score += Math.max(0, 10 - (daysDiff * 4))  // Much gentler penalty
   }
 
   return Math.round(Math.min(100, score))
@@ -180,9 +156,9 @@ export function generateReasoning(
   // Experience match
   const experienceLevel = template.target_audience.experience_level
   let experience_match = ''
-  if (criteria.experience_level === 'first_marathon' &&
+  if (criteria.experience_level === 'complete_beginner' &&
       (experienceLevel === 'novice' || experienceLevel === 'novice_plus' || experienceLevel === 'beginner')) {
-    experience_match = 'Designed specifically for first-time marathoners'
+    experience_match = 'Designed specifically for beginners new to structured training'
   } else if (experienceLevel.includes(criteria.experience_level)) {
     experience_match = `Perfect match for ${criteria.experience_level} runners`
   } else {
@@ -258,7 +234,8 @@ export function rankAndRecommend(
       fit_score,
       reasoning,
       characteristics: template.characteristics,
-      match_quality
+      match_quality,
+      source_reference: template.source_reference
     }
   })
 

@@ -6,6 +6,7 @@
  */
 
 import { NextResponse } from 'next/server'
+import { waitUntil } from '@vercel/functions'
 import { createClient } from '@/lib/supabase/server'
 import { manuallyLinkWorkout, unlinkWorkout } from '@/lib/activities/workout-matcher'
 import { captureDescriptionsForMatches } from '@/lib/activities/capture-descriptions'
@@ -40,9 +41,11 @@ export async function POST(request: Request) {
 
         // Capture platform descriptions and generate AI summary
         await captureDescriptionsForMatches(supabase, user.id, [activityId])
-        triggerSummaryGeneration(supabase, user.id, [activityId]).catch(err => {
-            console.error('[Link] Summary generation error:', err)
-        })
+        waitUntil(
+            triggerSummaryGeneration(supabase, user.id, [activityId]).catch(err => {
+                console.error('[Link] Summary generation error:', err)
+            })
+        )
 
         return NextResponse.json({ success: true })
     } catch (error) {

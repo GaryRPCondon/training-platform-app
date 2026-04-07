@@ -7,12 +7,23 @@ export interface TemplateCatalog {
   plans: TemplateSummary[]
 }
 
+export type RaceDistance = '5k' | '10k' | 'half_marathon' | 'marathon'
+
+export interface SourceReference {
+  book_title?: string       // e.g. "Faster Road Racing"
+  book_url?: string         // e.g. Amazon link
+  website_url?: string      // e.g. "https://www.halhigdon.com/..."
+  pacing_guidance_note: string  // e.g. "Consult the book for VDOT pace tables"
+}
+
 export interface TemplateSummary {
   template_id: string
   name: string
   author: string
   methodology: string
+  distance: RaceDistance  // Race distance this template targets
   source_file: string
+  source_reference?: SourceReference
   characteristics: {
     duration_weeks: number
     training_days_per_week: number
@@ -46,6 +57,8 @@ export interface FullTemplate {
   name: string
   author: string
   methodology: string
+  distance: RaceDistance  // Race distance this template targets
+  source_reference?: SourceReference
   duration_weeks: number
   training_days_per_week: number
   peak_weekly_mileage: {
@@ -102,13 +115,12 @@ export interface PaceTarget {
 
 // Recommendation types
 export interface UserCriteria {
-  experience_level: 'first_marathon' | 'beginner' | 'intermediate' | 'advanced'
-  current_weekly_mileage: number  // km
-  comfortable_peak_mileage: number  // km
+  goal_type: RaceDistance  // The race distance being trained for
+  experience_level: 'complete_beginner' | 'beginner' | 'intermediate' | 'advanced'
+  current_weekly_mileage: number  // km (always metric internally)
+  comfortable_peak_mileage: number  // km (always metric internally)
   days_per_week: number
   weeks_available: number
-  preferred_methodology?: string  // 'any' | 'hal' | 'pfitzinger' | 'hansons' | 'daniels' | 'magness'
-  force_methodology?: boolean  // If true, only show preferred_methodology
   preferred_rest_days?: number[]  // Days of week (0=Sunday, 1=Monday, etc.) for preferred rest days
 }
 
@@ -126,6 +138,7 @@ export interface TemplateRecommendation {
   }
   characteristics: TemplateSummary['characteristics']
   match_quality: 'excellent' | 'good' | 'fair'
+  source_reference?: SourceReference
 }
 
 export interface RecommendationResponse {

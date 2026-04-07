@@ -3,8 +3,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Star, Calendar, TrendingUp, Activity } from 'lucide-react'
+import { Star, Calendar, TrendingUp, Activity, BookOpen, Globe } from 'lucide-react'
 import type { TemplateRecommendation } from '@/lib/templates/types'
+import { useUnits } from '@/lib/hooks/use-units'
 
 interface TemplateCardProps {
   recommendation: TemplateRecommendation
@@ -20,11 +21,19 @@ export function TemplateCard({ recommendation, rank, onSelect }: TemplateCardPro
     fit_score,
     reasoning,
     characteristics,
-    match_quality
+    match_quality,
+    source_reference
   } = recommendation
+
+  const { units } = useUnits()
 
   // Calculate star rating (0-5 based on fit_score)
   const stars = Math.round((fit_score / 100) * 5)
+
+  // Unit-aware peak mileage display
+  const peakDisplay = units === 'imperial'
+    ? `${characteristics.peak_weekly_mileage.miles} mi`
+    : `${characteristics.peak_weekly_mileage.km} km`
 
   return (
     <Card className={rank === 1 ? 'border-primary border-2' : ''}>
@@ -72,7 +81,7 @@ export function TemplateCard({ recommendation, rank, onSelect }: TemplateCardPro
           </div>
           <div className="flex items-center gap-1">
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            <span>{characteristics.peak_weekly_mileage.km}km peak</span>
+            <span>{peakDisplay} peak</span>
           </div>
         </div>
 
@@ -97,6 +106,36 @@ export function TemplateCard({ recommendation, rank, onSelect }: TemplateCardPro
         <p className="text-xs text-muted-foreground border-l-2 border-muted pl-2">
           {reasoning.buildup_assessment}
         </p>
+
+        {/* Source attribution */}
+        {source_reference && (
+          <div className="text-xs text-muted-foreground space-y-1 pt-1 border-t border-muted">
+            <p>Based on {author}&apos;s methodology.</p>
+            {source_reference.book_title && (
+              <a
+                href={source_reference.book_url || '#'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-primary hover:underline"
+              >
+                <BookOpen className="h-3 w-3" />
+                {source_reference.book_title} →
+              </a>
+            )}
+            {!source_reference.book_title && source_reference.website_url && (
+              <a
+                href={source_reference.website_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-primary hover:underline"
+              >
+                <Globe className="h-3 w-3" />
+                Visit website →
+              </a>
+            )}
+            <p>{source_reference.pacing_guidance_note}</p>
+          </div>
+        )}
 
         {/* Select button */}
         <Button

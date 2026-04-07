@@ -6,6 +6,7 @@
  */
 
 import { NextResponse } from 'next/server'
+import { waitUntil } from '@vercel/functions'
 import { createClient } from '@/lib/supabase/server'
 import { matchActivitiesToWorkouts } from '@/lib/activities/workout-matcher'
 import { rescoreCompletion } from '@/lib/activities/rescore-completion'
@@ -42,10 +43,12 @@ export async function POST(request: Request) {
         if (matches.length > 0) {
             const matchedIds = matches.map(m => m.activityId)
             await captureDescriptionsForMatches(supabase, user.id, matchedIds)
-            // Fire-and-forget: don't block the match response for LLM calls
-            triggerSummaryGeneration(supabase, user.id, matchedIds).catch(err => {
-                console.error('[Match] Summary generation error:', err)
-            })
+            // Keep Lambda alive after response is sent so the LLM calls complete
+            waitUntil(
+                triggerSummaryGeneration(supabase, user.id, matchedIds).catch(err => {
+                    console.error('[Match] Summary generation error:', err)
+                })
+            )
         }
 
         return NextResponse.json({

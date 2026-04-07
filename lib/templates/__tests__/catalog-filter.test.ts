@@ -17,6 +17,7 @@ function makeTemplate(overrides: Partial<TemplateSummary> = {}): TemplateSummary
     name: 'Test Marathon Plan',
     author: 'Test Author',
     methodology: 'pfitzinger',
+    distance: 'marathon',
     source_file: 'test.json',
     characteristics: {
       duration_weeks: 18,
@@ -43,13 +44,12 @@ function makeTemplate(overrides: Partial<TemplateSummary> = {}): TemplateSummary
 
 function makeCriteria(overrides: Partial<UserCriteria> = {}): UserCriteria {
   return {
+    goal_type: 'marathon',
     experience_level: 'intermediate',
     current_weekly_mileage: 50,
     comfortable_peak_mileage: 88,
     days_per_week: 5,
     weeks_available: 18,
-    preferred_methodology: 'any',
-    force_methodology: false,
     ...overrides,
   }
 }
@@ -108,7 +108,7 @@ describe('filterTemplates', () => {
     expect(result).toHaveLength(0)
   })
 
-  it('filters advanced/competitive plans for first_marathon runners', () => {
+  it('filters advanced/competitive plans for complete_beginner runners', () => {
     const advanced = makeTemplate({
       target_audience: {
         experience_level: 'advanced',
@@ -124,46 +124,43 @@ describe('filterTemplates', () => {
         training_commitment: 'very_high',
       },
     })
-    const result = filterTemplates([advanced, competitive], makeCriteria({ experience_level: 'first_marathon' }))
+    const result = filterTemplates([advanced, competitive], makeCriteria({ experience_level: 'complete_beginner' }))
     expect(result).toHaveLength(0)
   })
 
-  it('allows beginner/novice plans for first_marathon runners', () => {
+  it('allows beginner/novice plans for complete_beginner runners', () => {
     const beginner = makeTemplate({
       target_audience: { experience_level: 'beginner', prerequisites: [], training_commitment: 'low' },
     })
-    const result = filterTemplates([beginner], makeCriteria({ experience_level: 'first_marathon' }))
+    const result = filterTemplates([beginner], makeCriteria({ experience_level: 'complete_beginner' }))
     expect(result).toHaveLength(1)
   })
 
-  it('filters by forced methodology', () => {
-    const pfitz = makeTemplate({ methodology: 'pfitzinger' })
-    const hal = makeTemplate({ template_id: 'hal', methodology: 'hal' })
-    const result = filterTemplates(
-      [pfitz, hal],
-      makeCriteria({ preferred_methodology: 'pfitzinger', force_methodology: true })
-    )
-    expect(result).toHaveLength(1)
-    expect(result[0].methodology).toBe('pfitzinger')
+  it('filters out templates where distance does not match goal_type', () => {
+    const marathonTemplate = makeTemplate({ distance: 'marathon' })
+    const result = filterTemplates([marathonTemplate], makeCriteria({ goal_type: '5k' }))
+    expect(result).toHaveLength(0)
   })
 
-  it('treats "luke" methodology as hansons alias when force_methodology=true', () => {
-    const luke = makeTemplate({ methodology: 'luke' })
-    const result = filterTemplates(
-      [luke],
-      makeCriteria({ preferred_methodology: 'hansons', force_methodology: true })
-    )
+  it('returns templates where distance matches goal_type', () => {
+    const fiveKTemplate = makeTemplate({ template_id: '5k-plan', distance: '5k' })
+    const result = filterTemplates([fiveKTemplate], makeCriteria({ goal_type: '5k' }))
     expect(result).toHaveLength(1)
   })
 
-  it('does not filter by methodology when force_methodology=false', () => {
-    const pfitz = makeTemplate({ methodology: 'pfitzinger' })
-    const hal = makeTemplate({ template_id: 'hal', methodology: 'hal' })
-    const result = filterTemplates(
-      [pfitz, hal],
-      makeCriteria({ preferred_methodology: 'pfitzinger', force_methodology: false })
-    )
-    expect(result).toHaveLength(2)
+  it('templates without a distance field default to marathon', () => {
+    // Simulate pre-migration template with no distance field
+    const { distance: _omit, ...templateWithoutDistance } = makeTemplate()
+    const result = filterTemplates([templateWithoutDistance as TemplateSummary], makeCriteria({ goal_type: 'marathon' }))
+    expect(result).toHaveLength(1)
+  })
+
+  it('does not show marathon templates for 5k goal', () => {
+    const marathon = makeTemplate({ distance: 'marathon' })
+    const fiveK = makeTemplate({ template_id: '5k', distance: '5k' })
+    const result = filterTemplates([marathon, fiveK], makeCriteria({ goal_type: '5k' }))
+    expect(result).toHaveLength(1)
+    expect(result[0].template_id).toBe('5k')
   })
 })
 
@@ -174,39 +171,30 @@ describe('filterTemplates', () => {
 describe('calculateFitScore', () => {
   it('returns high score for perfect match', () => {
     const template = makeTemplate()
-    const criteria = makeCriteria({ preferred_methodology: 'pfitzinger' })
+    const criteria = makeCriteria()
     const score = calculateFitScore(template, criteria)
     expect(score).toBeGreaterThanOrEqual(85)
   })
 
-  it('adds 40 points for matching preferred methodology', () => {
-    const template = makeTemplate({ methodology: 'pfitzinger' })
-    const criteriaMatch = makeCriteria({ preferred_methodology: 'pfitzinger' })
-    const criteriaMismatch = makeCriteria({ preferred_methodology: 'hal' })
-    const scoreMatch = calculateFitScore(template, criteriaMatch)
-    const scoreMismatch = calculateFitScore(template, criteriaMismatch)
-    expect(scoreMatch - scoreMismatch).toBe(40)
-  })
-
-  it('adds 20 points when no methodology preference (neutral)', () => {
-    const template = makeTemplate({ methodology: 'pfitzinger' })
-    const criteria = makeCriteria({ preferred_methodology: 'any' })
-    // No methodology preference → +20 (neutral)
-    const scoreAny = calculateFitScore(template, criteria)
-    const scoreMismatch = makeCriteria({ preferred_methodology: 'hal' })
-    // Mismatch → +0
-    const scoreBad = calculateFitScore(template, scoreMismatch)
-    expect(scoreAny - scoreBad).toBe(20)
-  })
-
-  it('adds 30 points for exact experience level match', () => {
+  it('adds 40 points for exact experience level match', () => {
     const template = makeTemplate({
       target_audience: { experience_level: 'intermediate', prerequisites: [], training_commitment: 'medium' },
     })
-    const criteria = makeCriteria({ experience_level: 'intermediate', preferred_methodology: 'any' })
+    const criteriaMatch = makeCriteria({ experience_level: 'intermediate' })
+    const criteriaMismatch = makeCriteria({ experience_level: 'complete_beginner' })
+    const scoreMatch = calculateFitScore(template, criteriaMatch)
+    const scoreMismatch = calculateFitScore(template, criteriaMismatch)
+    expect(scoreMatch).toBeGreaterThan(scoreMismatch)
+  })
+
+  it('gives full experience points for exact level match', () => {
+    const template = makeTemplate({
+      target_audience: { experience_level: 'intermediate', prerequisites: [], training_commitment: 'medium' },
+    })
+    const criteria = makeCriteria({ experience_level: 'intermediate' })
     const score = calculateFitScore(template, criteria)
-    // methodology(20) + experience(30) + mileage + buildup + days
-    expect(score).toBeGreaterThanOrEqual(50)
+    // experience(40) + mileage(20) + buildup + days — should be quite high
+    expect(score).toBeGreaterThanOrEqual(60)
   })
 
   it('adds 10 points for exact training days match', () => {
@@ -221,7 +209,7 @@ describe('calculateFitScore', () => {
         structure_type: 'periodized',
       },
     })
-    const criteria = makeCriteria({ preferred_methodology: 'any', days_per_week: 5 })
+    const criteria = makeCriteria({ days_per_week: 5 })
     const exact = calculateFitScore(templateExact, criteria)
     const off = calculateFitScore(templateOff, criteria)
     expect(exact).toBeGreaterThan(off)
@@ -241,7 +229,6 @@ describe('calculateFitScore', () => {
     const criteria = makeCriteria({
       current_weekly_mileage: 40,
       comfortable_peak_mileage: 80,
-      preferred_methodology: 'any',
     })
     // Score should include buildup bonus (10 points)
     const score = calculateFitScore(template, criteria)
@@ -249,8 +236,8 @@ describe('calculateFitScore', () => {
   })
 
   it('returns score capped at 100', () => {
-    const template = makeTemplate({ methodology: 'pfitzinger' })
-    const criteria = makeCriteria({ preferred_methodology: 'pfitzinger' })
+    const template = makeTemplate()
+    const criteria = makeCriteria()
     expect(calculateFitScore(template, criteria)).toBeLessThanOrEqual(100)
   })
 })
@@ -294,13 +281,13 @@ describe('generateReasoning', () => {
     expect(schedule_match.toLowerCase()).toContain('perfect')
   })
 
-  it('experience_match mentions first-timer language for first_marathon + novice template', () => {
+  it('experience_match mentions beginner language for complete_beginner + novice template', () => {
     const template = makeTemplate({
       target_audience: { experience_level: 'novice', prerequisites: [], training_commitment: 'low' },
     })
-    const criteria = makeCriteria({ experience_level: 'first_marathon' })
+    const criteria = makeCriteria({ experience_level: 'complete_beginner' })
     const { experience_match } = generateReasoning(template, criteria)
-    expect(experience_match.toLowerCase()).toContain('first')
+    expect(experience_match.toLowerCase()).toContain('beginner')
   })
 
   it('buildup_assessment says "moderate" for 2x buildup', () => {
@@ -331,7 +318,7 @@ describe('rankAndRecommend', () => {
       makeTemplate({ template_id: 't2', methodology: 'hal' }),
       makeTemplate({ template_id: 't3', methodology: 'daniels' }),
     ]
-    const criteria = makeCriteria({ preferred_methodology: 'pfitzinger', force_methodology: false })
+    const criteria = makeCriteria()
     const results = rankAndRecommend(templates, criteria, 3)
     expect(results[0].fit_score).toBeGreaterThanOrEqual(results[1].fit_score)
     expect(results[1].fit_score).toBeGreaterThanOrEqual(results[2].fit_score)
@@ -354,8 +341,8 @@ describe('rankAndRecommend', () => {
   })
 
   it('assigns match_quality "excellent" for score >= 85', () => {
-    const template = makeTemplate({ methodology: 'pfitzinger' })
-    const criteria = makeCriteria({ preferred_methodology: 'pfitzinger' })
+    const template = makeTemplate()
+    const criteria = makeCriteria()
     const results = rankAndRecommend([template], criteria, 1)
     if (results[0].fit_score >= 85) {
       expect(results[0].match_quality).toBe('excellent')

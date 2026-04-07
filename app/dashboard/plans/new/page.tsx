@@ -8,18 +8,33 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import { VDOTInput, type VDOTInputValue } from '@/components/plans/vdot-input'
+import { useUnits } from '@/lib/hooks/use-units'
+
+const KM_PER_MILE = 1.60934
+
+function getDefaultWeeks(distance: string): number {
+    switch (distance) {
+        case '5k': return 9
+        case '10k': return 8
+        case 'half_marathon': return 12
+        case 'marathon': return 18
+        default: return 18
+    }
+}
 
 function NewPlanPageContent() {
     const router = useRouter()
     const searchParams = useSearchParams()
+    const { units, distanceLabel } = useUnits()
 
-    // Calculate default date (18 weeks from today)
-    const getDefaultDate = () => {
+    // Calculate default date based on distance
+    const getDefaultDate = (distance = 'marathon') => {
         const today = new Date()
-        const weeksInMs = 18 * 7 * 24 * 60 * 60 * 1000
+        const weeksInMs = getDefaultWeeks(distance) * 7 * 24 * 60 * 60 * 1000
         const futureDate = new Date(today.getTime() + weeksInMs)
         return futureDate.toISOString().split('T')[0]
     }
@@ -41,14 +56,21 @@ function NewPlanPageContent() {
     const [goalDate, setGoalDate] = useState(getDefaultDate())
     const [startDate, setStartDate] = useState(getDefaultStartDate())
     const [goalType, setGoalType] = useState('marathon')
-    const [currentVolume, setCurrentVolume] = useState(65)
-    const [maxVolume, setMaxVolume] = useState(80)
-    const [experienceLevel, setExperienceLevel] = useState<'first_marathon' | 'beginner' | 'intermediate' | 'advanced'>('beginner')
+    const [currentVolume, setCurrentVolume] = useState<number | ''>('')
+    const [maxVolume, setMaxVolume] = useState<number | ''>('')
+    const [experienceLevel, setExperienceLevel] = useState<'complete_beginner' | 'beginner' | 'intermediate' | 'advanced'>('beginner')
     const [daysPerWeek, setDaysPerWeek] = useState('5')
     const [preferredRestDays, setPreferredRestDays] = useState<number[]>([])
-    const [preferredMethodology, setPreferredMethodology] = useState('any')
     const [vdotInput, setVDOTInput] = useState<VDOTInputValue | null>(null)
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [volumeErrors, setVolumeErrors] = useState<{ current?: string; peak?: string }>({})
+
+    // Update default goal date when goal type changes
+    useEffect(() => {
+        // Only update if user hasn't restored from URL params yet
+        setGoalDate(getDefaultDate(goalType))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [goalType])
 
     const DAYS_OF_WEEK = [
         { value: 1, label: 'Mon' },
@@ -70,7 +92,6 @@ function NewPlanPageContent() {
         const peak = searchParams.get('peak')
         const experience = searchParams.get('experience')
         const days = searchParams.get('days')
-        const methodology = searchParams.get('methodology')
         const restDays = searchParams.get('preferredRestDays')
 
         if (name) setGoalName(name)
@@ -81,7 +102,6 @@ function NewPlanPageContent() {
         if (peak) setMaxVolume(Number(peak))
         if (experience) setExperienceLevel(experience as any)
         if (days) setDaysPerWeek(days)
-        if (methodology) setPreferredMethodology(methodology)
         if (restDays) {
             try {
                 setPreferredRestDays(JSON.parse(restDays))
@@ -109,6 +129,21 @@ function NewPlanPageContent() {
                 return
             }
 
+            // Validate volume fields
+            const errors: { current?: string; peak?: string } = {}
+            if (currentVolume === '' || currentVolume <= 0) {
+                errors.current = `Please enter your current weekly volume in ${distanceLabel()}`
+            }
+            if (maxVolume === '' || maxVolume <= 0) {
+                errors.peak = `Please enter your comfortable peak volume in ${distanceLabel()}`
+            }
+            if (Object.keys(errors).length > 0) {
+                setVolumeErrors(errors)
+                setIsSubmitting(false)
+                return
+            }
+            setVolumeErrors({})
+
             const goalDateObj = new Date(goalDate)
             const startDateObj = new Date(startDate)
             const today = new Date()
@@ -129,16 +164,18 @@ function NewPlanPageContent() {
             const msPerWeek = 7 * 24 * 60 * 60 * 1000
             const weeksAvailable = Math.floor((goalDateObj.getTime() - startDateObj.getTime()) / msPerWeek)
 
+            // Convert imperial input to metric for internal storage
+            const currentKm = units === 'imperial' ? (currentVolume as number) * KM_PER_MILE : (currentVolume as number)
+            const peakKm = units === 'imperial' ? (maxVolume as number) * KM_PER_MILE : (maxVolume as number)
+
             // Build query parameters
             const params = new URLSearchParams({
                 goalName: goalName,
                 experience: experienceLevel,
-                current: currentVolume.toString(),
-                peak: maxVolume.toString(),
+                current: currentKm.toString(),
+                peak: peakKm.toString(),
                 days: daysPerWeek,
                 weeks: weeksAvailable.toString(),
-                methodology: preferredMethodology,
-                force: (preferredMethodology !== 'any').toString(),
                 goalDate: goalDate,
                 startDate: startDate,
                 goalType: goalType,
@@ -146,7 +183,8 @@ function NewPlanPageContent() {
                 shortTimeline: (
                     (goalType === 'marathon' && weeksAvailable < 12) ||
                     (goalType === 'half_marathon' && weeksAvailable < 8) ||
-                    (goalType === '10k' && weeksAvailable < 6)
+                    (goalType === '10k' && weeksAvailable < 6) ||
+                    (goalType === '5k' && weeksAvailable < 6)
                 ).toString()
             })
 
@@ -204,9 +242,9 @@ function NewPlanPageContent() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="marathon">Marathon</SelectItem>
+                                        <SelectItem value="5k">5K</SelectItem>
                                         <SelectItem value="half_marathon" disabled>Half Marathon</SelectItem>
                                         <SelectItem value="10k" disabled>10K</SelectItem>
-                                        <SelectItem value="5k" disabled>5K</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -246,59 +284,103 @@ function NewPlanPageContent() {
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="currentVolume">Current Weekly Volume (km)</Label>
+                                <Label htmlFor="currentVolume">Current Weekly Volume ({distanceLabel()})</Label>
                                 <Input
                                     id="currentVolume"
                                     type="number"
                                     value={currentVolume}
-                                    onChange={(e) => setCurrentVolume(Number(e.target.value))}
-                                    required
+                                    onChange={(e) => {
+                                        setCurrentVolume(e.target.value === '' ? '' : Number(e.target.value))
+                                        if (volumeErrors.current) setVolumeErrors(prev => ({ ...prev, current: undefined }))
+                                    }}
+                                    min={1}
+                                    placeholder={`e.g. ${units === 'imperial' ? '25' : '40'}`}
                                     className="w-full"
                                 />
+                                {volumeErrors.current && (
+                                    <p className="text-sm text-destructive">{volumeErrors.current}</p>
+                                )}
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="maxVolume">Comfortable Peak Volume (km)</Label>
+                                <Label htmlFor="maxVolume">Comfortable Peak Volume ({distanceLabel()})</Label>
                                 <Input
                                     id="maxVolume"
                                     type="number"
                                     value={maxVolume}
-                                    onChange={(e) => setMaxVolume(Number(e.target.value))}
-                                    required
+                                    onChange={(e) => {
+                                        setMaxVolume(e.target.value === '' ? '' : Number(e.target.value))
+                                        if (volumeErrors.peak) setVolumeErrors(prev => ({ ...prev, peak: undefined }))
+                                    }}
+                                    min={1}
+                                    placeholder={`e.g. ${units === 'imperial' ? '40' : '65'}`}
                                     className="w-full"
                                 />
+                                {volumeErrors.peak && (
+                                    <p className="text-sm text-destructive">{volumeErrors.peak}</p>
+                                )}
                             </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-3">
                                 <Label>Experience Level</Label>
-                                <RadioGroup value={experienceLevel} onValueChange={(value) => setExperienceLevel(value as any)}>
-                                    <div className="flex items-center space-x-2">
-                                        <RadioGroupItem value="first_marathon" id="first_marathon" />
-                                        <Label htmlFor="first_marathon" className="font-normal cursor-pointer">
-                                            First Marathon
-                                        </Label>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                        <RadioGroupItem value="beginner" id="beginner" />
-                                        <Label htmlFor="beginner" className="font-normal cursor-pointer">
-                                            Beginner (2-5 years)
-                                        </Label>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                        <RadioGroupItem value="intermediate" id="intermediate" />
-                                        <Label htmlFor="intermediate" className="font-normal cursor-pointer">
-                                            Intermediate (5+ years)
-                                        </Label>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                        <RadioGroupItem value="advanced" id="advanced" />
-                                        <Label htmlFor="advanced" className="font-normal cursor-pointer">
-                                            Advanced (10+ years)
-                                        </Label>
-                                    </div>
-                                </RadioGroup>
+                                <TooltipProvider>
+                                    <RadioGroup value={experienceLevel} onValueChange={(value) => setExperienceLevel(value as any)}>
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="complete_beginner" id="complete_beginner" />
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Label htmlFor="complete_beginner" className="font-normal cursor-pointer">
+                                                        Complete Beginner
+                                                    </Label>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    New to running, or returning after a long break
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="beginner" id="beginner" />
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Label htmlFor="beginner" className="font-normal cursor-pointer">
+                                                        Beginner
+                                                    </Label>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    Can run 30 minutes continuously, some race experience
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="intermediate" id="intermediate" />
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Label htmlFor="intermediate" className="font-normal cursor-pointer">
+                                                        Intermediate
+                                                    </Label>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    Regular runner, comfortable with structured training and speedwork
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="advanced" id="advanced" />
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Label htmlFor="advanced" className="font-normal cursor-pointer">
+                                                        Advanced
+                                                    </Label>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    Competitive runner, experienced with high-volume and intense training
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </div>
+                                    </RadioGroup>
+                                </TooltipProvider>
                             </div>
 
                             <div className="space-y-2">
@@ -366,23 +448,6 @@ function NewPlanPageContent() {
                                 Provide race time or VDOT to calculate target paces - will be captured in your user profile
                             </p>
                             <VDOTInput value={vdotInput || undefined} onChange={setVDOTInput} />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="methodology">Preferred Training Methodology (Optional)</Label>
-                            <Select value={preferredMethodology} onValueChange={setPreferredMethodology}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Any methodology" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="any">Any (Recommended)</SelectItem>
-                                    <SelectItem value="hal">Hal Higdon</SelectItem>
-                                    <SelectItem value="pfitzinger">Pfitzinger</SelectItem>
-                                    <SelectItem value="hansons">Hansons</SelectItem>
-                                    <SelectItem value="daniels">Jack Daniels</SelectItem>
-                                    <SelectItem value="magness">Steve Magness</SelectItem>
-                                </SelectContent>
-                            </Select>
                         </div>
 
                         <Button type="submit" disabled={isSubmitting} className="w-full">

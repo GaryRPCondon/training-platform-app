@@ -1,4 +1,4 @@
-import type { FullTemplate } from '@/lib/templates/types'
+import type { FullTemplate, RaceDistance } from '@/lib/templates/types'
 import type { UserCriteria } from '@/lib/templates/types'
 import { differenceInCalendarDays, addDays, format } from 'date-fns'
 
@@ -7,8 +7,21 @@ export interface GenerationContext {
   criteria: UserCriteria
   goal_date: string
   start_date: string
+  goal_type: RaceDistance
   first_day_of_week?: 0 | 1  // 0=Sunday, 1=Monday
   preferred_units: 'metric' | 'imperial'
+}
+
+/**
+ * Get human-readable label for a race distance
+ */
+function getDistanceLabel(goalType: RaceDistance): string {
+  switch (goalType) {
+    case '5k': return '5K'
+    case '10k': return '10K'
+    case 'half_marathon': return 'half marathon'
+    case 'marathon': return 'marathon'
+  }
 }
 
 /**
@@ -27,7 +40,8 @@ function getNextDayOfWeek(date: Date, targetDay: number): Date {
  * Build system prompt for LLM plan generation
  */
 export function buildGenerationSystemPrompt(context: GenerationContext): string {
-  const { template, criteria, start_date, goal_date, first_day_of_week = 1, preferred_units } = context
+  const { template, criteria, start_date, goal_date, goal_type, first_day_of_week = 1, preferred_units } = context
+  const distanceLabel = getDistanceLabel(goal_type)
 
   const startDateObj = new Date(start_date)
   const goalDateObj = new Date(goal_date)
@@ -65,7 +79,7 @@ Before the structured plan begins, generate ${partialDays} easy ramp-in runs for
 - Format these in a separate "pre_week_workouts" array (see OUTPUT FORMAT section)
 ` : ''
 
-  return `You are a marathon training coach, specializing in the template's training philosophy.
+  return `You are a ${distanceLabel} training coach, specializing in the template's training philosophy.
 
 SELECTED TEMPLATE: ${template.name}
 This template (normally ${templateWeeks} weeks) provides the training philosophy and workout structure to adapt.
@@ -97,14 +111,14 @@ MEASUREMENT UNITS:
 TASK:
 Generate a ${weeksNeeded}-week personalized training plan that:
 1. Week 1, Day 1 starts on ${format(planStartDate, 'EEEE, MMMM d')}
-2. Week ${weeksNeeded}, Day ${raceDayNumber} is the marathon race on ${format(goalDateObj, 'EEEE, MMMM d')}
+2. Week ${weeksNeeded}, Day ${raceDayNumber} is the ${distanceLabel} race on ${format(goalDateObj, 'EEEE, MMMM d')}
 3. Adapts the template's training philosophy to fit this timeline
 4. Includes ${weeksNeeded} full weeks${partialDays > 0 ? ` PLUS ${partialDays} pre-week ramp-in runs` : ''}
 
 CRITICAL INSTRUCTIONS:
 - Generate EXACTLY ${weeksNeeded} full weeks (Week 1 through Week ${weeksNeeded})
 - Week 1, Day 1 starts on ${firstDayName}, ${format(planStartDate, 'MMMM d')}
-- The marathon race MUST be on Week ${weeksNeeded}, Day ${raceDayNumber} (${raceDayName}, ${format(goalDateObj, 'MMMM d')})
+- The ${distanceLabel} race MUST be on Week ${weeksNeeded}, Day ${raceDayNumber} (${raceDayName}, ${format(goalDateObj, 'MMMM d')})
 - Each week has EXACTLY 7 days (numbered 1-7, starting with ${firstDayName})
 - Do NOT create day 8, 9, 10, etc. - only days 1-7 exist per week${partialDays > 0 ? `
 - Generate ${partialDays} pre-week workouts in the "pre_week_workouts" array before the "weeks" array` : ''}
@@ -227,7 +241,7 @@ WORKOUT TYPES (use ONLY these exact types):
 - race (for goal race day - marathon, half marathon, 10K, 5K, ultra, etc.)
 
 CRITICAL INSTRUCTION - DISTANCE-BASED PRESCRIPTIONS:
-All marathon training templates prescribe DISTANCE + INTENSITY only.
+All training templates prescribe DISTANCE + INTENSITY only.
 The athlete determines their own pace based on fitness level (VDOT).
 DO NOT calculate or include duration_minutes - the system calculates this automatically based on athlete's training paces.
 
@@ -241,7 +255,9 @@ REQUIRED FIELDS per workout:
 ${template.pace_targets
   ? Object.entries(template.pace_targets).map(([key, target]) =>
     `  "${key}" — ${(target as { description: string }).description}`).join('\n')
-  : '  "easy", "moderate", "marathon", "hard", "recovery"\n  Use "marathon" for marathon-pace tempo workouts (e.g. Hanson\'s)'}
+  : goal_type === 'marathon'
+    ? '  "easy", "moderate", "marathon", "hard", "recovery"\n  Use "marathon" for marathon-pace tempo workouts (e.g. Hanson\'s)'
+    : '  "easy", "moderate", "race", "hard", "recovery"\n  Use "race" for race-pace tempo workouts'}
 - pace_guidance (descriptive guidance: "conversational pace", "comfortably hard", "5K race pace", etc.)
 - notes (optional coaching notes)
 - structured_workout (intervals only — see STRUCTURED WORKOUT below)
@@ -284,7 +300,7 @@ DO NOT INCLUDE:
 
 IMPORTANT:
 - Generate EXACTLY ${weeksNeeded} weeks
-- Week ${weeksNeeded}, Day ${raceDayNumber} MUST be the race day (type="race", description="Marathon Race Day")
+- Week ${weeksNeeded}, Day ${raceDayNumber} MUST be the race day (type="race", description="${distanceLabel.charAt(0).toUpperCase() + distanceLabel.slice(1)} Race Day")
 - Do not truncate or summarize - output the complete ${weeksNeeded}-week plan
 - Return ONLY the JSON object, no markdown formatting, no extra text
 - Ensure the JSON is valid and complete (all brackets closed)`

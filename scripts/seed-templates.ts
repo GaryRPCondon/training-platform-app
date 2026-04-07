@@ -69,10 +69,17 @@ async function loadTemplateFile(filename: string): Promise<unknown> {
 }
 
 function findTemplate(sourceData: unknown, templateId: string): unknown | null {
+  // New self-contained format: { catalog_summary: { template_id }, full_template: {...} }
+  const obj = sourceData as Record<string, unknown>
+  if (obj.catalog_summary && obj.full_template) {
+    const cs = obj.catalog_summary as Record<string, unknown>
+    return cs.template_id === templateId ? obj.full_template : null
+  }
+
+  // Legacy formats (marathon templates)
   if (Array.isArray(sourceData)) {
     return (sourceData as Array<{ template_id: string }>).find(t => t.template_id === templateId) ?? null
   }
-  const obj = sourceData as Record<string, unknown>
   if (obj.template_id === templateId) {
     return obj
   }
@@ -94,9 +101,11 @@ async function main() {
     process.exit(1)
   }
 
-  // Load catalog
-  const catalog = await loadTemplateFile('marathon_plan_catalog.json') as TemplateCatalog
-  console.log(`Loaded catalog with ${catalog.plans.length} templates`)
+  // Load catalogs
+  const marathonCatalog = await loadTemplateFile('marathon_plan_catalog.json') as TemplateCatalog
+  const fivekCatalog = await loadTemplateFile('5k_plan_catalog.json') as TemplateCatalog
+  const allPlans = [...marathonCatalog.plans, ...fivekCatalog.plans]
+  console.log(`Loaded ${marathonCatalog.plans.length} marathon + ${fivekCatalog.plans.length} 5K templates (${allPlans.length} total)`)
 
   // Cache source files to avoid re-reading the same file multiple times
   const sourceFileCache = new Map<string, unknown>()
@@ -104,7 +113,7 @@ async function main() {
   let seeded = 0
   let errors = 0
 
-  for (const summary of catalog.plans) {
+  for (const summary of allPlans) {
     try {
       // Load source file (cached)
       if (!sourceFileCache.has(summary.source_file)) {

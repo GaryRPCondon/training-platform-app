@@ -20,17 +20,16 @@ function RecommendPageContent() {
       try {
         // Parse query params
         const criteria: UserCriteria = {
+          goal_type: searchParams.get('goalType') as any,
           experience_level: searchParams.get('experience') as any,
           current_weekly_mileage: Number(searchParams.get('current')),
           comfortable_peak_mileage: Number(searchParams.get('peak')),
           days_per_week: Number(searchParams.get('days')),
           weeks_available: Number(searchParams.get('weeks')),
-          preferred_methodology: searchParams.get('methodology') || undefined,
-          force_methodology: searchParams.get('force') === 'true'
         }
 
         // Validate
-        if (!criteria.experience_level || !criteria.weeks_available) {
+        if (!criteria.goal_type || !criteria.experience_level || !criteria.weeks_available) {
           setError('Missing required criteria. Please go back and fill the form.')
           setIsLoading(false)
           return
@@ -73,7 +72,6 @@ function RecommendPageContent() {
       peak: searchParams.get('peak') || '',
       days: searchParams.get('days') || '',
       weeks: searchParams.get('weeks') || '',
-      methodology: searchParams.get('methodology') || ''
     })
 
     // Pass VDOT data if present
@@ -161,7 +159,6 @@ function RecommendPageContent() {
       peak: searchParams.get('peak') || '',
       experience: searchParams.get('experience') || '',
       days: searchParams.get('days') || '',
-      methodology: searchParams.get('methodology') || ''
     })
 
     // Preserve VDOT data
@@ -213,6 +210,10 @@ function RecommendPageContent() {
                   ? `Marathon training typically requires 12+ weeks. You have ${weeksAvailable} weeks available.`
                   : goalType === 'half_marathon'
                   ? `Half marathon training typically requires 8+ weeks. You have ${weeksAvailable} weeks available.`
+                  : goalType === '5k'
+                  ? `5K training typically requires 6+ weeks. You have ${weeksAvailable} weeks available.`
+                  : goalType === '10k'
+                  ? `10K training typically requires 6+ weeks. You have ${weeksAvailable} weeks available.`
                   : `Your timeline of ${weeksAvailable} weeks is shorter than typical for ${goalType} training.`
                 } The AI coach will adapt the selected plan to fit your schedule, but consider that compressed training increases injury risk.
               </p>

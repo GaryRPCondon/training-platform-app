@@ -22,7 +22,7 @@ export async function loadCatalog(): Promise<TemplateCatalog> {
   const catalog: TemplateCatalog = {
     catalog_version: '1.0',
     last_updated: '2025-12-09',
-    description: 'Master catalog of marathon training plan templates',
+    description: 'Master catalog of training plan templates',
     total_plans: data.length,
     plans: data.map(row => row.catalog_summary as TemplateSummary),
   }

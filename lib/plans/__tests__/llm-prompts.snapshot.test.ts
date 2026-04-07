@@ -16,6 +16,7 @@ const TEST_TEMPLATE: FullTemplate = {
   name: 'Pfitzinger 18/55',
   author: 'Pete Pfitzinger',
   methodology: 'pfitzinger',
+  distance: 'marathon',
   duration_weeks: 18,
   training_days_per_week: 5,
   peak_weekly_mileage: { miles: 55, km: 88 },
@@ -44,12 +45,12 @@ const TEST_TEMPLATE: FullTemplate = {
 }
 
 const TEST_CRITERIA: UserCriteria = {
+  goal_type: 'marathon',
   experience_level: 'intermediate',
   current_weekly_mileage: 50,
   comfortable_peak_mileage: 88,
   days_per_week: 5,
   weeks_available: 18,
-  preferred_methodology: 'pfitzinger',
 }
 
 const BASE_CONTEXT: GenerationContext = {
@@ -57,6 +58,7 @@ const BASE_CONTEXT: GenerationContext = {
   criteria: TEST_CRITERIA,
   goal_date: '2026-10-11',     // Fixed date for stable snapshots
   start_date: '2026-06-15',    // Monday start
+  goal_type: 'marathon',
   first_day_of_week: 1,        // Monday
   preferred_units: 'metric',
 }

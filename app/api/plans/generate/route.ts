@@ -124,6 +124,7 @@ export async function POST(request: Request) {
       criteria: user_criteria as unknown as UserCriteria,
       goal_date,
       start_date,
+      goal_type: goal_type as import('@/lib/templates/types').RaceDistance,
       first_day_of_week: firstDayOfWeek as 0 | 1,
       preferred_units: (athlete?.preferred_units ?? 'metric') as 'metric' | 'imperial',
     }

@@ -5,13 +5,12 @@ import type { RecommendationResponse } from '@/lib/templates/types'
 import { z } from 'zod'
 
 const criteriaSchema = z.object({
-  experience_level: z.enum(['first_marathon', 'beginner', 'intermediate', 'advanced']),
+  goal_type: z.enum(['5k', '10k', 'half_marathon', 'marathon']),
+  experience_level: z.enum(['complete_beginner', 'beginner', 'intermediate', 'advanced']),
   current_weekly_mileage: z.number().nonnegative(),
   comfortable_peak_mileage: z.number().positive(),
   days_per_week: z.number().int().min(1).max(7),
   weeks_available: z.number().int().positive(),
-  preferred_methodology: z.string().optional(),
-  force_methodology: z.boolean().optional(),
   preferred_rest_days: z.array(z.number().int().min(0).max(6)).optional(),
 })
 
