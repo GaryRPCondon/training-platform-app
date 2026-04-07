@@ -3,9 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Star, Loader2, FileText, Sparkles, AlertTriangle, RefreshCw } from 'lucide-react'
-import { format, parseISO } from 'date-fns'
+import { Star, Loader2, FileText, Sparkles, RefreshCw } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface AISummaryPanelProps {
   activityId: number
@@ -188,24 +187,27 @@ export function AISummaryPanel({
             <StarRating rating={starRating} />
             <p className="text-sm leading-relaxed">{summary}</p>
 
-            {/* Regenerate warning if already pushed */}
-            {pushedPlatforms.length > 0 && (
-              <Alert variant="default" className="py-2">
-                <AlertTriangle className="h-3.5 w-3.5" />
-                <AlertDescription className="text-xs">
-                  This summary has been pushed to {pushedPlatforms.join(' and ')}. Regenerating will not update the external description.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <div className="flex items-center justify-between pt-1">
-              <span className="text-xs text-muted-foreground">
-                {generatedAt && `Generated ${format(parseISO(generatedAt), 'MMM d, yyyy \'at\' HH:mm')}`}
-              </span>
-              <Button onClick={handleGenerate} size="sm" variant="ghost" className="gap-1.5 h-7 text-xs">
-                <RefreshCw className="h-3 w-3" />
-                Regenerate
-              </Button>
+            <div className="flex justify-end pt-1">
+              {pushedPlatforms.length > 0 ? (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button onClick={handleGenerate} size="sm" variant="ghost" className="gap-1.5 h-7 text-xs">
+                        <RefreshCw className="h-3 w-3" />
+                        Regenerate
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs text-center">
+                      <p>Already pushed to {pushedPlatforms.join(' and ')}. Regenerating will only update the summary here.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : (
+                <Button onClick={handleGenerate} size="sm" variant="ghost" className="gap-1.5 h-7 text-xs">
+                  <RefreshCw className="h-3 w-3" />
+                  Regenerate
+                </Button>
+              )}
             </div>
           </>
         )}
