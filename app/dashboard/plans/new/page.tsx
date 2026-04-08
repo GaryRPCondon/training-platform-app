@@ -131,12 +131,10 @@ function NewPlanPageContent() {
 
             // Validate volume fields
             const errors: { current?: string; peak?: string } = {}
-            if (currentVolume === '' || currentVolume <= 0) {
+            if (currentVolume === '' || currentVolume < 0) {
                 errors.current = `Please enter your current weekly volume in ${distanceLabel()}`
             }
-            if (maxVolume === '' || maxVolume <= 0) {
-                errors.peak = `Please enter your comfortable peak volume in ${distanceLabel()}`
-            }
+            // Peak volume is optional — 0 means "not sure" and skips the peak mileage filter
             if (Object.keys(errors).length > 0) {
                 setVolumeErrors(errors)
                 setIsSubmitting(false)
@@ -166,7 +164,8 @@ function NewPlanPageContent() {
 
             // Convert imperial input to metric for internal storage
             const currentKm = units === 'imperial' ? (currentVolume as number) * KM_PER_MILE : (currentVolume as number)
-            const peakKm = units === 'imperial' ? (maxVolume as number) * KM_PER_MILE : (maxVolume as number)
+            const peakRaw = maxVolume === '' ? 0 : (maxVolume as number)
+            const peakKm = units === 'imperial' ? peakRaw * KM_PER_MILE : peakRaw
 
             // Build query parameters
             const params = new URLSearchParams({
@@ -293,7 +292,7 @@ function NewPlanPageContent() {
                                         setCurrentVolume(e.target.value === '' ? '' : Number(e.target.value))
                                         if (volumeErrors.current) setVolumeErrors(prev => ({ ...prev, current: undefined }))
                                     }}
-                                    min={1}
+                                    min={0}
                                     placeholder={`e.g. ${units === 'imperial' ? '25' : '40'}`}
                                     className="w-full"
                                 />
@@ -303,7 +302,7 @@ function NewPlanPageContent() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="maxVolume">Comfortable Peak Volume ({distanceLabel()})</Label>
+                                <Label htmlFor="maxVolume">Comfortable Peak Volume ({distanceLabel()}) <span className="text-muted-foreground font-normal">(optional)</span></Label>
                                 <Input
                                     id="maxVolume"
                                     type="number"
@@ -312,8 +311,8 @@ function NewPlanPageContent() {
                                         setMaxVolume(e.target.value === '' ? '' : Number(e.target.value))
                                         if (volumeErrors.peak) setVolumeErrors(prev => ({ ...prev, peak: undefined }))
                                     }}
-                                    min={1}
-                                    placeholder={`e.g. ${units === 'imperial' ? '40' : '65'}`}
+                                    min={0}
+                                    placeholder={`e.g. ${units === 'imperial' ? '40' : '65'} (leave blank if unsure)`}
                                     className="w-full"
                                 />
                                 {volumeErrors.peak && (

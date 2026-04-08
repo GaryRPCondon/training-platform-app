@@ -1,5 +1,22 @@
 import { UserCriteria, TemplateSummary, TemplateRecommendation } from './types'
 
+const EXPERIENCE_LABELS: Record<string, string> = {
+  complete_beginner: 'complete beginner',
+  novice: 'novice',
+  novice_plus: 'novice+',
+  beginner: 'beginner',
+  intermediate: 'intermediate',
+  intermediate_to_advanced: 'intermediate to advanced',
+  advanced: 'advanced',
+  advanced_elite: 'advanced/elite',
+  'elite/advanced': 'elite/advanced',
+  competitive: 'competitive',
+}
+
+function experienceLabel(level: string): string {
+  return EXPERIENCE_LABELS[level] ?? level
+}
+
 /**
  * Filter templates by hard constraints
  */
@@ -19,8 +36,9 @@ export function filterTemplates(
 
     // Hard constraint 1: Peak mileage (allow 10% buffer)
     // LLM will adapt duration, so we don't filter by weeks_available
+    // Skipped when comfortable_peak_mileage is 0 (not provided — user doesn't know yet)
     const peakKm = characteristics.peak_weekly_mileage.km
-    if (peakKm > criteria.comfortable_peak_mileage * 1.1) {
+    if (criteria.comfortable_peak_mileage > 0 && peakKm > criteria.comfortable_peak_mileage * 1.1) {
       return false
     }
 
@@ -85,29 +103,39 @@ export function calculateFitScore(
 
   // 2. Current mileage buildup (0-20 points)
   // Ideal buildup: 1.5x to 2.5x current mileage
+  // Neutral score when current mileage is 0 (not provided or complete beginner starting from zero)
   const peakKm = characteristics.peak_weekly_mileage.km
-  const buildupRatio = peakKm / criteria.current_weekly_mileage
-  if (buildupRatio >= 1.5 && buildupRatio <= 2.5) {
-    score += 20  // Ideal buildup
-  } else if (buildupRatio >= 1.2 && buildupRatio <= 3.0) {
-    score += 14  // Acceptable buildup
-  } else if (buildupRatio < 1.2) {
-    score += 8   // Too easy, but safe
+  if (criteria.current_weekly_mileage > 0) {
+    const buildupRatio = peakKm / criteria.current_weekly_mileage
+    if (buildupRatio >= 1.5 && buildupRatio <= 2.5) {
+      score += 20  // Ideal buildup
+    } else if (buildupRatio >= 1.2 && buildupRatio <= 3.0) {
+      score += 14  // Acceptable buildup
+    } else if (buildupRatio < 1.2) {
+      score += 8   // Too easy, but safe
+    } else {
+      score += Math.max(0, 14 - ((buildupRatio - 2.5) * 4))  // Too aggressive
+    }
   } else {
-    score += Math.max(0, 14 - ((buildupRatio - 2.5) * 4))  // Too aggressive
+    score += 10  // Neutral: no current mileage to compare against
   }
 
   // 3. Peak mileage fit (0-20 points)
-  const mileageDiff = Math.abs(peakKm - criteria.comfortable_peak_mileage)
-  const mileagePct = mileageDiff / criteria.comfortable_peak_mileage
-  if (mileagePct <= 0.05) {
-    score += 20  // Within 5% = perfect
-  } else if (mileagePct <= 0.15) {
-    score += 16  // Within 15% = excellent
-  } else if (mileagePct <= 0.25) {
-    score += 12  // Within 25% = good
+  // Neutral score when comfortable peak mileage is 0 (not provided)
+  if (criteria.comfortable_peak_mileage > 0) {
+    const mileageDiff = Math.abs(peakKm - criteria.comfortable_peak_mileage)
+    const mileagePct = mileageDiff / criteria.comfortable_peak_mileage
+    if (mileagePct <= 0.05) {
+      score += 20  // Within 5% = perfect
+    } else if (mileagePct <= 0.15) {
+      score += 16  // Within 15% = excellent
+    } else if (mileagePct <= 0.25) {
+      score += 12  // Within 25% = good
+    } else {
+      score += Math.max(0, 12 - (mileagePct * 30))  // Gentler penalty
+    }
   } else {
-    score += Math.max(0, 12 - (mileagePct * 30))  // Gentler penalty
+    score += 10  // Neutral: no peak preference given
   }
 
   // 4. Training days match (0-20 points)
@@ -137,20 +165,24 @@ export function generateReasoning(
   const peakMiles = characteristics.peak_weekly_mileage.miles
 
   // Mileage fit
-  const mileageDiff = Math.abs(peakKm - criteria.comfortable_peak_mileage)
-  const mileagePct = (mileageDiff / criteria.comfortable_peak_mileage) * 100
   let mileage_fit = ''
-  if (mileagePct <= 5) {
-    mileage_fit = `Peak ${peakKm}km matches your comfort level perfectly`
-  } else if (mileagePct <= 15) {
-    mileage_fit = `Peak ${peakKm}km is very close to your ${criteria.comfortable_peak_mileage}km target`
-  } else {
-    const diff = peakKm - criteria.comfortable_peak_mileage
-    if (diff > 0) {
-      mileage_fit = `Peak ${peakKm}km is ${Math.abs(diff)}km above your comfort zone, but manageable`
+  if (criteria.comfortable_peak_mileage > 0) {
+    const mileageDiff = Math.abs(peakKm - criteria.comfortable_peak_mileage)
+    const mileagePct = (mileageDiff / criteria.comfortable_peak_mileage) * 100
+    if (mileagePct <= 5) {
+      mileage_fit = `Peak ${peakKm}km matches your comfort level perfectly`
+    } else if (mileagePct <= 15) {
+      mileage_fit = `Peak ${peakKm}km is very close to your ${criteria.comfortable_peak_mileage}km target`
     } else {
-      mileage_fit = `Peak ${peakKm}km is ${Math.abs(diff)}km below your comfort zone, leaves room for growth`
+      const diff = peakKm - criteria.comfortable_peak_mileage
+      if (diff > 0) {
+        mileage_fit = `Peak ${peakKm}km is ${Math.abs(diff)}km above your comfort zone, but manageable`
+      } else {
+        mileage_fit = `Peak ${peakKm}km is ${Math.abs(diff)}km below your comfort zone, leaves room for growth`
+      }
     }
+  } else {
+    mileage_fit = `Plan peaks at ${peakKm}km/week`
   }
 
   // Experience match
@@ -160,9 +192,9 @@ export function generateReasoning(
       (experienceLevel === 'novice' || experienceLevel === 'novice_plus' || experienceLevel === 'beginner')) {
     experience_match = 'Designed specifically for beginners new to structured training'
   } else if (experienceLevel.includes(criteria.experience_level)) {
-    experience_match = `Perfect match for ${criteria.experience_level} runners`
+    experience_match = `Perfect match for ${experienceLabel(criteria.experience_level)} runners`
   } else {
-    experience_match = `Suitable for ${experienceLevel} level, close to your ${criteria.experience_level} background`
+    experience_match = `Suitable for ${experienceLabel(experienceLevel)} level, close to your ${experienceLabel(criteria.experience_level)} background`
   }
 
   // Schedule match
@@ -179,18 +211,22 @@ export function generateReasoning(
   }
 
   // Buildup assessment
-  const buildupRatio = peakKm / criteria.current_weekly_mileage
   let buildup_assessment = ''
-  if (buildupRatio < 1.2) {
-    buildup_assessment = 'Conservative buildup from your current mileage (very safe)'
-  } else if (buildupRatio <= 1.5) {
-    buildup_assessment = 'Gentle buildup from your current mileage (safe progression)'
-  } else if (buildupRatio <= 2.0) {
-    buildup_assessment = 'Moderate buildup from your current mileage (recommended)'
-  } else if (buildupRatio <= 2.5) {
-    buildup_assessment = 'Significant but achievable buildup from current mileage'
+  if (criteria.current_weekly_mileage > 0) {
+    const buildupRatio = peakKm / criteria.current_weekly_mileage
+    if (buildupRatio < 1.2) {
+      buildup_assessment = 'Conservative buildup from your current mileage (very safe)'
+    } else if (buildupRatio <= 1.5) {
+      buildup_assessment = 'Gentle buildup from your current mileage (safe progression)'
+    } else if (buildupRatio <= 2.0) {
+      buildup_assessment = 'Moderate buildup from your current mileage (recommended)'
+    } else if (buildupRatio <= 2.5) {
+      buildup_assessment = 'Significant but achievable buildup from current mileage'
+    } else {
+      buildup_assessment = 'Aggressive buildup - requires careful monitoring'
+    }
   } else {
-    buildup_assessment = 'Aggressive buildup - requires careful monitoring'
+    buildup_assessment = 'Plan builds from zero — ideal for beginners starting fresh'
   }
 
   return {
