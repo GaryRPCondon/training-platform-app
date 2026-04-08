@@ -227,7 +227,7 @@ export async function POST(request: Request) {
     }
 
     // Validate workout distances for potential LLM hallucinations
-    const validationWarnings = validateWorkoutDistances(parsedPlan)
+    const validationWarnings = validateWorkoutDistances(parsedPlan, fullTemplate.validation_ranges)
     if (validationWarnings.length > 0) {
       console.warn(`⚠️  Found ${validationWarnings.length} potential hallucinations:`)
       validationWarnings.forEach(w => console.warn(`  - ${w.message}`))

@@ -2,36 +2,28 @@ import { createClient } from '@/lib/supabase/client'
 import type { PlanReviewContext, WeekViewData, WorkoutWithDetails } from '@/types/review'
 import { parseISO, format, endOfWeek } from 'date-fns'
 
-// Distance ranges for validation — keep in sync with workout-validator.ts
-// Note: distance_target_meters is the total workout distance including warmup/cooldown
-const DISTANCE_RANGES: Record<string, { min: number; max: number }> = {
-  intervals: { min: 3000, max: 25000 },
-  tempo: { min: 5000, max: 35000 },
-  easy_run: { min: 3000, max: 25000 },
-  long_run: { min: 10000, max: 50000 },
-  recovery: { min: 3000, max: 12000 },
-  cross_training: { min: 0, max: 0 },
-  rest: { min: 0, max: 0 },
-  race: { min: 5000, max: 100000 }
-}
+const TOLERANCE = 0.10 // ±10%
 
-function validateWorkout(workout: any): WorkoutWithDetails['validation_warning'] {
-  // Skip workouts without distance
+function validateWorkout(
+  workout: any,
+  validationRanges: Record<string, { min: number; max: number }>
+): WorkoutWithDetails['validation_warning'] {
   if (!workout.distance_target_meters || workout.distance_target_meters === 0) {
     return undefined
   }
 
   const workoutType = workout.workout_type?.toLowerCase()
-  const range = DISTANCE_RANGES[workoutType]
+  const range = validationRanges[workoutType]
 
-  // Skip if no range defined or validation not needed
   if (!range || (range.min === 0 && range.max === 0)) {
     return undefined
   }
 
-  // Check if distance is outside expected range
   const actualDistance = workout.distance_target_meters
-  if (actualDistance < range.min || actualDistance > range.max) {
+  const effectiveMin = range.min * (1 - TOLERANCE)
+  const effectiveMax = range.max * (1 + TOLERANCE)
+
+  if (actualDistance < effectiveMin || actualDistance > effectiveMax) {
     return {
       message: `Possible LLM hallucination: Distance is ${(actualDistance / 1000).toFixed(1)}km, but expected ${(range.min / 1000).toFixed(1)}-${(range.max / 1000).toFixed(1)}km for ${workout.workout_type}`,
       expectedRange: range,
@@ -116,6 +108,19 @@ export async function loadPlanForReview(planId: number): Promise<PlanReviewConte
 
   if (weeksError) throw new Error(`Failed to load weeks: ${weeksError.message}`)
 
+  // Load template validation ranges
+  let validationRanges: Record<string, { min: number; max: number }> = {}
+  if (plan.template_id) {
+    const { data: templateRow } = await supabase
+      .from('plan_templates')
+      .select('full_template')
+      .eq('template_id', plan.template_id)
+      .single()
+    if (templateRow?.full_template) {
+      validationRanges = (templateRow.full_template as any).validation_ranges ?? {}
+    }
+  }
+
   // Process weeks into structured format
   const weeks: WeekViewData[] = (weeklyPlans || []).map(week => {
     const phase = (plan.training_phases as any[]).find(p => p.id === week.phase_id)
@@ -126,7 +131,7 @@ export async function loadPlanForReview(planId: number): Promise<PlanReviewConte
       formatted_date: format(parseISO(workout.scheduled_date), 'EEE, MMM d'),
       phase_name: phase?.phase_name || 'unknown',
       week_of_plan: week.week_number || 0,
-      validation_warning: validateWorkout(workout)
+      validation_warning: validateWorkout(workout, validationRanges)
     }))
 
     return {

@@ -1,4 +1,4 @@
-import type { ParsedPlan, ParsedWorkout } from './response-parser'
+import type { ParsedPlan } from './response-parser'
 
 export interface WorkoutValidationWarning {
   workoutIndex: string
@@ -11,40 +11,27 @@ export interface WorkoutValidationWarning {
   message: string
 }
 
-/**
- * Distance ranges by workout type (in meters)
- * Based on common training plan patterns
- */
-const DISTANCE_RANGES: Record<string, { min: number; max: number }> = {
-  intervals: { min: 3000, max: 25000 },      // 3-25km (work distance only, excl. recovery; early speed sessions can be short)
-  tempo: { min: 5000, max: 35000 },          // 5-35km (work segment only; warmup/cooldown added server-side)
-  easy_run: { min: 3000, max: 25000 },       // 3-25km (allows taper shakeout runs)
-  long_run: { min: 10000, max: 50000 },      // 10-50km (early plan long runs can be ~10km)
-  recovery: { min: 3000, max: 12000 },       // 3-12km
-  cross_training: { min: 0, max: 0 },        // No distance validation
-  rest: { min: 0, max: 0 },                  // No distance validation
-  race: { min: 5000, max: 100000 }           // 5km to 100km
-}
+const TOLERANCE = 0.10 // ±10%
 
 /**
- * Validate workout distances for potential LLM hallucinations
- * Returns warnings for workouts that fall outside expected ranges
+ * Validate workout distances for potential LLM hallucinations.
+ * Uses template-specific validation ranges with ±10% tolerance.
  */
-export function validateWorkoutDistances(parsedPlan: ParsedPlan): WorkoutValidationWarning[] {
+export function validateWorkoutDistances(
+  parsedPlan: ParsedPlan,
+  validationRanges: Record<string, { min: number; max: number }>
+): WorkoutValidationWarning[] {
   const warnings: WorkoutValidationWarning[] = []
 
   for (const week of parsedPlan.weeks) {
     for (const workout of week.workouts) {
-      // Skip workouts without distance targets
       if (!workout.distance_meters || workout.distance_meters === 0) {
         continue
       }
 
-      // Get expected range for this workout type
       const workoutType = workout.type.toLowerCase()
-      const range = DISTANCE_RANGES[workoutType]
+      const range = validationRanges[workoutType]
 
-      // Skip if no range defined for this type (unknown workout types)
       if (!range) {
         continue
       }
@@ -54,9 +41,11 @@ export function validateWorkoutDistances(parsedPlan: ParsedPlan): WorkoutValidat
         continue
       }
 
-      // Check if distance is outside expected range
       const actualDistance = workout.distance_meters
-      if (actualDistance < range.min || actualDistance > range.max) {
+      const effectiveMin = range.min * (1 - TOLERANCE)
+      const effectiveMax = range.max * (1 + TOLERANCE)
+
+      if (actualDistance < effectiveMin || actualDistance > effectiveMax) {
         warnings.push({
           workoutIndex: workout.workout_index,
           weekNumber: week.week_number,
