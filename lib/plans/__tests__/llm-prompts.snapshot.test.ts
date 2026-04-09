@@ -122,6 +122,58 @@ describe('buildGenerationSystemPrompt', () => {
     expect(prompt.toLowerCase()).toContain('consecutive')
   })
 
+  it('matches snapshot for time-based template (run/walk)', () => {
+    const timeBasedTemplate: FullTemplate = {
+      ...TEST_TEMPLATE,
+      template_id: 'nhs-c25k',
+      name: 'NHS Couch to 5K',
+      author: 'NHS',
+      methodology: 'NHS',
+      distance: '5k',
+      duration_weeks: 9,
+      training_days_per_week: 3,
+      peak_weekly_mileage: { miles: 10, km: 16 },
+      target_audience: {
+        experience_level: 'complete_beginner',
+        prerequisites: ['Can walk briskly for 5 minutes'],
+      },
+      philosophy: {
+        approach: 'run_walk_progression',
+        key_features: ['Run/walk intervals', 'No pace targets', 'Time-based'],
+      },
+      validation_ranges: { easy_run: { min: 800, max: 5000 } },
+      weekly_schedule: [{
+        week: 1,
+        phase: 'Run/Walk Intervals',
+        tuesday: '5 min warm-up walk, then alternate 1 min running / 1.5 min walking for 20 minutes',
+      }],
+    }
+    const prompt = buildGenerationSystemPrompt({
+      ...BASE_CONTEXT,
+      template: timeBasedTemplate,
+      criteria: { ...TEST_CRITERIA, goal_type: '5k', current_weekly_mileage: 0, comfortable_peak_mileage: 0, days_per_week: 3 },
+      goal_type: '5k',
+      isTimeBased: true,
+    })
+    expect(prompt).toMatchSnapshot()
+  })
+
+  it('includes duration_seconds instructions for time-based templates', () => {
+    const prompt = buildGenerationSystemPrompt({
+      ...BASE_CONTEXT,
+      isTimeBased: true,
+    })
+    expect(prompt).toContain('duration_seconds')
+    expect(prompt).toContain('TIME-BASED PRESCRIPTIONS')
+    expect(prompt).not.toContain('DISTANCE-BASED PRESCRIPTIONS')
+  })
+
+  it('excludes duration_seconds for distance-based templates', () => {
+    const prompt = buildGenerationSystemPrompt(BASE_CONTEXT)
+    expect(prompt).toContain('DISTANCE-BASED PRESCRIPTIONS')
+    expect(prompt).not.toContain('TIME-BASED PRESCRIPTIONS')
+  })
+
   it('contains JSON output format instruction', () => {
     const prompt = buildGenerationSystemPrompt(BASE_CONTEXT)
     expect(prompt).toContain('weeks')

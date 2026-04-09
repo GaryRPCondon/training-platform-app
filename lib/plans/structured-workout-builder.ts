@@ -22,13 +22,19 @@ export function buildStructuredWorkout(workout: WorkoutInput): Record<string, un
   switch (workout.type) {
     case 'intervals': {
       const main_set = workout.structured_workout?.main_set ?? []
-      return {
-        warmup: { duration_minutes: 15, intensity: 'easy' },
-        main_set,
-        cooldown: { duration_minutes: 10, intensity: 'easy' },
-        pace_guidance,
-        notes,
-      }
+      // If LLM provided warmup (time-based templates), use it instead of defaults
+      const llmProvidedStructure = workout.structured_workout?.warmup !== undefined
+      const warmup = llmProvidedStructure
+        ? workout.structured_workout?.warmup
+        : { duration_minutes: 15, intensity: 'easy' }
+      const cooldown = llmProvidedStructure
+        ? workout.structured_workout?.cooldown
+        : { duration_minutes: 10, intensity: 'easy' }
+
+      const result: Record<string, unknown> = { main_set, pace_guidance, notes }
+      if (warmup) result.warmup = warmup
+      if (cooldown) result.cooldown = cooldown
+      return result
     }
     case 'tempo': {
       const intervalIntensity = workout.intensity === 'marathon' ? 'marathon' : 'tempo'

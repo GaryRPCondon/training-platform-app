@@ -118,6 +118,10 @@ export async function POST(request: Request) {
         .eq('id', athleteId)
     }
 
+    // Detect time-based templates (run/walk progression, C25K-style)
+    const isTimeBased = summary.tags?.includes('time_based') ||
+      summary.characteristics?.structure_type === 'run_walk_progression'
+
     // Build LLM prompts FIRST (before creating any database records)
     const context = {
       template: fullTemplate,
@@ -127,6 +131,7 @@ export async function POST(request: Request) {
       goal_type: goal_type as import('@/lib/templates/types').RaceDistance,
       first_day_of_week: firstDayOfWeek as 0 | 1,
       preferred_units: (athlete?.preferred_units ?? 'metric') as 'metric' | 'imperial',
+      isTimeBased,
     }
 
     const systemPrompt = buildGenerationSystemPrompt(context)

@@ -10,6 +10,7 @@ export interface GenerationContext {
   goal_type: RaceDistance
   first_day_of_week?: 0 | 1  // 0=Sunday, 1=Monday
   preferred_units: 'metric' | 'imperial'
+  isTimeBased?: boolean  // true when template prescribes workouts by time, not distance (e.g. run/walk)
 }
 
 /**
@@ -40,7 +41,7 @@ function getNextDayOfWeek(date: Date, targetDay: number): Date {
  * Build system prompt for LLM plan generation
  */
 export function buildGenerationSystemPrompt(context: GenerationContext): string {
-  const { template, criteria, start_date, goal_date, goal_type, first_day_of_week = 1, preferred_units } = context
+  const { template, criteria, start_date, goal_date, goal_type, first_day_of_week = 1, preferred_units, isTimeBased } = context
   const distanceLabel = getDistanceLabel(goal_type)
 
   const startDateObj = new Date(start_date)
@@ -240,17 +241,34 @@ WORKOUT TYPES (use ONLY these exact types):
 - cross_training (for cross-training activities)
 - race (for goal race day - marathon, half marathon, 10K, 5K, ultra, etc.)
 
-CRITICAL INSTRUCTION - DISTANCE-BASED PRESCRIPTIONS:
+${isTimeBased ? `CRITICAL INSTRUCTION - TIME-BASED PRESCRIPTIONS:
+This template prescribes workouts by TIME (duration), not distance.
+Use duration_seconds for interval steps inside structured_workout.
+The system estimates distances from duration + athlete's pace — do NOT convert time to distance yourself.
+
+For workouts that are run/walk INTERVALS (alternating run and walk segments):
+- Use type "intervals"
+- Provide "structured_workout" with "warmup" and "main_set" (see STRUCTURED WORKOUT below)
+- Set top-level "distance_meters" to a rough estimate for the total session:
+  Beginner pace: ~130-150m/min running, ~100m/min walking. Multiply by total session minutes.
+
+For workouts that are CONTINUOUS RUNNING (no walk breaks, e.g. "25 min running"):
+- Use type "easy_run" (NOT intervals)
+- Estimate distance_meters from the duration at beginner pace (~130-150m/min)
+- Do NOT include structured_workout
+- Put the full time description in the "description" field
+
+` : `CRITICAL INSTRUCTION - DISTANCE-BASED PRESCRIPTIONS:
 All training templates prescribe DISTANCE + INTENSITY only.
 The athlete determines their own pace based on fitness level (VDOT).
 DO NOT calculate or include duration_minutes - the system calculates this automatically based on athlete's training paces.
 
-REQUIRED FIELDS per workout:
+`}REQUIRED FIELDS per workout:
 - day (1-7)
 - workout_index (W#:D# format)
 - type (easy_run/recovery/long_run/tempo/intervals/rest/cross_training)
-- description (human-readable label including distance in the athlete's preferred units. Format: "{Type} {distance} {unit}" for continuous runs. For intervals: "{N} × {distance} with {recovery}")
-- distance_meters (required for running workouts, null for rest/cross-training)
+- description (human-readable label${isTimeBased ? ` — use the template's time-based format (e.g. "5 min warm-up walk, then alternate 1 min running / 1.5 min walking for 20 min")` : ` including distance in the athlete's preferred units. Format: "{Type} {distance} {unit}" for continuous runs. For intervals: "{N} × {distance} with {recovery}"`})
+- distance_meters (${isTimeBased ? 'estimated total session distance for running workouts, null for rest/cross-training' : 'required for running workouts, null for rest/cross-training'})
 - intensity: Use one of these methodology-specific labels:
 ${template.pace_targets
   ? Object.entries(template.pace_targets).map(([key, target]) =>
@@ -262,7 +280,62 @@ ${template.pace_targets
 - notes (optional coaching notes)
 - structured_workout (intervals only — see STRUCTURED WORKOUT below)
 
-STRUCTURED WORKOUT:
+${isTimeBased ? `STRUCTURED WORKOUT (TIME-BASED):
+Include "structured_workout" for type "intervals" ONLY. Provide "warmup" and "main_set":
+  "structured_workout": {
+    "warmup": { "duration_minutes": N, "intensity": "easy" },
+    "main_set": [
+      { "repeat": N, "intervals": [
+        { "duration_seconds": XXXXX, "intensity": "easy" },
+        { "duration_seconds": XXXXX, "intensity": "recovery" }
+      ]}
+    ]
+  }
+- Use "duration_seconds" for interval steps (NOT distance_meters)
+- Warmup: use the template's warm-up duration (e.g. 5 min for C25K)
+- Cooldown: only include if the template specifies one — do NOT add one if the template omits it
+- For non-uniform intervals (e.g. "5 min run, 3 min walk, 8 min run, 3 min walk"), use repeat: 1 with the full sequence:
+  { "repeat": 1, "intervals": [
+    { "duration_seconds": 300, "intensity": "easy" },
+    { "duration_seconds": 180, "intensity": "recovery" },
+    { "duration_seconds": 480, "intensity": "easy" },
+    { "duration_seconds": 180, "intensity": "recovery" }
+  ]}
+For all other types (easy_run, recovery, long_run, tempo, rest, cross_training, race):
+Omit "structured_workout" entirely — the server generates it automatically.
+
+EXAMPLE — run/walk intervals: Template says "5 min warm-up walk, then alternate 1 min running / 1.5 min walking for 20 min"
+{
+  "type": "intervals",
+  "description": "5 min warm-up walk, then alternate 1 min running / 1.5 min walking for 20 min",
+  "distance_meters": 2800,
+  "intensity": "easy",
+  "pace_guidance": "Conversational pace — slow down if you can't talk",
+  "notes": "Run/walk intervals. Focus on breathing comfortably.",
+  "structured_workout": {
+    "warmup": { "duration_minutes": 5, "intensity": "easy" },
+    "main_set": [
+      { "repeat": 8, "intervals": [
+        { "duration_seconds": 60, "intensity": "easy" },
+        { "duration_seconds": 90, "intensity": "recovery" }
+      ]}
+    ]
+  }
+}
+
+EXAMPLE — continuous run: Template says "5 min warm-up walk, then 25 min running"
+{
+  "type": "easy_run",
+  "description": "5 min warm-up walk, then 25 min continuous running",
+  "distance_meters": 3500,
+  "intensity": "easy",
+  "pace_guidance": "Conversational pace — slow down if you can't talk",
+  "notes": "No walking breaks. Maintain an easy, sustainable pace."
+}
+
+DO NOT INCLUDE:
+- distance_meters inside structured_workout interval steps — do NOT convert time to distance
+- Any distance-based interval descriptions (e.g. "8 × 1200m") — use time descriptions from the template` : `STRUCTURED WORKOUT:
 Only include "structured_workout" for type "intervals". Provide only "main_set":
   "structured_workout": {
     "main_set": [
@@ -296,7 +369,7 @@ EXAMPLE — intervals: Template says "Strength: 3 × 2 mi., 800 recovery"
 DO NOT INCLUDE:
 - duration_minutes (system calculates from distance + athlete's pace)
 - duration_seconds (system calculates from distance + athlete's pace)
-- Any time-based targets (the template prescribes distance only)
+- Any time-based targets (the template prescribes distance only)`}
 
 IMPORTANT:
 - Generate EXACTLY ${weeksNeeded} weeks

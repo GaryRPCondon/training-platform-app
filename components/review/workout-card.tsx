@@ -454,7 +454,7 @@ function IntervalStep({
   const distLabel = interval.distance_meters
     ? `${interval.distance_meters} m`
     : interval.duration_seconds
-    ? `${interval.duration_seconds} s`
+    ? formatDurationSeconds(interval.duration_seconds)
     : 'Step'
   const label = showRepeat ? `${set.repeat} × ${distLabel}` : distLabel
 
@@ -1702,9 +1702,16 @@ function renderStructuredWorkout(structure: StructuredBlob, units: UnitSystem = 
   )
 }
 
+function formatDurationSeconds(seconds: number): string {
+  if (seconds >= 60 && seconds % 60 === 0) return `${seconds / 60} min`
+  if (seconds >= 60) return `${(seconds / 60).toFixed(1)} min`
+  return `${seconds}s`
+}
+
 function formatWorkoutPart(part: StructuredBlob, units: UnitSystem = 'metric'): string {
   const details: string[] = []
-  if (part.duration_minutes) details.push(`${part.duration_minutes}min`)
+  if (part.duration_minutes) details.push(`${part.duration_minutes} min`)
+  if (part.duration_seconds) details.push(formatDurationSeconds(part.duration_seconds as number))
   if (part.distance_meters) details.push(fmtDist(part.distance_meters as number, units, 1))
   if (part.intensity) details.push(part.intensity as string)
   if (part.target_pace) details.push(`@ ${part.target_pace}`)
@@ -1714,7 +1721,7 @@ function formatWorkoutPart(part: StructuredBlob, units: UnitSystem = 'metric'): 
 function formatInterval(interval: StructuredBlob): string {
   const parts: string[] = []
   if (interval.distance_meters) parts.push(`${interval.distance_meters}m`)
-  if (interval.duration_seconds) parts.push(`${interval.duration_seconds}s`)
+  if (interval.duration_seconds) parts.push(formatDurationSeconds(interval.duration_seconds as number))
   if (interval.target_pace) parts.push(`@ ${interval.target_pace}`)
   if (interval.intensity) parts.push(interval.intensity as string)
   return parts.join(' ')
