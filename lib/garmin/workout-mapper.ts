@@ -110,7 +110,9 @@ function resolvePaceFromIntensity(
 
   if (intensity) {
     const lower = intensity.toLowerCase()
-    if (lower.includes('easy') || lower.includes('recovery')) {
+    if (lower.includes('walk')) {
+      return null  // Walk segments get no pace target — avoids false compliance warnings
+    } else if (lower.includes('easy') || lower.includes('recovery')) {
       paceType = 'easy'
     } else if (lower.includes('marathon') || lower === 'race') {
       paceType = 'marathon'
@@ -228,7 +230,8 @@ function buildRepeatStep(
 ): GarminWorkoutStep {
   const childSteps: GarminWorkoutStep[] = set.intervals.map((interval, idx) => {
     const isRecovery = interval.intensity?.toLowerCase().includes('recovery') ||
-                       interval.intensity?.toLowerCase().includes('rest')
+                       interval.intensity?.toLowerCase().includes('rest') ||
+                       interval.intensity?.toLowerCase().includes('walk')
     const stepType = isRecovery ? 'recovery' : 'interval'
 
     return buildExecutableStep(

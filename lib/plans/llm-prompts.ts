@@ -255,7 +255,7 @@ For workouts that are run/walk INTERVALS (alternating run and walk segments):
 For workouts that are CONTINUOUS RUNNING (no walk breaks, e.g. "25 min running"):
 - Use type "easy_run" (NOT intervals)
 - Estimate distance_meters from the duration at beginner pace (~130-150m/min)
-- Do NOT include structured_workout
+- Include "structured_workout" with warmup walk and a single main_set entry for the run
 - Put the full time description in the "description" field
 
 ` : `CRITICAL INSTRUCTION - DISTANCE-BASED PRESCRIPTIONS:
@@ -278,16 +278,18 @@ ${template.pace_targets
     : '  "easy", "moderate", "race", "hard", "recovery"\n  Use "race" for race-pace tempo workouts'}
 - pace_guidance (descriptive guidance: "conversational pace", "comfortably hard", "5K race pace", etc.)
 - notes (optional coaching notes)
-- structured_workout (intervals only — see STRUCTURED WORKOUT below)
+- structured_workout (intervals and continuous runs with warm-up walk — see STRUCTURED WORKOUT below)
 
 ${isTimeBased ? `STRUCTURED WORKOUT (TIME-BASED):
-Include "structured_workout" for type "intervals" ONLY. Provide "warmup" and "main_set":
+Include "structured_workout" for type "intervals" AND for continuous runs with a warm-up walk.
+Use "walk" intensity for all walking segments (warmup walks, walk breaks between runs).
+This ensures Garmin does not apply running pace targets to walk segments.
   "structured_workout": {
-    "warmup": { "duration_minutes": N, "intensity": "easy" },
+    "warmup": { "duration_minutes": N, "intensity": "walk" },
     "main_set": [
       { "repeat": N, "intervals": [
         { "duration_seconds": XXXXX, "intensity": "easy" },
-        { "duration_seconds": XXXXX, "intensity": "recovery" }
+        { "duration_seconds": XXXXX, "intensity": "walk" }
       ]}
     ]
   }
@@ -297,9 +299,9 @@ Include "structured_workout" for type "intervals" ONLY. Provide "warmup" and "ma
 - For non-uniform intervals (e.g. "5 min run, 3 min walk, 8 min run, 3 min walk"), use repeat: 1 with the full sequence:
   { "repeat": 1, "intervals": [
     { "duration_seconds": 300, "intensity": "easy" },
-    { "duration_seconds": 180, "intensity": "recovery" },
+    { "duration_seconds": 180, "intensity": "walk" },
     { "duration_seconds": 480, "intensity": "easy" },
-    { "duration_seconds": 180, "intensity": "recovery" }
+    { "duration_seconds": 180, "intensity": "walk" }
   ]}
 For all other types (easy_run, recovery, long_run, tempo, rest, cross_training, race):
 Omit "structured_workout" entirely — the server generates it automatically.
@@ -313,11 +315,11 @@ EXAMPLE — run/walk intervals: Template says "5 min warm-up walk, then alternat
   "pace_guidance": "Conversational pace — slow down if you can't talk",
   "notes": "Run/walk intervals. Focus on breathing comfortably.",
   "structured_workout": {
-    "warmup": { "duration_minutes": 5, "intensity": "easy" },
+    "warmup": { "duration_minutes": 5, "intensity": "walk" },
     "main_set": [
       { "repeat": 8, "intervals": [
         { "duration_seconds": 60, "intensity": "easy" },
-        { "duration_seconds": 90, "intensity": "recovery" }
+        { "duration_seconds": 90, "intensity": "walk" }
       ]}
     ]
   }
@@ -330,7 +332,15 @@ EXAMPLE — continuous run: Template says "5 min warm-up walk, then 25 min runni
   "distance_meters": 3500,
   "intensity": "easy",
   "pace_guidance": "Conversational pace — slow down if you can't talk",
-  "notes": "No walking breaks. Maintain an easy, sustainable pace."
+  "notes": "No walking breaks. Maintain an easy, sustainable pace.",
+  "structured_workout": {
+    "warmup": { "duration_minutes": 5, "intensity": "walk" },
+    "main_set": [
+      { "repeat": 1, "intervals": [
+        { "duration_seconds": 1500, "intensity": "easy" }
+      ]}
+    ]
+  }
 }
 
 DO NOT INCLUDE:

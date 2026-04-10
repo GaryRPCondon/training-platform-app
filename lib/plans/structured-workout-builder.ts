@@ -49,9 +49,20 @@ export function buildStructuredWorkout(workout: WorkoutInput): Record<string, un
         notes,
       }
     }
-    default:
+    default: {
       // easy_run, recovery, long_run, rest, cross_training, race
+      // If the LLM provided warmup/main_set (e.g. time-based continuous runs with warm-up walk),
+      // preserve them so the workout gets proper structure on Garmin
+      const llmStructure = workout.structured_workout
+      if (llmStructure?.warmup !== undefined || llmStructure?.main_set !== undefined) {
+        const result: Record<string, unknown> = { pace_guidance, notes }
+        if (llmStructure.warmup) result.warmup = llmStructure.warmup
+        if (llmStructure.main_set) result.main_set = llmStructure.main_set
+        if (llmStructure.cooldown) result.cooldown = llmStructure.cooldown
+        return result
+      }
       return { pace_guidance, notes }
+    }
   }
 }
 
