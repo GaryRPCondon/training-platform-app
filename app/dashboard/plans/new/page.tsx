@@ -59,7 +59,7 @@ function NewPlanPageContent() {
     const [currentVolume, setCurrentVolume] = useState<number | ''>('')
     const [maxVolume, setMaxVolume] = useState<number | ''>('')
     const [experienceLevel, setExperienceLevel] = useState<'complete_beginner' | 'beginner' | 'intermediate' | 'advanced'>('beginner')
-    const [daysPerWeek, setDaysPerWeek] = useState('5')
+    const [daysPerWeek, setDaysPerWeek] = useState('3')
     const [preferredRestDays, setPreferredRestDays] = useState<number[]>([])
     const [vdotInput, setVDOTInput] = useState<VDOTInputValue | null>(null)
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -334,8 +334,8 @@ function NewPlanPageContent() {
                                                         Complete Beginner
                                                     </Label>
                                                 </TooltipTrigger>
-                                                <TooltipContent>
-                                                    New to running, or returning after a long break
+                                                <TooltipContent className="max-w-xs">
+                                                    New to running, or returning after a lay-off of many years. Little or no recent training base.
                                                 </TooltipContent>
                                             </Tooltip>
                                         </div>
@@ -347,8 +347,8 @@ function NewPlanPageContent() {
                                                         Beginner
                                                     </Label>
                                                 </TooltipTrigger>
-                                                <TooltipContent>
-                                                    Can run 30 minutes continuously, some race experience
+                                                <TooltipContent className="max-w-xs">
+                                                    Can run 30+ minutes continuously. Running regularly for a few months, possibly with a 5K or 10K under your belt, but limited structured training experience.
                                                 </TooltipContent>
                                             </Tooltip>
                                         </div>
@@ -360,8 +360,8 @@ function NewPlanPageContent() {
                                                         Intermediate
                                                     </Label>
                                                 </TooltipTrigger>
-                                                <TooltipContent>
-                                                    Regular runner, comfortable with structured training and speedwork
+                                                <TooltipContent className="max-w-xs">
+                                                    Running consistently for a year or more. Comfortable with structured training including tempo runs and intervals. May have completed a half marathon or marathon at moderate weekly mileage.
                                                 </TooltipContent>
                                             </Tooltip>
                                         </div>
@@ -373,8 +373,8 @@ function NewPlanPageContent() {
                                                         Advanced
                                                     </Label>
                                                 </TooltipTrigger>
-                                                <TooltipContent>
-                                                    Competitive runner, experienced with high-volume and intense training
+                                                <TooltipContent className="max-w-xs">
+                                                    Experienced competitive runner. Has completed multiple marathons and regularly trains at medium to high weekly mileage with full periodised training cycles.
                                                 </TooltipContent>
                                             </Tooltip>
                                         </div>
@@ -444,7 +444,16 @@ function NewPlanPageContent() {
                         <div className="space-y-2">
                             <Label>Training Paces (Optional)</Label>
                             <p className="text-sm text-muted-foreground">
-                                Provide race time or VDOT to calculate target paces - will be captured in your user profile
+                                Provide race time or{' '}
+                                <a
+                                    href="https://vdoto2.com/"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="underline underline-offset-2 hover:text-foreground"
+                                >
+                                    VDOT
+                                </a>
+                                {' '}to calculate target paces - will be captured in your user profile
                             </p>
                             <VDOTInput value={vdotInput || undefined} onChange={setVDOTInput} />
                         </div>
