@@ -11,6 +11,7 @@ import { calculateTrainingPaces, calculateRacePaces, RACE_DISTANCES } from '@/li
 import type { UserCriteria } from '@/lib/templates/types'
 import type { TrainingPaces } from '@/types/database'
 import { writeLLMLog } from '@/lib/agent/llm-logger'
+import { archivePlanAndGoal } from '@/lib/supabase/plan-activation'
 import { z } from 'zod'
 
 const generateSchema = z.object({
@@ -26,6 +27,7 @@ const generateSchema = z.object({
     source: z.string().optional(),
     sourceData: z.record(z.string(), z.unknown()).optional(),
   }).nullable().optional(),
+  replace_active: z.boolean().optional(),
 })
 
 export async function POST(request: Request) {
@@ -35,7 +37,7 @@ export async function POST(request: Request) {
     if (!parsed.success) {
       return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
     }
-    const { template_id, goal_date, start_date, goal_type, goal_name, user_criteria, first_day_of_week, vdot_data } = parsed.data
+    const { template_id, goal_date, start_date, goal_type, goal_name, user_criteria, first_day_of_week, vdot_data, replace_active } = parsed.data
 
     // Calculate training paces if VDOT data provided
     let vdot: number | null = null
@@ -75,6 +77,28 @@ export async function POST(request: Request) {
     }
 
     const athleteId = user.id
+
+    // Pre-flight: refuse to generate over an existing active plan unless the
+    // caller explicitly opts in via replace_active. Without this guard, the
+    // plan-writer hits a unique-constraint violation on weekly_plans when the
+    // new plan's week dates collide with the active plan's.
+    const { data: activePlan, error: activePlanError } = await supabase
+      .from('training_plans')
+      .select('id, name')
+      .eq('athlete_id', athleteId)
+      .eq('status', 'active')
+      .maybeSingle()
+    if (activePlanError) throw activePlanError
+
+    if (activePlan && !replace_active) {
+      return NextResponse.json(
+        {
+          error: 'active_plan_exists',
+          active_plan: { id: activePlan.id, name: activePlan.name },
+        },
+        { status: 409 }
+      )
+    }
 
     // Load template summary and full template
     const summary = await getTemplateSummary(template_id)
@@ -239,6 +263,13 @@ export async function POST(request: Request) {
     }
 
     // LLM succeeded! Now create the plan structure in the database
+
+    // If the user opted to replace an existing active plan, archive it first
+    // (and abandon its goal). Done after the LLM call so a generation failure
+    // leaves the old plan untouched.
+    if (activePlan && replace_active) {
+      await archivePlanAndGoal(supabase, activePlan.id, athleteId)
+    }
 
     // Check for existing draft and delete it
     const { data: existingDrafts } = await supabase

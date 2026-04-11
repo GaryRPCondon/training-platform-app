@@ -160,7 +160,7 @@ export interface TrainingPlan {
     start_date: string
     end_date: string
     plan_type: string | null
-    status: 'draft' | 'draft_generated' | 'active' | 'completed' | 'paused'
+    status: 'draft' | 'draft_generated' | 'active' | 'completed' | 'paused' | 'archived'
     created_by: string | null
     template_id: string | null
     template_version: string | null

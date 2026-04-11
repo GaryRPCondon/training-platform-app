@@ -5,7 +5,19 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { TemplateCard } from '@/components/plans/template-card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { ArrowLeft, AlertCircle, Loader2 } from 'lucide-react'
+import { getActiveTrainingPlan } from '@/lib/supabase/queries'
+import type { TrainingPlan } from '@/types/database'
 import type { RecommendationResponse, UserCriteria } from '@/lib/templates/types'
 
 function RecommendPageContent() {
@@ -14,6 +26,14 @@ function RecommendPageContent() {
   const [recommendations, setRecommendations] = useState<RecommendationResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [activePlan, setActivePlan] = useState<TrainingPlan | null>(null)
+  const [replaceConfirmed, setReplaceConfirmed] = useState(false)
+
+  useEffect(() => {
+    getActiveTrainingPlan()
+      .then(plan => setActivePlan(plan))
+      .catch(err => console.error('Failed to check for active plan:', err))
+  }, [])
 
   useEffect(() => {
     async function fetchRecommendations() {
@@ -84,6 +104,12 @@ function RecommendPageContent() {
     const preferredRestDays = searchParams.get('preferredRestDays')
     if (preferredRestDays) {
       generateParams.set('preferredRestDays', preferredRestDays)
+    }
+
+    // If the user confirmed they want to replace an existing active plan,
+    // forward the flag so /generate → API will archive the old plan.
+    if (replaceConfirmed) {
+      generateParams.set('replace_active', 'true')
     }
 
     router.push(`/dashboard/plans/generate?${generateParams.toString()}`)
@@ -178,6 +204,27 @@ function RecommendPageContent() {
 
   return (
     <div className="space-y-6">
+      <AlertDialog open={!!activePlan && !replaceConfirmed}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Replace your active plan?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You already have an active plan
+              {activePlan?.name ? <> &ldquo;<strong>{activePlan.name}</strong>&rdquo;</> : ''}.
+              Creating a new one will archive it. Completed workouts from the old plan will stay in your activity history.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => router.push('/dashboard/plans')}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => setReplaceConfirmed(true)}>
+              Replace plan
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

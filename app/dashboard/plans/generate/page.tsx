@@ -112,6 +112,11 @@ function GeneratePageContent() {
           requestBody.vdot_data = vdotData
         }
 
+        // Forward replace_active flag if user confirmed replacement on /recommend
+        if (searchParams.get('replace_active') === 'true') {
+          requestBody.replace_active = true
+        }
+
         const response = await fetch('/api/plans/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -123,6 +128,12 @@ function GeneratePageContent() {
 
         if (!response.ok) {
           const errorData = await response.json()
+          if (response.status === 409 && errorData.error === 'active_plan_exists') {
+            const name = errorData.active_plan?.name
+            throw new Error(
+              `You already have an active plan${name ? ` "${name}"` : ''}. Go back to the Plans page and start a new plan from there to replace it.`
+            )
+          }
           throw new Error(errorData.details || 'Generation failed')
         }
 
