@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { validateWorkoutDistances, formatValidationWarnings } from '../workout-validator'
-import type { ParsedPlan } from '../response-parser'
+import type { ParsedPlan, ParsedWorkout } from '../response-parser'
 
 // Marathon-style ranges (similar to what was hardcoded before)
 const MARATHON_RANGES: Record<string, { min: number; max: number }> = {
@@ -24,7 +24,7 @@ const C25K_RANGES: Record<string, { min: number; max: number }> = {
   cross_training: { min: 0, max: 0 },
 }
 
-function makePlan(workouts: any[]): ParsedPlan {
+function makePlan(workouts: ParsedWorkout[]): ParsedPlan {
   return {
     weeks: [{
       week_number: 1,
@@ -35,7 +35,11 @@ function makePlan(workouts: any[]): ParsedPlan {
   }
 }
 
-function makeWorkout(type: string, distance_meters: number | null, overrides = {}) {
+function makeWorkout(
+  type: string,
+  distance_meters: number | null,
+  overrides: Partial<ParsedWorkout> = {}
+): ParsedWorkout {
   return {
     day: 1,
     workout_index: 'W1:D1',
@@ -133,6 +137,69 @@ describe('validateWorkoutDistances', () => {
 
   it('race type is valid within range (10km race)', () => {
     const plan = makePlan([makeWorkout('race', 10000, { workout_index: 'W1:D7' })])
+    expect(validateWorkoutDistances(plan, MARATHON_RANGES)).toHaveLength(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Total session distance (structured_workout with warmup/cooldown/recovery)
+// ---------------------------------------------------------------------------
+
+describe('validateWorkoutDistances — total session distance', () => {
+  // Mimics what enrichParsedWorkouts produces for an interval workout
+  function intervalSW(mainSet: unknown[]) {
+    return {
+      warmup: { duration_minutes: 15, intensity: 'easy' },
+      main_set: mainSet,
+      cooldown: { duration_minutes: 10, intensity: 'easy' },
+      pace_guidance: null,
+      notes: null,
+    }
+  }
+
+  it('passes 5x400m intervals (active 2km but total ~6km) within 3-12km range', () => {
+    // Reproduces the user-reported bug: "5 x 400m at mile pace, 400m recovery"
+    // has main-set 2km but with warmup/cooldown/recovery is ~8km total.
+    const plan = makePlan([
+      makeWorkout('intervals', 2000, {
+        structured_workout: intervalSW([
+          {
+            repeat: 5,
+            intervals: [
+              { distance_meters: 400, intensity: 'interval' },
+              { distance_meters: 400, intensity: 'recovery' },
+            ],
+          },
+        ]),
+      }),
+    ])
+    expect(validateWorkoutDistances(plan, MARATHON_RANGES)).toHaveLength(0)
+  })
+
+  it('warns when even total session distance is below the range', () => {
+    // 3x200m, no recovery, with tiny warmup/cooldown — total ~1km, below 3km min
+    const plan = makePlan([
+      makeWorkout('intervals', 600, {
+        structured_workout: {
+          warmup: { duration_minutes: 1, intensity: 'easy' },
+          main_set: [
+            { repeat: 3, intervals: [{ distance_meters: 200, intensity: 'interval' }] },
+          ],
+          cooldown: { duration_minutes: 1, intensity: 'easy' },
+        },
+      }),
+    ])
+    const warnings = validateWorkoutDistances(plan, MARATHON_RANGES)
+    expect(warnings).toHaveLength(1)
+    // actualDistance should be the *total* (~932m), not the 600m main-set
+    expect(warnings[0].actualDistance).toBeGreaterThan(600)
+    expect(warnings[0].actualDistance).toBeLessThan(1500)
+  })
+
+  it('still falls back to distance_meters when no structured_workout is present', () => {
+    // No structured_workout → validator uses workout.distance_meters directly.
+    // Preserves behaviour for easy_run/long_run/recovery workouts.
+    const plan = makePlan([makeWorkout('easy_run', 10000)])
     expect(validateWorkoutDistances(plan, MARATHON_RANGES)).toHaveLength(0)
   })
 })

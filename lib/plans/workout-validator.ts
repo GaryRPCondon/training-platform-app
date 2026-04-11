@@ -1,4 +1,6 @@
 import type { ParsedPlan } from './response-parser'
+import { calculateTotalWorkoutDistance } from '@/lib/training/vdot'
+import type { TrainingPaces } from '@/types/database'
 
 export interface WorkoutValidationWarning {
   workoutIndex: string
@@ -16,19 +18,21 @@ const TOLERANCE = 0.10 // ±10%
 /**
  * Validate workout distances for potential LLM hallucinations.
  * Uses template-specific validation ranges with ±10% tolerance.
+ *
+ * Distance compared against the range is the *total session distance*
+ * (warmup + main set + recovery + cooldown), matching what the workout
+ * card displays. The validation_ranges in templates likewise represent
+ * total session distances.
  */
 export function validateWorkoutDistances(
   parsedPlan: ParsedPlan,
-  validationRanges: Record<string, { min: number; max: number }>
+  validationRanges: Record<string, { min: number; max: number }>,
+  trainingPaces?: TrainingPaces | null
 ): WorkoutValidationWarning[] {
   const warnings: WorkoutValidationWarning[] = []
 
   for (const week of parsedPlan.weeks) {
     for (const workout of week.workouts) {
-      if (!workout.distance_meters || workout.distance_meters === 0) {
-        continue
-      }
-
       const workoutType = workout.type.toLowerCase()
       const range = validationRanges[workoutType]
 
@@ -41,7 +45,17 @@ export function validateWorkoutDistances(
         continue
       }
 
-      const actualDistance = workout.distance_meters
+      const actualDistance = calculateTotalWorkoutDistance(
+        workout.distance_meters,
+        workout.type,
+        workout.structured_workout,
+        trainingPaces
+      )
+
+      if (!actualDistance || actualDistance === 0) {
+        continue
+      }
+
       const effectiveMin = range.min * (1 - TOLERANCE)
       const effectiveMax = range.max * (1 + TOLERANCE)
 
