@@ -8,7 +8,6 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import { VDOTInput, type VDOTInputValue } from '@/components/plans/vdot-input'
@@ -324,62 +323,52 @@ function NewPlanPageContent() {
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-3">
                                 <Label>Experience Level</Label>
-                                <TooltipProvider>
-                                    <RadioGroup value={experienceLevel} onValueChange={(value) => setExperienceLevel(value as any)}>
-                                        <div className="flex items-center space-x-2">
-                                            <RadioGroupItem value="complete_beginner" id="complete_beginner" />
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <Label htmlFor="complete_beginner" className="font-normal cursor-pointer">
-                                                        Complete Beginner
-                                                    </Label>
-                                                </TooltipTrigger>
-                                                <TooltipContent className="max-w-xs">
-                                                    New to running, or returning after a lay-off of many years. Little or no recent training base.
-                                                </TooltipContent>
-                                            </Tooltip>
+                                <RadioGroup value={experienceLevel} onValueChange={(value) => setExperienceLevel(value as any)}>
+                                    <div className="flex items-start space-x-2">
+                                        <RadioGroupItem value="complete_beginner" id="complete_beginner" className="mt-1" />
+                                        <div className="space-y-0.5">
+                                            <Label htmlFor="complete_beginner" className="font-normal cursor-pointer">
+                                                Complete Beginner
+                                            </Label>
+                                            <p className="text-xs text-muted-foreground">
+                                                New to running, or returning after a long break
+                                            </p>
                                         </div>
-                                        <div className="flex items-center space-x-2">
-                                            <RadioGroupItem value="beginner" id="beginner" />
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <Label htmlFor="beginner" className="font-normal cursor-pointer">
-                                                        Beginner
-                                                    </Label>
-                                                </TooltipTrigger>
-                                                <TooltipContent className="max-w-xs">
-                                                    Can run 30+ minutes continuously. Running regularly for a few months, possibly with a 5K or 10K under your belt, but limited structured training experience.
-                                                </TooltipContent>
-                                            </Tooltip>
+                                    </div>
+                                    <div className="flex items-start space-x-2">
+                                        <RadioGroupItem value="beginner" id="beginner" className="mt-1" />
+                                        <div className="space-y-0.5">
+                                            <Label htmlFor="beginner" className="font-normal cursor-pointer">
+                                                Beginner
+                                            </Label>
+                                            <p className="text-xs text-muted-foreground">
+                                                Can run 30 minutes continuously, some race experience
+                                            </p>
                                         </div>
-                                        <div className="flex items-center space-x-2">
-                                            <RadioGroupItem value="intermediate" id="intermediate" />
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <Label htmlFor="intermediate" className="font-normal cursor-pointer">
-                                                        Intermediate
-                                                    </Label>
-                                                </TooltipTrigger>
-                                                <TooltipContent className="max-w-xs">
-                                                    Running consistently for a year or more. Comfortable with structured training including tempo runs and intervals. May have completed a half marathon or marathon at moderate weekly mileage.
-                                                </TooltipContent>
-                                            </Tooltip>
+                                    </div>
+                                    <div className="flex items-start space-x-2">
+                                        <RadioGroupItem value="intermediate" id="intermediate" className="mt-1" />
+                                        <div className="space-y-0.5">
+                                            <Label htmlFor="intermediate" className="font-normal cursor-pointer">
+                                                Intermediate
+                                            </Label>
+                                            <p className="text-xs text-muted-foreground">
+                                                Regular runner, comfortable with structured training and speedwork
+                                            </p>
                                         </div>
-                                        <div className="flex items-center space-x-2">
-                                            <RadioGroupItem value="advanced" id="advanced" />
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <Label htmlFor="advanced" className="font-normal cursor-pointer">
-                                                        Advanced
-                                                    </Label>
-                                                </TooltipTrigger>
-                                                <TooltipContent className="max-w-xs">
-                                                    Experienced competitive runner. Has completed multiple marathons and regularly trains at medium to high weekly mileage with full periodised training cycles.
-                                                </TooltipContent>
-                                            </Tooltip>
+                                    </div>
+                                    <div className="flex items-start space-x-2">
+                                        <RadioGroupItem value="advanced" id="advanced" className="mt-1" />
+                                        <div className="space-y-0.5">
+                                            <Label htmlFor="advanced" className="font-normal cursor-pointer">
+                                                Advanced
+                                            </Label>
+                                            <p className="text-xs text-muted-foreground">
+                                                Competitive runner, experienced with high-volume and intense training
+                                            </p>
                                         </div>
-                                    </RadioGroup>
-                                </TooltipProvider>
+                                    </div>
+                                </RadioGroup>
                             </div>
 
                             <div className="space-y-2">
