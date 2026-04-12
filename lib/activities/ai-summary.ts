@@ -30,6 +30,9 @@ const SYSTEM_PROMPT = `You are an AI running coach generating a post-activity su
 Rules:
 - Do not restate stats the athlete already knows (distance, duration, date). Lead with the coaching insight.
 - Compare execution to plan intent — was the session's purpose achieved?
+- When a target pace range is provided, use it as the ground truth for pace evaluation. Do not guess or assume pace targets.
+- All pace and duration data is based on moving time (excluding stopped time). Treat it as the true effort metric.
+- When lap elevation data is present, account for terrain: slower uphill laps and faster downhill laps are expected on hilly routes and do not indicate inconsistent effort. Judge effort using HR alongside pace on hilly runs.
 - Acknowledge what was executed well before addressing what needs improvement. Both matter.
 - Be direct and prescriptive: when something needs correcting, say what to do differently.
 - Where pace, HR, or effort drifted from target, explain the training consequence (e.g. "running easy days this fast erodes recovery", "the fade in final reps suggests the interval target was too aggressive").
@@ -75,19 +78,34 @@ function formatDuration(totalSeconds: number | null): string {
 function buildLapTable(laps: Lap[]): string {
   if (laps.length === 0) return ''
 
-  const header = 'Lap | Distance | Pace | Avg HR | Max HR | Type | Adherence%'
-  const divider = '--- | -------- | ---- | ------ | ------ | ---- | ----------'
+  const header = 'Lap | Distance | Pace | Avg HR | Max HR | Elev Gain | Type | Adherence%'
+  const divider = '--- | -------- | ---- | ------ | ------ | --------- | ---- | ----------'
   const rows = laps.map(lap => {
     const dist = lap.distance_meters ? `${(lap.distance_meters / 1000).toFixed(2)} km` : 'N/A'
     const pace = formatPace(lap.avg_pace)
     const avgHr = lap.avg_hr ? `${lap.avg_hr}` : 'N/A'
     const maxHr = lap.max_hr ? `${lap.max_hr}` : 'N/A'
+    const elev = lap.elevation_gain_meters != null ? `${Math.round(lap.elevation_gain_meters)}m` : '-'
     const type = lap.intensity_type || lap.split_type || '-'
     const adherence = lap.compliance_score != null ? `${lap.compliance_score}%` : 'N/A'
-    return `${lap.lap_index} | ${dist} | ${pace} | ${avgHr} | ${maxHr} | ${type} | ${adherence}`
+    return `${lap.lap_index} | ${dist} | ${pace} | ${avgHr} | ${maxHr} | ${elev} | ${type} | ${adherence}`
   })
 
   return `\nLap breakdown:\n${header}\n${divider}\n${rows.join('\n')}`
+}
+
+function extractTargetPace(workout: PlannedWorkout): string {
+  const sw = workout.structured_workout as Record<string, unknown> | null
+  if (!sw) return 'N/A'
+
+  const lower = sw.target_pace_sec_per_km as number | undefined
+  const upper = sw.target_pace_upper_sec_per_km as number | undefined
+  if (!lower) return 'N/A'
+
+  if (upper) {
+    return `${formatPace(lower)} – ${formatPace(upper)}`
+  }
+  return formatPace(lower)
 }
 
 function buildUserMessage(
@@ -99,8 +117,10 @@ function buildUserMessage(
   const distanceVariance = calculateDistanceDiff(activity.distance_meters, effectiveDistance)
   const durationVariance = calculateDurationDiff(activity.duration_seconds, workout.duration_target_seconds)
 
-  const avgPaceSecsPerKm = activity.distance_meters && activity.duration_seconds && activity.distance_meters > 0
-    ? (activity.duration_seconds / (activity.distance_meters / 1000))
+  // Use moving time for pace calculation (falls back to elapsed time)
+  const movingSeconds = activity.moving_duration_seconds ?? activity.duration_seconds
+  const avgPaceSecsPerKm = activity.distance_meters && movingSeconds && activity.distance_meters > 0
+    ? (movingSeconds / (activity.distance_meters / 1000))
     : null
 
   // Calculate pace compliance from lap compliance scores
@@ -109,17 +129,20 @@ function buildUserMessage(
     ? Math.round(lapsWithCompliance.reduce((sum, l) => sum + l.compliance_score!, 0) / lapsWithCompliance.length)
     : null
 
+  const targetPace = extractTargetPace(workout)
+
   let msg = `Planned workout:
 - Type: ${workout.workout_type}
 - Target distance: ${effectiveDistance ? `${(effectiveDistance / 1000).toFixed(2)} km` : 'N/A'}
 - Target duration: ${workout.duration_target_seconds ? formatDuration(workout.duration_target_seconds) : 'N/A'}
 - Intensity: ${workout.intensity_target || 'N/A'}
+- Target pace: ${targetPace}
 - Description: ${workout.description || 'N/A'}
 
 Actual activity:
 - Distance: ${activity.distance_meters ? `${(activity.distance_meters / 1000).toFixed(2)} km` : 'N/A'}
-- Duration: ${formatDuration(activity.duration_seconds)}
-- Average pace: ${formatPace(avgPaceSecsPerKm)}
+- Moving time: ${formatDuration(movingSeconds)}
+- Average moving pace: ${formatPace(avgPaceSecsPerKm)}
 - Average HR: ${activity.avg_hr ? `${activity.avg_hr} bpm` : 'N/A'}
 - Max HR: ${activity.max_hr ? `${activity.max_hr} bpm` : 'N/A'}
 - Distance variance vs plan: ${distanceVariance !== 0 ? `${distanceVariance > 0 ? '+' : ''}${distanceVariance.toFixed(1)}%` : '0%'}
@@ -208,7 +231,7 @@ export async function generateActivitySummary(
     // Fetch laps
     const { data: laps } = await supabase
       .from('laps')
-      .select('lap_index, distance_meters, duration_seconds, avg_hr, max_hr, avg_pace, intensity_type, split_type, compliance_score')
+      .select('lap_index, distance_meters, duration_seconds, avg_hr, max_hr, avg_pace, elevation_gain_meters, intensity_type, split_type, compliance_score')
       .eq('activity_id', activityId)
       .order('lap_index', { ascending: true })
 

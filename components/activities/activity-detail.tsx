@@ -23,7 +23,7 @@ import { getActivityLinks } from '@/lib/utils/activity-links'
 import { getComplianceColorClass } from '@/lib/activities/scoring'
 import { GarminIcon, StravaIcon } from './platform-icons'
 
-type LapRow = Pick<Lap, 'lap_index' | 'distance_meters' | 'duration_seconds' | 'avg_hr' | 'max_hr' | 'avg_pace' | 'intensity_type' | 'compliance_score'>
+type LapRow = Pick<Lap, 'lap_index' | 'distance_meters' | 'duration_seconds' | 'avg_hr' | 'max_hr' | 'avg_pace' | 'elevation_gain_meters' | 'intensity_type' | 'compliance_score'>
 
 interface ActivityDetailProps {
   activity: Activity & {
@@ -53,10 +53,15 @@ export function ActivityDetail({ activity, onClose }: ActivityDetailProps) {
   const router = useRouter()
   const { formatDistance, formatPace, formatElevation } = useUnits()
 
-  // Calculate pace if we have distance and duration
+  // Use moving time for pace (falls back to elapsed time)
+  const movingSeconds = activity.moving_duration_seconds ?? activity.duration_seconds
+  const displaySeconds = movingSeconds ?? activity.duration_seconds
+  const hasMovingTime = activity.moving_duration_seconds != null && activity.duration_seconds != null
+    && activity.moving_duration_seconds !== activity.duration_seconds
+
   let avgPace: string | null = null
-  if (activity.distance_meters && activity.duration_seconds) {
-    const paceSecondsPerKm = (activity.duration_seconds / (activity.distance_meters / 1000))
+  if (activity.distance_meters && displaySeconds) {
+    const paceSecondsPerKm = (displaySeconds / (activity.distance_meters / 1000))
     avgPace = formatPace(paceSecondsPerKm)
   }
 
@@ -162,19 +167,26 @@ export function ActivityDetail({ activity, onClose }: ActivityDetailProps) {
               </div>
             )}
 
-            {/* Duration */}
-            {activity.duration_seconds && (
+            {/* Duration (moving time preferred) */}
+            {displaySeconds && (
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Clock className="h-4 w-4" />
-                  Duration
+                  {hasMovingTime ? 'Moving Time' : 'Duration'}
                 </div>
                 <div className="text-2xl font-bold">
-                  {Math.floor(activity.duration_seconds / 3600) > 0 && (
-                    <>{Math.floor(activity.duration_seconds / 3600)}h </>
+                  {Math.floor(displaySeconds / 3600) > 0 && (
+                    <>{Math.floor(displaySeconds / 3600)}h </>
                   )}
-                  {Math.floor((activity.duration_seconds % 3600) / 60)}m
+                  {Math.floor((displaySeconds % 3600) / 60)}m
                 </div>
+                {hasMovingTime && activity.duration_seconds && (
+                  <div className="text-xs text-muted-foreground">
+                    Elapsed: {Math.floor(activity.duration_seconds / 3600) > 0
+                      ? `${Math.floor(activity.duration_seconds / 3600)}h ${Math.floor((activity.duration_seconds % 3600) / 60)}m`
+                      : `${Math.floor((activity.duration_seconds % 3600) / 60)}m`}
+                  </div>
+                )}
               </div>
             )}
 
@@ -249,6 +261,7 @@ export function ActivityDetail({ activity, onClose }: ActivityDetailProps) {
                     <TableHead className="text-right">Pace</TableHead>
                     <TableHead className="text-right">Avg HR</TableHead>
                     <TableHead className="text-right">Max HR</TableHead>
+                    <TableHead className="text-right">Climb</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead className="text-right">Adherence</TableHead>
                   </TableRow>
@@ -271,6 +284,9 @@ export function ActivityDetail({ activity, onClose }: ActivityDetailProps) {
                         </TableCell>
                         <TableCell className="text-right">
                           {lap.max_hr ? `${lap.max_hr}` : '-'}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {lap.elevation_gain_meters != null ? `${Math.round(lap.elevation_gain_meters)}m` : '-'}
                         </TableCell>
                         <TableCell>
                           {variant ? (

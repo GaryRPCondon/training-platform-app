@@ -28,7 +28,7 @@ export default async function ActivityDetailPage({
       planned_workouts!fk_activities_planned_workout (*),
       laps (
         lap_index, distance_meters, duration_seconds,
-        avg_hr, max_hr, avg_pace,
+        avg_hr, max_hr, avg_pace, elevation_gain_meters,
         intensity_type, compliance_score
       )
     `)

@@ -265,6 +265,10 @@ export async function POST(request: Request) {
                     start_time: activity.start_date,
                     distance_meters: activity.distance,
                     duration_seconds: activity.elapsed_time,
+                    moving_duration_seconds: activity.moving_time,
+                    avg_hr: activity.average_heartrate ?? null,
+                    max_hr: activity.max_heartrate ?? null,
+                    elevation_gain_meters: activity.total_elevation_gain ?? null,
                     strava_data: {
                         workout_type: activity.workout_type,
                         sport_type: activity.sport_type,

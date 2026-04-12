@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { format, subDays } from 'date-fns'
 import { getAthleteProfile } from '@/lib/supabase/queries'
@@ -9,6 +10,7 @@ import { getAthleteProfile } from '@/lib/supabase/queries'
 export function AutoSync() {
     const triggered = useRef(false)
     const queryClient = useQueryClient()
+    const router = useRouter()
 
     const { data: athlete } = useQuery({
         queryKey: ['athlete'],
@@ -52,18 +54,19 @@ export function AutoSync() {
                 })
                 const matchData = await matchRes.json()
 
-                // Refresh calendar/dashboard data so new activities appear immediately
+                // Refresh client-side queries and server-rendered dashboard data
                 queryClient.invalidateQueries({ queryKey: ['activities'] })
                 queryClient.invalidateQueries({ queryKey: ['workouts'] })
                 const matchMsg = matchData.matchCount ? ` (${matchData.matchCount} matched to workouts)` : ''
                 toast.success(`Activities synced${matchMsg}`)
+                router.refresh()
             } catch {
                 // Silently fail - user can always manually sync
             }
         }
 
         syncPlatforms()
-    }, [athlete, queryClient])
+    }, [athlete, queryClient, router])
 
     return null
 }
