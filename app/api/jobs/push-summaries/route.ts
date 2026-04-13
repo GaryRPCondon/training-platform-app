@@ -23,7 +23,7 @@ function createServiceClient() {
 }
 
 function buildDescription(ratingPrefix: string, aiSummary: string, existingDescription: string | null): string {
-  const header = `AI TrAIner Summary: ${ratingPrefix}${aiSummary}`
+  const header = `trAIner Summary: ${ratingPrefix}${aiSummary}`
   if (!existingDescription) return header
   return `${header}\n\n---\n\n${existingDescription}`
 }
