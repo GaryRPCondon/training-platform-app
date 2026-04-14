@@ -57,6 +57,9 @@ export function AutoSync() {
                 // Refresh client-side queries and server-rendered dashboard data
                 queryClient.invalidateQueries({ queryKey: ['activities'] })
                 queryClient.invalidateQueries({ queryKey: ['workouts'] })
+                queryClient.invalidateQueries({ queryKey: ['todays-workout'] })
+                queryClient.invalidateQueries({ queryKey: ['phase-progress'] })
+                queryClient.invalidateQueries({ queryKey: ['weekly-progress'] })
                 const matchMsg = matchData.matchCount ? ` (${matchData.matchCount} matched to workouts)` : ''
                 toast.success(`Activities synced${matchMsg}`)
                 router.refresh()
