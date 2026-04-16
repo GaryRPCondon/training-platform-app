@@ -3,6 +3,7 @@ import type { ParsedWorkout, PreWeekWorkout } from './response-parser'
 type WorkoutInput = {
   type: string
   distance_meters?: number | null
+  duration_seconds?: number | null
   intensity: string
   pace_guidance?: string | null
   notes?: string | null
@@ -38,12 +39,31 @@ export function buildStructuredWorkout(workout: WorkoutInput): Record<string, un
     }
     case 'tempo': {
       const intervalIntensity = workout.intensity === 'marathon' ? 'marathon' : 'tempo'
+
+      // If LLM provided a structured_workout with main_set (time-based tempo), use it
+      if (workout.structured_workout?.main_set) {
+        const main_set = workout.structured_workout.main_set
+        const warmup = workout.structured_workout.warmup ?? { duration_minutes: 10, intensity: 'easy' }
+        const cooldown = workout.structured_workout.cooldown ?? { duration_minutes: 10, intensity: 'easy' }
+        const result: Record<string, unknown> = { main_set, pace_guidance, notes }
+        if (warmup) result.warmup = warmup
+        if (cooldown) result.cooldown = cooldown
+        return result
+      }
+
+      // Auto-generate structure: prefer distance_meters, fall back to duration_seconds
+      const mainInterval: Record<string, unknown> = { intensity: intervalIntensity }
+      if (workout.distance_meters) {
+        mainInterval.distance_meters = workout.distance_meters
+      } else if (workout.duration_seconds) {
+        mainInterval.duration_seconds = workout.duration_seconds
+      } else {
+        mainInterval.distance_meters = 0
+      }
+
       return {
         warmup: { duration_minutes: 10, intensity: 'easy' },
-        main_set: [{
-          repeat: 1,
-          intervals: [{ distance_meters: workout.distance_meters ?? 0, intensity: intervalIntensity }],
-        }],
+        main_set: [{ repeat: 1, intervals: [mainInterval] }],
         cooldown: { duration_minutes: 10, intensity: 'easy' },
         pace_guidance,
         notes,

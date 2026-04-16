@@ -117,8 +117,19 @@ export function parseLLMResponse(responseText: string): ParsedPlan {
         const label = typeLabel[workout.type?.toLowerCase()] ?? workout.type ?? 'Workout'
         workout.description = workout.distance_meters
           ? `${label} ${(workout.distance_meters / 1000).toFixed(1)} km`
-          : label
+          : workout.duration_seconds
+            ? `${label} ${Math.round(workout.duration_seconds / 60)} min`
+            : label
         console.warn(`Workout ${workout.workout_index} missing description — generated fallback: "${workout.description}"`)
+      }
+
+      // Normalize 0 distance to null (LLM sometimes outputs 0 for time-based workouts)
+      if (workout.distance_meters === 0) {
+        workout.distance_meters = null
+      }
+      // Default duration_seconds to null if not provided
+      if (workout.duration_seconds === undefined) {
+        workout.duration_seconds = null
       }
 
       // Warn if interval workout is missing structured main_set (tempo is generated server-side)

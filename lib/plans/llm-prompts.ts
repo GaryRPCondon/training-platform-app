@@ -259,16 +259,26 @@ For workouts that are CONTINUOUS RUNNING (no walk breaks, e.g. "25 min running")
 - Put the full time description in the "description" field
 
 ` : `CRITICAL INSTRUCTION - DISTANCE-BASED PRESCRIPTIONS:
-All training templates prescribe DISTANCE + INTENSITY only.
+Most workouts in this template prescribe DISTANCE + INTENSITY only.
 The athlete determines their own pace based on fitness level (VDOT).
 DO NOT calculate or include duration_minutes - the system calculates this automatically based on athlete's training paces.
+
+EXCEPTION — TIME-PRESCRIBED QUALITY SESSIONS:
+Some workouts in the template are prescribed by TIME, not distance (e.g. "LT 20min", "Hill Sprints 6x10sec", "Strength Endurance Hill Circuit", fartlek with timed efforts).
+For these workouts:
+- Set distance_meters to null (NOT 0)
+- Add duration_seconds at the top level (total quality session duration in seconds, excluding warmup/cooldown)
+- Include "structured_workout" with duration_seconds (not distance_meters) in interval steps
+The system estimates distance from duration + athlete's pace — do NOT convert time to distance yourself.
+NEVER output distance_meters: 0 — use null when a workout has no meaningful distance.
 
 `}REQUIRED FIELDS per workout:
 - day (1-7)
 - workout_index (W#:D# format)
 - type (easy_run/recovery/long_run/tempo/intervals/rest/cross_training)
 - description (human-readable label${isTimeBased ? ` — use the template's time-based format (e.g. "5 min warm-up walk, then alternate 1 min running / 1.5 min walking for 20 min")` : ` including distance in the athlete's preferred units. Format: "{Type} {distance} {unit}" for continuous runs. For intervals: "{N} × {distance} with {recovery}"`})
-- distance_meters (${isTimeBased ? 'estimated total session distance for running workouts, null for rest/cross-training' : 'required for running workouts, null for rest/cross-training'})
+- distance_meters (${isTimeBased ? 'estimated total session distance for running workouts, null for rest/cross-training' : 'required for distance-based running workouts, null for time-prescribed quality sessions, null for rest/cross-training'})
+${isTimeBased ? '' : '- duration_seconds (only for workouts prescribed by time — e.g. "LT 20min" → 1200, "Hill Sprints 6x10sec" → 60. Omit for distance-based workouts.)'}
 - intensity: Use one of these methodology-specific labels:
 ${template.pace_targets
   ? Object.entries(template.pace_targets).map(([key, target]) =>
@@ -346,19 +356,14 @@ EXAMPLE — continuous run: Template says "5 min warm-up walk, then 25 min runni
 DO NOT INCLUDE:
 - distance_meters inside structured_workout interval steps — do NOT convert time to distance
 - Any distance-based interval descriptions (e.g. "8 × 1200m") — use time descriptions from the template` : `STRUCTURED WORKOUT:
-Only include "structured_workout" for type "intervals". Provide only "main_set":
-  "structured_workout": {
-    "main_set": [
-      { "repeat": N, "intervals": [
-        { "distance_meters": XXXXX, "intensity": "hard" },
-        { "distance_meters": XXXXX, "intensity": "recovery" }
-      ]}
-    ]
-  }
-For all other types (easy_run, recovery, long_run, tempo, rest, cross_training, race):
+Include "structured_workout" for type "intervals" and for tempo workouts prescribed by time.
+- Distance-based intervals: use distance_meters in each interval step
+- Time-based quality sessions (tempo by time, hill sprints, fartlek): use duration_seconds in each interval step
+  Do NOT mix distance_meters and duration_seconds within the same main_set.
+For all other types (easy_run, recovery, long_run, rest, cross_training, race):
 Omit "structured_workout" entirely — the server generates it automatically.
 
-EXAMPLE — intervals: Template says "Strength: 3 × 2 mi., 800 recovery"
+EXAMPLE — distance-based intervals: Template says "Strength: 3 × 2 mi., 800 recovery"
 {
   "type": "intervals",
   "description": "Strength: 3 × 2 mi., 800 recovery",
@@ -376,10 +381,44 @@ EXAMPLE — intervals: Template says "Strength: 3 × 2 mi., 800 recovery"
   }
 }
 
+EXAMPLE — time-based tempo: Template says "LT 20min split total"
+{
+  "type": "tempo",
+  "description": "LT Tempo 20 min",
+  "distance_meters": null,
+  "duration_seconds": 1200,
+  "intensity": "lactate_threshold",
+  "pace_guidance": "Comfortably hard — sustainable for 20-60 minutes",
+  "structured_workout": {
+    "main_set": [
+      { "repeat": 1, "intervals": [
+        { "duration_seconds": 1200, "intensity": "lactate_threshold" }
+      ]}
+    ]
+  }
+}
+
+EXAMPLE — hill sprints: Template says "Hill Sprints 6x10sec"
+{
+  "type": "intervals",
+  "description": "Hill Sprints 6 × 10 sec",
+  "distance_meters": null,
+  "duration_seconds": 60,
+  "intensity": "speed",
+  "pace_guidance": "Maximum effort uphill sprints with full recovery jog down",
+  "structured_workout": {
+    "main_set": [
+      { "repeat": 6, "intervals": [
+        { "duration_seconds": 10, "intensity": "speed" },
+        { "duration_seconds": 120, "intensity": "recovery" }
+      ]}
+    ]
+  }
+}
+
 DO NOT INCLUDE:
-- duration_minutes (system calculates from distance + athlete's pace)
-- duration_seconds (system calculates from distance + athlete's pace)
-- Any time-based targets (the template prescribes distance only)`}
+- duration_minutes (system calculates display duration from distance + athlete's pace)
+- distance_meters: 0 (use null instead when workout is time-prescribed)`}
 
 IMPORTANT:
 - Generate EXACTLY ${weeksNeeded} weeks

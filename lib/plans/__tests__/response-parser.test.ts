@@ -163,6 +163,32 @@ describe('parseLLMResponse', () => {
     expect(result.weeks).toHaveLength(3)
     expect(result.weeks[2].week_number).toBe(3)
   })
+
+  it('normalizes distance_meters: 0 to null', () => {
+    const workout = makeWorkout({ distance_meters: 0, type: 'tempo', description: 'LT Tempo 20 min' })
+    const plan = makePlanJson([makeWeek(1, [workout])])
+    const result = parseLLMResponse(plan)
+    expect(result.weeks[0].workouts[0].distance_meters).toBeNull()
+  })
+
+  it('passes through duration_seconds from LLM JSON', () => {
+    const workout = makeWorkout({ distance_meters: null, duration_seconds: 1200, type: 'tempo', description: 'LT Tempo 20 min' })
+    const plan = makePlanJson([makeWeek(1, [workout])])
+    const result = parseLLMResponse(plan)
+    expect(result.weeks[0].workouts[0].duration_seconds).toBe(1200)
+  })
+
+  it('defaults duration_seconds to null when not provided', () => {
+    const result = parseLLMResponse(makePlanJson())
+    expect(result.weeks[0].workouts[0].duration_seconds).toBeNull()
+  })
+
+  it('generates fallback description with duration when no distance but duration_seconds present', () => {
+    const workout = makeWorkout({ description: '', distance_meters: null, duration_seconds: 1200, type: 'tempo' })
+    const plan = makePlanJson([makeWeek(1, [workout])])
+    const result = parseLLMResponse(plan)
+    expect(result.weeks[0].workouts[0].description).toBe('Tempo run 20 min')
+  })
 })
 
 // ---------------------------------------------------------------------------

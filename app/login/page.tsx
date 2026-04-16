@@ -1,23 +1,28 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { Clock } from 'lucide-react'
 
-export default function LoginPage() {
+function LoginForm() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [loading, setLoading] = useState(false)
     const [signupComplete, setSignupComplete] = useState(false)
     const router = useRouter()
+    const searchParams = useSearchParams()
     const supabase = createClient()
+
+    // Only honour relative redirects to prevent open-redirect attacks
+    const rawRedirect = searchParams.get('redirectTo') || ''
+    const redirectTo = rawRedirect.startsWith('/') ? rawRedirect : '/dashboard'
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -32,7 +37,7 @@ export default function LoginPage() {
             if (error) throw error
 
             toast.success('Logged in successfully')
-            router.push('/dashboard')
+            router.push(redirectTo)
             router.refresh()
         } catch (error: any) {
             toast.error(error.message || 'Login failed')
@@ -148,5 +153,13 @@ export default function LoginPage() {
                 </CardContent>
             </Card>
         </div>
+    )
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense>
+            <LoginForm />
+        </Suspense>
     )
 }

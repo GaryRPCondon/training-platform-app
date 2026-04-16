@@ -81,6 +81,66 @@ describe('buildStructuredWorkout', () => {
     })
   })
 
+  describe('tempo — LLM-provided structured_workout (time-based)', () => {
+    it('uses LLM main_set and adds default warmup/cooldown', () => {
+      const result = buildStructuredWorkout({
+        type: 'tempo',
+        distance_meters: null,
+        duration_seconds: 1200,
+        intensity: 'lactate_threshold',
+        structured_workout: {
+          main_set: [
+            { repeat: 1, intervals: [
+              { duration_seconds: 1200, intensity: 'lactate_threshold' },
+            ]},
+          ],
+        },
+      })
+
+      expect(result.main_set).toEqual([
+        { repeat: 1, intervals: [{ duration_seconds: 1200, intensity: 'lactate_threshold' }] },
+      ])
+      expect(result.warmup).toEqual({ duration_minutes: 10, intensity: 'easy' })
+      expect(result.cooldown).toEqual({ duration_minutes: 10, intensity: 'easy' })
+    })
+
+    it('uses LLM-provided warmup/cooldown when present', () => {
+      const result = buildStructuredWorkout({
+        type: 'tempo',
+        distance_meters: null,
+        duration_seconds: 1200,
+        intensity: 'lactate_threshold',
+        structured_workout: {
+          warmup: { duration_minutes: 15, intensity: 'easy' },
+          main_set: [
+            { repeat: 1, intervals: [
+              { duration_seconds: 1200, intensity: 'lactate_threshold' },
+            ]},
+          ],
+          cooldown: { duration_minutes: 5, intensity: 'easy' },
+        },
+      })
+
+      expect(result.warmup).toEqual({ duration_minutes: 15, intensity: 'easy' })
+      expect(result.cooldown).toEqual({ duration_minutes: 5, intensity: 'easy' })
+    })
+  })
+
+  describe('tempo — duration_seconds fallback (no structured_workout)', () => {
+    it('builds main_set with duration_seconds when no distance_meters', () => {
+      const result = buildStructuredWorkout({
+        type: 'tempo',
+        distance_meters: null,
+        duration_seconds: 1200,
+        intensity: 'tempo',
+      })
+
+      const mainSet = result.main_set as Array<{ repeat: number; intervals: Array<Record<string, unknown>> }>
+      expect(mainSet[0].intervals[0]).toEqual({ duration_seconds: 1200, intensity: 'tempo' })
+      expect(mainSet[0].intervals[0]).not.toHaveProperty('distance_meters')
+    })
+  })
+
   describe('easy_run', () => {
     it('returns only pace_guidance and notes', () => {
       const result = buildStructuredWorkout({

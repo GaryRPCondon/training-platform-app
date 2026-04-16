@@ -62,10 +62,11 @@ export async function proxy(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        // Page routes: redirect to /login and preserve the intended destination.
+        // Page routes: redirect to /login and preserve the intended destination (including query string).
         const loginUrl = request.nextUrl.clone()
         loginUrl.pathname = '/login'
-        loginUrl.searchParams.set('redirectTo', pathname)
+        const originalSearch = request.nextUrl.search
+        loginUrl.searchParams.set('redirectTo', pathname + originalSearch)
 
         const redirectResponse = NextResponse.redirect(loginUrl)
 

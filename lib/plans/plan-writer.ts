@@ -206,7 +206,7 @@ export async function writePlanToDatabase(
           workout_index: workout.workout_index,
           description: workout.description,
           distance_target_meters: workout.distance_meters,
-          duration_target_seconds: null,  // Duration calculated from distance + pace
+          duration_target_seconds: workout.duration_seconds ?? null,
           intensity_target: workout.intensity,
           structured_workout: stampResolvedPace(
             workout.structured_workout ?? { pace_guidance: workout.pace_guidance, notes: workout.notes },
