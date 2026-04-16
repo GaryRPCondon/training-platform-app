@@ -121,28 +121,67 @@ export function AISummaryPanel({
     }, 3000)
   }, [activityId, stopPolling])
 
-  // If we mount in pending state (e.g. auto-generated in background), start polling
+  // On mount, always pull fresh status from the server — the parent's activity
+  // data may be stale if sync generated a summary after the list was cached.
   useEffect(() => {
-    if (status === 'pending') {
-      startPolling()
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    let cancelled = false
 
-  const handleGenerate = async () => {
+    const fetchFreshStatus = async () => {
+      try {
+        const res = await fetch(`/api/activities/${activityId}/summary-status`)
+        if (!res.ok) return
+        const data = await res.json()
+        if (cancelled) return
+
+        setStatus(data.status)
+        setSummary(data.ai_summary)
+        setStarRating(data.ai_star_rating)
+        setGeneratedAt(data.ai_summary_generated_at)
+
+        if (data.status === 'pending') {
+          startPolling()
+        }
+      } catch {
+        // Fall back to props passed in
+      }
+    }
+
+    fetchFreshStatus()
+
+    return () => {
+      cancelled = true
+    }
+  }, [activityId, startPolling])
+
+  const handleGenerate = useCallback(async (force: boolean = false) => {
     setStatus('pending')
     try {
       const res = await fetch(`/api/activities/${activityId}/generate-summary`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ force }),
       })
       if (res.status === 202) {
         startPolling()
+      } else if (res.ok) {
+        const data = await res.json()
+        if (data.status === 'generated') {
+          setStatus('generated')
+          setSummary(data.ai_summary)
+          setStarRating(data.ai_star_rating)
+          setGeneratedAt(data.ai_summary_generated_at)
+        } else if (data.status === 'pending') {
+          startPolling()
+        } else {
+          setStatus(data.status ?? 'failed')
+        }
       } else {
         setStatus('failed')
       }
     } catch {
       setStatus('failed')
     }
-  }
+  }, [activityId, startPolling])
 
   const pushedPlatforms: string[] = []
   if (stravaPushedAt) pushedPlatforms.push('Strava')
@@ -166,7 +205,7 @@ export function AISummaryPanel({
             <p className="text-sm text-muted-foreground mb-3">
               Generate an AI coaching summary for this activity.
             </p>
-            <Button onClick={handleGenerate} size="sm" variant="outline" className="gap-2">
+            <Button onClick={() => handleGenerate()} size="sm" variant="outline" className="gap-2">
               <Sparkles className="h-3.5 w-3.5" />
               Generate Summary
             </Button>
@@ -192,7 +231,7 @@ export function AISummaryPanel({
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button onClick={handleGenerate} size="sm" variant="ghost" className="gap-1.5 h-7 text-xs">
+                      <Button onClick={() => handleGenerate(true)} size="sm" variant="ghost" className="gap-1.5 h-7 text-xs">
                         <RefreshCw className="h-3 w-3" />
                         Regenerate
                       </Button>
@@ -203,7 +242,7 @@ export function AISummaryPanel({
                   </Tooltip>
                 </TooltipProvider>
               ) : (
-                <Button onClick={handleGenerate} size="sm" variant="ghost" className="gap-1.5 h-7 text-xs">
+                <Button onClick={() => handleGenerate(true)} size="sm" variant="ghost" className="gap-1.5 h-7 text-xs">
                   <RefreshCw className="h-3 w-3" />
                   Regenerate
                 </Button>
@@ -216,7 +255,7 @@ export function AISummaryPanel({
         {status === 'failed' && (
           <div className="text-center py-2">
             <p className="text-sm text-destructive mb-3">Summary generation failed.</p>
-            <Button onClick={handleGenerate} size="sm" variant="outline" className="gap-2">
+            <Button onClick={() => handleGenerate()} size="sm" variant="outline" className="gap-2">
               <RefreshCw className="h-3.5 w-3.5" />
               Try Again
             </Button>

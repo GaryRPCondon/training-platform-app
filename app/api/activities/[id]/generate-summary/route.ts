@@ -3,14 +3,21 @@
  *
  * Triggers AI summary generation for a matched activity.
  * Returns 202 immediately; the UI polls /summary-status for completion.
+ *
+ * If a summary already exists, returns 200 with the existing payload unless
+ * `force: true` is passed (explicit regenerate). If generation is already in
+ * progress, returns 202 without starting a new one (race protection).
  */
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { generateActivitySummary } from '@/lib/activities/ai-summary'
+import { z } from 'zod'
+
+const bodySchema = z.object({ force: z.boolean().optional() })
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
@@ -20,6 +27,13 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid activity ID' }, { status: 400 })
     }
 
+    const rawBody = await request.json().catch(() => ({}))
+    const parsed = bodySchema.safeParse(rawBody)
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
+    }
+    const force = parsed.data.force ?? false
+
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
@@ -27,10 +41,10 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Verify ownership and that activity is matched to a workout
+    // Verify ownership and fetch current summary state
     const { data: activity } = await supabase
       .from('activities')
-      .select('id, planned_workout_id, athlete_id')
+      .select('id, planned_workout_id, athlete_id, ai_summary_status, ai_summary, ai_star_rating, ai_summary_generated_at')
       .eq('id', activityId)
       .eq('athlete_id', user.id)
       .single()
@@ -44,6 +58,21 @@ export async function POST(
         { error: 'Activity is not linked to a planned workout' },
         { status: 400 },
       )
+    }
+
+    // Race protection: another generation is already running
+    if (activity.ai_summary_status === 'pending') {
+      return NextResponse.json({ status: 'pending' }, { status: 202 })
+    }
+
+    // Cache protection: return existing summary unless caller explicitly asked to regenerate
+    if (activity.ai_summary_status === 'generated' && !force) {
+      return NextResponse.json({
+        status: 'generated',
+        ai_summary: activity.ai_summary,
+        ai_star_rating: activity.ai_star_rating,
+        ai_summary_generated_at: activity.ai_summary_generated_at,
+      })
     }
 
     // Check if AI summaries are enabled
