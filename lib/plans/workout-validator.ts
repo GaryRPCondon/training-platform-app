@@ -1,6 +1,7 @@
 import type { ParsedPlan } from './response-parser'
 import { calculateTotalWorkoutDistance } from '@/lib/training/vdot'
 import type { TrainingPaces } from '@/types/database'
+import type { PaceTarget } from '@/lib/templates/types'
 
 export interface WorkoutValidationWarning {
   workoutIndex: string
@@ -27,7 +28,8 @@ const TOLERANCE = 0.10 // ±10%
 export function validateWorkoutDistances(
   parsedPlan: ParsedPlan,
   validationRanges: Record<string, { min: number; max: number }>,
-  trainingPaces?: TrainingPaces | null
+  trainingPaces?: TrainingPaces | null,
+  paceTargets?: Record<string, PaceTarget>
 ): WorkoutValidationWarning[] {
   const warnings: WorkoutValidationWarning[] = []
 
@@ -42,6 +44,12 @@ export function validateWorkoutDistances(
 
       // Skip rest and cross-training (no distance validation needed)
       if (range.min === 0 && range.max === 0) {
+        continue
+      }
+
+      // Skip time-prescribed intensities — their distance is inferred from pace
+      // and would falsely trip the range check (e.g. walks at slow pace × long duration).
+      if (workout.intensity && paceTargets?.[workout.intensity]?.prescription === 'time') {
         continue
       }
 

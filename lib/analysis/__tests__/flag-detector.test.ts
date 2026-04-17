@@ -56,7 +56,7 @@ function setupNoFlags() {
 function today() { return format(new Date(), 'yyyy-MM-dd') }
 
 function observationFor(type: string, severity: string, message: string) {
-  return { id: `obs-${type}`, type, severity, message, created_at: new Date().toISOString() }
+  return { id: `obs-${type}`, type, severity: severity as 'info' | 'warning' | 'concern', message, created_at: new Date().toISOString(), acknowledged: false, dismissed: false }
 }
 
 // ---------------------------------------------------------------------------

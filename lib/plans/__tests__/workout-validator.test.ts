@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { validateWorkoutDistances, formatValidationWarnings } from '../workout-validator'
 import type { ParsedPlan, ParsedWorkout } from '../response-parser'
+import type { PaceTarget } from '@/lib/templates/types'
 
 // Marathon-style ranges (similar to what was hardcoded before)
 const MARATHON_RANGES: Record<string, { min: number; max: number }> = {
@@ -273,6 +274,51 @@ describe('template-specific ranges', () => {
     // C25K ranges don't have 'intervals'
     const plan = makePlan([makeWorkout('intervals', 500)])
     expect(validateWorkoutDistances(plan, C25K_RANGES)).toHaveLength(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Time-prescribed intensities (per-template prescription:time)
+// ---------------------------------------------------------------------------
+
+describe('time-prescribed intensities', () => {
+  const HAL_NOVICE_RANGES: Record<string, { min: number; max: number }> = {
+    easy_run: { min: 1500, max: 6000 },
+    long_run: { min: 2400, max: 8000 },
+    rest: { min: 0, max: 0 },
+  }
+
+  const HAL_NOVICE_PACE_TARGETS: Record<string, PaceTarget> = {
+    easy: { reference_pace: 'easy', description: 'Comfortable conversational pace' },
+    walk: { reference_pace: 'walk', description: 'Brisk walking pace', prescription: 'time' },
+  }
+
+  it('skips workout whose intensity is declared time-prescribed (walk at huge inferred distance)', () => {
+    // A 60-minute walk would infer ~9-12km via easy pace fallback and trip easy_run.max=6000.
+    const plan = makePlan([
+      makeWorkout('easy_run', 10000, { intensity: 'walk', workout_index: 'W1:D7' }),
+    ])
+    const warnings = validateWorkoutDistances(plan, HAL_NOVICE_RANGES, null, HAL_NOVICE_PACE_TARGETS)
+    expect(warnings).toHaveLength(0)
+  })
+
+  it('still validates workouts with distance-prescribed intensities', () => {
+    // Same template — easy has no prescription, so standard validation applies.
+    const plan = makePlan([
+      makeWorkout('easy_run', 10000, { intensity: 'easy', workout_index: 'W1:D2' }),
+    ])
+    const warnings = validateWorkoutDistances(plan, HAL_NOVICE_RANGES, null, HAL_NOVICE_PACE_TARGETS)
+    expect(warnings).toHaveLength(1)
+    expect(warnings[0].workoutType).toBe('easy_run')
+  })
+
+  it('is a no-op when pace_targets is not provided', () => {
+    // Preserves legacy call sites — validator works without pace_targets.
+    const plan = makePlan([
+      makeWorkout('easy_run', 10000, { intensity: 'walk' }),
+    ])
+    const warnings = validateWorkoutDistances(plan, HAL_NOVICE_RANGES)
+    expect(warnings).toHaveLength(1)
   })
 })
 

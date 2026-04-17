@@ -28,6 +28,12 @@ const TEST_TEMPLATE: FullTemplate = {
     approach: 'high_mileage',
     key_features: ['Lactate threshold runs', 'Medium-long runs', 'Recovery runs'],
   },
+  validation_ranges: {
+    easy_run: { min: 5000, max: 12000 },
+    long_run: { min: 15000, max: 30000 },
+    tempo: { min: 8000, max: 16000 },
+    rest: { min: 0, max: 0 },
+  },
   weekly_schedule: [
     {
       week: 1,
@@ -42,6 +48,12 @@ const TEST_TEMPLATE: FullTemplate = {
       weekly_total: { km: 68 },
     },
   ],
+  race_week: {
+    day_before_race: 'easy_shakeout',
+    shakeout_distance_meters: 5000,
+    volume_pct_of_peak: 50,
+    guidance: 'Short easy shakeout the day before. No workouts after the race.',
+  },
 }
 
 const TEST_CRITERIA: UserCriteria = {
@@ -178,6 +190,63 @@ describe('buildGenerationSystemPrompt', () => {
     const prompt = buildGenerationSystemPrompt(BASE_CONTEXT)
     expect(prompt).toContain('weeks')
     expect(prompt).toContain('week_number')
+  })
+
+  it('renders RACE WEEK GUIDANCE block when template has race_week', () => {
+    const prompt = buildGenerationSystemPrompt(BASE_CONTEXT)
+    expect(prompt).toContain('RACE WEEK GUIDANCE')
+    expect(prompt).toContain('easy_shakeout')
+    expect(prompt).toContain('5000m shakeout')
+    expect(prompt).toContain('50% of the peak training week')
+    // When race_week is present, the blanket POST-RACE RULE is suppressed
+    expect(prompt).not.toContain('POST-RACE RULE')
+  })
+
+  it('falls back to POST-RACE RULE when template lacks race_week', () => {
+    const { race_week: _removed, ...templateWithoutRaceWeek } = TEST_TEMPLATE
+    const prompt = buildGenerationSystemPrompt({
+      ...BASE_CONTEXT,
+      template: templateWithoutRaceWeek as FullTemplate,
+    })
+    expect(prompt).not.toContain('RACE WEEK GUIDANCE')
+    expect(prompt).toContain('POST-RACE RULE')
+  })
+
+  it('renders TIME-PRESCRIBED INTENSITIES block when a pace_target has prescription:time', () => {
+    const templateWithTimePrescribed: FullTemplate = {
+      ...TEST_TEMPLATE,
+      pace_targets: {
+        easy: { reference_pace: 'easy', description: 'Comfortable conversational pace' },
+        walk: { reference_pace: 'walk', description: 'Brisk walking pace', prescription: 'time' },
+      },
+    }
+    const prompt = buildGenerationSystemPrompt({
+      ...BASE_CONTEXT,
+      template: templateWithTimePrescribed,
+    })
+    expect(prompt).toContain('TIME-PRESCRIBED INTENSITIES (from template):')
+    expect(prompt).toContain('"walk" — Brisk walking pace')
+    expect(prompt).toContain('Do NOT convert these time-prescribed intensities to distance.')
+  })
+
+  it('does not render TIME-PRESCRIBED INTENSITIES block when no pace_target has prescription:time', () => {
+    const prompt = buildGenerationSystemPrompt(BASE_CONTEXT)
+    expect(prompt).not.toContain('TIME-PRESCRIBED INTENSITIES (from template)')
+  })
+
+  it('does not render TIME-PRESCRIBED INTENSITIES block for whole-template time-based plans', () => {
+    const templateWithTimePrescribed: FullTemplate = {
+      ...TEST_TEMPLATE,
+      pace_targets: {
+        walk: { reference_pace: 'walk', description: 'Brisk walking pace', prescription: 'time' },
+      },
+    }
+    const prompt = buildGenerationSystemPrompt({
+      ...BASE_CONTEXT,
+      template: templateWithTimePrescribed,
+      isTimeBased: true,
+    })
+    expect(prompt).not.toContain('TIME-PRESCRIBED INTENSITIES (from template)')
   })
 })
 

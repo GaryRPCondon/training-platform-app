@@ -83,6 +83,23 @@ Before the structured plan begins, generate ${partialDays} easy ramp-in runs for
 - Format these in a separate "pre_week_workouts" array (see OUTPUT FORMAT section)
 ` : ''
 
+  // Build race-week guidance section from template (optional — falls back to POST-RACE RULE)
+  const raceWeek = template.race_week
+  const shakeoutSuffix = raceWeek?.shakeout_distance_meters
+    ? ` (~${raceWeek.shakeout_distance_meters}m shakeout at easy pace)`
+    : ''
+  const volumeLine = raceWeek?.volume_pct_of_peak
+    ? `\n- Total race-week volume: approximately ${raceWeek.volume_pct_of_peak}% of the peak training week`
+    : ''
+  const raceWeekSection = raceWeek ? `
+RACE WEEK GUIDANCE (Week ${weeksNeeded} — from template):
+- Day before race (Week ${weeksNeeded}, Day ${raceDayNumber - 1 > 0 ? raceDayNumber - 1 : 7}): ${raceWeek.day_before_race}${shakeoutSuffix}${volumeLine}
+- ${raceWeek.guidance}
+- No workouts, cross-training, or runs after the race on Day ${raceDayNumber} — every later day MUST be type=rest.
+
+Apply these rules to Week ${weeksNeeded}. They override the template's generic weekly_schedule when compression forces deviation.
+` : ''
+
   return `You are a ${distanceLabel} training coach, specializing in the template's training philosophy.
 
 SELECTED TEMPLATE: ${template.name}
@@ -124,9 +141,10 @@ CRITICAL INSTRUCTIONS:
 - Week 1, Day 1 starts on ${firstDayName}, ${format(planStartDate, 'MMMM d')}
 - The ${distanceLabel} race MUST be on Week ${weeksNeeded}, Day ${raceDayNumber} (${raceDayName}, ${format(goalDateObj, 'MMMM d')})
 - Each week has EXACTLY 7 days (numbered 1-7, starting with ${firstDayName})
-- Do NOT create day 8, 9, 10, etc. - only days 1-7 exist per week
-- POST-RACE RULE: In the final week (Week ${weeksNeeded}), every day AFTER Day ${raceDayNumber} MUST be type=rest. Do NOT schedule any runs, cross-training, or other workouts after the race.${partialDays > 0 ? `
+- Do NOT create day 8, 9, 10, etc. - only days 1-7 exist per week${raceWeek ? '' : `
+- POST-RACE RULE: In the final week (Week ${weeksNeeded}), every day AFTER Day ${raceDayNumber} MUST be type=rest. Do NOT schedule any runs, cross-training, or other workouts after the race.`}${partialDays > 0 ? `
 - Generate ${partialDays} pre-week workouts in the "pre_week_workouts" array before the "weeks" array` : ''}
+${raceWeekSection}
 
 KEY PRINCIPLES:
 1. Follow the template's training philosophy throughout
@@ -267,11 +285,14 @@ Most workouts in this template prescribe DISTANCE + INTENSITY only.
 The athlete determines their own pace based on fitness level (VDOT).
 DO NOT calculate or include duration_minutes - the system calculates this automatically based on athlete's training paces.
 
-EXCEPTION — TIME-PRESCRIBED QUALITY SESSIONS:
-Some workouts in the template are prescribed by TIME, not distance (e.g. "LT 20min", "Hill Sprints 6x10sec", "Strength Endurance Hill Circuit", fartlek with timed efforts).
+EXCEPTION — TIME-PRESCRIBED WORKOUTS:
+Some workouts in the template are prescribed by TIME, not distance. Examples include:
+- Quality sessions: "LT 20min", "Hill Sprints 6x10sec", "Strength Endurance Hill Circuit", fartlek with timed efforts
+- Long easy runs by time: "90 min run", "70 min run", "steady E run of 210 min"
+- Walks or shakeouts by time: "30-60 min walk"
 For these workouts:
 - Set distance_meters to null (NOT 0)
-- Add duration_seconds at the top level (total quality session duration in seconds, excluding warmup/cooldown)
+- Add duration_seconds at the top level (total session duration in seconds, excluding warmup/cooldown)
 - Include "structured_workout" with duration_seconds (not distance_meters) in interval steps
 The system estimates distance from duration + athlete's pace — do NOT convert time to distance yourself.
 NEVER output distance_meters: 0 — use null when a workout has no meaningful distance.
@@ -294,7 +315,29 @@ ${template.pace_targets
 - notes (optional coaching notes)
 - structured_workout (intervals and continuous runs with warm-up walk — see STRUCTURED WORKOUT below)
 
-${isTimeBased ? `STRUCTURED WORKOUT (TIME-BASED):
+${!isTimeBased && template.pace_targets && Object.values(template.pace_targets).some(t => (t as { prescription?: string }).prescription === 'time') ? `TIME-PRESCRIBED INTENSITIES (from template):
+The following intensities in this template are prescribed by TIME, not distance:
+${Object.entries(template.pace_targets)
+  .filter(([, t]) => (t as { prescription?: string }).prescription === 'time')
+  .map(([key, t]) => `- "${key}" — ${(t as { description: string }).description}`)
+  .join('\n')}
+
+When a workout uses one of these intensities, emit:
+  "type": "easy_run" | "tempo" | etc,
+  "intensity": "<intensity>",
+  "distance_meters": null,
+  "duration_seconds": <total session seconds>,
+  "structured_workout": {
+    "main_set": [
+      { "repeat": 1, "intervals": [
+        { "duration_seconds": <session seconds>, "intensity": "<intensity>" }
+      ]}
+    ]
+  }
+Example: Template says "30 min tempo" → duration_seconds: 1800, distance_meters: null.
+Do NOT convert these time-prescribed intensities to distance.
+
+` : ''}${isTimeBased ? `STRUCTURED WORKOUT (TIME-BASED):
 Include "structured_workout" for type "intervals" AND for continuous runs with a warm-up walk.
 Use "walk" intensity for all walking segments (warmup walks, walk breaks between runs).
 This ensures Garmin does not apply running pace targets to walk segments.

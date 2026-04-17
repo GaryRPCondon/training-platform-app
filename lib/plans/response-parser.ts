@@ -9,6 +9,7 @@ export interface ParsedWorkout {
   intensity: string
   pace_guidance: string | null
   notes: string | null
+  duration_seconds?: number | null
   structured_workout?: Record<string, unknown> | null
 }
 

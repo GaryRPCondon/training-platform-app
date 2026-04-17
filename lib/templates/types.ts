@@ -76,6 +76,15 @@ export interface FullTemplate {
   pace_targets?: Record<string, PaceTarget>
   validation_ranges: Record<string, { min: number; max: number }>
   weekly_schedule: WeekSchedule[]
+  race_week?: RaceWeekGuidance
+}
+
+export interface RaceWeekGuidance {
+  day_before_race: 'rest' | 'easy_shakeout' | 'easy_shakeout_with_strides'
+  shakeout_distance_meters?: number
+  volume_pct_of_peak?: number
+  guidance: string
+  _note?: string
 }
 
 export interface WeekSchedule {
@@ -112,6 +121,7 @@ export interface PaceTarget {
   offset_sec_per_km?: number       // negative=faster, positive=slower. Default 0
   reference_pace_upper?: string    // for range targets (e.g. Pfitz LT: race_15k → race_half_marathon)
   description: string              // human-readable, shown in coach prompt
+  prescription?: 'distance' | 'time'  // default 'distance'. 'time' → LLM emits duration_seconds + distance_meters:null
 }
 
 // Recommendation types

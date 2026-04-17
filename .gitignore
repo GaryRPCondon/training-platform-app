@@ -28,6 +28,9 @@ node_modules
 logs/*
 !logs/.gitkeep
 
+# Dev-only generated plan validation outputs
+validation-runs/
+
 # debug
 npm-debug.log*
 yarn-debug.log*

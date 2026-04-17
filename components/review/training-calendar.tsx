@@ -55,6 +55,7 @@ interface TrainingCalendarProps {
   vdot?: number | null
   onWorkoutSelect?: (workout: WorkoutWithDetails) => void
   modifyButton?: React.ReactNode
+  initialDate?: Date
 }
 
 function formatWorkoutTitle(workout: WorkoutWithDetails, units: UnitSystem = 'metric'): string {
@@ -81,10 +82,10 @@ function formatWorkoutTitle(workout: WorkoutWithDetails, units: UnitSystem = 'me
   return title
 }
 
-export function TrainingCalendar({ workouts, trainingPaces, vdot, onWorkoutSelect, modifyButton }: TrainingCalendarProps) {
+export function TrainingCalendar({ workouts, trainingPaces, vdot, onWorkoutSelect, modifyButton, initialDate }: TrainingCalendarProps) {
   const [selectedWorkout, setSelectedWorkout] = useState<WorkoutWithDetails | null>(null)
   const [view, setView] = useState<View>('month')
-  const [currentDate, setCurrentDate] = useState(new Date())
+  const [currentDate, setCurrentDate] = useState(initialDate ?? new Date())
 
   // Get athlete profile for week start preference
   const { data: athlete } = useQuery({

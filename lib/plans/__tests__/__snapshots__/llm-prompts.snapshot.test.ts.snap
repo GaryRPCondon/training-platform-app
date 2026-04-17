@@ -42,7 +42,15 @@ CRITICAL INSTRUCTIONS:
 - The marathon race MUST be on Week 18, Day 1 (Sunday, October 11)
 - Each week has EXACTLY 7 days (numbered 1-7, starting with Sunday)
 - Do NOT create day 8, 9, 10, etc. - only days 1-7 exist per week
-- POST-RACE RULE: In the final week (Week 18), every day AFTER Day 1 MUST be type=rest. Do NOT schedule any runs, cross-training, or other workouts after the race.
+
+RACE WEEK GUIDANCE (Week 18 — from template):
+- Day before race (Week 18, Day 7): easy_shakeout (~5000m shakeout at easy pace)
+- Total race-week volume: approximately 50% of the peak training week
+- Short easy shakeout the day before. No workouts after the race.
+- No workouts, cross-training, or runs after the race on Day 1 — every later day MUST be type=rest.
+
+Apply these rules to Week 18. They override the template's generic weekly_schedule when compression forces deviation.
+
 
 KEY PRINCIPLES:
 1. Follow the template's training philosophy throughout
@@ -150,11 +158,14 @@ Most workouts in this template prescribe DISTANCE + INTENSITY only.
 The athlete determines their own pace based on fitness level (VDOT).
 DO NOT calculate or include duration_minutes - the system calculates this automatically based on athlete's training paces.
 
-EXCEPTION — TIME-PRESCRIBED QUALITY SESSIONS:
-Some workouts in the template are prescribed by TIME, not distance (e.g. "LT 20min", "Hill Sprints 6x10sec", "Strength Endurance Hill Circuit", fartlek with timed efforts).
+EXCEPTION — TIME-PRESCRIBED WORKOUTS:
+Some workouts in the template are prescribed by TIME, not distance. Examples include:
+- Quality sessions: "LT 20min", "Hill Sprints 6x10sec", "Strength Endurance Hill Circuit", fartlek with timed efforts
+- Long easy runs by time: "90 min run", "70 min run", "steady E run of 210 min"
+- Walks or shakeouts by time: "30-60 min walk"
 For these workouts:
 - Set distance_meters to null (NOT 0)
-- Add duration_seconds at the top level (total quality session duration in seconds, excluding warmup/cooldown)
+- Add duration_seconds at the top level (total session duration in seconds, excluding warmup/cooldown)
 - Include "structured_workout" with duration_seconds (not distance_meters) in interval steps
 The system estimates distance from duration + athlete's pace — do NOT convert time to distance yourself.
 NEVER output distance_meters: 0 — use null when a workout has no meaningful distance.
@@ -288,7 +299,15 @@ CRITICAL INSTRUCTIONS:
 - The marathon race MUST be on Week 17, Day 7 (Sunday, October 11)
 - Each week has EXACTLY 7 days (numbered 1-7, starting with Monday)
 - Do NOT create day 8, 9, 10, etc. - only days 1-7 exist per week
-- POST-RACE RULE: In the final week (Week 17), every day AFTER Day 7 MUST be type=rest. Do NOT schedule any runs, cross-training, or other workouts after the race.
+
+RACE WEEK GUIDANCE (Week 17 — from template):
+- Day before race (Week 17, Day 6): easy_shakeout (~5000m shakeout at easy pace)
+- Total race-week volume: approximately 50% of the peak training week
+- Short easy shakeout the day before. No workouts after the race.
+- No workouts, cross-training, or runs after the race on Day 7 — every later day MUST be type=rest.
+
+Apply these rules to Week 17. They override the template's generic weekly_schedule when compression forces deviation.
+
 
 KEY PRINCIPLES:
 1. Follow the template's training philosophy throughout
@@ -396,11 +415,14 @@ Most workouts in this template prescribe DISTANCE + INTENSITY only.
 The athlete determines their own pace based on fitness level (VDOT).
 DO NOT calculate or include duration_minutes - the system calculates this automatically based on athlete's training paces.
 
-EXCEPTION — TIME-PRESCRIBED QUALITY SESSIONS:
-Some workouts in the template are prescribed by TIME, not distance (e.g. "LT 20min", "Hill Sprints 6x10sec", "Strength Endurance Hill Circuit", fartlek with timed efforts).
+EXCEPTION — TIME-PRESCRIBED WORKOUTS:
+Some workouts in the template are prescribed by TIME, not distance. Examples include:
+- Quality sessions: "LT 20min", "Hill Sprints 6x10sec", "Strength Endurance Hill Circuit", fartlek with timed efforts
+- Long easy runs by time: "90 min run", "70 min run", "steady E run of 210 min"
+- Walks or shakeouts by time: "30-60 min walk"
 For these workouts:
 - Set distance_meters to null (NOT 0)
-- Add duration_seconds at the top level (total quality session duration in seconds, excluding warmup/cooldown)
+- Add duration_seconds at the top level (total session duration in seconds, excluding warmup/cooldown)
 - Include "structured_workout" with duration_seconds (not distance_meters) in interval steps
 The system estimates distance from duration + athlete's pace — do NOT convert time to distance yourself.
 NEVER output distance_meters: 0 — use null when a workout has no meaningful distance.
@@ -534,7 +556,15 @@ CRITICAL INSTRUCTIONS:
 - The 5K race MUST be on Week 17, Day 7 (Sunday, October 11)
 - Each week has EXACTLY 7 days (numbered 1-7, starting with Monday)
 - Do NOT create day 8, 9, 10, etc. - only days 1-7 exist per week
-- POST-RACE RULE: In the final week (Week 17), every day AFTER Day 7 MUST be type=rest. Do NOT schedule any runs, cross-training, or other workouts after the race.
+
+RACE WEEK GUIDANCE (Week 17 — from template):
+- Day before race (Week 17, Day 6): easy_shakeout (~5000m shakeout at easy pace)
+- Total race-week volume: approximately 50% of the peak training week
+- Short easy shakeout the day before. No workouts after the race.
+- No workouts, cross-training, or runs after the race on Day 7 — every later day MUST be type=rest.
+
+Apply these rules to Week 17. They override the template's generic weekly_schedule when compression forces deviation.
+
 
 KEY PRINCIPLES:
 1. Follow the template's training philosophy throughout

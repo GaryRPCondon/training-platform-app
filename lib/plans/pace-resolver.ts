@@ -17,6 +17,7 @@ export interface PaceTarget {
   offset_sec_per_km?: number       // negative=faster, positive=slower. Default 0
   reference_pace_upper?: string    // for range targets (e.g. Pfitz LT: race_15k → race_half_marathon)
   description: string              // human-readable, shown in coach prompt
+  prescription?: 'distance' | 'time'  // default 'distance'. 'time' → LLM emits duration_seconds + distance_meters:null
 }
 
 export interface ResolvedPace {
