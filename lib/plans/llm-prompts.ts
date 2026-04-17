@@ -53,9 +53,12 @@ export function buildGenerationSystemPrompt(context: GenerationContext): string 
   // Calculate partial days between user's start date and plan start
   const partialDays = differenceInCalendarDays(planStartDate, startDateObj)
 
-  // Calculate full weeks from plan start to goal
+  // Calculate full weeks from plan start to goal.
+  // The race falls on week `floor(days/7) + 1` because day 0 = W1D1, day 7 = W2D1, etc.
+  // Using Math.ceil here previously produced W9 for 63 days (Mon→Mon), which collapses
+  // the race into the final training week and misdates it by 7 days.
   const daysFromPlanStartToGoal = differenceInCalendarDays(goalDateObj, planStartDate)
-  const weeksNeeded = Math.ceil(daysFromPlanStartToGoal / 7)
+  const weeksNeeded = Math.floor(daysFromPlanStartToGoal / 7) + 1
 
   // Calculate which day of the week the race falls on
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
@@ -121,7 +124,8 @@ CRITICAL INSTRUCTIONS:
 - Week 1, Day 1 starts on ${firstDayName}, ${format(planStartDate, 'MMMM d')}
 - The ${distanceLabel} race MUST be on Week ${weeksNeeded}, Day ${raceDayNumber} (${raceDayName}, ${format(goalDateObj, 'MMMM d')})
 - Each week has EXACTLY 7 days (numbered 1-7, starting with ${firstDayName})
-- Do NOT create day 8, 9, 10, etc. - only days 1-7 exist per week${partialDays > 0 ? `
+- Do NOT create day 8, 9, 10, etc. - only days 1-7 exist per week
+- POST-RACE RULE: In the final week (Week ${weeksNeeded}), every day AFTER Day ${raceDayNumber} MUST be type=rest. Do NOT schedule any runs, cross-training, or other workouts after the race.${partialDays > 0 ? `
 - Generate ${partialDays} pre-week workouts in the "pre_week_workouts" array before the "weeks" array` : ''}
 
 KEY PRINCIPLES:

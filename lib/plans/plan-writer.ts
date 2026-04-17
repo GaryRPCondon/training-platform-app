@@ -48,7 +48,7 @@ export async function writePlanToDatabase(
   parsedPlan: ParsedPlan,
   options: PlanWriteOptions
 ) {
-  const { planId, planStartDate, userStartDate, supabase, paceTargets, athletePaces } = options
+  const { planId, planStartDate, userStartDate, goalDate, supabase, paceTargets, athletePaces } = options
 
   // Get athlete_id from plan
   const { data: planData } = await supabase
@@ -195,6 +195,10 @@ export async function writePlanToDatabase(
     // Insert workouts for this week
     for (const workout of week.workouts) {
       const workoutDate = calculateWorkoutDate(new Date(weekStartDate), workout.day)
+
+      // Defence-in-depth: never schedule anything after race day, even if the LLM does.
+      // Rest days past the race are dropped too — they add noise to the calendar.
+      if (workoutDate > goalDate) continue
 
       const { error: workoutError } = await supabase
         .from('planned_workouts')

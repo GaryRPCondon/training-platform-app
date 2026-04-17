@@ -9,8 +9,8 @@ This template (normally 18 weeks) provides the training philosophy and workout s
 USER TIMELINE - CRITICAL:
 - Athlete selected start date: Sunday, June 14, 2026
 - Plan officially begins: Sunday, June 14, 2026 (Week 1, Day 1)
-- Race date: Sunday, October 11, 2026 (Week 17, Day 1)
-- Full weeks of structured training: 17 weeks
+- Race date: Sunday, October 11, 2026 (Week 18, Day 1)
+- Full weeks of structured training: 18 weeks
 
 
 USER CONSTRAINTS:
@@ -30,23 +30,24 @@ MEASUREMENT UNITS:
 - pace_guidance field: use min/km for metric, min/mile for imperial
 
 TASK:
-Generate a 17-week personalized training plan that:
+Generate a 18-week personalized training plan that:
 1. Week 1, Day 1 starts on Sunday, June 14
-2. Week 17, Day 1 is the marathon race on Sunday, October 11
+2. Week 18, Day 1 is the marathon race on Sunday, October 11
 3. Adapts the template's training philosophy to fit this timeline
-4. Includes 17 full weeks
+4. Includes 18 full weeks
 
 CRITICAL INSTRUCTIONS:
-- Generate EXACTLY 17 full weeks (Week 1 through Week 17)
+- Generate EXACTLY 18 full weeks (Week 1 through Week 18)
 - Week 1, Day 1 starts on Sunday, June 14
-- The marathon race MUST be on Week 17, Day 1 (Sunday, October 11)
+- The marathon race MUST be on Week 18, Day 1 (Sunday, October 11)
 - Each week has EXACTLY 7 days (numbered 1-7, starting with Sunday)
 - Do NOT create day 8, 9, 10, etc. - only days 1-7 exist per week
+- POST-RACE RULE: In the final week (Week 18), every day AFTER Day 1 MUST be type=rest. Do NOT schedule any runs, cross-training, or other workouts after the race.
 
 KEY PRINCIPLES:
 1. Follow the template's training philosophy throughout
 2. Maintain the core workout structure and progression patterns
-3. Adapt phase lengths proportionally to fit 17 weeks
+3. Adapt phase lengths proportionally to fit 18 weeks
 4. HARD VOLUME CEILING: No week may exceed 88km total — not even by 1km
 5. WEEK 1 ANCHOR: Week 1 total must be at or below the athlete's current weekly mileage (50km). Never start higher than where the athlete is now.
 6. Schedule workouts on 5 days per week (rest days on others)
@@ -103,11 +104,11 @@ ABSOLUTELY FORBIDDEN PATTERNS:
 
 WORKOUT INDEXING:
 Every workout in the structured weeks MUST have a unique index in the format: W{week}:D{day}
-- Week numbers: 1 to 17
+- Week numbers: 1 to 18
 - Day numbers: ALWAYS 1 to 7 (all weeks start on Sunday)
 - Week 1, Day 1 = Jun 14 (Sunday)
-- Week 17, Day 1 = Oct 11 (Sunday) = RACE DAY
-- Examples: W1:D1, W1:D7, W2:D1, W17:D1
+- Week 18, Day 1 = Oct 11 (Sunday) = RACE DAY
+- Examples: W1:D1, W1:D7, W2:D1, W18:D1
 - You MUST NOT create day 8, 9, 10, etc. - only days 1-7 exist per week
 
 OUTPUT FORMAT:
@@ -238,9 +239,9 @@ DO NOT INCLUDE:
 - distance_meters: 0 (use null instead when workout is time-prescribed)
 
 IMPORTANT:
-- Generate EXACTLY 17 weeks
-- Week 17, Day 1 MUST be the race day (type="race", description="Marathon Race Day")
-- Do not truncate or summarize - output the complete 17-week plan
+- Generate EXACTLY 18 weeks
+- Week 18, Day 1 MUST be the race day (type="race", description="Marathon Race Day")
+- Do not truncate or summarize - output the complete 18-week plan
 - Return ONLY the JSON object, no markdown formatting, no extra text
 - Ensure the JSON is valid and complete (all brackets closed)"
 `;
@@ -287,6 +288,7 @@ CRITICAL INSTRUCTIONS:
 - The marathon race MUST be on Week 17, Day 7 (Sunday, October 11)
 - Each week has EXACTLY 7 days (numbered 1-7, starting with Monday)
 - Do NOT create day 8, 9, 10, etc. - only days 1-7 exist per week
+- POST-RACE RULE: In the final week (Week 17), every day AFTER Day 7 MUST be type=rest. Do NOT schedule any runs, cross-training, or other workouts after the race.
 
 KEY PRINCIPLES:
 1. Follow the template's training philosophy throughout
@@ -532,6 +534,7 @@ CRITICAL INSTRUCTIONS:
 - The 5K race MUST be on Week 17, Day 7 (Sunday, October 11)
 - Each week has EXACTLY 7 days (numbered 1-7, starting with Monday)
 - Do NOT create day 8, 9, 10, etc. - only days 1-7 exist per week
+- POST-RACE RULE: In the final week (Week 17), every day AFTER Day 7 MUST be type=rest. Do NOT schedule any runs, cross-training, or other workouts after the race.
 
 KEY PRINCIPLES:
 1. Follow the template's training philosophy throughout
