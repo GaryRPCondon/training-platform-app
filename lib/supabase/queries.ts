@@ -71,7 +71,7 @@ export async function getActivitiesForDateRange(startDate: string, endDate: stri
 }
 
 /**
- * Phase 6: Get workouts with linked activity data (for calendar display)
+ * Phase 6: Get workouts with linked activity data and parent plan status (for calendar display)
  */
 export async function getWorkoutsWithActivities(startDate: string, endDate: string) {
     const athleteId = await getCurrentAthleteId()
@@ -79,7 +79,8 @@ export async function getWorkoutsWithActivities(startDate: string, endDate: stri
         .from('planned_workouts')
         .select(`
             *,
-            activities!fk_planned_workouts_completed_activity (*)
+            activities!fk_planned_workouts_completed_activity (*),
+            weekly_plans(training_phases(training_plans(status)))
         `)
         .eq('athlete_id', athleteId)
         .gte('scheduled_date', startDate)
@@ -87,7 +88,13 @@ export async function getWorkoutsWithActivities(startDate: string, endDate: stri
         .order('scheduled_date', { ascending: true })
 
     if (error) throw error
-    return data as (PlannedWorkout & { activities: Activity | null })[]
+
+    // Flatten nested plan status into a top-level field
+    return (data as any[]).map(w => ({
+        ...w,
+        plan_status: w.weekly_plans?.training_phases?.training_plans?.status ?? null,
+        weekly_plans: undefined,
+    })) as (PlannedWorkout & { activities: Activity | null })[]
 }
 
 /**

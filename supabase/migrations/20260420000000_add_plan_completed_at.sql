@@ -1,0 +1,1 @@
+ALTER TABLE training_plans ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;

@@ -200,6 +200,21 @@ export function TrainingCalendar({ openWorkoutId }: TrainingCalendarProps = {}) 
 
     const garminConnected = !!(athlete?.garmin_connected)
 
+    // Fetch completed plan date ranges so any workout in that window is treated as historical
+    const { data: completedPlans } = useQuery({
+        queryKey: ['completed-plans'],
+        queryFn: async () => {
+            if (!athlete?.id) return []
+            const { data } = await supabase
+                .from('training_plans')
+                .select('start_date, end_date')
+                .eq('athlete_id', athlete.id)
+                .eq('status', 'completed')
+            return data ?? []
+        },
+        enabled: !!athlete?.id,
+    })
+
     // Update moment locale to use the preferred week start day
     moment.updateLocale('en', {
         week: {
@@ -231,14 +246,23 @@ export function TrainingCalendar({ openWorkoutId }: TrainingCalendarProps = {}) 
     const workouts: WorkoutWithDetails[] = useMemo(() => {
         if (!rawWorkouts) return []
 
-        return rawWorkouts.map(workout => ({
-            ...workout,
-            date: parseISO(workout.scheduled_date),
-            formatted_date: format(parseISO(workout.scheduled_date), 'EEE, MMM d'),
-            phase_name: 'Active Plan', // Not critical for dashboard view
-            week_of_plan: 0 // Not used in dashboard view
-        }))
-    }, [rawWorkouts])
+        return rawWorkouts.map(workout => {
+            // A workout is historical if it structurally belongs to a completed plan (via FK)
+            // OR if it falls within any completed plan's date range (covers manually added /
+            // rescheduled workouts that don't have a weekly_plan_id link).
+            const inCompletedRange = (completedPlans ?? []).some(
+                p => workout.scheduled_date >= p.start_date && workout.scheduled_date <= p.end_date
+            )
+            return {
+                ...workout,
+                plan_status: workout.plan_status ?? (inCompletedRange ? 'completed' : null),
+                date: parseISO(workout.scheduled_date),
+                formatted_date: format(parseISO(workout.scheduled_date), 'EEE, MMM d'),
+                phase_name: 'Active Plan',
+                week_of_plan: 0,
+            }
+        })
+    }, [rawWorkouts, completedPlans])
 
     // Auto-open workout dialog when navigated with ?workoutId= param
     const openedWorkoutRef = useRef<number | undefined>(undefined)
@@ -409,17 +433,20 @@ export function TrainingCalendar({ openWorkoutId }: TrainingCalendarProps = {}) 
         const backgroundColor = getWorkoutColor(workoutType)
         let borderLeft = ''
         let opacity = 0.9
+        const isHistorical = workout.plan_status === 'completed'
 
         // Visual feedback for completion status
         if (workout.completion_status === 'completed') {
             borderLeft = '4px solid #10b981' // green-500
-            opacity = 1.0
+            opacity = isHistorical ? 0.55 : 1.0
         } else if (workout.completion_status === 'partial') {
             borderLeft = '4px solid #f59e0b' // yellow-500
-            opacity = 0.95
+            opacity = isHistorical ? 0.45 : 0.95
         } else if (workout.completion_status === 'skipped') {
             borderLeft = '4px solid #ef4444' // red-500
-            opacity = 0.6
+            opacity = isHistorical ? 0.35 : 0.6
+        } else if (isHistorical) {
+            opacity = 0.45
         }
 
         return {
@@ -434,7 +461,8 @@ export function TrainingCalendar({ openWorkoutId }: TrainingCalendarProps = {}) 
                 borderLeft: borderLeft || '0px',
                 display: 'block',
                 fontSize: '0.875rem',
-                padding: '2px 4px'
+                padding: '2px 4px',
+                ...(isHistorical && { filter: 'saturate(0.5)' }),
             }
         }
     }

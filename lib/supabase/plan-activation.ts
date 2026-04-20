@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 /**
  * Archive a plan and abandon its linked goal. Used when the user replaces an
- * active plan with a newly generated one. Accepts a supabase client so it can
+ * active plan mid-cycle (before end_date). Accepts a supabase client so it can
  * be called from API routes (server client) or browser code (client client).
  */
 export async function archivePlanAndGoal(
@@ -37,22 +37,67 @@ export async function archivePlanAndGoal(
 }
 
 /**
- * Activate a training plan (sets it to active and deactivates others)
+ * Mark a plan as completed and mark its linked goal as achieved.
+ * Used when the plan's end_date has passed and the athlete finished the cycle.
+ */
+export async function completePlan(
+    supabase: SupabaseClient,
+    planId: number,
+    athleteId: string
+): Promise<void> {
+    const { data: plan, error: fetchError } = await supabase
+        .from('training_plans')
+        .select('goal_id')
+        .eq('id', planId)
+        .eq('athlete_id', athleteId)
+        .single()
+    if (fetchError) throw fetchError
+
+    const { error: planError } = await supabase
+        .from('training_plans')
+        .update({ status: 'completed', completed_at: new Date().toISOString() })
+        .eq('id', planId)
+        .eq('athlete_id', athleteId)
+    if (planError) throw planError
+
+    if (plan?.goal_id) {
+        const { error: goalError } = await supabase
+            .from('athlete_goals')
+            .update({ status: 'achieved' })
+            .eq('id', plan.goal_id)
+            .eq('athlete_id', athleteId)
+        if (goalError) throw goalError
+    }
+}
+
+/**
+ * Activate a training plan (sets it to active and transitions the previous
+ * active plan to completed or archived depending on whether its end_date has passed).
  */
 export async function activatePlan(planId: number, athleteId: string): Promise<void> {
     const supabase = createClient()
 
     try {
-        // First, deactivate all other plans for this athlete
-        const { error: deactivateError } = await supabase
+        // Find the currently active plan (if any) to transition it correctly
+        const { data: currentActive } = await supabase
             .from('training_plans')
-            .update({ status: 'draft' })
+            .select('id, end_date')
             .eq('athlete_id', athleteId)
             .eq('status', 'active')
+            .maybeSingle()
 
-        if (deactivateError) throw deactivateError
+        if (currentActive) {
+            const today = new Date().toISOString().slice(0, 10)
+            if (currentActive.end_date < today) {
+                // Plan's cycle is over — mark it as completed (achievement preserved)
+                await completePlan(supabase, currentActive.id, athleteId)
+            } else {
+                // Plan replaced mid-cycle — archive it
+                await archivePlanAndGoal(supabase, currentActive.id, athleteId)
+            }
+        }
 
-        // Then activate the selected plan
+        // Activate the selected plan
         const { error: activateError } = await supabase
             .from('training_plans')
             .update({ status: 'active' })
@@ -67,7 +112,7 @@ export async function activatePlan(planId: number, athleteId: string): Promise<v
 }
 
 /**
- * Deactivate a training plan
+ * Deactivate a training plan (set back to draft)
  */
 export async function deactivatePlan(planId: number, athleteId: string): Promise<void> {
     const supabase = createClient()

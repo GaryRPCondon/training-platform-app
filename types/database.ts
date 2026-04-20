@@ -169,6 +169,7 @@ export interface TrainingPlan {
     training_paces: TrainingPaces | null
     pace_source: string | null
     pace_source_data: any | null
+    completed_at: string | null
     created_at: string
     updated_at: string
 }
@@ -249,8 +250,9 @@ export interface PlannedWorkout {
     garmin_workout_id: string | null
     garmin_scheduled_at: string | null
     garmin_sync_status: 'synced' | 'stale' | 'failed' | null
-    // Virtual join field (populated via select with join)
+    // Virtual join fields (populated via select with join)
     activities?: Activity | null
+    plan_status?: string | null
 }
 
 export interface WorkoutFeedback {

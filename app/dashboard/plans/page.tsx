@@ -9,7 +9,7 @@ import { TrainingPlan } from '@/types/database'
 import { activatePlan } from '@/lib/supabase/plan-activation'
 import { getCurrentAthleteId } from '@/lib/supabase/client'
 import { format } from 'date-fns'
-import { Trash2, Download } from 'lucide-react'
+import { Trash2, Download, Trophy } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function PlansPage() {
@@ -82,6 +82,7 @@ export default function PlansPage() {
 
     const activePlans = plans.filter(p => p.status === 'active')
     const draftPlans = plans.filter(p => p.status === 'draft' || p.status === 'draft_generated')
+    const completedPlans = plans.filter(p => p.status === 'completed')
 
     return (
         <div className="space-y-6">
@@ -201,6 +202,60 @@ export default function PlansPage() {
                                                         Delete Plan
                                                     </Button>
                                                 </div>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+
+            {/* Completed Plans */}
+            {completedPlans.length > 0 && (
+                <div className="grid gap-4">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Trophy className="h-5 w-5 text-amber-500" />
+                                Completed Plans
+                            </CardTitle>
+                            <CardDescription>Training cycles you have finished — preserved as historical records</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-4">
+                                {completedPlans.map(plan => (
+                                    <Card key={plan.id} className="border-amber-200/60 dark:border-amber-800/40">
+                                        <CardHeader>
+                                            <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+                                                <div>
+                                                    <CardTitle className="text-lg">{plan.name}</CardTitle>
+                                                    <CardDescription>
+                                                        {format(new Date(plan.start_date), 'MMM d, yyyy')} – {format(new Date(plan.end_date), 'MMM d, yyyy')}
+                                                    </CardDescription>
+                                                </div>
+                                                <Badge variant="outline" className="border-amber-400 text-amber-700 dark:text-amber-400">
+                                                    <Trophy className="mr-1 h-3 w-3" />
+                                                    Completed
+                                                </Badge>
+                                            </div>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                                <div className="text-sm text-muted-foreground">
+                                                    <div>Type: {plan.plan_type}</div>
+                                                    {plan.completed_at && (
+                                                        <div>Completed: {format(new Date(plan.completed_at), 'MMM d, yyyy')}</div>
+                                                    )}
+                                                </div>
+                                                <Button
+                                                    variant="destructive"
+                                                    onClick={() => handleDelete(plan.id, false)}
+                                                >
+                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                    Delete Plan
+                                                </Button>
                                             </div>
                                         </CardContent>
                                     </Card>

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { PhaseProgressCard } from '@/components/progress/phase-progress-card'
 import { WeeklyProgressChart } from '@/components/progress/weekly-progress-chart'
 import { TodaysWorkoutCard } from '@/components/progress/todays-workout-card'
+import { PlanCompletionBanner } from '@/components/progress/plan-completion-banner'
 import { toDisplayDistance, distanceLabel, type UnitSystem } from '@/lib/utils/units'
 
 export default async function DashboardPage() {
@@ -37,7 +38,7 @@ export default async function DashboardPage() {
     // Fetch active plan first (need start_date for stats RPC)
     const { data: activePlan } = await supabase
         .from('training_plans')
-        .select('name, start_date, end_date')
+        .select('id, name, start_date, end_date')
         .eq('athlete_id', athleteId)
         .eq('status', 'active')
         .single()
@@ -57,9 +58,15 @@ export default async function DashboardPage() {
     const climbThisYearMeters = stats?.year_climb ?? 0
     const planDistanceMeters = stats?.plan_distance ?? 0
 
+    const today = new Date().toISOString().slice(0, 10)
+    const planIsOverdue = activePlan && activePlan.end_date < today
+
     return (
         <div className="space-y-6">
             <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+            {planIsOverdue && (
+                <PlanCompletionBanner planId={activePlan.id} planName={activePlan.name} />
+            )}
             <div className="grid gap-6 md:grid-cols-2">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
