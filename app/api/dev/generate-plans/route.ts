@@ -21,7 +21,7 @@ import { validateWorkoutDistances } from '@/lib/plans/workout-validator'
 import { createLLMProvider } from '@/lib/agent/factory'
 import type { FullTemplate, RaceDistance, UserCriteria } from '@/lib/templates/types'
 
-export const maxDuration = 600 // dev only — but keeps the runtime from killing long generations
+export const maxDuration = 300 // Vercel hobby plan max; route returns 404 in production anyway
 
 const requestSchema = z.object({
   llm: z.enum(['deepseek', 'gemini', 'anthropic', 'openai', 'grok']).default('deepseek'),

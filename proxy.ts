@@ -46,9 +46,17 @@ export async function proxy(request: NextRequest) {
 
     // IMPORTANT: do not add any code between createServerClient and getUser().
     // Even an innocent await can invalidate the session refresh mechanism.
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
+    let user = null
+    try {
+        const { data } = await supabase.auth.getUser()
+        user = data.user
+    } catch (err: any) {
+        // Expired or invalidated refresh token — treat as unauthenticated.
+        // The invalid cookies will be cleared below via the redirect path.
+        if (err?.code !== 'refresh_token_not_found' && err?.__isAuthError !== true) {
+            throw err
+        }
+    }
 
     // Public paths are always allowed through, with the refreshed session cookies.
     if (isPublic(pathname)) {
