@@ -48,11 +48,16 @@ export default function PlansPage() {
         }
     }
 
-    async function handleDelete(planId: number, isActive: boolean) {
-        const base = isActive
-            ? 'Are you sure you want to delete this active plan? All workouts and progress will be lost. This cannot be undone.'
-            : 'Are you sure you want to delete this draft plan? This cannot be undone.'
-        const message = base + '\n\nNote: any workouts already sent to Garmin Connect will NOT be removed automatically. Use "Remove all from Garmin Connect" in your Profile before deleting if you want them cleared.'
+    async function handleDelete(planId: number, type: 'active' | 'draft' | 'completed') {
+        const base =
+            type === 'completed'
+                ? 'This will permanently delete your training history for this plan, including all its workouts from the calendar. Your logged activities will not be affected, but the planned workout records will be gone.\n\nThis cannot be undone.'
+                : type === 'active'
+                ? 'Are you sure you want to delete this active plan? All scheduled workouts and progress will be lost. This cannot be undone.'
+                : 'Are you sure you want to delete this draft plan? This cannot be undone.'
+        const message = type === 'completed'
+            ? base
+            : base + '\n\nNote: any workouts already sent to Garmin Connect will NOT be removed automatically. Use "Remove all from Garmin Connect" in your Profile before deleting if you want them cleared.'
 
         if (!confirm(message)) {
             return
@@ -140,10 +145,10 @@ export default function PlansPage() {
                                                     </Button>
                                                     <Button
                                                         variant="destructive"
-                                                        onClick={() => handleDelete(plan.id, true)}
+                                                        onClick={() => handleDelete(plan.id, 'active')}
                                                     >
                                                         <Trash2 className="mr-2 h-4 w-4" />
-                                                        Delete Plan
+                                                        Delete Active Plan
                                                     </Button>
                                                 </div>
                                             </div>
@@ -196,10 +201,10 @@ export default function PlansPage() {
                                                     </Button>
                                                     <Button
                                                         variant="destructive"
-                                                        onClick={() => handleDelete(plan.id, false)}
+                                                        onClick={() => handleDelete(plan.id, 'draft')}
                                                     >
                                                         <Trash2 className="mr-2 h-4 w-4" />
-                                                        Delete Plan
+                                                        Delete Draft
                                                     </Button>
                                                 </div>
                                             </div>
@@ -251,10 +256,10 @@ export default function PlansPage() {
                                                 </div>
                                                 <Button
                                                     variant="destructive"
-                                                    onClick={() => handleDelete(plan.id, false)}
+                                                    onClick={() => handleDelete(plan.id, 'completed')}
                                                 >
                                                     <Trash2 className="mr-2 h-4 w-4" />
-                                                    Delete Plan
+                                                    Delete Plan History
                                                 </Button>
                                             </div>
                                         </CardContent>
