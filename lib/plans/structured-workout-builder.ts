@@ -11,6 +11,36 @@ type WorkoutInput = {
 }
 
 /**
+ * Normalise a warmup/cooldown step so it always uses duration_minutes.
+ * Some models emit duration_seconds on warmup/cooldown steps; all downstream
+ * consumers (distance calc, Garmin mapper) expect duration_minutes.
+ */
+function normalizeWarmupCooldown(step: unknown): unknown {
+  if (!step || typeof step !== 'object') return step
+  const s = { ...(step as Record<string, unknown>) }
+  if (typeof s.duration_seconds === 'number' && s.duration_minutes === undefined) {
+    s.duration_minutes = Math.round(s.duration_seconds / 60)
+    delete s.duration_seconds
+  }
+  return s
+}
+
+/**
+ * Normalise a raw main_set from the LLM into the canonical [{repeat, intervals:[...]}] format.
+ * Some models emit flat step arrays [{distance_meters, intensity}, ...] instead of wrapping
+ * each step in a repeat group. Wrapping here keeps all downstream consumers consistent.
+ */
+function normalizeMainSet(raw: unknown): MainSetGroup[] {
+  if (!Array.isArray(raw)) return []
+  return (raw as Record<string, unknown>[]).map(item => {
+    if (Array.isArray(item.intervals)) return item as unknown as MainSetGroup
+    // Flat step — wrap into a single-rep group
+    const { repeat, ...step } = item
+    return { repeat: typeof repeat === 'number' ? repeat : 1, intervals: [step] } as MainSetGroup
+  })
+}
+
+/**
  * Build the full structured_workout object from workout fields.
  *
  * The LLM only outputs main_set for interval workouts; warmup/cooldown and
@@ -22,14 +52,14 @@ export function buildStructuredWorkout(workout: WorkoutInput): Record<string, un
 
   switch (workout.type) {
     case 'intervals': {
-      const main_set = workout.structured_workout?.main_set ?? []
+      const main_set = normalizeMainSet(workout.structured_workout?.main_set)
       // If LLM provided warmup (time-based templates), use it instead of defaults
       const llmProvidedStructure = workout.structured_workout?.warmup !== undefined
       const warmup = llmProvidedStructure
-        ? workout.structured_workout?.warmup
+        ? normalizeWarmupCooldown(workout.structured_workout?.warmup)
         : { duration_minutes: 15, intensity: 'easy' }
       const cooldown = llmProvidedStructure
-        ? workout.structured_workout?.cooldown
+        ? normalizeWarmupCooldown(workout.structured_workout?.cooldown)
         : { duration_minutes: 10, intensity: 'easy' }
 
       const result: Record<string, unknown> = { main_set, pace_guidance, notes }
@@ -40,12 +70,27 @@ export function buildStructuredWorkout(workout: WorkoutInput): Record<string, un
     case 'tempo': {
       const intervalIntensity = workout.intensity === 'marathon' ? 'marathon' : 'tempo'
 
-      // If LLM provided a structured_workout with main_set (time-based tempo), use it
+      // If LLM provided a structured_workout with main_set, use it (preserving warmup/cooldown)
       if (workout.structured_workout?.main_set) {
-        const main_set = workout.structured_workout.main_set
-        const warmup = workout.structured_workout.warmup ?? { duration_minutes: 10, intensity: 'easy' }
-        const cooldown = workout.structured_workout.cooldown ?? { duration_minutes: 10, intensity: 'easy' }
+        const main_set = normalizeMainSet(workout.structured_workout.main_set)
+        const warmup = normalizeWarmupCooldown(workout.structured_workout.warmup) ?? { duration_minutes: 10, intensity: 'easy' }
+        const cooldown = normalizeWarmupCooldown(workout.structured_workout.cooldown) ?? { duration_minutes: 10, intensity: 'easy' }
         const result: Record<string, unknown> = { main_set, pace_guidance, notes }
+        if (warmup) result.warmup = warmup
+        if (cooldown) result.cooldown = cooldown
+        return result
+      }
+
+      // LLM provided warmup/cooldown but forgot main_set (time-based tempo with framing steps)
+      // Build main_set from duration_seconds and preserve the LLM's warmup/cooldown
+      if (workout.structured_workout && !workout.structured_workout.main_set && workout.duration_seconds) {
+        const warmup = normalizeWarmupCooldown(workout.structured_workout.warmup) ?? { duration_minutes: 10, intensity: 'easy' }
+        const cooldown = normalizeWarmupCooldown(workout.structured_workout.cooldown) ?? { duration_minutes: 10, intensity: 'easy' }
+        const result: Record<string, unknown> = {
+          main_set: [{ repeat: 1, intervals: [{ duration_seconds: workout.duration_seconds, intensity: intervalIntensity }] }],
+          pace_guidance,
+          notes,
+        }
         if (warmup) result.warmup = warmup
         if (cooldown) result.cooldown = cooldown
         return result
@@ -76,9 +121,9 @@ export function buildStructuredWorkout(workout: WorkoutInput): Record<string, un
       const llmStructure = workout.structured_workout
       if (llmStructure?.warmup !== undefined || llmStructure?.main_set !== undefined) {
         const result: Record<string, unknown> = { pace_guidance, notes }
-        if (llmStructure.warmup) result.warmup = llmStructure.warmup
-        if (llmStructure.main_set) result.main_set = llmStructure.main_set
-        if (llmStructure.cooldown) result.cooldown = llmStructure.cooldown
+        if (llmStructure.warmup) result.warmup = normalizeWarmupCooldown(llmStructure.warmup)
+        if (llmStructure.main_set) result.main_set = normalizeMainSet(llmStructure.main_set)
+        if (llmStructure.cooldown) result.cooldown = normalizeWarmupCooldown(llmStructure.cooldown)
         return result
       }
       return { pace_guidance, notes }

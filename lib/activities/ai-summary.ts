@@ -253,7 +253,11 @@ export async function generateActivitySummary(
 
     // Build prompt and call LLM
     const userMessage = buildUserMessage(activity, workout, (laps || []) as Lap[])
-    const provider = createLLMProvider(athlete.preferred_llm_provider, athlete.preferred_llm_model ?? undefined)
+    // For summaries, use Flash Lite when Gemini is selected — summarisation doesn't need thinking mode
+    const summaryModel = (athlete.preferred_llm_provider === 'gemini' && !athlete.preferred_llm_model)
+      ? 'gemini-2.5-flash-lite'
+      : (athlete.preferred_llm_model ?? undefined)
+    const provider = createLLMProvider(athlete.preferred_llm_provider, summaryModel)
 
     // Use two-message pattern: system instructions as first user message,
     // then a model ack, then the actual request. This avoids Gemini's

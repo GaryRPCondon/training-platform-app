@@ -272,9 +272,9 @@ export async function getWorkoutsForWeek(
     .from('planned_workouts')
     .select(`
       id,
+      day,
       scheduled_date,
       workout_type,
-      workout_index,
       distance_target_meters,
       structured_workout,
       garmin_workout_id,
@@ -295,12 +295,9 @@ export async function getWorkoutsForWeek(
   }
 
   return data.map(workout => {
-    const dayMatch = workout.workout_index?.match(/D(\d+)/)
-    const day = dayMatch ? parseInt(dayMatch[1], 10) : 0
-
     return {
       id: workout.id,
-      day,
+      day: workout.day,
       scheduled_date: workout.scheduled_date,
       workout_type: workout.workout_type,
       distance_target_meters: workout.distance_target_meters,

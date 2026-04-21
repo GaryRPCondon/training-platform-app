@@ -86,9 +86,9 @@ describe('parseLLMResponse', () => {
     expect(() => parseLLMResponse(bad)).toThrow('Invalid day')
   })
 
-  it('throws for invalid workout_index format', () => {
-    const bad = makePlanJson([makeWeek(1, [makeWorkout({ workout_index: 'WEEK1DAY1' })])])
-    expect(() => parseLLMResponse(bad)).toThrow('Invalid workout_index')
+  it('throws for missing workout_index', () => {
+    const bad = makePlanJson([makeWeek(1, [makeWorkout({ workout_index: '' })])])
+    expect(() => parseLLMResponse(bad)).toThrow('Missing workout_index')
   })
 
   it('throws for missing workout type', () => {

@@ -126,6 +126,27 @@ describe('buildStructuredWorkout', () => {
     })
   })
 
+  describe('tempo — LLM provided warmup/cooldown but forgot main_set', () => {
+    it('builds main_set from duration_seconds and preserves LLM warmup/cooldown', () => {
+      const result = buildStructuredWorkout({
+        type: 'tempo',
+        distance_meters: null,
+        duration_seconds: 2100,
+        intensity: 'tempo',
+        structured_workout: {
+          warmup: { duration_minutes: 10, intensity: 'easy' },
+          cooldown: { duration_minutes: 10, intensity: 'easy' },
+        },
+      })
+
+      const mainSet = result.main_set as Array<{ repeat: number; intervals: Array<Record<string, unknown>> }>
+      expect(mainSet).toHaveLength(1)
+      expect(mainSet[0].intervals[0]).toEqual({ duration_seconds: 2100, intensity: 'tempo' })
+      expect(result.warmup).toEqual({ duration_minutes: 10, intensity: 'easy' })
+      expect(result.cooldown).toEqual({ duration_minutes: 10, intensity: 'easy' })
+    })
+  })
+
   describe('tempo — duration_seconds fallback (no structured_workout)', () => {
     it('builds main_set with duration_seconds when no distance_meters', () => {
       const result = buildStructuredWorkout({

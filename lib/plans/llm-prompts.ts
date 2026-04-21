@@ -151,7 +151,7 @@ KEY PRINCIPLES:
 2. Maintain the core workout structure and progression patterns
 3. Adapt phase lengths proportionally to fit ${weeksNeeded} weeks
 4. HARD VOLUME CEILING: No week may exceed ${criteria.comfortable_peak_mileage}km total — not even by 1km
-5. WEEK 1 ANCHOR: Week 1 total must be at or below the athlete's current weekly mileage (${criteria.current_weekly_mileage}km). Never start higher than where the athlete is now.
+5. WEEK 1 ANCHOR: Week 1 total must match the template's plan_week=1 total_km if the template provides it (athlete is already at that volume). Otherwise start at or below the athlete's current weekly mileage (${criteria.current_weekly_mileage}km).
 6. Schedule workouts on ${criteria.days_per_week} days per week (rest days on others)${criteria.preferred_rest_days && criteria.preferred_rest_days.length > 0 ? `
 7. MANDATORY: Schedule rest days on: ${criteria.preferred_rest_days.map(d => dayNames[d]).join(', ')}
    - These are the athlete's REQUIRED non-training days
@@ -407,6 +407,7 @@ Include "structured_workout" for type "intervals" and for tempo workouts prescri
 - Distance-based intervals: use distance_meters in each interval step
 - Time-based quality sessions (tempo by time, hill sprints, fartlek): use duration_seconds in each interval step
   Do NOT mix distance_meters and duration_seconds within the same main_set.
+CRITICAL: For type "intervals", main_set MUST contain at least one repeat group — never output main_set as an empty array []. Derive the structure from the description (e.g. "6 × 800m w/400m jog" → repeat:6 with distance_meters:800 work + distance_meters:400 recovery).
 For all other types (easy_run, recovery, long_run, rest, cross_training, race):
 Omit "structured_workout" entirely — the server generates it automatically.
 

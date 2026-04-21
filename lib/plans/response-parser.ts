@@ -86,6 +86,10 @@ export function parseLLMResponse(responseText: string): ParsedPlan {
 
   // Validate each week
   for (const week of parsed.weeks) {
+    // Normalise: some models emit "week" instead of "week_number"
+    if (typeof week.week_number !== 'number' && typeof (week as Record<string, unknown>).week === 'number') {
+      week.week_number = (week as Record<string, unknown>).week as number
+    }
     if (typeof week.week_number !== 'number') {
       throw new Error(`Week missing week_number: ${JSON.stringify(week)}`)
     }
@@ -96,12 +100,14 @@ export function parseLLMResponse(responseText: string): ParsedPlan {
 
     // Validate each workout
     for (const workout of week.workouts) {
+      // Coerce string day to number — some models emit "4" instead of 4
+      if (typeof workout.day === 'string') workout.day = parseInt(workout.day, 10)
       if (typeof workout.day !== 'number' || workout.day < 1 || workout.day > 7) {
         throw new Error(`Invalid day in week ${week.week_number}: ${workout.day}`)
       }
 
-      if (!workout.workout_index || !workout.workout_index.match(/^W\d+:D\d+$/)) {
-        throw new Error(`Invalid workout_index in week ${week.week_number}: ${workout.workout_index}`)
+      if (!workout.workout_index || typeof workout.workout_index !== 'string') {
+        throw new Error(`Missing workout_index in week ${week.week_number}`)
       }
 
       if (!workout.type || typeof workout.type !== 'string') {
@@ -121,7 +127,9 @@ export function parseLLMResponse(responseText: string): ParsedPlan {
           : workout.duration_seconds
             ? `${label} ${Math.round(workout.duration_seconds / 60)} min`
             : label
-        console.warn(`Workout ${workout.workout_index} missing description — generated fallback: "${workout.description}"`)
+        if (workout.type !== 'rest') {
+          console.warn(`Workout ${workout.workout_index} missing description — generated fallback: "${workout.description}"`)
+        }
       }
 
       // Normalize 0 distance to null (LLM sometimes outputs 0 for time-based workouts)

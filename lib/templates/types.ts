@@ -76,6 +76,8 @@ export interface FullTemplate {
   pace_targets?: Record<string, PaceTarget>
   validation_ranges: Record<string, { min: number; max: number }>
   weekly_schedule: WeekSchedule[]
+  weekly_schedule_units?: string
+  weekly_schedule_contract?: string
   race_week?: RaceWeekGuidance
 }
 
@@ -89,6 +91,7 @@ export interface RaceWeekGuidance {
 
 export interface WeekSchedule {
   week: number
+  plan_week?: number  // 1=first training week (chronological) — present when template uses countdown week numbering
   phase?: string
   workouts?: Record<string, WorkoutDetail>  // Hal/Jack structure
   monday?: string    // Magness/Hansons/Pfitz structure
@@ -102,6 +105,11 @@ export interface WeekSchedule {
     miles?: number
     km?: number
   }
+  // JD 2Q style per-week targets (in miles + pre-computed km companions)
+  Q1_km?: number
+  Q2_km?: number
+  E_days_total_km?: number
+  total_km?: number
 }
 
 export interface WorkoutDetail {

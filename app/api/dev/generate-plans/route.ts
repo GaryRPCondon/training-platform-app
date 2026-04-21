@@ -35,7 +35,13 @@ const MAX_TOKENS_MAP: Record<string, number> = {
   anthropic: 64000,
   grok: 131072,
   openai: 16000,
-  deepseek: 8192,
+  deepseek: 32768,
+}
+
+// Mirror the model selections used by the production plan generation route
+const MODEL_MAP: Record<string, string> = {
+  gemini: 'gemini-2.5-flash-lite',
+  deepseek: 'deepseek-chat',
 }
 
 interface CatalogPlan {
@@ -132,7 +138,8 @@ async function runOne(
 
   const systemPrompt = buildGenerationSystemPrompt(ctx)
   const userMessage = buildGenerationUserMessage(full)
-  const provider = createLLMProvider(llm)
+  const modelName = MODEL_MAP[llm.toLowerCase()]
+  const provider = createLLMProvider(llm, modelName)
   const maxTokens = MAX_TOKENS_MAP[llm.toLowerCase()] ?? 8192
 
   try {
