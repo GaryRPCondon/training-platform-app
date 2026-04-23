@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { validateWorkoutDistances, formatValidationWarnings } from '../workout-validator'
+import { validateWorkoutDistances, validatePlanLevelConstraints, formatValidationWarnings } from '../workout-validator'
 import type { ParsedPlan, ParsedWorkout } from '../response-parser'
-import type { PaceTarget } from '@/lib/templates/types'
+import type { FullTemplate, PaceTarget, WeekSchedule } from '@/lib/templates/types'
 
 // Marathon-style ranges (similar to what was hardcoded before)
 const MARATHON_RANGES: Record<string, { min: number; max: number }> = {
@@ -369,5 +369,153 @@ describe('formatValidationWarnings', () => {
     const output = formatValidationWarnings(warnings)
     expect(output).toContain('W1:D2')
     expect(output).toContain('W1:D7')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// validatePlanLevelConstraints — rest_day_overshoot per-week derivation
+// ---------------------------------------------------------------------------
+
+function makeTemplate(overrides: Partial<FullTemplate> & { weekly_schedule: WeekSchedule[] }): FullTemplate {
+  return {
+    template_id: 't',
+    name: 't',
+    author: 'a',
+    methodology: 'm',
+    distance: 'marathon',
+    duration_weeks: overrides.weekly_schedule.length,
+    training_days_per_week: 6,
+    peak_weekly_mileage: { miles: 50, km: 80 },
+    target_audience: { experience_level: 'intermediate', prerequisites: [] },
+    philosophy: { approach: '', key_features: [] },
+    validation_ranges: {},
+    ...overrides,
+  }
+}
+
+function planWithRestCount(weekNumber: number, restCount: number, totalWorkouts = 7): ParsedPlan {
+  const workouts: ParsedWorkout[] = []
+  for (let d = 1; d <= totalWorkouts; d++) {
+    workouts.push(makeWorkout(d <= restCount ? 'rest' : 'easy_run', d <= restCount ? null : 5000, { day: d, workout_index: `W${weekNumber}:D${d}` }))
+  }
+  return { weeks: [{ week_number: weekNumber, phase: 'base', weekly_total_km: 0, workouts }] }
+}
+
+describe('validatePlanLevelConstraints — rest_day_overshoot', () => {
+  it('uses template per-week schedule when string-per-day fields are present (Hansons-style ramp-in)', () => {
+    // Hansons Beginner W1: 4 OFF days, 3 training days. tdpw=6 globally.
+    const template = makeTemplate({
+      training_days_per_week: 6,
+      weekly_schedule: [{
+        week: 1,
+        monday: '—',
+        tuesday: '—',
+        wednesday: 'OFF',
+        thursday: 'Easy 3 mi. (5 km)',
+        friday: 'OFF',
+        saturday: 'Easy 3 mi. (5 km)',
+        sunday: 'Easy 4 mi. (7 km)',
+      }],
+    })
+    // Plan generated with 4 rest days — matches template, should NOT flag.
+    const errors = validatePlanLevelConstraints(planWithRestCount(1, 4), template)
+    expect(errors.filter(e => e.kind === 'rest_day_overshoot')).toEqual([])
+  })
+
+  it('flags when LLM exceeds template per-week rest budget', () => {
+    // Hansons-style W1 schedules 4 rest, LLM produced 5 → flag.
+    const template = makeTemplate({
+      training_days_per_week: 6,
+      weekly_schedule: [{
+        week: 1,
+        monday: '—',
+        tuesday: '—',
+        wednesday: 'OFF',
+        thursday: 'Easy 3 mi.',
+        friday: 'OFF',
+        saturday: 'Easy 3 mi.',
+        sunday: 'Easy 4 mi.',
+      }],
+    })
+    const errors = validatePlanLevelConstraints(planWithRestCount(1, 5), template)
+    const restErr = errors.find(e => e.kind === 'rest_day_overshoot')
+    expect(restErr).toBeDefined()
+    expect(restErr?.message).toContain('template schedules 4 rest days for W1')
+  })
+
+  it('falls back to global tdpw when template week has no per-day fields (JD 2Q-style)', () => {
+    // JD 2Q W1: only Q1/Q2/E_days_distribution — no monday/.../sunday strings.
+    const template = makeTemplate({
+      training_days_per_week: 7,
+      weekly_schedule: [{
+        week: 18,
+        plan_week: 1,
+        Q1_km: 39,
+        Q2_km: 34,
+        E_days_total_km: 63,
+        total_km: 135,
+      }],
+    })
+    // tdpw=7 → 0 rest days allowed; LLM put 1 → flag.
+    const errors = validatePlanLevelConstraints(planWithRestCount(1, 1), template)
+    const restErr = errors.find(e => e.kind === 'rest_day_overshoot')
+    expect(restErr).toBeDefined()
+    expect(restErr?.message).toContain('training_days_per_week=7')
+  })
+
+  it('handles object-per-day schedule shape (Hal Higdon Advanced race week)', () => {
+    // HH Advanced 1 W18 race week: Thu+Fri rest = 2 rest days. tdpw=6 globally.
+    const template = makeTemplate({
+      training_days_per_week: 6,
+      weekly_schedule: [{
+        week: 1,
+        workouts: {
+          monday: { type: 'easy_run' },
+          tuesday: { type: 'intervals' },
+          wednesday: { type: 'easy_run' },
+          thursday: { type: 'rest' },
+          friday: { type: 'rest' },
+          saturday: { type: 'easy_run' },
+          sunday: { type: 'race' },
+        },
+      }],
+    })
+    // Plan with 2 rest days matches the template → no flag.
+    expect(validatePlanLevelConstraints(planWithRestCount(1, 2), template)
+      .filter(e => e.kind === 'rest_day_overshoot')).toEqual([])
+    // Plan with 3 rest days exceeds → flag.
+    expect(validatePlanLevelConstraints(planWithRestCount(1, 3), template)
+      .filter(e => e.kind === 'rest_day_overshoot').length).toBe(1)
+  })
+
+  it('aligns by array position when template uses countdown numbering (Pfitz)', () => {
+    // Pfitz 85+ first plan week is template entry [0] with `week: 17`. No rest scheduled.
+    const template = makeTemplate({
+      training_days_per_week: 7,
+      weekly_schedule: [
+        { week: 17, monday: 'Recovery 6 mi.', tuesday: 'Recovery 6 mi.', wednesday: 'MLR 13 mi.', thursday: 'Recovery 6 mi.', friday: 'Recovery 6 mi.', saturday: 'Recovery 6 mi.', sunday: 'Long run 17 mi.' },
+        { week: 16, monday: 'Recovery 6 mi.', tuesday: 'VO2max 11 mi.', wednesday: 'MLR 14 mi.', thursday: 'Recovery 6 mi.', friday: 'Recovery 6 mi.', saturday: 'Recovery 6 mi.', sunday: 'Long run 18 mi.' },
+      ],
+    })
+    // LLM put a rest day in plan W1 — flag (template[0] schedules 0 rest).
+    const errors = validatePlanLevelConstraints(planWithRestCount(1, 1), template)
+    expect(errors.find(e => e.kind === 'rest_day_overshoot')).toBeDefined()
+  })
+
+  it('flags extra weeks the LLM invented past the template (falls back to global)', () => {
+    // Template has 1 week (tdpw=7, no rest). LLM emits week 2 with rest.
+    const template = makeTemplate({
+      training_days_per_week: 7,
+      weekly_schedule: [{ week: 1, monday: 'Easy', tuesday: 'Easy', wednesday: 'Easy', thursday: 'Easy', friday: 'Easy', saturday: 'Easy', sunday: 'Long' }],
+    })
+    const plan: ParsedPlan = {
+      weeks: [
+        { week_number: 1, phase: 'base', weekly_total_km: 0, workouts: [makeWorkout('easy_run', 5000)] },
+        { week_number: 2, phase: 'base', weekly_total_km: 0, workouts: [makeWorkout('rest', null, { day: 7, workout_index: 'W2:D7' })] },
+      ],
+    }
+    const errors = validatePlanLevelConstraints(plan, template)
+    const restErr = errors.find(e => e.kind === 'rest_day_overshoot' && e.weekNumber === 2)
+    expect(restErr).toBeDefined()
   })
 })

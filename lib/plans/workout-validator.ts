@@ -1,7 +1,7 @@
 import type { ParsedPlan } from './response-parser'
 import { calculateTotalWorkoutDistance } from '@/lib/training/vdot'
 import type { TrainingPaces } from '@/types/database'
-import type { FullTemplate, PaceTarget } from '@/lib/templates/types'
+import type { FullTemplate, PaceTarget, WeekSchedule } from '@/lib/templates/types'
 
 export interface WorkoutValidationWarning {
   workoutIndex: string
@@ -87,11 +87,53 @@ export function validateWorkoutDistances(
   return warnings
 }
 
+const DAY_FIELDS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'] as const
+const REST_TOKENS = ['', '—', '-', 'off', 'rest']
+
+/**
+ * Count rest days the template explicitly schedules for a given week. Returns null when
+ * the template has no per-day fields for that week (e.g. JD 2Q's Q1/Q2/E_days_distribution
+ * structure) — caller should fall back to the global `7 - training_days_per_week`.
+ *
+ * Recognises two schedule shapes:
+ *   - String-per-day (Hansons/Pfitz/Magness): rest = empty/"—"/"OFF"/starts-with-"Rest".
+ *   - Object-per-day (HH Advanced via `workouts.{day}`): rest = `type === "rest"`.
+ */
+function templateRestDaysForWeek(weekEntry: WeekSchedule | undefined): number | null {
+  if (!weekEntry) return null
+
+  const nested = weekEntry.workouts
+  if (nested && typeof nested === 'object') {
+    let known = 0, rest = 0
+    for (const d of DAY_FIELDS) {
+      const v = nested[d]
+      if (!v) continue
+      known++
+      if ((v.type ?? '').toLowerCase() === 'rest') rest++
+    }
+    if (known > 0) return rest
+  }
+
+  let known = 0, rest = 0
+  for (const d of DAY_FIELDS) {
+    const v = weekEntry[d]
+    if (v === undefined) continue
+    known++
+    if (typeof v === 'string') {
+      const vl = v.trim().toLowerCase()
+      if (REST_TOKENS.includes(vl) || vl.startsWith('rest')) rest++
+    }
+  }
+  return known > 0 ? rest : null
+}
+
 /**
  * Validate plan-level constraints: weekly totals within ±10% of template's total_km,
- * long-run distances ≤ validation_ranges.long_run.max, and no rest days when
- * training_days_per_week = 7. These are promoted to ERROR severity — the plan should
- * be regenerated or caller should surface them as failures.
+ * long-run distances ≤ validation_ranges.long_run.max, and rest-day count not exceeding
+ * what the template's own schedule prescribes for that week (falling back to a global
+ * `7 - training_days_per_week` when the template has no per-day fields). These are
+ * promoted to ERROR severity — the plan should be regenerated or caller should surface
+ * them as failures.
  */
 export function validatePlanLevelConstraints(
   parsedPlan: ParsedPlan,
@@ -100,7 +142,7 @@ export function validatePlanLevelConstraints(
 ): WorkoutValidationWarning[] {
   const errors: WorkoutValidationWarning[] = []
   const longRunCap = template.validation_ranges?.long_run?.max
-  const maxRestDays = 7 - template.training_days_per_week
+  const fallbackMaxRest = 7 - template.training_days_per_week
 
   // Build plan_week → template total_km lookup
   const totalKmByPlanWeek = new Map<number, number>()
@@ -109,6 +151,17 @@ export function validatePlanLevelConstraints(
     if (typeof pw === 'number' && typeof w.total_km === 'number') {
       totalKmByPlanWeek.set(pw, w.total_km)
     }
+  }
+
+  // Build plan_week → template week entry lookup (for per-week rest budget).
+  // Prefers explicit plan_week; falls back to array-position alignment so countdown
+  // numbering (Pfitz: 17,16,...,1) still maps weekly_schedule[0] → plan W1.
+  const weekEntryByPlanWeek = new Map<number, WeekSchedule>()
+  const schedule = template.weekly_schedule ?? []
+  for (let i = 0; i < schedule.length; i++) {
+    const w = schedule[i]
+    const pw = w.plan_week ?? (i + 1)
+    weekEntryByPlanWeek.set(pw, w)
   }
 
   for (const week of parsedPlan.weeks) {
@@ -171,9 +224,15 @@ export function validatePlanLevelConstraints(
       }
     }
 
-    // 3. Rest-day overshoot
+    // 3. Rest-day overshoot — derive per-week budget from template's own schedule
+    const wkEntry = weekEntryByPlanWeek.get(week.week_number)
+    const templateRest = templateRestDaysForWeek(wkEntry)
+    const maxRestDays = templateRest !== null ? templateRest : fallbackMaxRest
     const restDayCount = week.workouts.filter(w => w.type.toLowerCase() === 'rest').length
     if (restDayCount > maxRestDays) {
+      const source = templateRest !== null
+        ? `template schedules ${templateRest} rest day${templateRest === 1 ? '' : 's'} for W${week.week_number}`
+        : `training_days_per_week=${template.training_days_per_week} → ${fallbackMaxRest} rest day${fallbackMaxRest === 1 ? '' : 's'}`
       errors.push({
         workoutIndex: `W${week.week_number}`,
         weekNumber: week.week_number,
@@ -182,7 +241,7 @@ export function validatePlanLevelConstraints(
         workoutType: 'rest',
         actualDistance: restDayCount,
         expectedRange: { min: 0, max: maxRestDays },
-        message: `Week ${week.week_number} has ${restDayCount} rest days but template allows at most ${maxRestDays} (training_days_per_week=${template.training_days_per_week})`,
+        message: `Week ${week.week_number} has ${restDayCount} rest days but ${source}`,
         severity: 'error',
         kind: 'rest_day_overshoot',
       })
