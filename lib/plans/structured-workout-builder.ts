@@ -85,42 +85,6 @@ function normalizeMainSet(raw: unknown): MainSetGroup[] {
   return out
 }
 
-function isEasySingleGroup(group: MainSetGroup): boolean {
-  if ((group.repeat !== 1 && group.repeat !== undefined) || !Array.isArray(group.intervals) || group.intervals.length !== 1) return false
-  const intensity = (group.intervals[0].intensity ?? '').toLowerCase()
-  return intensity === 'easy' || intensity === 'recovery' || intensity === 'walk'
-}
-
-/**
- * When the LLM embeds a leading or trailing single-easy step inside main_set instead of
- * using warmup/cooldown fields, extract it so the server doesn't add a duplicate default.
- * Only extracts if: repeat=1, single easy/recovery/walk interval, at least 2 groups remain.
- */
-function extractEdgeEasyGroups(
-  rawMainSet: MainSetGroup[],
-  hasProvidedWarmup: boolean,
-  hasProvidedCooldown: boolean
-): { warmup?: unknown; main_set: MainSetGroup[]; cooldown?: unknown } {
-  let ms = [...rawMainSet]
-  let extractedWarmup: unknown
-  let extractedCooldown: unknown
-
-  if (!hasProvidedWarmup && ms.length >= 2 && isEasySingleGroup(ms[0])) {
-    extractedWarmup = normalizeWarmupCooldown(ms[0].intervals![0])
-    ms = ms.slice(1)
-  }
-  if (!hasProvidedCooldown && ms.length >= 2 && isEasySingleGroup(ms[ms.length - 1])) {
-    extractedCooldown = normalizeWarmupCooldown(ms[ms.length - 1].intervals![0])
-    ms = ms.slice(0, -1)
-  }
-
-  return {
-    ...(extractedWarmup  !== undefined ? { warmup:   extractedWarmup  } : {}),
-    main_set: ms,
-    ...(extractedCooldown !== undefined ? { cooldown: extractedCooldown } : {}),
-  }
-}
-
 /**
  * Build the full structured_workout object from workout fields.
  *
@@ -133,21 +97,18 @@ export function buildStructuredWorkout(workout: WorkoutInput): Record<string, un
 
   switch (workout.type) {
     case 'intervals': {
-      const rawMainSet       = normalizeMainSet(workout.structured_workout?.main_set)
-      const llmProvidedWarmup  = workout.structured_workout?.warmup   !== undefined
-      const llmProvidedCooldown= workout.structured_workout?.cooldown !== undefined
-      const llmWarmup   = llmProvidedWarmup   ? normalizeWarmupCooldown(workout.structured_workout?.warmup)   : undefined
-      const llmCooldown = llmProvidedCooldown ? normalizeWarmupCooldown(workout.structured_workout?.cooldown) : undefined
-
-      const { warmup: edgeWarmup, main_set, cooldown: edgeCooldown } =
-        extractEdgeEasyGroups(rawMainSet, llmProvidedWarmup, llmProvidedCooldown)
-
-      // Default warmup/cooldown only when LLM provided neither (explicit LLM omission is respected)
-      const warmup   = llmWarmup   ?? edgeWarmup   ?? { duration_minutes: 15, intensity: 'easy' }
-      const cooldown = llmCooldown ?? edgeCooldown ?? (llmProvidedWarmup ? undefined : { duration_minutes: 10, intensity: 'easy' })
+      const main_set = normalizeMainSet(workout.structured_workout?.main_set)
+      // If LLM provided warmup (time-based templates), use it instead of defaults
+      const llmProvidedStructure = workout.structured_workout?.warmup !== undefined
+      const warmup = llmProvidedStructure
+        ? normalizeWarmupCooldown(workout.structured_workout?.warmup)
+        : { duration_minutes: 15, intensity: 'easy' }
+      const cooldown = llmProvidedStructure
+        ? normalizeWarmupCooldown(workout.structured_workout?.cooldown)
+        : { duration_minutes: 10, intensity: 'easy' }
 
       const result: Record<string, unknown> = { main_set, pace_guidance, notes }
-      if (warmup)   result.warmup   = warmup
+      if (warmup) result.warmup = warmup
       if (cooldown) result.cooldown = cooldown
       return result
     }
@@ -156,19 +117,11 @@ export function buildStructuredWorkout(workout: WorkoutInput): Record<string, un
 
       // If LLM provided a structured_workout with main_set, use it (preserving warmup/cooldown)
       if (workout.structured_workout?.main_set) {
-        const rawMainSet          = normalizeMainSet(workout.structured_workout.main_set)
-        const llmProvidedWarmup   = workout.structured_workout.warmup   !== undefined
-        const llmProvidedCooldown = workout.structured_workout.cooldown !== undefined
-        const llmWarmup   = llmProvidedWarmup   ? normalizeWarmupCooldown(workout.structured_workout.warmup)   : undefined
-        const llmCooldown = llmProvidedCooldown ? normalizeWarmupCooldown(workout.structured_workout.cooldown) : undefined
-
-        const { warmup: edgeWarmup, main_set, cooldown: edgeCooldown } =
-          extractEdgeEasyGroups(rawMainSet, llmProvidedWarmup, llmProvidedCooldown)
-
-        const warmup   = llmWarmup   ?? edgeWarmup   ?? { duration_minutes: 10, intensity: 'easy' }
-        const cooldown = llmCooldown ?? edgeCooldown ?? (llmProvidedWarmup ? undefined : { duration_minutes: 10, intensity: 'easy' })
+        const main_set = normalizeMainSet(workout.structured_workout.main_set)
+        const warmup = normalizeWarmupCooldown(workout.structured_workout.warmup) ?? { duration_minutes: 10, intensity: 'easy' }
+        const cooldown = normalizeWarmupCooldown(workout.structured_workout.cooldown) ?? { duration_minutes: 10, intensity: 'easy' }
         const result: Record<string, unknown> = { main_set, pace_guidance, notes }
-        if (warmup)   result.warmup   = warmup
+        if (warmup) result.warmup = warmup
         if (cooldown) result.cooldown = cooldown
         return result
       }
