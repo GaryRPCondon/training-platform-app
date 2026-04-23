@@ -83,6 +83,24 @@ Before the structured plan begins, generate ${partialDays} easy ramp-in runs for
 - Format these in a separate "pre_week_workouts" array (see OUTPUT FORMAT section)
 ` : ''
 
+  // Build per-week targets table from template's weekly_schedule (when plan_week/total_km present)
+  const weeklyTargetRows = (template.weekly_schedule ?? [])
+    .filter(w => typeof w.plan_week === 'number' && typeof w.total_km === 'number')
+    .sort((a, b) => (a.plan_week ?? 0) - (b.plan_week ?? 0))
+  const weeklyTargetsSection = weeklyTargetRows.length > 0 ? `
+PER-WEEK TARGETS (BINDING — copy these totals exactly; ±10% maximum):
+Week | total_km | Q1_km | Q2_km | E_days_total_km | E per day (${criteria.days_per_week}d - 2 Q = ${criteria.days_per_week - 2} E days)
+${weeklyTargetRows.map(w => {
+  const eDays = criteria.days_per_week - 2
+  const ePerDay = eDays > 0 && typeof w.E_days_total_km === 'number'
+    ? (w.E_days_total_km / eDays).toFixed(1)
+    : '—'
+  return `W${w.plan_week} | ${w.total_km} | ${w.Q1_km ?? '—'} | ${w.Q2_km ?? '—'} | ${w.E_days_total_km ?? '—'} | ${ePerDay}`
+}).join('\n')}
+
+CRITICAL: The "E per day" column is \`E_days_total_km / ${criteria.days_per_week - 2}\` — use THIS value for every E day, NOT the per-day \`km\` in \`E_days_distribution\` (that column lists fewer days and would inflate the weekly total if copied verbatim across ${criteria.days_per_week - 2} days). Each week's \`weekly_total_km\` field you emit MUST equal the \`total_km\` above for that plan_week.
+` : ''
+
   // Build race-week guidance section from template (optional — falls back to POST-RACE RULE)
   const raceWeek = template.race_week
   const shakeoutSuffix = raceWeek?.shakeout_distance_meters
@@ -118,6 +136,7 @@ USER CONSTRAINTS:
 - Training days per week: ${criteria.days_per_week}
 - Experience level: ${criteria.experience_level}${criteria.preferred_rest_days && criteria.preferred_rest_days.length > 0 ? `
 - Preferred non-training days: ${criteria.preferred_rest_days.map(d => dayNames[d]).join(', ')}` : ''}
+${weeklyTargetsSection}
 
 MEASUREMENT UNITS:
 - Athlete's preferred unit system: ${preferred_units === 'imperial' ? 'Imperial (miles)' : 'Metric (km)'}
@@ -128,6 +147,20 @@ MEASUREMENT UNITS:
   - Sub-mile track distances always in metres: 400m, 800m, 1200m
   Scale distances to fit the athlete's load, but always use this style — never raw metre conversions like "4828m"
 - pace_guidance field: use min/km for metric, min/mile for imperial
+${template.workout_notation ? `
+WORKOUT NOTATION (FROM TEMPLATE — CRITICAL):
+The weekly_schedule descriptions in this template use these notation conventions:
+${Object.entries(template.workout_notation).map(([k, v]) => `- ${k}: ${v}`).join('\n')}
+
+DISTANCE vs TIME — HARD RULE:
+- When a description uses a distance shorthand (e.g. "9E", "4T", "3T", "12M", "15M"), the number is a **distance in miles** — the structured_workout interval step MUST use \`distance_meters = round(miles × 1609)\`.
+- Only convert to \`duration_seconds\` when the template explicitly writes "N min" / "N sec" (e.g. "2 min rest", "80 min E", "3 min I w/2 min jg", "Hill Sprints 6×10sec").
+- NEVER guess a minutes-per-mile ratio. NEVER emit \`duration_seconds\` for a distance-shorthand segment.
+- Example: description "9E + 4T + 2 min rest + 4E + 2 × (3T w/1 min rests) + 4E"
+  → 9E = distance_meters: 14484, 4T = distance_meters: 6437, 2 min rest = duration_seconds: 120,
+    4E = distance_meters: 6437, 3T = distance_meters: 4828, 1 min rest = duration_seconds: 60,
+    5E (if present) = distance_meters: 8046.
+` : ''}
 
 TASK:
 Generate a ${weeksNeeded}-week personalized training plan that:
@@ -152,7 +185,10 @@ KEY PRINCIPLES:
 3. Adapt phase lengths proportionally to fit ${weeksNeeded} weeks
 4. HARD VOLUME CEILING: No week may exceed ${criteria.comfortable_peak_mileage}km total — not even by 1km
 5. WEEK 1 ANCHOR: Week 1 total must match the template's plan_week=1 total_km if the template provides it (athlete is already at that volume). Otherwise start at or below the athlete's current weekly mileage (${criteria.current_weekly_mileage}km).
-6. Schedule workouts on ${criteria.days_per_week} days per week (rest days on others)${criteria.preferred_rest_days && criteria.preferred_rest_days.length > 0 ? `
+6. Schedule workouts on EXACTLY ${criteria.days_per_week} days per week. Maximum rest days per week = ${7 - criteria.days_per_week}.
+   - If the template's \`E_days_distribution\` lists FEWER E days than you need, divide the template's \`E_days_total_km\` evenly across ALL E days you plan to run — do NOT keep the per-day \`km\` from E_days_distribution and add extra days on top. Adding a day without reducing per-day volume would violate the weekly total.
+   - Example: template has 4 E days at 18km each (E_days_total_km=72) but you need 5 E days → each E day becomes ~14.4km, NOT five days at 18km (which would add 18km to the weekly total).
+   - When days_per_week = 7, NO rest days are allowed. Every day must be a run (Q1, Q2, or easy).${criteria.preferred_rest_days && criteria.preferred_rest_days.length > 0 ? `
 7. MANDATORY: Schedule rest days on: ${criteria.preferred_rest_days.map(d => dayNames[d]).join(', ')}
    - These are the athlete's REQUIRED non-training days
    - You MUST place rest days on these specific days of the week
@@ -160,6 +196,12 @@ KEY PRINCIPLES:
    - The athlete's schedule preferences override the template's default rest day placement
 8. Build progressively from the Week 1 base toward the peak, following the template's volume curve` : `
 7. Build progressively from the Week 1 base toward the peak, following the template's volume curve`}
+
+VOLUME CONSTRAINTS (HARD — binding when the template provides these fields):
+- PER-WEEK TOTAL: When a weekly_schedule entry provides \`total_km\`, that week's \`weekly_total_km\` MUST be within ±10% of \`total_km\`. This overrides any pattern you would otherwise extrapolate.
+- PER-DAY EASY MILEAGE: When an \`E_days_distribution\` entry provides \`km\`, that day's \`distance_meters\` MUST be within ±10% of \`km × 1000\`.
+- LONG-RUN CAP: A workout's \`distance_meters\` MUST NOT exceed the template's \`validation_ranges.long_run.max\`.
+- Q SESSION FIDELITY: When a weekly_schedule entry provides \`Q1\` / \`Q2\` descriptions, the generated Q1/Q2 structured_workouts MUST match the described segments exactly (same number of work/rest blocks, same distances or times per segment as dictated by WORKOUT NOTATION). Do NOT substitute a different workout.
 
 ⚠️  CRITICAL WORKOUT SCHEDULING RULE - ABSOLUTE REQUIREMENT ⚠️
 
@@ -256,12 +298,17 @@ Return a JSON object with this structure:
 WORKOUT TYPES (use ONLY these exact types):
 - easy_run (for standard easy/aerobic runs)
 - recovery (for recovery runs - very easy, day after hard workouts)
-- long_run (for long runs)
-- tempo (for tempo runs and race pace efforts)
+- long_run (for long runs — pure steady aerobic effort only, no embedded quality segments)
+- tempo (for tempo runs, race pace efforts, and long runs with marathon/threshold segments)
 - intervals (for speed/interval workouts)
 - rest (for rest days)
 - cross_training (for cross-training activities)
 - race (for goal race day - marathon, half marathon, 10K, 5K, ultra, etc.)
+
+Q-SESSION CLASSIFICATION (CRITICAL when the template provides Q1/Q2 descriptions):
+- If the Q-session description contains ANY M (marathon-pace), T (threshold/tempo), I (interval), or R (repetition) segment — type it as "tempo" (if primarily M/T) or "intervals" (if primarily I/R) so the structured_workout preserves the quality segments. Emit the full structured_workout with sibling groups matching the description.
+- Only use "long_run" when the Q-session is pure steady easy running with NO quality segments (e.g. "steady E run of 240-270 min").
+- Example: "6E + 12M + 2T + 5M + 4E" → type=tempo (not long_run). "steady E run of 270-300 min" → type=long_run.
 
 ${isTimeBased ? `CRITICAL INSTRUCTION - TIME-BASED PRESCRIPTIONS:
 This template prescribes workouts by TIME (duration), not distance.
@@ -406,8 +453,37 @@ DO NOT INCLUDE:
 Include "structured_workout" for type "intervals" and for tempo workouts prescribed by time.
 - Distance-based intervals: use distance_meters in each interval step
 - Time-based quality sessions (tempo by time, hill sprints, fartlek): use duration_seconds in each interval step
-  Do NOT mix distance_meters and duration_seconds within the same main_set.
+- MIXED sessions (distance segments AND time segments within one workout — e.g. Daniels "9E + 4T + 2 min rest + 4E"): emit distance_meters on the distance segments and duration_seconds on the time segments. This is the ONLY case where distance_meters and duration_seconds may coexist in one main_set.
 CRITICAL: For type "intervals", main_set MUST contain at least one repeat group — never output main_set as an empty array []. Derive the structure from the description (e.g. "6 × 800m w/400m jog" → repeat:6 with distance_meters:800 work + distance_meters:400 recovery).
+
+FLAT main_set RULE — ABSOLUTE:
+- \`main_set\` is a FLAT ARRAY of SIBLING repeat groups. NEVER nest a repeat group inside another group's \`intervals[]\`.
+- To mix continuous segments with repeats, emit EACH continuous segment as its own \`repeat:1\` group and EACH repeated block as its own group.
+- Every element of \`intervals[]\` inside a group MUST be a leaf step: \`{distance_meters|duration_seconds, intensity}\` — never another \`{repeat, intervals}\` object.
+
+EXAMPLE — mixed distance + time sibling groups (Daniels "9E + 4T + 2 min rest + 4E + 2 × (3T w/1 min rests) + 4E"):
+{
+  "type": "tempo",
+  "description": "9E + 4T + 2 min rest + 4E + 2 × (3T w/1 min rests) + 4E",
+  "distance_meters": 45052,
+  "intensity": "tempo",
+  "pace_guidance": "T = threshold pace. Easy warm-up and cool-down at conversational pace.",
+  "structured_workout": {
+    "warmup": { "distance_meters": 14484, "intensity": "easy" },
+    "main_set": [
+      { "repeat": 1, "intervals": [{ "distance_meters": 6437, "intensity": "tempo" }] },
+      { "repeat": 1, "intervals": [{ "duration_seconds": 120, "intensity": "rest" }] },
+      { "repeat": 1, "intervals": [{ "distance_meters": 6437, "intensity": "easy" }] },
+      { "repeat": 2, "intervals": [
+        { "distance_meters": 4828, "intensity": "tempo" },
+        { "duration_seconds": 60, "intensity": "rest" }
+      ]}
+    ],
+    "cooldown": { "distance_meters": 6437, "intensity": "easy" }
+  }
+}
+NOTE: the leading 9E is lifted into \`warmup\` and the trailing 4E is lifted into \`cooldown\` (both are opening/closing easy blocks that frame the quality work). DO NOT add an extra fixed-duration cooldown (like "10 min easy") when the template description already ends with an easy block — use that easy block AS the cooldown. Only add a time-based default cooldown when the template's last segment is NOT easy (e.g. the workout ends in tempo).
+
 For all other types (easy_run, recovery, long_run, rest, cross_training, race):
 Omit "structured_workout" entirely — the server generates it automatically.
 

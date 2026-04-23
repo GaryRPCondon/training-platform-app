@@ -78,6 +78,7 @@ export interface FullTemplate {
   weekly_schedule: WeekSchedule[]
   weekly_schedule_units?: string
   weekly_schedule_contract?: string
+  workout_notation?: Record<string, string>
   race_week?: RaceWeekGuidance
 }
 

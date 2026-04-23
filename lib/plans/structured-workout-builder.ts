@@ -26,18 +26,63 @@ function normalizeWarmupCooldown(step: unknown): unknown {
 }
 
 /**
+ * Flatten a main_set group whose intervals[] contains nested repeat groups.
+ * When the LLM emits `{repeat:1, intervals:[stepA, {repeat:2, intervals:[...]}, stepC]}`
+ * the nested repeat group breaks the renderer, Garmin mapper, and edge-easy extractor
+ * (all assume each element of intervals[] is a leaf step).
+ *
+ * Only flatten when the parent `repeat === 1` — flattening a nested group inside
+ * e.g. `repeat:3` would change the meaning (nested would execute 3× in context).
+ * For parent repeat > 1, leave as-is (validator will warn).
+ */
+function flattenNestedGroup(group: Record<string, unknown>): MainSetGroup[] {
+  const parentRepeat = typeof group.repeat === 'number' ? group.repeat : 1
+  const intervals = Array.isArray(group.intervals) ? group.intervals as Record<string, unknown>[] : []
+  const hasNested = intervals.some(i => Array.isArray(i.intervals))
+
+  if (!hasNested || parentRepeat !== 1) {
+    return [group as unknown as MainSetGroup]
+  }
+
+  // Split the parent group by nested-repeat boundaries.
+  const result: MainSetGroup[] = []
+  let leafRun: Record<string, unknown>[] = []
+  for (const item of intervals) {
+    if (Array.isArray(item.intervals)) {
+      if (leafRun.length > 0) {
+        result.push({ repeat: 1, intervals: leafRun as MainSetInterval[] })
+        leafRun = []
+      }
+      const nestedRepeat = typeof item.repeat === 'number' ? item.repeat : 1
+      result.push({ repeat: nestedRepeat, intervals: item.intervals as MainSetInterval[] })
+    } else {
+      leafRun.push(item)
+    }
+  }
+  if (leafRun.length > 0) result.push({ repeat: 1, intervals: leafRun as MainSetInterval[] })
+  return result
+}
+
+/**
  * Normalise a raw main_set from the LLM into the canonical [{repeat, intervals:[...]}] format.
- * Some models emit flat step arrays [{distance_meters, intensity}, ...] instead of wrapping
- * each step in a repeat group. Wrapping here keeps all downstream consumers consistent.
+ * Handles three LLM quirks:
+ *   1. Flat step arrays [{distance_meters, intensity}, ...] → wrap each in a single-rep group.
+ *   2. Nested repeat groups inside a parent's intervals[] → flatten into sibling groups.
+ *   3. Well-formed groups are passed through.
  */
 function normalizeMainSet(raw: unknown): MainSetGroup[] {
   if (!Array.isArray(raw)) return []
-  return (raw as Record<string, unknown>[]).map(item => {
-    if (Array.isArray(item.intervals)) return item as unknown as MainSetGroup
-    // Flat step — wrap into a single-rep group
-    const { repeat, ...step } = item
-    return { repeat: typeof repeat === 'number' ? repeat : 1, intervals: [step] } as MainSetGroup
-  })
+  const out: MainSetGroup[] = []
+  for (const item of raw as Record<string, unknown>[]) {
+    if (Array.isArray(item.intervals)) {
+      out.push(...flattenNestedGroup(item))
+    } else {
+      // Flat step — wrap into a single-rep group
+      const { repeat, ...step } = item
+      out.push({ repeat: typeof repeat === 'number' ? repeat : 1, intervals: [step] } as MainSetGroup)
+    }
+  }
+  return out
 }
 
 function isEasySingleGroup(group: MainSetGroup): boolean {
