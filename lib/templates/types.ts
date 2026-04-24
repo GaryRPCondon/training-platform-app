@@ -107,9 +107,21 @@ export interface WeekSchedule {
     km?: number
   }
   // JD 2Q style per-week targets (in miles + pre-computed km companions)
+  fraction_of_peak?: number
+  Q1?: string        // Q1 workout description (e.g. "3E + 4M + 1T + 1M + 2E")
+  Q1_mileage?: number
   Q1_km?: number
+  Q2?: string
+  Q2_mileage?: number
   Q2_km?: number
+  E_days_total?: number     // miles
   E_days_total_km?: number
+  E_days_distribution?: Array<{
+    day: string          // "Monday" | "Tuesday" | ...
+    mileage: number      // miles
+    km: number
+    notes?: string
+  }>
   total_km?: number
 }
 

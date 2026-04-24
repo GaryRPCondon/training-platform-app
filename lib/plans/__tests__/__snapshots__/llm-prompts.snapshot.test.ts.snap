@@ -246,6 +246,32 @@ EXAMPLE — hill sprints: Template says "Hill Sprints 6x10sec"
   }
 }
 
+STRUCTURED WORKOUT FIDELITY — CRITICAL:
+- The structured_workout MUST account for the FULL distance/time scope of the description. If the description prescribes a base run distance plus added work (e.g. "9 mi (14 km) easy run + Hill Sprints 8 × 10 sec", "Warmup: 4 miles easy. Main: 6 × 1 mile @ MP."), structured_workout MUST include that base distance — either as warmup, as a leading easy main_set group, or as cooldown — never silently dropped.
+- NEVER rely on the default 15-min warmup when the description specifies a base distance. The base distance overrides any default.
+- distance_meters values MUST be in METERS. 1 mi = 1609 m, 1 km = 1000 m. NEVER write distance_meters: 9 for "9 mi" — write 14484. NEVER pick the kilometer value when the primary unit in the description is miles (e.g. "9 mi (14 km)" → 14484, not 9000 or 14000).
+
+EXAMPLE — easy run with sprints: Template says "9 mi (14 km) easy run + Hill Sprints 8 × 10 sec"
+{
+  "type": "intervals",
+  "description": "9 mi (14 km) easy run + Hill Sprints 8 × 10 sec",
+  "distance_meters": 14484,
+  "intensity": "easy",
+  "pace_guidance": "Easy aerobic run with explosive hill sprints near the end",
+  "structured_workout": {
+    "warmup": { "duration_minutes": 10, "intensity": "easy" },
+    "main_set": [
+      { "repeat": 1, "intervals": [{ "distance_meters": 14484, "intensity": "easy" }] },
+      { "repeat": 8, "intervals": [
+        { "duration_seconds": 10, "intensity": "speed" },
+        { "duration_seconds": 120, "intensity": "recovery" }
+      ]}
+    ],
+    "cooldown": { "duration_minutes": 5, "intensity": "easy" }
+  }
+}
+NOTE: the 14484 m base appears as a leading main_set group AND in the top-level distance_meters. Sprints follow as a sibling group. Do NOT collapse these into the warmup default.
+
 DO NOT INCLUDE:
 - duration_minutes (system calculates display duration from distance + athlete's pace)
 - distance_meters: 0 (use null instead when workout is time-prescribed)
@@ -503,6 +529,32 @@ EXAMPLE — hill sprints: Template says "Hill Sprints 6x10sec"
     ]
   }
 }
+
+STRUCTURED WORKOUT FIDELITY — CRITICAL:
+- The structured_workout MUST account for the FULL distance/time scope of the description. If the description prescribes a base run distance plus added work (e.g. "9 mi (14 km) easy run + Hill Sprints 8 × 10 sec", "Warmup: 4 miles easy. Main: 6 × 1 mile @ MP."), structured_workout MUST include that base distance — either as warmup, as a leading easy main_set group, or as cooldown — never silently dropped.
+- NEVER rely on the default 15-min warmup when the description specifies a base distance. The base distance overrides any default.
+- distance_meters values MUST be in METERS. 1 mi = 1609 m, 1 km = 1000 m. NEVER write distance_meters: 9 for "9 mi" — write 14484. NEVER pick the kilometer value when the primary unit in the description is miles (e.g. "9 mi (14 km)" → 14484, not 9000 or 14000).
+
+EXAMPLE — easy run with sprints: Template says "9 mi (14 km) easy run + Hill Sprints 8 × 10 sec"
+{
+  "type": "intervals",
+  "description": "9 mi (14 km) easy run + Hill Sprints 8 × 10 sec",
+  "distance_meters": 14484,
+  "intensity": "easy",
+  "pace_guidance": "Easy aerobic run with explosive hill sprints near the end",
+  "structured_workout": {
+    "warmup": { "duration_minutes": 10, "intensity": "easy" },
+    "main_set": [
+      { "repeat": 1, "intervals": [{ "distance_meters": 14484, "intensity": "easy" }] },
+      { "repeat": 8, "intervals": [
+        { "duration_seconds": 10, "intensity": "speed" },
+        { "duration_seconds": 120, "intensity": "recovery" }
+      ]}
+    ],
+    "cooldown": { "duration_minutes": 5, "intensity": "easy" }
+  }
+}
+NOTE: the 14484 m base appears as a leading main_set group AND in the top-level distance_meters. Sprints follow as a sibling group. Do NOT collapse these into the warmup default.
 
 DO NOT INCLUDE:
 - duration_minutes (system calculates display duration from distance + athlete's pace)

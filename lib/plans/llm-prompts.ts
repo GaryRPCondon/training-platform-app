@@ -100,6 +100,24 @@ RACE WEEK GUIDANCE (Week ${weeksNeeded} — from template):
 Apply these rules to Week ${weeksNeeded}. They override the template's generic weekly_schedule when compression forces deviation.
 ` : ''
 
+  // Per-week targets section — only emit when template provides plan_week + total_km
+  // (currently used by JD 2Q templates). Keeps non-JD templates unaffected.
+  const perWeekRows = (template.weekly_schedule ?? [])
+    .filter(w => typeof w.plan_week === 'number' && typeof w.total_km === 'number')
+    .sort((a, b) => (a.plan_week ?? 0) - (b.plan_week ?? 0))
+  const longRunCap = template.validation_ranges?.long_run?.max
+  const perWeekTargetsSection = perWeekRows.length > 0 ? `
+PER-WEEK TARGETS (binding — from template):
+plan_week | total_km${perWeekRows[0].Q1_km !== undefined ? ' | Q1_km | Q2_km' : ''}
+${perWeekRows.map(w => {
+  const q = w.Q1_km !== undefined ? ` | ${w.Q1_km ?? '—'} | ${w.Q2_km ?? '—'}` : ''
+  return `W${w.plan_week} | ${w.total_km}${q}`
+}).join('\n')}
+
+- Each generated week's weekly_total_km MUST be within ±10% of the template's total_km for the matching plan_week.${longRunCap ? `
+- No long_run's distance_meters may exceed ${longRunCap} (= ${(longRunCap/1000).toFixed(0)}km), regardless of the template's verbal Q1/Q2 description.` : ''}
+` : ''
+
   return `You are a ${distanceLabel} training coach, specializing in the template's training philosophy.
 
 SELECTED TEMPLATE: ${template.name}
@@ -144,7 +162,7 @@ CRITICAL INSTRUCTIONS:
 - Do NOT create day 8, 9, 10, etc. - only days 1-7 exist per week${raceWeek ? '' : `
 - POST-RACE RULE: In the final week (Week ${weeksNeeded}), every day AFTER Day ${raceDayNumber} MUST be type=rest. Do NOT schedule any runs, cross-training, or other workouts after the race.`}${partialDays > 0 ? `
 - Generate ${partialDays} pre-week workouts in the "pre_week_workouts" array before the "weeks" array` : ''}
-${raceWeekSection}
+${raceWeekSection}${perWeekTargetsSection}
 
 KEY PRINCIPLES:
 1. Follow the template's training philosophy throughout
@@ -463,6 +481,32 @@ EXAMPLE — hill sprints: Template says "Hill Sprints 6x10sec"
     ]
   }
 }
+
+STRUCTURED WORKOUT FIDELITY — CRITICAL:
+- The structured_workout MUST account for the FULL distance/time scope of the description. If the description prescribes a base run distance plus added work (e.g. "9 mi (14 km) easy run + Hill Sprints 8 × 10 sec", "Warmup: 4 miles easy. Main: 6 × 1 mile @ MP."), structured_workout MUST include that base distance — either as warmup, as a leading easy main_set group, or as cooldown — never silently dropped.
+- NEVER rely on the default 15-min warmup when the description specifies a base distance. The base distance overrides any default.
+- distance_meters values MUST be in METERS. 1 mi = 1609 m, 1 km = 1000 m. NEVER write distance_meters: 9 for "9 mi" — write 14484. NEVER pick the kilometer value when the primary unit in the description is miles (e.g. "9 mi (14 km)" → 14484, not 9000 or 14000).
+
+EXAMPLE — easy run with sprints: Template says "9 mi (14 km) easy run + Hill Sprints 8 × 10 sec"
+{
+  "type": "intervals",
+  "description": "9 mi (14 km) easy run + Hill Sprints 8 × 10 sec",
+  "distance_meters": 14484,
+  "intensity": "easy",
+  "pace_guidance": "Easy aerobic run with explosive hill sprints near the end",
+  "structured_workout": {
+    "warmup": { "duration_minutes": 10, "intensity": "easy" },
+    "main_set": [
+      { "repeat": 1, "intervals": [{ "distance_meters": 14484, "intensity": "easy" }] },
+      { "repeat": 8, "intervals": [
+        { "duration_seconds": 10, "intensity": "speed" },
+        { "duration_seconds": 120, "intensity": "recovery" }
+      ]}
+    ],
+    "cooldown": { "duration_minutes": 5, "intensity": "easy" }
+  }
+}
+NOTE: the 14484 m base appears as a leading main_set group AND in the top-level distance_meters. Sprints follow as a sibling group. Do NOT collapse these into the warmup default.
 
 DO NOT INCLUDE:
 - duration_minutes (system calculates display duration from distance + athlete's pace)
