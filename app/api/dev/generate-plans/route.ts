@@ -25,6 +25,7 @@ export const maxDuration = 300 // Vercel hobby plan max; route returns 404 in pr
 
 const requestSchema = z.object({
   llm: z.enum(['deepseek', 'gemini', 'anthropic', 'openai', 'grok']).default('deepseek'),
+  model: z.string().optional(),
   weeks: z.number().int().min(4).max(52).optional(),
   start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   templates: z.array(z.string()).optional(),
@@ -41,7 +42,7 @@ const MAX_TOKENS_MAP: Record<string, number> = {
 // Mirror the model selections used by the production plan generation route
 const MODEL_MAP: Record<string, string> = {
   gemini: 'gemini-2.5-flash-lite',
-  deepseek: 'deepseek-chat',
+  deepseek: 'deepseek-v4-flash',
 }
 
 interface CatalogPlan {
@@ -115,6 +116,7 @@ async function runOne(
   full: FullTemplate,
   summary: CatalogPlan,
   llm: string,
+  modelOverride: string | undefined,
   startStr: string,
   weeks: number,
   goalDate: string,
@@ -138,7 +140,7 @@ async function runOne(
 
   const systemPrompt = buildGenerationSystemPrompt(ctx)
   const userMessage = buildGenerationUserMessage(full)
-  const modelName = MODEL_MAP[llm.toLowerCase()]
+  const modelName = modelOverride ?? MODEL_MAP[llm.toLowerCase()]
   const provider = createLLMProvider(llm, modelName)
   const maxTokens = MAX_TOKENS_MAP[llm.toLowerCase()] ?? 8192
 
@@ -162,6 +164,7 @@ async function runOne(
       methodology: full.methodology,
       distance: full.distance,
       llm,
+      model: modelName,
       weeks,
       start_date: startStr,
       goal_date: goalDate,
@@ -185,7 +188,7 @@ async function runOne(
     const durationMs = Date.now() - t0
     await fs.writeFile(
       path.join(outDir, `${summary.template_id}.json`),
-      JSON.stringify({ template_id: summary.template_id, template_name: full.name, llm, error, durationMs }, null, 2),
+      JSON.stringify({ template_id: summary.template_id, template_name: full.name, llm, model: modelName, error, durationMs }, null, 2),
     )
     return { template_id: summary.template_id, success: false, warnings: 0, errors: 0, durationMs, error }
   }
@@ -204,7 +207,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
   }
-  const { llm, weeks: weeksOverride, start, templates: templateFilter } = parsed.data
+  const { llm, model: modelOverride, weeks: weeksOverride, start, templates: templateFilter } = parsed.data
 
   const startDate = start ? parseISO(start) : nextMonday(new Date())
   const startStr = format(startDate, 'yyyy-MM-dd')
@@ -222,9 +225,11 @@ export async function POST(request: Request) {
   await fs.mkdir(outDir, { recursive: true })
 
   // Write a manifest so polling knows what to expect
+  const resolvedModel = modelOverride ?? MODEL_MAP[llm.toLowerCase()] ?? null
   const manifest = {
     timestamp,
     llm,
+    model: resolvedModel,
     start_date: startStr,
     weeks_override: weeksOverride ?? null,
     templates: filtered.map(t => ({
@@ -245,7 +250,7 @@ export async function POST(request: Request) {
       const weeks = weeksOverride ?? full.duration_weeks
       const goalDate = format(addDays(startDate, weeks * 7 - 1), 'yyyy-MM-dd')
       console.log(`[gen-plans/${timestamp}] ${summary.template_id} (${weeks}w, ${llm})...`)
-      const r = await runOne(full, summary, llm, startStr, weeks, goalDate, outDir)
+      const r = await runOne(full, summary, llm, modelOverride, startStr, weeks, goalDate, outDir)
       results.push(r)
       console.log(`[gen-plans/${timestamp}]   ${r.success ? '✓' : '✗'} ${r.template_id} (${(r.durationMs / 1000).toFixed(1)}s, ${r.warnings} warnings, ${r.errors ?? 0} errors${r.error ? `, error: ${r.error}` : ''})`)
     }
@@ -261,6 +266,7 @@ export async function POST(request: Request) {
     outDir: `validation-runs/${timestamp}`,
     templateCount: filtered.length,
     llm,
+    model: resolvedModel,
     start_date: startStr,
   })
 }

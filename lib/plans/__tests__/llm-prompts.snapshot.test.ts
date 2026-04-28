@@ -212,6 +212,117 @@ describe('buildGenerationSystemPrompt', () => {
     expect(prompt).toContain('POST-RACE RULE')
   })
 
+  it('renders PER-WEEK PRESCRIBED WORKOUTS block with per-day easy volumes when template has E_days_distribution', () => {
+    const templateWithDistribution: FullTemplate = {
+      ...TEST_TEMPLATE,
+      weekly_schedule: [
+        {
+          week: 18,
+          plan_week: 1,
+          fraction_of_peak: 0.7,
+          phase: 'base',
+          Q1: '3E + 7M + 1T + 2M + 2E',
+          Q1_mileage: 15,
+          Q1_km: 24,
+          Q1_type: 'long_run',
+          Q2: '5E + 2T + 2 min rest + 2E',
+          Q2_mileage: 13,
+          Q2_km: 21,
+          Q2_type: 'tempo',
+          E_days_total: 21,
+          total_km: 79,
+          E_days_distribution: [
+            { day: 'Monday', km: 10, mileage: 6, notes: 'Easy recovery' },
+            { day: 'Tuesday', km: 8, mileage: 5, notes: 'Consider strides' },
+            { day: 'Thursday', km: 8, mileage: 5, notes: 'Consider strides' },
+            { day: 'Friday', km: 8, mileage: 5, notes: 'Consider strides' },
+          ],
+        },
+      ],
+    }
+    const prompt = buildGenerationSystemPrompt({
+      ...BASE_CONTEXT,
+      template: templateWithDistribution,
+    })
+    expect(prompt).toContain('PER-WEEK PRESCRIBED WORKOUTS')
+    expect(prompt).toContain('Week 1 (total 49 mi. (79 km), fraction of peak 0.7):')
+    expect(prompt).toContain('- Q1 (long_run): 15 mi. (24 km) — "3E + 7M + 1T + 2M + 2E"')
+    expect(prompt).toContain('- Q2 (tempo): 13 mi. (21 km) — "5E + 2T + 2 min rest + 2E"')
+    expect(prompt).toContain('- Easy: 6 mi. (10 km) — Easy recovery')
+    expect(prompt).toContain('- Easy: 5 mi. (8 km) — Consider strides')
+    expect(prompt).toContain('- Rest')
+    // The old aggregate-targets block must not be emitted when per-day is available.
+    expect(prompt).not.toContain('PER-WEEK TARGETS (binding — from template):')
+    expect(prompt).not.toContain('±10% of the template\'s total_km')
+  })
+
+  it('renders [SESSION, W/C: …] tags on Q-slots when is_session/warmup_cooldown are set', () => {
+    const templateWithSessionTags: FullTemplate = {
+      ...TEST_TEMPLATE,
+      weekly_schedule: [
+        {
+          week: 18,
+          plan_week: 1,
+          fraction_of_peak: 0.7,
+          phase: 'base',
+          Q1: 'steady E run of 90-120 min',
+          Q1_mileage: 12,
+          Q1_km: 19,
+          Q1_type: 'long_run',
+          Q1_is_session: false,
+          Q1_warmup_cooldown: 'included',
+          Q2: '6 × (1T w/1 min jg) + 2E',
+          Q2_mileage: 9,
+          Q2_km: 14,
+          Q2_type: 'tempo',
+          Q2_is_session: true,
+          Q2_warmup_cooldown: 'add',
+          E_days_total: 14,
+          total_km: 47,
+          E_days_distribution: [
+            { day: 'Monday', km: 8, mileage: 5, notes: 'Easy recovery' },
+            { day: 'Tuesday', km: 6, mileage: 4, notes: 'Consider strides' },
+          ],
+        },
+      ],
+    }
+    const prompt = buildGenerationSystemPrompt({
+      ...BASE_CONTEXT,
+      template: templateWithSessionTags,
+    })
+    // Q1 is non-session, has W/C: included → only [W/C: included] tag
+    expect(prompt).toContain('- Q1 (long_run) [W/C: included]: 12 mi. (19 km) — "steady E run of 90-120 min"')
+    // Q2 is session with W/C: add → both tags
+    expect(prompt).toContain('- Q2 (tempo) [SESSION, W/C: add]: 9 mi. (14 km) — "6 × (1T w/1 min jg) + 2E"')
+    // Header explains the tag semantics
+    expect(prompt).toContain('[SESSION]')
+    expect(prompt).toContain('[W/C: included]')
+    expect(prompt).toContain('[W/C: add]')
+  })
+
+  it('falls back to aggregate PER-WEEK TARGETS when template has plan_week+total_km but no E_days_distribution', () => {
+    const templateAggregateOnly: FullTemplate = {
+      ...TEST_TEMPLATE,
+      weekly_schedule: [
+        {
+          week: 18,
+          plan_week: 1,
+          total_km: 79,
+          Q1_km: 24,
+          Q2_km: 21,
+          phase: 'base',
+        },
+      ],
+    }
+    const prompt = buildGenerationSystemPrompt({
+      ...BASE_CONTEXT,
+      template: templateAggregateOnly,
+    })
+    expect(prompt).toContain('PER-WEEK TARGETS (binding — from template):')
+    expect(prompt).toContain('W1 | 79 | 24 | 21')
+    expect(prompt).not.toContain('PER-WEEK PRESCRIBED WORKOUTS')
+  })
+
   it('renders TIME-PRESCRIBED INTENSITIES block when a pace_target has prescription:time', () => {
     const templateWithTimePrescribed: FullTemplate = {
       ...TEST_TEMPLATE,

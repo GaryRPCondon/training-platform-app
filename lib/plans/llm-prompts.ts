@@ -100,13 +100,61 @@ RACE WEEK GUIDANCE (Week ${weeksNeeded} — from template):
 Apply these rules to Week ${weeksNeeded}. They override the template's generic weekly_schedule when compression forces deviation.
 ` : ''
 
-  // Per-week targets section — only emit when template provides plan_week + total_km
-  // (currently used by JD 2Q templates). Keeps non-JD templates unaffected.
+  // Per-week prescribed workouts — only emit when template provides plan_week + total_km
+  // (currently used by JD 2Q templates). For each week we list the specific workouts
+  // the template author prescribes, including concrete per-day easy volumes from
+  // E_days_distribution. The LLM maps these onto the calendar — it does NOT
+  // compute or distribute mileage itself.
   const perWeekRows = (template.weekly_schedule ?? [])
     .filter(w => typeof w.plan_week === 'number' && typeof w.total_km === 'number')
     .sort((a, b) => (a.plan_week ?? 0) - (b.plan_week ?? 0))
   const longRunCap = template.validation_ranges?.long_run?.max
-  const perWeekTargetsSection = perWeekRows.length > 0 ? `
+  const hasPerDay = perWeekRows.some(w => Array.isArray(w.E_days_distribution) && w.E_days_distribution.length > 0)
+  const perWeekTargetsSection = perWeekRows.length > 0 ? (hasPerDay ? `
+PER-WEEK PRESCRIBED WORKOUTS (binding — from template author):
+For each week, generate exactly these workouts — no more, no less. Map them onto the calendar using the template's typical_week pattern and the user's rest-day preferences. Do NOT add mileage. Do NOT replace easy slots with quality work. Use the Q1/Q2 description verbatim for those workouts; use the prescribed type (in parentheses) as the workout's type field verbatim; use type=easy_run for each easy slot.
+
+For each Q-slot, the tags after the type indicate:
+- [SESSION]: emit a structured_workout with main_set covering the prescribed work. Echo "is_session": true on the workout.
+- (no [SESSION] tag): do NOT emit a structured_workout. Echo "is_session": false.
+- [W/C: included]: the description's leading/trailing easy segments (e.g. "6E + 6M + 2E") ARE the warmup/cooldown. Build main_set to cover the FULL description including those easy segments, and OMIT separate warmup/cooldown fields. Echo "warmup_cooldown": "included".
+- [W/C: add]: the description prescribes only the main work (e.g. "6 × 1mi T w/1min jog"). Wrap with separate warmup + cooldown fields around main_set. Echo "warmup_cooldown": "add".
+${perWeekRows.map(w => {
+  const lines: string[] = []
+  const frac = w.fraction_of_peak !== undefined ? `, fraction of peak ${w.fraction_of_peak}` : ''
+  const totalMi = (w.Q1_mileage ?? 0) + (w.Q2_mileage ?? 0) + (w.E_days_total ?? 0)
+  const totalLabel = totalMi > 0 ? `${totalMi} mi. (${w.total_km} km)` : `${w.total_km} km`
+  lines.push(`\nWeek ${w.plan_week} (total ${totalLabel}${frac}):`)
+  const tagsFor = (isSession?: boolean, wc?: 'included' | 'add'): string => {
+    const parts: string[] = []
+    if (isSession === true) parts.push('SESSION')
+    if (wc) parts.push(`W/C: ${wc}`)
+    return parts.length > 0 ? ` [${parts.join(', ')}]` : ''
+  }
+  if (w.Q1 && w.Q1_km !== undefined) {
+    const t = w.Q1_type ? ` (${w.Q1_type})` : ''
+    const dist = w.Q1_mileage !== undefined ? `${w.Q1_mileage} mi. (${w.Q1_km} km)` : `${w.Q1_km} km`
+    lines.push(`  - Q1${t}${tagsFor(w.Q1_is_session, w.Q1_warmup_cooldown)}: ${dist} — "${w.Q1}"`)
+  }
+  if (w.Q2 && w.Q2_km !== undefined) {
+    const t = w.Q2_type ? ` (${w.Q2_type})` : ''
+    const dist = w.Q2_mileage !== undefined ? `${w.Q2_mileage} mi. (${w.Q2_km} km)` : `${w.Q2_km} km`
+    lines.push(`  - Q2${t}${tagsFor(w.Q2_is_session, w.Q2_warmup_cooldown)}: ${dist} — "${w.Q2}"`)
+  }
+  for (const e of w.E_days_distribution ?? []) {
+    const notes = e.notes ? ` — ${e.notes}` : ''
+    const dist = e.mileage !== undefined ? `${e.mileage} mi. (${e.km} km)` : `${e.km} km`
+    lines.push(`  - Easy: ${dist}${notes}`)
+  }
+  const qCount = (w.Q1 ? 1 : 0) + (w.Q2 ? 1 : 0)
+  const eCount = (w.E_days_distribution ?? []).length
+  const restDays = Math.max(0, 7 - qCount - eCount)
+  for (let i = 0; i < restDays; i++) lines.push(`  - Rest`)
+  return lines.join('\n')
+}).join('\n')}
+${longRunCap ? `
+- No long_run's distance_meters may exceed ${longRunCap} (= ${(longRunCap/1000).toFixed(0)}km), regardless of the template's verbal Q1/Q2 description.` : ''}
+` : `
 PER-WEEK TARGETS (binding — from template):
 plan_week | total_km${perWeekRows[0].Q1_km !== undefined ? ' | Q1_km | Q2_km' : ''}
 ${perWeekRows.map(w => {
@@ -116,7 +164,7 @@ ${perWeekRows.map(w => {
 
 - Each generated week's weekly_total_km MUST be within ±10% of the template's total_km for the matching plan_week.${longRunCap ? `
 - No long_run's distance_meters may exceed ${longRunCap} (= ${(longRunCap/1000).toFixed(0)}km), regardless of the template's verbal Q1/Q2 description.` : ''}
-` : ''
+`) : ''
 
   return `You are a ${distanceLabel} training coach, specializing in the template's training philosophy.
 
@@ -483,8 +531,12 @@ EXAMPLE — hill sprints: Template says "Hill Sprints 6x10sec"
 }
 
 STRUCTURED WORKOUT FIDELITY — CRITICAL:
+- For prescribed Q-slots tagged [SESSION], emit structured_workout with main_set covering the prescribed work. For slots WITHOUT [SESSION] (and for non-Q workouts that aren't intervals/tempo), do NOT emit structured_workout — leave the field absent.
+- When [W/C: included]: main_set covers the FULL description including its leading/trailing easy segments. Do NOT emit separate warmup/cooldown fields around it — those easy bookends ARE the W/C, expressed as easy entries within main_set.
+- When [W/C: add]: emit warmup + main_set + cooldown around the prescribed work.
 - The structured_workout MUST account for the FULL distance/time scope of the description. If the description prescribes a base run distance plus added work (e.g. "9 mi (14 km) easy run + Hill Sprints 8 × 10 sec", "Warmup: 4 miles easy. Main: 6 × 1 mile @ MP."), structured_workout MUST include that base distance — either as warmup, as a leading easy main_set group, or as cooldown — never silently dropped.
 - NEVER rely on the default 15-min warmup when the description specifies a base distance. The base distance overrides any default.
+- Echo the slot-level metadata back on the workout: "is_session": true|false, and "warmup_cooldown": "included"|"add" when applicable.
 - distance_meters values MUST be in METERS. 1 mi = 1609 m, 1 km = 1000 m. NEVER write distance_meters: 9 for "9 mi" — write 14484. NEVER pick the kilometer value when the primary unit in the description is miles (e.g. "9 mi (14 km)" → 14484, not 9000 or 14000).
 
 EXAMPLE — easy run with sprints: Template says "9 mi (14 km) easy run + Hill Sprints 8 × 10 sec"

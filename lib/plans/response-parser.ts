@@ -11,6 +11,8 @@ export interface ParsedWorkout {
   notes: string | null
   duration_seconds?: number | null
   structured_workout?: Record<string, unknown> | null
+  is_session?: boolean
+  warmup_cooldown?: 'included' | 'add'
 }
 
 export interface PreWeekWorkout {

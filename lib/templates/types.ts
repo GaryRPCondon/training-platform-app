@@ -111,9 +111,15 @@ export interface WeekSchedule {
   Q1?: string        // Q1 workout description (e.g. "3E + 4M + 1T + 1M + 2E")
   Q1_mileage?: number
   Q1_km?: number
+  Q1_type?: 'long_run' | 'tempo' | 'intervals' | 'easy_run'
+  Q1_is_session?: boolean
+  Q1_warmup_cooldown?: 'included' | 'add'
   Q2?: string
   Q2_mileage?: number
   Q2_km?: number
+  Q2_type?: 'long_run' | 'tempo' | 'intervals' | 'easy_run'
+  Q2_is_session?: boolean
+  Q2_warmup_cooldown?: 'included' | 'add'
   E_days_total?: number     // miles
   E_days_total_km?: number
   E_days_distribution?: Array<{
