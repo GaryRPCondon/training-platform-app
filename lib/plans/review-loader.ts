@@ -2,38 +2,6 @@ import { createClient } from '@/lib/supabase/client'
 import type { PlanReviewContext, WeekViewData, WorkoutWithDetails } from '@/types/review'
 import { parseISO, format, endOfWeek } from 'date-fns'
 
-const TOLERANCE = 0.10 // ±10%
-
-function validateWorkout(
-  workout: any,
-  validationRanges: Record<string, { min: number; max: number }>
-): WorkoutWithDetails['validation_warning'] {
-  if (!workout.distance_target_meters || workout.distance_target_meters === 0) {
-    return undefined
-  }
-
-  const workoutType = workout.workout_type?.toLowerCase()
-  const range = validationRanges[workoutType]
-
-  if (!range || (range.min === 0 && range.max === 0)) {
-    return undefined
-  }
-
-  const actualDistance = workout.distance_target_meters
-  const effectiveMin = range.min * (1 - TOLERANCE)
-  const effectiveMax = range.max * (1 + TOLERANCE)
-
-  if (actualDistance < effectiveMin || actualDistance > effectiveMax) {
-    return {
-      message: `Possible LLM hallucination: Distance is ${(actualDistance / 1000).toFixed(1)}km, but expected ${(range.min / 1000).toFixed(1)}-${(range.max / 1000).toFixed(1)}km for ${workout.workout_type}`,
-      expectedRange: range,
-      actualDistance
-    }
-  }
-
-  return undefined
-}
-
 export async function loadPlanForReview(planId: number): Promise<PlanReviewContext> {
   const supabase = createClient()
 
@@ -108,16 +76,24 @@ export async function loadPlanForReview(planId: number): Promise<PlanReviewConte
 
   if (weeksError) throw new Error(`Failed to load weeks: ${weeksError.message}`)
 
-  // Load template validation ranges
-  let validationRanges: Record<string, { min: number; max: number }> = {}
+  // Load template's per-week intent (total_km) for the drift-visibility comparison
+  const templateIntentByWeek = new Map<number, number>()
   if (plan.template_id) {
     const { data: templateRow } = await supabase
       .from('plan_templates')
       .select('full_template')
       .eq('template_id', plan.template_id)
       .single()
-    if (templateRow?.full_template) {
-      validationRanges = (templateRow.full_template as any).validation_ranges ?? {}
+    const schedule = (templateRow?.full_template as any)?.weekly_schedule
+    if (Array.isArray(schedule)) {
+      for (let i = 0; i < schedule.length; i++) {
+        const w = schedule[i]
+        const planWeek = typeof w.plan_week === 'number' ? w.plan_week : (i + 1)
+        const totalKm = typeof w.total_km === 'number' ? w.total_km : null
+        if (totalKm !== null) {
+          templateIntentByWeek.set(planWeek, totalKm * 1000)
+        }
+      }
     }
   }
 
@@ -131,17 +107,18 @@ export async function loadPlanForReview(planId: number): Promise<PlanReviewConte
       formatted_date: format(parseISO(workout.scheduled_date), 'EEE, MMM d'),
       phase_name: phase?.phase_name || 'unknown',
       week_of_plan: week.week_number || 0,
-      validation_warning: validateWorkout(workout, validationRanges)
     }))
 
+    const planWeek = week.week_number || 0
     return {
-      week_number: week.week_number || 0,
+      week_number: planWeek,
       week_start: parseISO(week.week_start_date),
       week_end: endOfWeek(parseISO(week.week_start_date)),
       phase: phase?.phase_name || 'unknown',
       workouts: workoutsWithDetails,
       weekly_volume: week.weekly_volume_target || 0,
-      weekly_plan_id: week.id
+      weekly_plan_id: week.id,
+      template_intent_meters: templateIntentByWeek.get(planWeek),
     }
   })
 

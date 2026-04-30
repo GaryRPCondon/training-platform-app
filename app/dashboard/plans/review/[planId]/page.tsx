@@ -98,6 +98,15 @@ export default function ReviewPage({ params }: PageProps) {
   // Flatten all workouts for calendar
   const allWorkouts: WorkoutWithDetails[] = context.weeks.flatMap(w => w.workouts)
 
+  // Build week-start-date → template intent map for the drift-visibility comparison
+  const weeklyIntents: Record<string, number> = {}
+  for (const w of context.weeks) {
+    if (w.template_intent_meters !== undefined) {
+      const key = w.week_start.toISOString().slice(0, 10)
+      weeklyIntents[key] = w.template_intent_meters
+    }
+  }
+
   return (
     <div className="h-[calc(100vh-3.5rem)] -m-4 md:-m-6 flex flex-col">
       {/* Header */}
@@ -178,6 +187,7 @@ export default function ReviewPage({ params }: PageProps) {
             workouts={allWorkouts}
             trainingPaces={context.training_paces}
             vdot={context.vdot}
+            weeklyIntents={weeklyIntents}
             onWorkoutSelect={(workout) => {
               console.log('Selected workout:', workout.workout_index)
             }}

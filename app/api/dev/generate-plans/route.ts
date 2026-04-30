@@ -17,7 +17,8 @@ import { z } from 'zod'
 import { buildGenerationSystemPrompt, buildGenerationUserMessage } from '@/lib/plans/llm-prompts'
 import { parseLLMResponse } from '@/lib/plans/response-parser'
 import { enrichParsedWorkouts, enrichPreWeekWorkouts } from '@/lib/plans/structured-workout-builder'
-import { validateWorkoutDistances, validatePlanLevelConstraints } from '@/lib/plans/workout-validator'
+import { deriveTotals } from '@/lib/plans/derive-totals'
+import { runStructuralAssertions } from '@/lib/plans/structural-assertions'
 import { createLLMProvider } from '@/lib/agent/factory'
 import type { FullTemplate, RaceDistance, UserCriteria } from '@/lib/templates/types'
 
@@ -121,7 +122,7 @@ async function runOne(
   weeks: number,
   goalDate: string,
   outDir: string,
-): Promise<{ template_id: string; success: boolean; warnings: number; errors?: number; durationMs: number; error?: string }> {
+): Promise<{ template_id: string; success: boolean; structuralFailures: number; structuralAdvisories?: number; durationMs: number; error?: string }> {
   const t0 = Date.now()
   const criteria = deriveCriteria(full, weeks)
   const isTimeBased = summary.tags?.includes('time_based') ||
@@ -154,8 +155,16 @@ async function runOne(
     const parsedPlan = parseLLMResponse(response.content)
     for (const week of parsedPlan.weeks) enrichParsedWorkouts(week.workouts)
     if (parsedPlan.preWeekWorkouts) enrichPreWeekWorkouts(parsedPlan.preWeekWorkouts)
-    const validationWarnings = validateWorkoutDistances(parsedPlan, full.validation_ranges, null, full.pace_targets)
-    const validationErrors = validatePlanLevelConstraints(parsedPlan, full, null)
+    deriveTotals(parsedPlan, null)
+
+    const goalDateObj = parseISO(goalDate)
+    const planStartObj = parseISO(startStr)
+    const raceDayOfWeek = goalDateObj.getDay()
+    const raceDayNumber = raceDayOfWeek === 1 ? 1 : ((raceDayOfWeek - 1 + 7) % 7) + 1
+    const daysToGoal = Math.floor((goalDateObj.getTime() - planStartObj.getTime()) / (1000 * 60 * 60 * 24))
+    const weeksNeeded = Math.floor(daysToGoal / 7) + 1
+
+    const structural = runStructuralAssertions(parsedPlan, full, weeksNeeded, raceDayNumber)
     const durationMs = Date.now() - t0
 
     const result = {
@@ -171,16 +180,16 @@ async function runOne(
       criteria,
       durationMs,
       tokensUsed: response.usage,
-      validationErrors,
-      validationWarnings,
+      structuralFailures: structural.blocking,
+      structuralAdvisories: structural.advisory,
       parsedPlan,
     }
     await fs.writeFile(path.join(outDir, `${summary.template_id}.json`), JSON.stringify(result, null, 2))
     return {
       template_id: summary.template_id,
-      success: validationErrors.length === 0,
-      warnings: validationWarnings.length,
-      errors: validationErrors.length,
+      success: structural.blocking.length === 0,
+      structuralFailures: structural.blocking.length,
+      structuralAdvisories: structural.advisory.length,
       durationMs,
     }
   } catch (err) {
@@ -190,7 +199,7 @@ async function runOne(
       path.join(outDir, `${summary.template_id}.json`),
       JSON.stringify({ template_id: summary.template_id, template_name: full.name, llm, model: modelName, error, durationMs }, null, 2),
     )
-    return { template_id: summary.template_id, success: false, warnings: 0, errors: 0, durationMs, error }
+    return { template_id: summary.template_id, success: false, structuralFailures: 0, structuralAdvisories: 0, durationMs, error }
   }
 }
 
@@ -252,7 +261,7 @@ export async function POST(request: Request) {
       console.log(`[gen-plans/${timestamp}] ${summary.template_id} (${weeks}w, ${llm})...`)
       const r = await runOne(full, summary, llm, modelOverride, startStr, weeks, goalDate, outDir)
       results.push(r)
-      console.log(`[gen-plans/${timestamp}]   ${r.success ? '✓' : '✗'} ${r.template_id} (${(r.durationMs / 1000).toFixed(1)}s, ${r.warnings} warnings, ${r.errors ?? 0} errors${r.error ? `, error: ${r.error}` : ''})`)
+      console.log(`[gen-plans/${timestamp}]   ${r.success ? '✓' : '✗'} ${r.template_id} (${(r.durationMs / 1000).toFixed(1)}s, ${r.structuralFailures ?? 0} failures, ${r.structuralAdvisories ?? 0} advisories${r.error ? `, error: ${r.error}` : ''})`)
     }
     await fs.writeFile(path.join(outDir, '_summary.json'), JSON.stringify(results, null, 2))
     console.log(`[gen-plans/${timestamp}] Done. ${results.filter(r => r.success).length}/${results.length} succeeded.`)

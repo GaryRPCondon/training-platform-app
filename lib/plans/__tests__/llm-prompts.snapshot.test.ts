@@ -28,12 +28,6 @@ const TEST_TEMPLATE: FullTemplate = {
     approach: 'high_mileage',
     key_features: ['Lactate threshold runs', 'Medium-long runs', 'Recovery runs'],
   },
-  validation_ranges: {
-    easy_run: { min: 5000, max: 12000 },
-    long_run: { min: 15000, max: 30000 },
-    tempo: { min: 8000, max: 16000 },
-    rest: { min: 0, max: 0 },
-  },
   weekly_schedule: [
     {
       week: 1,
@@ -153,7 +147,6 @@ describe('buildGenerationSystemPrompt', () => {
         approach: 'run_walk_progression',
         key_features: ['Run/walk intervals', 'No pace targets', 'Time-based'],
       },
-      validation_ranges: { easy_run: { min: 800, max: 5000 } },
       weekly_schedule: [{
         week: 1,
         phase: 'Run/Walk Intervals',
@@ -337,7 +330,7 @@ describe('buildGenerationSystemPrompt', () => {
     })
     expect(prompt).toContain('TIME-PRESCRIBED INTENSITIES (from template):')
     expect(prompt).toContain('"walk" — Brisk walking pace')
-    expect(prompt).toContain('Do NOT convert these time-prescribed intensities to distance.')
+    expect(prompt).toContain('uses duration_seconds (not distance_meters)')
   })
 
   it('does not render TIME-PRESCRIBED INTENSITIES block when no pace_target has prescription:time', () => {

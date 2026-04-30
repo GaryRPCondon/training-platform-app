@@ -100,8 +100,7 @@ describe('parseLLMResponse', () => {
     const workout = makeWorkout({ description: '', distance_meters: 8000 })
     const plan = makePlanJson([makeWeek(1, [workout])])
     const result = parseLLMResponse(plan)
-    expect(result.weeks[0].workouts[0].description).toContain('Easy run')
-    expect(result.weeks[0].workouts[0].description).toContain('8.0 km')
+    expect(result.weeks[0].workouts[0].description).toBe('Easy run')
   })
 
   it('generates type-label fallback when description missing and no distance', () => {
@@ -183,11 +182,11 @@ describe('parseLLMResponse', () => {
     expect(result.weeks[0].workouts[0].duration_seconds).toBeNull()
   })
 
-  it('generates fallback description with duration when no distance but duration_seconds present', () => {
+  it('generates type-label fallback when description missing and only duration present', () => {
     const workout = makeWorkout({ description: '', distance_meters: null, duration_seconds: 1200, type: 'tempo' })
     const plan = makePlanJson([makeWeek(1, [workout])])
     const result = parseLLMResponse(plan)
-    expect(result.weeks[0].workouts[0].description).toBe('Tempo run 20 min')
+    expect(result.weeks[0].workouts[0].description).toBe('Tempo run')
   })
 })
 

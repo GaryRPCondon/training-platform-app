@@ -5,14 +5,12 @@ export interface ParsedWorkout {
   workout_index: string
   type: string
   description: string   // populated server-side by enrichParsedWorkouts if not in LLM output
-  distance_meters: number | null
+  distance_meters: number | null   // populated by deriveTotals from structured_workout
   intensity: string
   pace_guidance: string | null
   notes: string | null
   duration_seconds?: number | null
   structured_workout?: Record<string, unknown> | null
-  is_session?: boolean
-  warmup_cooldown?: 'included' | 'add'
 }
 
 export interface PreWeekWorkout {
@@ -28,7 +26,7 @@ export interface PreWeekWorkout {
 export interface ParsedWeek {
   week_number: number
   phase: string | null
-  weekly_total_km: number
+  weekly_total_km: number   // populated by deriveTotals
   workouts: ParsedWorkout[]
 }
 
@@ -117,39 +115,18 @@ export function parseLLMResponse(responseText: string): ParsedPlan {
       }
 
       if (!workout.description) {
-        // LLM occasionally omits description — generate a fallback rather than failing the plan
         const typeLabel: Record<string, string> = {
           easy_run: 'Easy run', recovery: 'Recovery run', long_run: 'Long run',
           tempo: 'Tempo run', intervals: 'Intervals', rest: 'Rest day',
           cross_training: 'Cross training', race: 'Race day',
         }
-        const label = typeLabel[workout.type?.toLowerCase()] ?? workout.type ?? 'Workout'
-        workout.description = workout.distance_meters
-          ? `${label} ${(workout.distance_meters / 1000).toFixed(1)} km`
-          : workout.duration_seconds
-            ? `${label} ${Math.round(workout.duration_seconds / 60)} min`
-            : label
-        if (workout.type !== 'rest') {
-          console.warn(`Workout ${workout.workout_index} missing description — generated fallback: "${workout.description}"`)
-        }
+        workout.description = typeLabel[workout.type?.toLowerCase()] ?? workout.type ?? 'Workout'
       }
 
-      // Normalize 0 distance to null (LLM sometimes outputs 0 for time-based workouts)
-      if (workout.distance_meters === 0) {
-        workout.distance_meters = null
-      }
-      // Default duration_seconds to null if not provided
+      // distance_meters is derived post-parse by deriveTotals — null until then.
+      workout.distance_meters = null
       if (workout.duration_seconds === undefined) {
         workout.duration_seconds = null
-      }
-
-      // Warn if interval workout is missing structured main_set (tempo is generated server-side)
-      if (workout.type === 'intervals') {
-        const hasMainSet = workout.structured_workout?.main_set &&
-          Array.isArray(workout.structured_workout.main_set)
-        if (!hasMainSet) {
-          console.warn(`Workout ${workout.workout_index} (intervals) missing structured_workout.main_set`)
-        }
       }
     }
   }

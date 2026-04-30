@@ -15,11 +15,6 @@ export interface WorkoutWithDetails extends PlannedWorkout {
   formatted_date: string
   phase_name: string
   week_of_plan: number
-  validation_warning?: {
-    message: string
-    expectedRange: { min: number; max: number }
-    actualDistance: number
-  }
 }
 
 // Week view data structure
@@ -31,6 +26,7 @@ export interface WeekViewData {
   workouts: WorkoutWithDetails[]
   weekly_volume: number
   weekly_plan_id: number
+  template_intent_meters?: number  // template's prescribed total volume for this plan_week (when available)
 }
 
 // Plan review context

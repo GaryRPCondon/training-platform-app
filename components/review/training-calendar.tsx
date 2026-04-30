@@ -56,6 +56,7 @@ interface TrainingCalendarProps {
   onWorkoutSelect?: (workout: WorkoutWithDetails) => void
   modifyButton?: React.ReactNode
   initialDate?: Date
+  weeklyIntents?: Record<string, number>
 }
 
 function formatWorkoutTitle(workout: WorkoutWithDetails, units: UnitSystem = 'metric'): string {
@@ -74,15 +75,10 @@ function formatWorkoutTitle(workout: WorkoutWithDetails, units: UnitSystem = 'me
     title = `${description} ${mins}min`
   }
 
-  // Add red flag if there's a validation warning
-  if (workout.validation_warning) {
-    title = `🚩 ${title}`
-  }
-
   return title
 }
 
-export function TrainingCalendar({ workouts, trainingPaces, vdot, onWorkoutSelect, modifyButton, initialDate }: TrainingCalendarProps) {
+export function TrainingCalendar({ workouts, trainingPaces, vdot, onWorkoutSelect, modifyButton, initialDate, weeklyIntents }: TrainingCalendarProps) {
   const [selectedWorkout, setSelectedWorkout] = useState<WorkoutWithDetails | null>(null)
   const [view, setView] = useState<View>('month')
   const [currentDate, setCurrentDate] = useState(initialDate ?? new Date())
@@ -195,6 +191,7 @@ export function TrainingCalendar({ workouts, trainingPaces, vdot, onWorkoutSelec
             currentDate={currentDate}
             weekStartsOn={weekStartsOn}
             showActual={false}
+            weeklyIntents={weeklyIntents}
           />
         </div>
       </div>

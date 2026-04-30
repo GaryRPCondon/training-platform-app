@@ -4,7 +4,8 @@ import { loadFullTemplate, getTemplateSummary } from '@/lib/templates/template-l
 import { buildGenerationSystemPrompt, buildGenerationUserMessage } from '@/lib/plans/llm-prompts'
 import { parseLLMResponse } from '@/lib/plans/response-parser'
 import { writePlanToDatabase } from '@/lib/plans/plan-writer'
-import { validateWorkoutDistances } from '@/lib/plans/workout-validator'
+import { deriveTotals } from '@/lib/plans/derive-totals'
+import { runStructuralAssertions } from '@/lib/plans/structural-assertions'
 import { enrichParsedWorkouts, enrichPreWeekWorkouts } from '@/lib/plans/structured-workout-builder'
 import { createLLMProvider } from '@/lib/agent/factory'
 import { calculateTrainingPaces, calculateRacePaces, RACE_DISTANCES } from '@/lib/training/vdot'
@@ -119,6 +120,16 @@ export async function POST(request: Request) {
     const planStartDateObj = new Date(startDateObj)
     planStartDateObj.setDate(startDateObj.getDate() + daysUntilTarget)
     const planStartDate = planStartDateObj.toISOString().split('T')[0]
+
+    // Compute weeks_needed and race day number — also needed by structural assertions
+    const goalDateObj = new Date(goal_date)
+    const daysFromPlanStartToGoal = Math.floor(
+      (goalDateObj.getTime() - planStartDateObj.getTime()) / (1000 * 60 * 60 * 24)
+    )
+    const weeksNeeded = Math.floor(daysFromPlanStartToGoal / 7) + 1
+    const raceDayOfWeek = goalDateObj.getDay()
+    const raceDayNumber = raceDayOfWeek === firstDayOfWeek ? 1 :
+      ((raceDayOfWeek - firstDayOfWeek + 7) % 7) + 1
 
     console.log(`Start date: ${start_date}, Plan start (Week 1): ${planStartDate}, First day of week: ${firstDayOfWeek === 0 ? 'Sunday' : 'Monday'}`)
 
@@ -247,7 +258,7 @@ export async function POST(request: Request) {
       throw parseError
     }
 
-    // Enrich parsed workouts: build full structured_workout from LLM's main_set + derived fields.
+    // Enrich parsed workouts: normalize structured_workout shape from LLM output.
     for (const week of parsedPlan.weeks) {
       enrichParsedWorkouts(week.workouts)
     }
@@ -255,11 +266,22 @@ export async function POST(request: Request) {
       enrichPreWeekWorkouts(parsedPlan.preWeekWorkouts)
     }
 
-    // Validate workout distances for potential LLM hallucinations
-    const validationWarnings = validateWorkoutDistances(parsedPlan, fullTemplate.validation_ranges, trainingPaces, fullTemplate.pace_targets)
-    if (validationWarnings.length > 0) {
-      console.warn(`⚠️  Found ${validationWarnings.length} potential hallucinations:`)
-      validationWarnings.forEach(w => console.warn(`  - ${w.message}`))
+    // Derive distance_meters per workout and weekly_total_km per week from structured_workout
+    // components, using the athlete's training paces for time→distance conversion.
+    deriveTotals(parsedPlan, trainingPaces)
+
+    // Structural assertions — fail generation on real bugs (missing race day, wrong week count,
+    // sessions without main_set). Back-to-back hard days are advisory only until templates
+    // carry `hard_day_pattern` metadata. Drift is intentionally NOT checked.
+    const structural = runStructuralAssertions(parsedPlan, fullTemplate, weeksNeeded, raceDayNumber)
+    if (structural.advisory.length > 0) {
+      console.warn(`Structural advisories (${structural.advisory.length}):`)
+      structural.advisory.forEach(a => console.warn(`  - ${a}`))
+    }
+    if (structural.blocking.length > 0) {
+      console.error('Structural assertion failures:')
+      structural.blocking.forEach(f => console.error(`  - ${f}`))
+      throw new Error(`Generated plan failed structural validation:\n${structural.blocking.map(f => `  • ${f}`).join('\n')}`)
     }
 
     // LLM succeeded! Now create the plan structure in the database
@@ -346,7 +368,6 @@ export async function POST(request: Request) {
       template_used: summary.name,
       summary: writeResult,
       token_usage: response.usage,
-      warnings: validationWarnings
     })
 
   } catch (error) {

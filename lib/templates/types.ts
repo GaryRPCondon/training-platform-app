@@ -74,7 +74,6 @@ export interface FullTemplate {
     key_features: string[]
   }
   pace_targets?: Record<string, PaceTarget>
-  validation_ranges: Record<string, { min: number; max: number }>
   weekly_schedule: WeekSchedule[]
   weekly_schedule_units?: string
   weekly_schedule_contract?: string

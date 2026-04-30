@@ -45,7 +45,8 @@ interface PlanFile {
   goal_date: string
   durationMs: number
   tokensUsed?: { inputTokens?: number; outputTokens?: number }
-  validationWarnings: { workoutIndex: string; message: string }[]
+  structuralFailures: string[]
+  structuralAdvisories?: string[]
   parsedPlan: {
     weeks: { week_number: number; phase: string | null; weekly_total_km: number; workouts: PlanWorkout[] }[]
     preWeekWorkouts?: PlanWorkout[]
@@ -271,12 +272,22 @@ function PlanView({ plan, onInspect }: { plan: PlanFile; onInspect: (w: PlanWork
             </div>
           </div>
         </div>
-        {plan.validationWarnings.length > 0 && (
+        {plan.structuralFailures && plan.structuralFailures.length > 0 && (
           <div className="mt-2 text-xs">
-            <div className="font-medium text-amber-700 dark:text-amber-400 mb-1">⚠ {plan.validationWarnings.length} validation warnings</div>
+            <div className="font-medium text-red-700 dark:text-red-400 mb-1">✗ {plan.structuralFailures.length} structural failures</div>
             <ul className="space-y-0.5 max-h-32 overflow-y-auto">
-              {plan.validationWarnings.map((w, i) => (
-                <li key={i} className="text-muted-foreground">{w.message}</li>
+              {plan.structuralFailures.map((m, i) => (
+                <li key={i} className="text-muted-foreground">{m}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {plan.structuralAdvisories && plan.structuralAdvisories.length > 0 && (
+          <div className="mt-2 text-xs">
+            <div className="font-medium text-amber-700 dark:text-amber-400 mb-1">⚠ {plan.structuralAdvisories.length} advisories</div>
+            <ul className="space-y-0.5 max-h-32 overflow-y-auto">
+              {plan.structuralAdvisories.map((m, i) => (
+                <li key={i} className="text-muted-foreground">{m}</li>
               ))}
             </ul>
           </div>

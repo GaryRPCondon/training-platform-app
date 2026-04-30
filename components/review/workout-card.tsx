@@ -11,7 +11,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import type { WorkoutWithDetails } from '@/types/review'
 import type { TrainingPaces } from '@/types/database'
 import {
-  Calendar, Clock, TrendingUp, Target, Gauge, Flag, RotateCcw,
+  Calendar, Clock, TrendingUp, Target, Gauge,
   CheckCircle, AlertCircle, XCircle, Pencil, Plus,
   ChevronUp, Repeat2, Trash2, Sparkles, Loader2,
 } from 'lucide-react'
@@ -1331,44 +1331,6 @@ export function WorkoutCard({
       )}
 
       <Separator />
-
-      {/* Validation Warning */}
-      {workout.validation_warning && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
-          <div className="flex items-start gap-2">
-            <Flag className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <div className="flex-1 space-y-1">
-              <p className="text-sm font-medium text-red-900">
-                ⚠️ Possible LLM Hallucination
-              </p>
-              <p className="text-xs text-red-800">
-                This workout has an unusual distance that may be due to an AI calculation error.
-              </p>
-              <p className="text-xs text-red-700 font-mono">
-                Distance: {formatDistance(workout.validation_warning.actualDistance, 1)}
-                (expected: {formatDistance(workout.validation_warning.expectedRange.min, 1)}-
-                {formatDistance(workout.validation_warning.expectedRange.max, 1)} for {workout.workout_type})
-              </p>
-              {editable && !isEditing && (
-                <div className="flex items-center gap-1 mt-2">
-                  <RotateCcw className="h-3 w-3 text-red-600" />
-                  <p className="text-xs text-red-700 font-medium">
-                    Click the pencil icon to correct the distance
-                  </p>
-                </div>
-              )}
-              {!editable && (
-                <div className="flex items-center gap-1 mt-2">
-                  <RotateCcw className="h-3 w-3 text-red-600" />
-                  <p className="text-xs text-red-700 font-medium">
-                    Consider regenerating the plan if this looks incorrect
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ================================================================== */}
       {/* READ MODE                                                           */}

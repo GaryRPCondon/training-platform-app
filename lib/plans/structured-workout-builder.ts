@@ -8,9 +8,9 @@ type WorkoutInput = {
   pace_guidance?: string | null
   notes?: string | null
   structured_workout?: Record<string, unknown> | null
-  is_session?: boolean
-  warmup_cooldown?: 'included' | 'add'
 }
+
+const NON_RUNNING_TYPES = new Set(['rest', 'cross_training', 'race'])
 
 /**
  * Normalise a warmup/cooldown step so it always uses duration_minutes.
@@ -88,130 +88,32 @@ function normalizeMainSet(raw: unknown): MainSetGroup[] {
 }
 
 /**
- * Build the full structured_workout object from workout fields.
+ * Normalize the structured_workout the LLM emitted into the canonical shape
+ * downstream consumers (workout card, distance calc, Garmin mapper) expect.
  *
- * The LLM only outputs main_set for interval workouts; warmup/cooldown and
- * all other structured_workout fields are derived deterministically here.
+ * Under the Option A contract the LLM owns structure end-to-end — this is a
+ * pass-through with normalization, not a synthesis step. No type-based
+ * defaults; no W/C synthesis. If the LLM didn't emit structured_workout for
+ * a running workout, that's caught by structural assertions.
  */
 export function buildStructuredWorkout(workout: WorkoutInput): Record<string, unknown> {
   const pace_guidance = workout.pace_guidance ?? null
   const notes = workout.notes ?? null
 
-  // Explicit session metadata from template — overrides type-based dispatch.
-  // is_session=true with warmup_cooldown='included' means the description's leading/trailing
-  // easy segments ARE the W/C; main_set covers the entire workout, no synthesised W/C.
-  // is_session=false suppresses structured_workout regardless of type.
-  if (workout.is_session === true) {
-    const main_set = normalizeMainSet(workout.structured_workout?.main_set)
-    if (workout.warmup_cooldown === 'included') {
-      return { main_set, pace_guidance, notes }
-    }
-    // 'add' (or undefined) — synthesise W/C with type-appropriate defaults
-    const defaultWarmupMinutes = workout.type === 'intervals' ? 15 : 10
-    const warmup = workout.structured_workout?.warmup
-      ? normalizeWarmupCooldown(workout.structured_workout.warmup)
-      : { duration_minutes: defaultWarmupMinutes, intensity: 'easy' }
-    const cooldown = workout.structured_workout?.cooldown
-      ? normalizeWarmupCooldown(workout.structured_workout.cooldown)
-      : { duration_minutes: 10, intensity: 'easy' }
-    const result: Record<string, unknown> = { main_set, pace_guidance, notes }
-    if (warmup) result.warmup = warmup
-    if (cooldown) result.cooldown = cooldown
-    return result
-  }
-  if (workout.is_session === false) {
-    const llmStructure = workout.structured_workout
-    if (llmStructure?.warmup !== undefined || llmStructure?.main_set !== undefined) {
-      const result: Record<string, unknown> = { pace_guidance, notes }
-      if (llmStructure.warmup) result.warmup = normalizeWarmupCooldown(llmStructure.warmup)
-      if (llmStructure.main_set) result.main_set = normalizeMainSet(llmStructure.main_set)
-      if (llmStructure.cooldown) result.cooldown = normalizeWarmupCooldown(llmStructure.cooldown)
-      return result
-    }
+  if (NON_RUNNING_TYPES.has(workout.type)) {
     return { pace_guidance, notes }
   }
 
-  // Fallback: legacy type-based dispatch when is_session is not provided
-  // (catalogs that haven't adopted the new metadata yet).
-  switch (workout.type) {
-    case 'intervals': {
-      const main_set = normalizeMainSet(workout.structured_workout?.main_set)
-      // If LLM provided warmup (time-based templates), use it instead of defaults
-      const llmProvidedStructure = workout.structured_workout?.warmup !== undefined
-      const warmup = llmProvidedStructure
-        ? normalizeWarmupCooldown(workout.structured_workout?.warmup)
-        : { duration_minutes: 15, intensity: 'easy' }
-      const cooldown = llmProvidedStructure
-        ? normalizeWarmupCooldown(workout.structured_workout?.cooldown)
-        : { duration_minutes: 10, intensity: 'easy' }
-
-      const result: Record<string, unknown> = { main_set, pace_guidance, notes }
-      if (warmup) result.warmup = warmup
-      if (cooldown) result.cooldown = cooldown
-      return result
-    }
-    case 'tempo': {
-      const intervalIntensity = workout.intensity === 'marathon' ? 'marathon' : 'tempo'
-
-      // If LLM provided a structured_workout with main_set, use it (preserving warmup/cooldown)
-      if (workout.structured_workout?.main_set) {
-        const main_set = normalizeMainSet(workout.structured_workout.main_set)
-        const warmup = normalizeWarmupCooldown(workout.structured_workout.warmup) ?? { duration_minutes: 10, intensity: 'easy' }
-        const cooldown = normalizeWarmupCooldown(workout.structured_workout.cooldown) ?? { duration_minutes: 10, intensity: 'easy' }
-        const result: Record<string, unknown> = { main_set, pace_guidance, notes }
-        if (warmup) result.warmup = warmup
-        if (cooldown) result.cooldown = cooldown
-        return result
-      }
-
-      // LLM provided warmup/cooldown but forgot main_set (time-based tempo with framing steps)
-      // Build main_set from duration_seconds and preserve the LLM's warmup/cooldown
-      if (workout.structured_workout && !workout.structured_workout.main_set && workout.duration_seconds) {
-        const warmup = normalizeWarmupCooldown(workout.structured_workout.warmup) ?? { duration_minutes: 10, intensity: 'easy' }
-        const cooldown = normalizeWarmupCooldown(workout.structured_workout.cooldown) ?? { duration_minutes: 10, intensity: 'easy' }
-        const result: Record<string, unknown> = {
-          main_set: [{ repeat: 1, intervals: [{ duration_seconds: workout.duration_seconds, intensity: intervalIntensity }] }],
-          pace_guidance,
-          notes,
-        }
-        if (warmup) result.warmup = warmup
-        if (cooldown) result.cooldown = cooldown
-        return result
-      }
-
-      // Auto-generate structure: prefer distance_meters, fall back to duration_seconds
-      const mainInterval: Record<string, unknown> = { intensity: intervalIntensity }
-      if (workout.distance_meters) {
-        mainInterval.distance_meters = workout.distance_meters
-      } else if (workout.duration_seconds) {
-        mainInterval.duration_seconds = workout.duration_seconds
-      } else {
-        mainInterval.distance_meters = 0
-      }
-
-      return {
-        warmup: { duration_minutes: 10, intensity: 'easy' },
-        main_set: [{ repeat: 1, intervals: [mainInterval] }],
-        cooldown: { duration_minutes: 10, intensity: 'easy' },
-        pace_guidance,
-        notes,
-      }
-    }
-    default: {
-      // easy_run, recovery, long_run, rest, cross_training, race
-      // If the LLM provided warmup/main_set (e.g. time-based continuous runs with warm-up walk),
-      // preserve them so the workout gets proper structure on Garmin
-      const llmStructure = workout.structured_workout
-      if (llmStructure?.warmup !== undefined || llmStructure?.main_set !== undefined) {
-        const result: Record<string, unknown> = { pace_guidance, notes }
-        if (llmStructure.warmup) result.warmup = normalizeWarmupCooldown(llmStructure.warmup)
-        if (llmStructure.main_set) result.main_set = normalizeMainSet(llmStructure.main_set)
-        if (llmStructure.cooldown) result.cooldown = normalizeWarmupCooldown(llmStructure.cooldown)
-        return result
-      }
-      return { pace_guidance, notes }
-    }
+  const llmStructure = workout.structured_workout
+  if (!llmStructure) {
+    return { pace_guidance, notes }
   }
+
+  const result: Record<string, unknown> = { pace_guidance, notes }
+  if (llmStructure.warmup) result.warmup = normalizeWarmupCooldown(llmStructure.warmup)
+  if (llmStructure.main_set) result.main_set = normalizeMainSet(llmStructure.main_set)
+  if (llmStructure.cooldown) result.cooldown = normalizeWarmupCooldown(llmStructure.cooldown)
+  return result
 }
 
 /**

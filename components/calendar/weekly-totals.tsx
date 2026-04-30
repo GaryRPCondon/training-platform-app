@@ -33,9 +33,10 @@ interface WeeklyTotalsProps {
     onSendToGarmin?: (weekStart: Date, weekEnd: Date) => Promise<void>
     onRemoveFromGarmin?: (weekStart: Date, weekEnd: Date) => Promise<void>
     runningOnly?: boolean
+    weeklyIntents?: Record<string, number>  // key: yyyy-MM-dd of week start; value: template-intent meters
 }
 
-export function WeeklyTotals({ workouts, activities = [], currentDate, weekStartsOn, showActual = false, garminConnected, onSendToGarmin, onRemoveFromGarmin, runningOnly }: WeeklyTotalsProps) {
+export function WeeklyTotals({ workouts, activities = [], currentDate, weekStartsOn, showActual = false, garminConnected, onSendToGarmin, onRemoveFromGarmin, runningOnly, weeklyIntents }: WeeklyTotalsProps) {
     const [sendingWeek, setSendingWeek] = useState<string | null>(null)
     const [removingWeek, setRemovingWeek] = useState<string | null>(null)
     const { toDisplayDistance, distanceLabel } = useUnits()
@@ -96,6 +97,9 @@ export function WeeklyTotals({ workouts, activities = [], currentDate, weekStart
 
             const hasSyncedWorkouts = weekWorkouts.some(w => w.garmin_workout_id)
 
+            const intentKey = format(weekStart, 'yyyy-MM-dd')
+            const intentMeters = weeklyIntents?.[intentKey]
+
             return {
                 weekLabel,
                 weekStart,
@@ -103,9 +107,10 @@ export function WeeklyTotals({ workouts, activities = [], currentDate, weekStart
                 plannedMeters,
                 actualMeters,
                 hasSyncedWorkouts,
+                intentMeters,
             }
         })
-    }, [workouts, activities, currentDate, weekStartsOn, runningOnly])
+    }, [workouts, activities, currentDate, weekStartsOn, runningOnly, weeklyIntents])
 
     return (
         <div className="hidden landscape:flex md:flex flex-col h-full bg-muted/20 border-l-0 landscape:border-l md:border-l">
@@ -125,9 +130,26 @@ export function WeeklyTotals({ workouts, activities = [], currentDate, weekStart
                             {week.weekLabel}
                         </div>
                         <div className="space-y-0.5">
+                            {week.intentMeters !== undefined && (
+                                <div className="flex justify-between items-baseline">
+                                    <span className="text-xs text-muted-foreground">Intent:</span>
+                                    <span className="text-xs text-muted-foreground">{toDisplayDistance(week.intentMeters).toFixed(1)} {distanceLabel()}</span>
+                                </div>
+                            )}
                             <div className="flex justify-between items-baseline">
                                 <span className="text-xs text-muted-foreground">Planned:</span>
-                                <span className="text-sm font-semibold">{toDisplayDistance(week.plannedMeters).toFixed(1)} {distanceLabel()}</span>
+                                <span className="text-sm font-semibold">
+                                    {toDisplayDistance(week.plannedMeters).toFixed(1)} {distanceLabel()}
+                                    {week.intentMeters !== undefined && week.intentMeters > 0 && (
+                                        <span className={`ml-1 text-xs font-normal ${
+                                            Math.abs(week.plannedMeters - week.intentMeters) / week.intentMeters > 0.1
+                                                ? 'text-amber-600 dark:text-amber-400'
+                                                : 'text-muted-foreground'
+                                        }`}>
+                                            ({((week.plannedMeters - week.intentMeters) / week.intentMeters * 100).toFixed(0)}%)
+                                        </span>
+                                    )}
+                                </span>
                             </div>
                             {showActual && (
                                 <div className="flex justify-between items-baseline">
