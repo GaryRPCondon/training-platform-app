@@ -140,6 +140,7 @@ function proposalToWorkoutWithDetails(
         scheduled_time: null,
         workout_type: proposal.workout_type as WorkoutWithDetails['workout_type'],
         workout_index: null,
+        session_order: 1,
         description: proposal.description,
         distance_target_meters: proposal.distance_target_meters ?? null,
         duration_target_seconds: proposal.duration_target_seconds ?? null,

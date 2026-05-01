@@ -75,7 +75,7 @@ const calendarStyles = `
 const localizer = momentLocalizer(moment)
 const DnDCalendar = withDragAndDrop(Calendar)
 
-function formatWorkoutTitle(workout: any, units: UnitSystem = 'metric'): string {
+function formatWorkoutTitle(workout: any, units: UnitSystem = 'metric', sameDayCount: number = 1): string {
     const description = workout.description || 'Workout'
 
     // Add completion status indicator
@@ -88,21 +88,24 @@ function formatWorkoutTitle(workout: any, units: UnitSystem = 'metric'): string 
         statusIndicator = '✗ '
     }
 
+    // Run-N badge prefix when this date has multiple sessions
+    const runPrefix = sameDayCount > 1 ? `Run ${workout.session_order ?? 1}/${sameDayCount} — ` : ''
+
     // Check if description already contains distance information (e.g., "10km", "15km", "5K")
     const hasDistanceInDescription = /\d+\.?\d*\s?(km|k|miles?|mi)\b/i.test(description)
 
     if (workout.distance_target_meters && !hasDistanceInDescription) {
         const dist = toDisplayDistance(workout.distance_target_meters, units).toFixed(1)
         const label = distanceLabel(units)
-        return `${statusIndicator}${description} ${dist}${label}`
+        return `${runPrefix}${statusIndicator}${description} ${dist}${label}`
     }
 
     if (workout.duration_target_seconds) {
         const mins = Math.round(workout.duration_target_seconds / 60)
-        return `${statusIndicator}${description} ${mins}min`
+        return `${runPrefix}${statusIndicator}${description} ${mins}min`
     }
 
-    return `${statusIndicator}${description}`
+    return `${runPrefix}${statusIndicator}${description}`
 }
 
 function makeNewWorkout(date: Date): WorkoutWithDetails {
@@ -327,9 +330,22 @@ export function TrainingCalendar({ openWorkoutId }: TrainingCalendarProps = {}) 
 
     // Phase 6: Combine workout and activity events
     const events = useMemo(() => {
-        const workoutEvents = workouts.map(w => ({
+        // Count same-day workouts so the Run-N prefix can be applied to titles.
+        const sameDayCount = new Map<string, number>()
+        for (const w of workouts) {
+            sameDayCount.set(w.scheduled_date, (sameDayCount.get(w.scheduled_date) ?? 0) + 1)
+        }
+
+        const sortedWorkouts = [...workouts].sort(
+            (a, b) =>
+                a.scheduled_date.localeCompare(b.scheduled_date) ||
+                (a.session_order ?? 1) - (b.session_order ?? 1) ||
+                a.id - b.id
+        )
+
+        const workoutEvents = sortedWorkouts.map(w => ({
             id: `workout-${w.id}`,
-            title: formatWorkoutTitle(w, preferredUnits),
+            title: formatWorkoutTitle(w, preferredUnits, sameDayCount.get(w.scheduled_date) ?? 1),
             start: new Date(w.scheduled_date),
             end: new Date(w.scheduled_date),
             allDay: true,
@@ -616,6 +632,13 @@ export function TrainingCalendar({ openWorkoutId }: TrainingCalendarProps = {}) 
                             vdot={activePlan?.vdot || null}
                             onClose={() => setIsWorkoutDialogOpen(false)}
                             editable={true}
+                            siblings={workouts.filter(
+                                w => w.scheduled_date === selectedWorkout.scheduled_date && w.id !== selectedWorkout.id
+                            )}
+                            onSplitChanged={() => {
+                                setIsWorkoutDialogOpen(false)
+                                queryClient.invalidateQueries({ queryKey: ['workouts'] })
+                            }}
                             onSaved={(updated) => {
                                 setSelectedWorkout(updated)
                                 queryClient.invalidateQueries({ queryKey: ['workouts'] })

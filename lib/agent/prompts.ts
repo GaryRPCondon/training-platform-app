@@ -96,7 +96,15 @@ function formatContext(context: any): string {
     }
 
     if (context.daily) {
-        parts.push(`\nToday's Workout: ${context.daily.todayWorkout?.description || 'Rest day'}`)
+        const todays = context.daily.todayWorkouts as Array<{ description: string | null }> | undefined
+        if (!todays?.length) {
+            parts.push(`\nToday's Workout: Rest day`)
+        } else if (todays.length === 1) {
+            parts.push(`\nToday's Workout: ${todays[0].description || 'Rest day'}`)
+        } else {
+            const lines = todays.map((w, i) => `  Run ${i + 1} of ${todays.length} — ${w.description || '(no description)'}`)
+            parts.push(`\nToday's Workouts:\n${lines.join('\n')}`)
+        }
         if (context.daily.yesterdayActivity) {
             parts.push(`Yesterday: Completed ${(context.daily.yesterdayActivity.distance_meters / 1000).toFixed(1)}km`)
         }

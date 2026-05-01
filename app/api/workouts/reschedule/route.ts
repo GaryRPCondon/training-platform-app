@@ -26,7 +26,7 @@ export async function POST(request: Request) {
         // Verify workout belongs to user
         const { data: workout, error: fetchError } = await supabase
             .from('planned_workouts')
-            .select('id')
+            .select('id, scheduled_date')
             .eq('id', workoutId)
             .eq('athlete_id', user.id)
             .single()
@@ -35,13 +35,31 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Workout not found' }, { status: 404 })
         }
 
+        const oldDate = workout.scheduled_date
+
         // Update workout date
         const { error: updateError } = await supabase
             .from('planned_workouts')
-            .update({ scheduled_date: newDate })
+            .update({ scheduled_date: newDate, session_order: 1 })
             .eq('id', workoutId)
 
         if (updateError) throw updateError
+
+        // Orphan normalisation: if the moved workout was part of a split-run pair,
+        // the leftover sibling should reset to session_order=1 so badges read coherently.
+        if (oldDate !== newDate) {
+            const { data: leftover } = await supabase
+                .from('planned_workouts')
+                .select('id')
+                .eq('athlete_id', user.id)
+                .eq('scheduled_date', oldDate)
+            if (leftover && leftover.length === 1) {
+                await supabase
+                    .from('planned_workouts')
+                    .update({ session_order: 1 })
+                    .eq('id', leftover[0].id)
+            }
+        }
 
         return NextResponse.json({ success: true })
     } catch (error) {

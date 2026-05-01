@@ -17,6 +17,12 @@ export function toDisplayDistance(meters: number, units: UnitSystem): number {
   return units === 'imperial' ? km * KM_TO_MILES : km
 }
 
+/** Inverse of toDisplayDistance: turn a user-entered display value back into meters. */
+export function fromDisplayDistance(value: number, units: UnitSystem): number {
+  const km = units === 'imperial' ? value / KM_TO_MILES : value
+  return km * 1000
+}
+
 export function toDisplayElevation(meters: number, units: UnitSystem): number {
   return units === 'imperial' ? meters * METERS_TO_FEET : meters
 }

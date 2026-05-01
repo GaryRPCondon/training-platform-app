@@ -14,6 +14,7 @@ import {
   Calendar, Clock, TrendingUp, Target, Gauge,
   CheckCircle, AlertCircle, XCircle, Pencil, Plus,
   ChevronUp, Repeat2, Trash2, Sparkles, Loader2,
+  Split, Merge,
 } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 import { Calendar as CalendarPicker } from '@/components/ui/calendar'
@@ -25,6 +26,17 @@ import { useUnits } from '@/lib/hooks/use-units'
 import { formatDistance as fmtDist, type UnitSystem } from '@/lib/utils/units'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
+import { SplitDialog } from '@/components/calendar/split-dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 const INTENSITY_OPTIONS = ['easy', 'moderate', 'marathon', 'hard', 'tempo', 'threshold', 'interval', 'recovery', 'custom']
 
@@ -52,6 +64,10 @@ interface WorkoutCardProps {
   isNew?: boolean
   /** Called after a new workout is successfully created */
   onCreated?: () => void
+  /** Other planned_workouts on the same date (for split-run / doubles UI). Excludes this workout. */
+  siblings?: WorkoutWithDetails[]
+  /** Called after a successful split/unsplit; parent should refresh the calendar and close. */
+  onSplitChanged?: () => void
 }
 
 // ============================================================================
@@ -826,6 +842,8 @@ export function WorkoutCard({
   onDeleted,
   isNew = false,
   onCreated,
+  siblings = [],
+  onSplitChanged,
 }: WorkoutCardProps) {
   const { units, formatDistance, formatPace, toDisplayDistance, distanceLabel } = useUnits()
   const queryClient = useQueryClient()
@@ -838,6 +856,44 @@ export function WorkoutCard({
   const [isDeleting, setIsDeleting] = useState(false)
   const [datePickerOpen, setDatePickerOpen] = useState(false)
   const [isRescheduling, setIsRescheduling] = useState(false)
+  const [isSplitDialogOpen, setIsSplitDialogOpen] = useState(false)
+  const [isMerging, setIsMerging] = useState(false)
+  const [isMergeConfirmOpen, setIsMergeConfirmOpen] = useState(false)
+
+  const SPLITTABLE_TYPES = ['easy_run', 'long_run', 'recovery']
+  const isPartOfSplit = siblings.length > 0
+  const totalSessions = siblings.length + 1
+  const canSplit =
+    editable &&
+    !isNew &&
+    !isPartOfSplit &&
+    SPLITTABLE_TYPES.includes(workout.workout_type) &&
+    !!workout.distance_target_meters &&
+    workout.distance_target_meters > 0
+  const canUnsplit = editable && !isNew && siblings.length === 1
+
+  async function handleUnsplit() {
+    setIsMergeConfirmOpen(false)
+    setIsMerging(true)
+    try {
+      const res = await fetch('/api/workouts/unsplit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workoutId: workout.id }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        toast.error(json.error || 'Failed to merge workouts')
+        return
+      }
+      toast.success('Runs merged')
+      onSplitChanged?.()
+    } catch {
+      toast.error('Failed to merge workouts')
+    } finally {
+      setIsMerging(false)
+    }
+  }
 
   // Edit state — initialized from workout when edit mode is toggled on
   const [editDescription, setEditDescription] = useState(workout.description ?? '')
@@ -1199,8 +1255,38 @@ export function WorkoutCard({
             {formatWorkoutType(isNew ? editWorkoutType : workout.workout_type)}
           </h3>
           <div className="flex items-center gap-2">
+            {!isNew && isPartOfSplit && (
+              <Badge variant="secondary">Run {workout.session_order} of {totalSessions}</Badge>
+            )}
             {!isNew && workout.workout_index && (
               <Badge variant="outline">{workout.workout_index}</Badge>
+            )}
+            {canSplit && !isEditing && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsSplitDialogOpen(true)} aria-label="Split into two runs">
+                    <Split className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Split into two runs</TooltipContent>
+              </Tooltip>
+            )}
+            {canUnsplit && !isEditing && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setIsMergeConfirmOpen(true)}
+                    disabled={isMerging}
+                    aria-label={`Merge with Run ${siblings[0].session_order}`}
+                  >
+                    {isMerging ? <Loader2 className="h-4 w-4 animate-spin" /> : <Merge className="h-4 w-4" />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Merge with Run {siblings[0].session_order}</TooltipContent>
+              </Tooltip>
             )}
             {editable && !isEditing && !isNew && (
               <Tooltip>
@@ -1616,6 +1702,32 @@ export function WorkoutCard({
             </Button>
           </div>
         </>
+      )}
+      {canSplit && workout.distance_target_meters && (
+        <SplitDialog
+          workoutId={workout.id}
+          totalMeters={workout.distance_target_meters}
+          open={isSplitDialogOpen}
+          onOpenChange={setIsSplitDialogOpen}
+          onSplit={() => onSplitChanged?.()}
+        />
+      )}
+      {canUnsplit && (
+        <AlertDialog open={isMergeConfirmOpen} onOpenChange={setIsMergeConfirmOpen}>
+          <AlertDialogContent className="md:left-[calc(108px+min(640px,50vw))]">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Merge both runs back into a single workout?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Run 1 and Run 2 will be combined into one workout with their distances summed.
+                Garmin sync state will reset — you can re-send to Garmin afterwards.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleUnsplit}>Merge</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </div>
   )

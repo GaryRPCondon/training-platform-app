@@ -42,13 +42,13 @@ async function loadDailyContext(athleteId: string) {
     const today = format(new Date(), 'yyyy-MM-dd')
     const yesterday = format(subDays(new Date(), 1), 'yyyy-MM-dd')
 
-    // Today's planned workout
-    const { data: todayWorkout } = await supabase
+    // Today's planned workouts (may be 1, or 2 for split-run / doubles)
+    const { data: todayWorkouts } = await supabase
         .from('planned_workouts')
         .select('*')
         .eq('athlete_id', athleteId)
         .eq('scheduled_date', today)
-        .single()
+        .order('session_order', { ascending: true })
 
     // Yesterday's completed activity
     const { data: yesterdayActivity } = await supabase
@@ -62,7 +62,7 @@ async function loadDailyContext(athleteId: string) {
         .single()
 
     return {
-        todayWorkout,
+        todayWorkouts: todayWorkouts ?? [],
         yesterdayActivity
     }
 }

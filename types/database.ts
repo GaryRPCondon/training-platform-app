@@ -221,6 +221,7 @@ export interface PlannedWorkout {
     scheduled_time: string | null
     workout_type: 'easy_run' | 'long_run' | 'intervals' | 'tempo' | 'rest' | 'cross_training' | 'recovery' | 'race'
     workout_index: string | null
+    session_order: number
     description: string | null
     distance_target_meters: number | null
     duration_target_seconds: number | null
