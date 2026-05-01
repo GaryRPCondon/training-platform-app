@@ -66,6 +66,7 @@ bugscreens/
 
 
 .claude/
+cc_command.txt
 temp_strava_original.txt
 build_log.txt
 build_output.txt

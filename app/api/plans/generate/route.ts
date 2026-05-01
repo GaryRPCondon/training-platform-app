@@ -178,23 +178,29 @@ export async function POST(request: Request) {
     const estimatedTokens = Math.ceil((systemPromptLength + userMessageLength) / 4)
     console.log(`LLM Request - System: ${systemPromptLength} chars, User: ${userMessageLength} chars, Est tokens: ${estimatedTokens}`)
 
-    // For plan generation, use a provider with high output token limits and fast response.
-    // Gemini Flash is preferred: ~30s response time, 65K output tokens, low cost.
-    // Falls back to the user's preferred provider if Gemini is not configured.
-    const userProviderName = athlete?.preferred_llm_provider || 'deepseek'
+    // Plan-generation provider selection:
+    //   1. If user has explicitly set a preferred provider in their profile → respect it.
+    //   2. Else if GEMINI_API_KEY is configured → use Gemini Flash Lite (preferred default
+    //      for plan gen: ~30s response, 65K output tokens, low cost).
+    //   3. Else fall back to deepseek-chat.
+    const userProviderName = athlete?.preferred_llm_provider || null
     const userModelName = athlete?.preferred_llm_model || undefined
 
     let planProviderName: string
     let planModelName: string | undefined
 
-    if (process.env.GEMINI_API_KEY) {
+    if (userProviderName) {
+      // User explicitly chose a provider — respect it. For deepseek, prefer
+      // deepseek-chat over deepseek-reasoner (reasoner exceeds Vercel's 300s
+      // timeout; chat is faster but has an 8192 output-token limit).
+      planProviderName = userProviderName
+      planModelName = (userProviderName === 'deepseek' && !userModelName) ? 'deepseek-chat' : userModelName
+    } else if (process.env.GEMINI_API_KEY) {
       planProviderName = 'gemini'
       planModelName = 'gemini-2.5-flash-lite'  // non-thinking model; avoids thinking tokens consuming output budget
     } else {
-      // Fall back to user's provider; prefer deepseek-chat over deepseek-reasoner
-      // (reasoner exceeds Vercel's 300s timeout; chat is faster but has 8192 token limit)
-      planProviderName = userProviderName
-      planModelName = (userProviderName === 'deepseek' && !userModelName) ? 'deepseek-chat' : userModelName
+      planProviderName = 'deepseek'
+      planModelName = 'deepseek-chat'
     }
 
     console.log(`Using LLM provider for plan generation: ${planProviderName}${planModelName ? ` (${planModelName})` : ''}`)

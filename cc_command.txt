@@ -1,3 +1,0 @@
-curl.exe -X POST http://localhost:3000/api/dev/generate-plans -H "Content-Type: application/json" -d '{"llm":"deepseek","model":"deepseek-v4-flash","templates":["steve_magness_5k","steve_magness_marathon","jack_daniels_2q_up_to_40_miles_marathon","jack_daniels_2q_41_55_miles_marathon","jack_daniels_2q_56_70_miles_marathon","jack_daniels_2q_71_85_miles_marathon","jack_daniels_2q_86_100_miles_marathon","jack_daniels_2q_101_120_miles_marathon","pfitz_55_marathon"]}'
-
-curl.exe http://localhost:3000/api/dev/validation-runs/<timestamp>
