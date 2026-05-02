@@ -1,250 +1,180 @@
 # trAIner
 
-An AI-powered training platform for endurance athletes, primarily focused on marathon and distance running. trAIner combines intelligent training plan generation with multi-provider AI coaching to help athletes train smarter and achieve their goals.
+A closed-loop training platform for runners. trAIner generates plans with foundations based on established coaching methodologies — **Jack Daniels, Pfitzinger, Steve Magness, Hansons, Hal Higdon, Couch 2 5K** — schedules your workouts on your Garmin watch, syncs your activities back from **Garmin and Strava**, scores compliance lap-by-lap, and feeds the resulting context to a context-aware **AI coach** that knows your plan, your recent training, and your per-workout pace targets. The platform supports everyone from absolute beginners (time-based run/walk intervals) to elite marathoners (200km per week runners), across 5K through marathon.
 
 ![trAIner Dashboard](screenshots/dashboard.png)
 
+## What makes it different
+
+- **Methodology-faithful**: plans encode the structural rules of different methodologies and approaches (e.g. Daniels Q1/Q2 days, Pfitz threshold logic, Magness's hard-easy patterns), rather than non-specific generalized "ramp volume + add some intervals" templates.
+- **Closed-loop**: completed activities are scored against planned workouts with lap-level fidelity. Missed workouts, volume gaps, and fatigue patterns surface as **observations** that the AI coach proposes specific adjustments for — accepted or rejected by you.
+- **Bidirectional Garmin integration**: sync activities in, push structured workouts (with pace targets and warmup/cooldown) out to your watch.
+- **Multi-provider AI**: pick from Google Gemini, DeepSeek, Anthropic Claude, OpenAI, or Grok per user; plan-generation defaults to a high-throughput model independent of your chat preference.
+- **Multi-user with admin approval**: self-registration, admin-gated activation, per-user data isolation, account deletion.
+
+## Human-centred design
+
+trAIner is built on the assertion that LLMs are good at synthesising and interpreting structured information and poor at improvising training science. The system constrains the AI's role accordingly, guided by templates, but providing flexibility to schedule and scale training plans.
+- **You choose the methodology.** The plan catalog is filtered by rule against your criteria (distance, current and peak mileage, weeks available, experience level) and presented as a ranked shortlist with explicit reasoning. You pick the template; no LLM picks for you. (`lib/templates/catalog-filter.ts`)
+- **Pace targets come from VDOT, not the LLM.** Paces are computed deterministically from the athlete's VDOT using Daniels' published formulae and stamped into each workout before write. The LLM is told not to calculate them. (`lib/plans/plan-writer.ts`, `lib/training/vdot.ts`)
+- **Structural validation gates every plan.** After generation, structural assertions check week count, race-day correctness, day numbering, and main-set integrity. Per-template `validation_ranges` flag volume drift. Blocking failures reject the plan; the user never sees a malformed one. (`lib/plans/structural-assertions.ts`)
+- **The athlete keeps decision authority.** Adjustments proposed by the system appear as accept/reject cards, never auto-applied. Workout edits, splits, syncs are all explicit user actions. The coach favours data-driven deterministic transparency ("your tempo completion rate is 67%") over non-deterministic inference.
+- **No medical advice.** The coach's system prompt explicitly forbids diagnosis, prescription, or symptom interpretation — only redirects to qualified professionals. Training guidance, not medical guidance. (`lib/agent/coach-prompt.ts`)
+- **You choose where your data goes.** The LLM provider is per-user; your plan and training data go only to the model you configure. No third-party telemetry, no cross-user sharing. (Your display name and any injury notes you record are included in coach context; email, auth tokens, and other identifiers are never sent.)
+
 ## Features
 
-### Training Plan Generation
-- **Periodized training plans** based on proven methodologies (Hansons, Pfitzinger, Jack Daniels, Hal Higdon, Steve Magness)
-- **Intelligent phase distribution**: Base, Build, Peak, and Taper phases automatically calculated based on goal race date
-- **Multiple race distances**: Marathon, Half Marathon, 10K, 5K
-- **VDOT-based pacing**: Training paces calculated from recent race results or time trials
+### Plan generation
+- Multiple methodologies and distances (**5K, 10K, half-marathon, marathon**); peak mileage tiers from beginner up to 120+ mpw.
+- **VDOT-based pacing** stamped into each workout at generation time (race-time, time-trial, or self-reported).
+- **Time-based and distance-based plans** — supports run/walk programmes (e.g. C25K) alongside conventional distance plans.
+- **Per-template validation ranges** keep generations within methodology-defined tolerances.
+- Automatic **periodization** (Base / Build / Peak / Taper) aligned with your goal date.
 
-### AI Coaching Chat
-- **Multi-provider support**: Choose from Anthropic Claude, OpenAI, Google Gemini, DeepSeek, or Grok
-- **Context-aware coaching**: AI has full access to your training history, current plan, and recent activities
-- **Interactive plan refinement**: Chat with your AI coach to adjust workouts, modify schedules, or discuss training philosophy
-- **Session history**: All coaching conversations are saved and retrievable
+### AI coaching
+- **Context-aware**: plan, recent activities, lap detail, pace targets, observations, athlete profile.
+- **Plan refinement**: chat to reschedule, swap, or restructure workouts; proposed changes appear as accept/reject cards.
+- **Per-workout discussion**: jump from a workout in the calendar straight into a coach session about that workout.
+- **AI activity summaries**: every imported run gets a generated summary (with lap analysis) stored on the activity card.
 
-### Activity Tracking
-- **Garmin integration** with direct API authentication
-- **Strava integration** with OAuth authentication
-- **Intelligent activity merging**: Automatically detects and suggests merging duplicate activities from different platforms
-- **Workout matching**: Links completed activities to planned workouts
+### Workout management
+- **Drag-and-drop calendar** (month view) with running-only filter and weekly totals.
+- **Manual create / edit / delete** workouts; structured workout editor for warmup/main set/cooldown with explicit pace targets.
+- **Split-run support**: split easy/long/recovery into Run 1 + Run 2 on the same date; merge back symmetrically.
+- **Garmin export**: send a single workout or a whole week to Garmin Connect; remove from GC; sync state tracked per workout.
+- **ICS calendar export** for use in Apple/Google/Outlook calendars.
+- **Workout reschedule**: inline drag, or pick a date from the workout card.
 
-### Automated Observations
-- **Missed workout detection**: Tracks when planned workouts aren't completed
-- **Volume gap analysis**: Identifies periods of low training volume
-- **Fatigue monitoring**: Detects patterns that may indicate overtraining
-- **AI-powered adjustments**: Automatically proposes plan modifications based on observations
+### Activity tracking
+- **Garmin and Strava** sync, with **automatic deduplication** when both are connected.
+- **Lap-level detail** (Garmin) imported into a `laps` table with split type, intensity, and compliance scores.
+- **Auto-match** activities to planned workouts on import; manual override available.
+- **Activity merging** UI for resolving cross-platform duplicates.
 
-### Plan Management
-- **Drag-and-drop calendar**: Easily reschedule workouts using an interactive calendar interface
-- **Weekly progress tracking**: Visualize mileage and intensity trends over time
-- **Phase progress indicators**: Track completion status of each training phase
-- **Plan templates**: Browse and customize pre-built training plans
+### Observations & adjustments
+- Continuous flag detection: missed workouts, volume gaps, fatigue indicators.
+- AI proposes specific plan modifications; user reviews and applies.
+- Phase progress tracked per training phase.
+
+### Multi-user
+- Self-registration with email-triggered admin approval.
+- Per-user training plans, integrations, AI provider preference, unit system (metric/imperial), week-start day, dark mode.
+- Admin-only user-management UI.
+- Self-service account deletion with full data wipe.
 
 ## Screenshots
 
-| Feature |
-|---------|
-| [Dashboard Overview](screenshots/dashboard.png) |
-| [Training Calendar](screenshots/calendar.png) |
-| [AI Coach Chat](screenshots/chat.png) |
-| [Activity Sync](screenshots/activity-sync.png) |
-| [Activity Review](screenshots/activities.png) |
-| [Plan Generation](screenshots/plan-generator.png) |
+| | |
+|---|---|
+| [Dashboard](screenshots/dashboard.png) — overview with today's workout, phase progress, weekly chart | [Calendar](screenshots/calendar.png) — drag-and-drop, weekly totals, split-run badges |
+| [AI Coach](screenshots/chat.png) — context-aware chat with workout discussion | [Plan Generation](screenshots/plan-generator.png) — template selection and goal setup |
+| [Workout Detail](screenshots/workout-card.png) — structured workout, split, Garmin send | [AI Activity Summary](screenshots/activity-summary.png) — generated summary with lap analysis |
+| [Observations](screenshots/observations.png) — flag review and adjustment acceptance | [Profile / Integrations](screenshots/profile.png) — Garmin/Strava status, LLM provider, units |
+| [Mobile](screenshots/mobile.png) — responsive layout on phone | [Dark Mode](screenshots/dark-mode.png) — calendar in dark theme |
 
 ## Installation
 
 ### Prerequisites
 
-- **Node.js** 20.x or later
-- **npm** 10.x or later
-- **Supabase account** (free tier works fine)
-- **At least one LLM API key** from:
-  - Anthropic (Claude)
-  - OpenAI (GPT-4)
-  - Google AI (Gemini)
-  - DeepSeek
-  - xAI (Grok)
+- Node.js 20.x+, npm 10.x+
+- Supabase project (free tier is fine)
+- At least one LLM API key: DeepSeek, Anthropic, OpenAI, Google Gemini, or xAI
 
-### Optional Services
+### Optional
 
-- **Strava account** for activity sync
-- **Garmin Connect account** for activity sync
+- Strava API app for Strava sync
+- Garmin Connect account (without MFA — see note below)
 
-### Setup Steps
+### Setup
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/trAIner.git
-   cd trAIner
-   ```
+```bash
+git clone https://github.com/GaryRPCondon/training-platform-app.git
+cd training-platform-app
+npm install
+cp .env.example .env.local   # fill in Supabase + LLM keys
+# Apply migrations to your Supabase project (Supabase CLI or SQL editor)
+npm run dev
+```
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Set up Supabase**
-   - Create a new project at [supabase.com](https://supabase.com)
-   - Copy your project URL and anon key
-   - Run the migrations in the `supabase/migrations/` directory (use Supabase CLI or the SQL editor)
-
-4. **Configure environment variables**
-   - Copy `.env.example` to `.env.local`
-   ```bash
-   cp .env.example .env.local
-   ```
-   - Fill in your Supabase credentials
-   - Add at least one LLM provider API key
-   - Optionally configure Strava credentials
-
-5. **Run the development server**
-   ```bash
-   npm run dev
-   ```
-   Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open <http://localhost:3000> and create the first user; that account becomes admin and can approve subsequent registrations.
 
 ## Configuration
 
-### LLM Provider Selection
+### LLM providers
 
-trAIner supports multiple AI providers. Configure your preferred provider in `.env.local`:
+Each user picks their preferred chat provider in **Profile → AI Settings**. Plan generation uses your preference if set, falling back to Gemini Flash Lite when no preference is set and `GEMINI_API_KEY` is present (chosen for output token capacity, not chat quality).
 
-```bash
-LLM_PROVIDER=anthropic  # Options: anthropic, openai, gemini, deepseek, grok
+```env
+ANTHROPIC_API_KEY=...
+OPENAI_API_KEY=...
+GEMINI_API_KEY=...
+DEEPSEEK_API_KEY=...
+XAI_API_KEY=...
 ```
 
-Add the corresponding API key:
-```bash
-ANTHROPIC_API_KEY=sk-ant-...
-OPENAI_API_KEY=sk-proj-...
-GEMINI_API_KEY=AIza...
-DEEPSEEK_API_KEY=sk-...
-XAI_API_KEY=xai-...
+### Strava
+
+```env
+STRAVA_CLIENT_ID=...
+STRAVA_CLIENT_SECRET=...
+STRAVA_REDIRECT_URI=http://localhost:3000/api/strava/callback
 ```
 
-Users can also switch providers in the application settings without redeploying.
+Set the authorization callback domain in your Strava API app to match.
 
-### Strava Integration
+### Garmin
 
-To enable Strava activity sync:
+Connect from **Profile → Integrations**. Credentials are exchanged for OAuth tokens (stored encrypted-at-rest by Supabase) and not retained.
 
-1. Create a Strava API application at [strava.com/settings/api](https://www.strava.com/settings/api)
-2. Set the authorization callback domain to `http://localhost:3000/api/strava/callback` (or your production domain)
-3. Add the credentials to `.env.local`:
-   ```bash
-   STRAVA_CLIENT_ID=your_client_id
-   STRAVA_CLIENT_SECRET=your_client_secret
-   STRAVA_REDIRECT_URI=http://localhost:3000/api/strava/callback
-   ```
-
-### Garmin Integration
-
-Garmin integration uses the `garmin-connect` npm package with direct API authentication:
-
-1. Navigate to **Profile → Integrations** in the application
-2. Click **Connect** next to Garmin Connect
-3. Enter your Garmin Connect email and password
-4. Your credentials are used only to obtain authentication tokens and are not stored
-
-**Note**: If you have multi-factor authentication (MFA) enabled on your Garmin account, you'll need to temporarily disable it or use Strava sync instead. The `garmin-connect` library does not currently support MFA.
-
-Authentication tokens are stored securely in the database and automatically refreshed as needed.
+> **MFA note**: the `garmin-connect` library does not currently support MFA. If your Garmin account has MFA enabled, either temporarily disable it or rely on Strava sync.
 
 ## Architecture
 
-### Tech Stack
+### Stack
 
-- **Frontend**: Next.js 16 (App Router), React 19, TailwindCSS 4
-- **Backend**: Next.js API Routes
-- **Database**: Supabase (PostgreSQL)
-- **AI Integration**: Provider-agnostic factory pattern supporting multiple LLM APIs
-- **State Management**: React Query (TanStack Query)
-- **UI Components**: Radix UI primitives, shadcn/ui conventions
-- **Calendar**: react-big-calendar with drag-and-drop support
+- **Next.js 16** (App Router) + React 19, TypeScript, TailwindCSS 4
+- **Supabase** (Postgres + auth + RLS); migrations under `supabase/migrations/`
+- **TanStack Query** for client state; React Server Components for server data
+- **Radix UI** primitives via shadcn/ui conventions
+- **Vitest** test suite (~230 tests; run as a pre-commit hook)
 
-### Key Design Patterns
+### Key modules
 
-**LLM Provider Abstraction**: A factory pattern (`lib/agent/factory.ts`) allows seamless switching between AI providers. Each provider implements a common interface (`lib/agent/provider-interface.ts`), making it easy to add new LLMs without changing application code.
+- `lib/agent/` — provider-agnostic LLM factory + context loader (athlete, plan, week, recent activities, lap detail, observations).
+- `lib/plans/` — plan generation, structured-workout builder, pace stamping, response parser, validation. Templates live in the `plan_templates` Supabase table.
+- `lib/training/vdot.ts` — VDOT/race-time → training paces.
+- `lib/garmin/` — Garmin Connect client (OAuth1+2), workout mapper (Garmin JSON), lap importer.
+- `lib/strava/` — Strava OAuth + activity sync.
+- `lib/activities/` — auto-match, duplicate detection, scoring.
+- `lib/analysis/` — flag detector, observation manager, adjustment proposer/persistence, phase progress.
+- `app/api/workouts/{split,unsplit,reschedule,update}` — calendar workout mutations.
+- `app/api/garmin/workouts` — Garmin workout export (send / remove).
+- `proxy.ts` — global auth gate (Supabase SSR) for all dashboard routes.
 
-**Context-Aware Coaching**: The AI coaching system loads comprehensive context about the athlete (current plan, recent activities, observations, settings) before each chat interaction, enabling relevant and personalized guidance.
-
-**Observation-Driven Adjustments**: A flag detection system continuously monitors training patterns and automatically proposes adjustments, which users can review and apply through the UI.
-
-### Project Structure
-
-```
-app/                    # Next.js App Router pages
-  api/                  # API route handlers
-  dashboard/            # Main application pages
-components/             # React components
-  ui/                   # Base UI components (Radix/shadcn)
-  activities/           # Activity-specific components
-  calendar/             # Calendar and scheduling
-  chat/                 # AI coach interface
-lib/                    # Core application logic
-  agent/                # AI provider abstraction
-  planning/             # Training plan generation
-  activities/           # Activity matching and merging
-  analysis/             # Observation and adjustment systems
-  garmin/               # Garmin Connect API client
-  strava/               # Strava API client
-  supabase/             # Database queries and utilities
-types/                  # TypeScript type definitions
-supabase/migrations/    # Database migrations
-```
-
-## Training Philosophies
-
-trAIner's training plan templates are inspired by well-established marathon training methodologies:
-
-- **Hansons Method**: Cumulative fatigue training with moderate long runs
-- **Pfitzinger**: High-mileage approach with lactate threshold work
-- **Jack Daniels**: VDOT-based pacing with structured intensity
-- **Hal Higdon**: Accessible plans for runners of all levels
-- **Steve Magness**: Science-based approach balancing stress and recovery
-
-Plans are automatically periodized into Base, Build, Peak, and Taper phases based on your goal race date and current fitness.
 
 ## Development
 
-### Build Commands
-
 ```bash
-npm run dev          # Development server (port 3000)
-npm run build        # Production build
-npm start            # Run production server
-npm run lint         # Run ESLint
+npm run dev          # dev server
+npm run build        # production build
+npm start            # serve build
+npm run lint         # ESLint
+npm run test         # Vitest run
+npm run test:watch   # Vitest watch
 ```
 
-### Database Migrations
+### Migrations
 
-To apply database migrations:
+Apply with `supabase db push` if your project is linked, or copy individual SQL files from `supabase/migrations/` into the Supabase SQL editor.
 
-1. Install the Supabase CLI
-2. Link your project: `supabase link --project-ref your-project-ref`
-3. Apply migrations: `supabase db push`
+## Security
 
-Alternatively, copy the SQL from `supabase/migrations/` and run it in the Supabase SQL editor.
+The codebase has been through a defensive audit covering: IDOR on observation/adjustment endpoints, CSRF on the Strava OAuth dance, account-creation hardening (admin-only with email verification), security headers (HSTS, X-Frame-Options, Permissions-Policy), and dependency audit. See migration history for individual fixes.
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+MIT — see [LICENSE](LICENSE). Copyright 2025–2026 Gary Condon.
 
-Copyright 2025 Gary Condon
+## Disclaimer
 
-## Contributing
-
-Contributions are welcome! Please feel free to submit issues or pull requests.
-
-For major changes, please open an issue first to discuss what you would like to change.
-
-## Acknowledgments
-
-- Training methodologies inspired by Hansons, Pfitzinger, Jack Daniels, Hal Higdon, and Steve Magness
-- UI components built with [Radix UI](https://www.radix-ui.com/) and [shadcn/ui](https://ui.shadcn.com/)
-- Database and authentication powered by [Supabase](https://supabase.com/)
-- AI coaching enabled by [Anthropic](https://www.anthropic.com/), [OpenAI](https://openai.com/), [Google AI](https://ai.google.dev/), [DeepSeek](https://www.deepseek.com/), and [xAI](https://x.ai/)
-
-## Support
-
-For questions, issues, or feature requests, please [open an issue](https://github.com/yourusername/trAIner/issues) on GitHub.
-
----
-
-**Note**: trAIner is a personal project and training tool. The AI coaching features provide guidance based on established training principles, but should not replace advice from qualified coaches or medical professionals. Always listen to your body and consult with healthcare providers before starting a new training program.
+trAIner is a personal project. AI coaching guidance is grounded in established training principles but is not a substitute for advice from a qualified coach or medical professional.
