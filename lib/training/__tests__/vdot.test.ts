@@ -32,6 +32,12 @@ describe('VDOT Calculations', () => {
     expect(paces.tempo).toBeLessThan(paces.marathon) // Tempo faster than marathon
     expect(paces.interval).toBeLessThan(paces.tempo) // Interval faster than tempo
   })
+
+  it('includes walk pace at the brisk-walking constant', () => {
+    const paces = calculateTrainingPaces(50)
+    expect(paces.walk).toBe(600) // 10:00/km, fitness-independent
+    expect(paces.walk).toBeGreaterThan(paces.easy) // Walking is slower than easy running
+  })
 })
 
 describe('Time Parsing & Formatting', () => {

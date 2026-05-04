@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { resolvePace, resolveAllPaces, formatPaceMinKm, formatResolvedPace } from '../pace-resolver'
+import { resolvePace, resolveAllPaces, formatPaceMinKm, formatResolvedPace, type PaceTarget } from '../pace-resolver'
 import type { AllTrainingPaces } from '@/lib/training/vdot'
 
 // VDOT ~50 athlete paces (seconds/km)
@@ -9,6 +9,7 @@ const ATHLETE_PACES: AllTrainingPaces = {
   tempo: 253,         // 4:13/km
   interval: 224,      // 3:44/km
   repetition: 210,    // 3:30/km
+  walk: 600,
   race_mile: 205,
   race_3k: 218,
   race_5k: 240,
@@ -22,13 +23,13 @@ const HANSONS_TARGETS = {
   strength: { reference_pace: 'marathon', offset_sec_per_km: -6, description: '~10 sec/mile faster than marathon pace' },
   tempo:    { reference_pace: 'marathon', description: 'Marathon goal pace' },
   speed:    { reference_pace: 'interval', description: '5K-10K race pace' },
-}
+} as const satisfies Record<string, PaceTarget>
 
 const PFITZ_TARGETS = {
   lactate_threshold: { reference_pace: 'race_15k', reference_pace_upper: 'race_half_marathon', description: '15K to half marathon race pace' },
   vo2max: { reference_pace: 'race_5k', description: '5K race pace' },
   strides: { reference_pace: 'race_mile', description: 'Approximately mile race pace' },
-}
+} as const satisfies Record<string, PaceTarget>
 
 describe('resolvePace', () => {
   it('returns null when paceTargets is undefined', () => {

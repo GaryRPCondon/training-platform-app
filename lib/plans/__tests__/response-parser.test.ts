@@ -188,6 +188,40 @@ describe('parseLLMResponse', () => {
     const result = parseLLMResponse(plan)
     expect(result.weeks[0].workouts[0].description).toBe('Tempo run')
   })
+
+  it('round-trips a 10K race-pace interval workout with structured_workout intact', () => {
+    const workout = makeWorkout({
+      type: 'intervals',
+      intensity: 'race_10k',
+      description: '5×1km @ 10K race pace, 90s recovery',
+      distance_meters: 8000,
+      pace_guidance: '4:15/km',
+      structured_workout: {
+        warmup: { duration_minutes: 15, intensity: 'easy' },
+        main_set: [{
+          repeat: 5,
+          intervals: [
+            { distance_meters: 1000, intensity: 'race_10k' },
+            { duration_seconds: 90, intensity: 'recovery' },
+          ],
+        }],
+        cooldown: { duration_minutes: 10, intensity: 'easy' },
+      },
+    })
+    const plan = makePlanJson([makeWeek(1, [workout])])
+    const result = parseLLMResponse(plan)
+
+    const parsed = result.weeks[0].workouts[0]
+    expect(parsed.type).toBe('intervals')
+    expect(parsed.intensity).toBe('race_10k')
+    expect(parsed.structured_workout).toBeDefined()
+    const sw = parsed.structured_workout as Record<string, unknown>
+    const mainSet = sw.main_set as Array<{ repeat: number; intervals: Array<Record<string, unknown>> }>
+    expect(mainSet).toHaveLength(1)
+    expect(mainSet[0].repeat).toBe(5)
+    expect(mainSet[0].intervals[0]).toMatchObject({ distance_meters: 1000, intensity: 'race_10k' })
+    expect(mainSet[0].intervals[1]).toMatchObject({ duration_seconds: 90, intensity: 'recovery' })
+  })
 })
 
 // ---------------------------------------------------------------------------

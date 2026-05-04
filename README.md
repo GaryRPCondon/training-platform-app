@@ -17,7 +17,7 @@ A closed-loop training platform for runners. trAIner generates plans with founda
 trAIner is built on the assertion that LLMs are good at synthesising and interpreting structured information and poor at improvising training science. The system constrains the AI's role accordingly, guided by templates, but providing flexibility to schedule and scale training plans.
 - **You choose the methodology.** The plan catalog is filtered by rule against your criteria (distance, current and peak mileage, weeks available, experience level) and presented as a ranked shortlist with explicit reasoning. You pick the template; no LLM picks for you. (`lib/templates/catalog-filter.ts`)
 - **Pace targets come from VDOT, not the LLM.** Paces are computed deterministically from the athlete's VDOT using Daniels' published formulae and stamped into each workout before write. The LLM is told not to calculate them. (`lib/plans/plan-writer.ts`, `lib/training/vdot.ts`)
-- **Structural validation gates every plan.** After generation, structural assertions check week count, race-day correctness, day numbering, and main-set integrity. Per-template `validation_ranges` flag volume drift. Blocking failures reject the plan; the user never sees a malformed one. (`lib/plans/structural-assertions.ts`)
+- **Structural validation gates every plan.** After generation, structural assertions check week count, race-day correctness, day numbering, and main-set integrity. Blocking failures reject the plan; the user never sees a malformed one. (`lib/plans/structural-assertions.ts`)
 - **The athlete keeps decision authority.** Adjustments proposed by the system appear as accept/reject cards, never auto-applied. Workout edits, splits, syncs are all explicit user actions. The coach favours data-driven deterministic transparency ("your tempo completion rate is 67%") over non-deterministic inference.
 - **No medical advice.** The coach's system prompt explicitly forbids diagnosis, prescription, or symptom interpretation — only redirects to qualified professionals. Training guidance, not medical guidance. (`lib/agent/coach-prompt.ts`)
 - **You choose where your data goes.** The LLM provider is per-user; your plan and training data go only to the model you configure. No third-party telemetry, no cross-user sharing. (Your display name and any injury notes you record are included in coach context; email, auth tokens, and other identifiers are never sent.)
@@ -28,7 +28,6 @@ trAIner is built on the assertion that LLMs are good at synthesising and interpr
 - Multiple methodologies and distances (**5K, 10K, half-marathon, marathon**); peak mileage tiers from beginner up to 120+ mpw.
 - **VDOT-based pacing** stamped into each workout at generation time (race-time, time-trial, or self-reported).
 - **Time-based and distance-based plans** — supports run/walk programmes (e.g. C25K) alongside conventional distance plans.
-- **Per-template validation ranges** keep generations within methodology-defined tolerances.
 - Automatic **periodization** (Base / Build / Peak / Taper) aligned with your goal date.
 
 ### AI coaching

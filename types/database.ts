@@ -21,7 +21,7 @@ export interface Athlete {
     use_fast_model_for_operations: boolean // Use non-reasoning model for quick operations
     preferred_activity_data_source: 'strava' | 'garmin' | 'most_recent' // Priority for merged activity details
     vdot: number | null
-    training_paces: { easy: number; marathon: number; tempo: number; interval: number; repetition: number } | null
+    training_paces: { easy: number; marathon: number; tempo: number; interval: number; repetition: number; walk: number } | null
     pace_source: string | null
     pace_source_data: any | null
     sync_locked_at: string | null
@@ -180,6 +180,7 @@ export interface TrainingPaces {
     tempo: number
     interval: number
     repetition: number
+    walk: number
 }
 
 export interface TrainingPhase {

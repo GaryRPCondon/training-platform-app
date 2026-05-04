@@ -7,17 +7,47 @@
  */
 
 import type { AllTrainingPaces } from '@/lib/training/vdot'
+import { paceTargetsSchema, type PaceTarget } from '@/lib/templates/types'
 
 // ============================================================================
 // Types
 // ============================================================================
 
-export interface PaceTarget {
-  reference_pace: string           // key into AllTrainingPaces (e.g. "easy", "race_5k")
-  offset_sec_per_km?: number       // negative=faster, positive=slower. Default 0
-  reference_pace_upper?: string    // for range targets (e.g. Pfitz LT: race_15k → race_half_marathon)
-  description: string              // human-readable, shown in coach prompt
-  prescription?: 'distance' | 'time'  // default 'distance'. 'time' → LLM emits duration_seconds + distance_meters:null
+export type { PaceTarget }
+
+/**
+ * Thrown when a template's pace_targets fails Zod validation. Carries the
+ * template_id (when known) so seed-time and plan-generation callers can
+ * point operators at the offending row.
+ */
+export class PaceTargetsValidationError extends Error {
+  constructor(message: string, public readonly templateId?: string) {
+    super(message)
+    this.name = 'PaceTargetsValidationError'
+  }
+}
+
+/**
+ * Validate a template's pace_targets once before use. Throws on invalid input.
+ * Call this at the seed boundary and at the start of plan generation; downstream
+ * resolvePace calls then trust the input shape.
+ */
+export function validatePaceTargets(
+  paceTargets: unknown,
+  templateId?: string
+): void {
+  const result = paceTargetsSchema.safeParse(paceTargets ?? {})
+  if (!result.success) {
+    const issues = result.error.issues.map(issue => {
+      const path = issue.path.length > 0 ? issue.path.join('.') : '<root>'
+      return `${path}: ${issue.message}`
+    }).join('; ')
+    const idPart = templateId ? ` (template ${templateId})` : ''
+    throw new PaceTargetsValidationError(
+      `Invalid pace_targets${idPart}: ${issues}`,
+      templateId
+    )
+  }
 }
 
 export interface ResolvedPace {
