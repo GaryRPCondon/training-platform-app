@@ -69,7 +69,7 @@ trAIner is built on the assertion that LLMs are good at synthesising and interpr
 | [AI Coach](screenshots/Dark_AICoach.png) — context-aware chat with workout discussion | [Plan Generation](screenshots/Dark_CreatePlan.png) — template selection and goal setup |
 | [Workout Detail](screenshots/Dark_WorkoutCard.png) — structured workout, split, Garmin send | [AI Activity Summary](screenshots/Dark_ActivityCard.png) — generated summary with lap analysis |
 | [Profile / Integrations](screenshots/Dark_Profile.png) — Garmin/Strava status, LLM provider, units | [Activity Lap Analysis](screenshots/Dark_LapView.png) — Per-lap analysis with plan alignment  |
-| [Mobile](screenshots/Dark_Mobile.png) — responsive layout on phone | [Dark Mode](screenshots/dark-mode.png) — calendar in dark theme |
+| [Mobile](screenshots/Dark_Mobile.jpeg) — responsive layout on phone |
 
 ## Installation
 
