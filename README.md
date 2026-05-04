@@ -2,7 +2,7 @@
 
 A closed-loop training platform for runners. trAIner generates plans with foundations based on established coaching methodologies — **Jack Daniels, Pfitzinger, Steve Magness, Hansons, Hal Higdon, Couch 2 5K** — schedules your workouts on your Garmin watch, syncs your activities back from **Garmin and Strava**, scores compliance lap-by-lap, and feeds the resulting context to a context-aware **AI coach** that knows your plan, your recent training, and your per-workout pace targets. The platform supports everyone from absolute beginners (time-based run/walk intervals) to elite marathoners (200km per week runners), across 5K through marathon.
 
-![trAIner Dashboard](screenshots/Dark_Dashboard.png.png)
+![trAIner Dashboard](screenshots/Dark_Dashboard.png)
 
 ## What makes it different
 
@@ -66,10 +66,10 @@ trAIner is built on the assertion that LLMs are good at synthesising and interpr
 | | |
 |---|---|
 | [Dashboard](screenshots/Dark_Dashboard.png) — overview with today's workout, phase progress, weekly chart | [Calendar](screenshots/Dark_Calendar.png) — drag-and-drop, weekly totals, split-run badges |
-| [AI Coach](screenshots/Dark_AICoach.png) — context-aware chat with workout discussion | [Plan Generation](screenshots/plan-generator.png) — template selection and goal setup |
+| [AI Coach](screenshots/Dark_AICoach.png) — context-aware chat with workout discussion | [Plan Generation](screenshots/Dark_CreatePlan.png) — template selection and goal setup |
 | [Workout Detail](screenshots/Dark_WorkoutCard.png) — structured workout, split, Garmin send | [AI Activity Summary](screenshots/Dark_ActivityCard.png) — generated summary with lap analysis |
-| [Observations](screenshots/observations.png) — flag review and adjustment acceptance | [Profile / Integrations](screenshots/Dark_Profile.png) — Garmin/Strava status, LLM provider, units |
-| [Mobile](screenshots/mobile.png) — responsive layout on phone | [Dark Mode](screenshots/dark-mode.png) — calendar in dark theme |
+| [Profile / Integrations](screenshots/Dark_Profile.png) — Garmin/Strava status, LLM provider, units | [Activity Lap Analysis](screenshots/Dark_LapView.png) — Per-lap analysis with plan alignment  |
+| [Mobile](screenshots/Dark_Mobile.png) — responsive layout on phone | [Dark Mode](screenshots/dark-mode.png) — calendar in dark theme |
 
 ## Installation
 
