@@ -326,6 +326,10 @@ export function getWorkoutPaceType(workoutType: string): keyof TrainingPaces {
   if (typeLower === 'recovery') return 'easy'
   if (typeLower === 'easy_run') return 'easy'
   if (typeLower === 'long_run') return 'easy'
+  // 'race' falls through to marathon as a last-resort default. Consumers that
+  // surface pace to the athlete (ICS export, Garmin mapper) short-circuit before
+  // reaching this fallback so race day shows no pace target — see ics-export.ts
+  // and workout-mapper.ts. This mapping is preserved for any non-presentation caller.
   if (typeLower === 'race') return 'marathon'
 
   // Partial matches for variations
