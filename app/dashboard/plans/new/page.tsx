@@ -12,6 +12,7 @@ import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import { VDOTInput, type VDOTInputValue } from '@/components/plans/vdot-input'
 import { useUnits } from '@/lib/hooks/use-units'
+import { computeWeeksAvailable } from '@/lib/utils/plan-dates'
 
 const KM_PER_MILE = 1.60934
 
@@ -157,9 +158,9 @@ function NewPlanPageContent() {
                 return
             }
 
-            // Calculate weeks available between start date and goal date
-            const msPerWeek = 7 * 24 * 60 * 60 * 1000
-            const weeksAvailable = Math.floor((goalDateObj.getTime() - startDateObj.getTime()) / msPerWeek)
+            // Calculate weeks available between start date and goal date.
+            // Shared with the plan-generation API so URL param and LLM prompt agree.
+            const weeksAvailable = computeWeeksAvailable(startDateObj, goalDateObj)
 
             // Convert imperial input to metric for internal storage
             const currentKm = units === 'imperial' ? (currentVolume as number) * KM_PER_MILE : (currentVolume as number)
