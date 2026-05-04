@@ -267,3 +267,44 @@ describe('mapToGarminWorkout — simple workouts', () => {
     expect(result.workoutName).toBe('5×1km @ 10K race pace')
   })
 })
+
+describe('mapToGarminWorkout — race-day workouts get no pace target', () => {
+  function raceFixture(distanceMeters: number) {
+    return makeWorkout({
+      description: 'Goal race',
+      workout_type: 'race',
+      distance_target_meters: distanceMeters,
+      intensity_target: 'race',
+      structured_workout: null,
+    })
+  }
+
+  it('omits pace target for a 5K race workout', () => {
+    const result = mapToGarminWorkout(raceFixture(5000), PACES)
+    const step = result.workoutSegments[0].workoutSteps[0]
+    expect(step.targetType.workoutTargetTypeKey).toBe('no.target')
+    expect(step.targetValueOne).toBeNull()
+    expect(step.targetValueTwo).toBeNull()
+  })
+
+  it('omits pace target for a 10K race workout', () => {
+    const result = mapToGarminWorkout(raceFixture(10000), PACES)
+    const step = result.workoutSegments[0].workoutSteps[0]
+    expect(step.targetType.workoutTargetTypeKey).toBe('no.target')
+    expect(step.targetValueOne).toBeNull()
+  })
+
+  it('omits pace target for a half marathon race workout', () => {
+    const result = mapToGarminWorkout(raceFixture(21097), PACES)
+    const step = result.workoutSegments[0].workoutSteps[0]
+    expect(step.targetType.workoutTargetTypeKey).toBe('no.target')
+    expect(step.targetValueOne).toBeNull()
+  })
+
+  it('omits pace target for a marathon race workout', () => {
+    const result = mapToGarminWorkout(raceFixture(42195), PACES)
+    const step = result.workoutSegments[0].workoutSteps[0]
+    expect(step.targetType.workoutTargetTypeKey).toBe('no.target')
+    expect(step.targetValueOne).toBeNull()
+  })
+})

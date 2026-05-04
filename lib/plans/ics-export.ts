@@ -120,16 +120,20 @@ function formatICSDescription(
     lines.push(`Intensity: ${workout.intensity_target}`)
   }
 
-  // Pace target: prefer stamped methodology pace, fall back to workout-type mapping
+  // Pace target: prefer stamped methodology pace, fall back to workout-type mapping.
+  // Race workouts deliberately get no Target Pace line — race is run on effort, not
+  // pace, and the fallback would resolve 'race' to marathon pace (wrong for 5K/10K).
   const sw = workout.structured_workout as Record<string, unknown> | null
-  if (sw?.target_pace_sec_per_km && typeof sw.target_pace_sec_per_km === 'number') {
-    const label = typeof sw.pace_label === 'string' ? sw.pace_label : 'target'
-    lines.push(`Target Pace: ${formatPace(sw.target_pace_sec_per_km as number, units)} (${label})`)
-  } else if (trainingPaces) {
-    const paceType = getWorkoutPaceType(workout.workout_type)
-    const paceSeconds = trainingPaces[paceType]
-    if (paceSeconds) {
-      lines.push(`Target Pace: ${formatPace(paceSeconds, units)} (${paceType})`)
+  if (workout.workout_type !== 'race') {
+    if (sw?.target_pace_sec_per_km && typeof sw.target_pace_sec_per_km === 'number') {
+      const label = typeof sw.pace_label === 'string' ? sw.pace_label : 'target'
+      lines.push(`Target Pace: ${formatPace(sw.target_pace_sec_per_km as number, units)} (${label})`)
+    } else if (trainingPaces) {
+      const paceType = getWorkoutPaceType(workout.workout_type)
+      const paceSeconds = trainingPaces[paceType]
+      if (paceSeconds) {
+        lines.push(`Target Pace: ${formatPace(paceSeconds, units)} (${paceType})`)
+      }
     }
   }
 

@@ -13,6 +13,7 @@ import type { UserCriteria } from '@/lib/templates/types'
 import type { TrainingPaces } from '@/types/database'
 import { writeLLMLog } from '@/lib/agent/llm-logger'
 import { archivePlanAndGoal } from '@/lib/supabase/plan-activation'
+import { computeWeeksAvailable } from '@/lib/utils/plan-dates'
 import { z } from 'zod'
 
 const generateSchema = z.object({
@@ -121,12 +122,10 @@ export async function POST(request: Request) {
     planStartDateObj.setDate(startDateObj.getDate() + daysUntilTarget)
     const planStartDate = planStartDateObj.toISOString().split('T')[0]
 
-    // Compute weeks_needed and race day number — also needed by structural assertions
+    // Compute weeks_needed and race day number — also needed by structural assertions.
+    // Shared helper with the plan-creator UI so URL param and LLM prompt agree.
     const goalDateObj = new Date(goal_date)
-    const daysFromPlanStartToGoal = Math.floor(
-      (goalDateObj.getTime() - planStartDateObj.getTime()) / (1000 * 60 * 60 * 24)
-    )
-    const weeksNeeded = Math.floor(daysFromPlanStartToGoal / 7) + 1
+    const weeksNeeded = computeWeeksAvailable(planStartDateObj, goalDateObj)
     const raceDayOfWeek = goalDateObj.getDay()
     const raceDayNumber = raceDayOfWeek === firstDayOfWeek ? 1 :
       ((raceDayOfWeek - firstDayOfWeek + 7) % 7) + 1

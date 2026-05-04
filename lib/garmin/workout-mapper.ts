@@ -110,11 +110,13 @@ function resolvePaceFromIntensity(
 
   if (intensity) {
     const lower = intensity.toLowerCase()
-    if (lower.includes('walk')) {
-      return null  // Walk segments get no pace target — avoids false compliance warnings
+    if (lower.includes('walk') || lower === 'race') {
+      // Walk and race-day get no pace target — race is run on effort, not pace,
+      // and a stamped pace would otherwise default to marathon (wrong for 5K/10K).
+      return null
     } else if (lower.includes('easy') || lower.includes('recovery')) {
       paceType = 'easy'
-    } else if (lower.includes('marathon') || lower === 'race') {
+    } else if (lower.includes('marathon')) {
       paceType = 'marathon'
     } else if (lower.includes('tempo') || lower.includes('threshold')) {
       paceType = 'tempo'

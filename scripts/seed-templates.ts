@@ -122,8 +122,9 @@ async function main() {
   // Load catalogs
   const marathonCatalog = await loadTemplateFile('marathon_plan_catalog.json') as TemplateCatalog
   const fivekCatalog = await loadTemplateFile('5k_plan_catalog.json') as TemplateCatalog
-  const allPlans = [...marathonCatalog.plans, ...fivekCatalog.plans]
-  console.log(`Loaded ${marathonCatalog.plans.length} marathon + ${fivekCatalog.plans.length} 5K templates (${allPlans.length} total)`)
+  const tenkCatalog = await loadTemplateFile('10k_plan_catalog.json') as TemplateCatalog
+  const allPlans = [...marathonCatalog.plans, ...fivekCatalog.plans, ...tenkCatalog.plans]
+  console.log(`Loaded ${marathonCatalog.plans.length} marathon + ${fivekCatalog.plans.length} 5K + ${tenkCatalog.plans.length} 10K templates (${allPlans.length} total)`)
 
   // Cache source files to avoid re-reading the same file multiple times
   const sourceFileCache = new Map<string, unknown>()
