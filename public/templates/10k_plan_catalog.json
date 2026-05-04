@@ -1,0 +1,77 @@
+{
+  "catalog_version": "1.0",
+  "last_updated": "2026-05-04",
+  "description": "Catalog of 10K training plan templates for LLM-powered plan generation",
+  "total_plans": 1,
+  "plans": [
+    {
+      "template_id": "bespoke_post_marathon_10k",
+      "name": "Post-Marathon 10K (10-Week Bespoke)",
+      "author": "Custom",
+      "methodology": "Bespoke",
+      "distance": "10k",
+      "source_file": "bespoke_post_marathon_10k_template.json",
+      "characteristics": {
+        "duration_weeks": 10,
+        "training_days_per_week": 6,
+        "peak_weekly_mileage": {
+          "miles": 62,
+          "km": 100
+        },
+        "difficulty_score": 7,
+        "structure_type": "periodized"
+      },
+      "target_audience": {
+        "experience_level": "intermediate_to_advanced",
+        "prerequisites": [
+          "Recent marathon completed within the past 2-4 weeks",
+          "At least one week of easy running already completed post-marathon",
+          "No residual injuries or lingering soreness from the marathon",
+          "Established 5+ years of running experience",
+          "Comfortable with 80-100 km per week",
+          "Familiar with VDOT or pace-based training",
+          "Experience with threshold and interval training"
+        ],
+        "training_commitment": "high"
+      },
+      "philosophy": {
+        "approach": "Three-phase 10K block for a runner transitioning from marathon to a faster distance, designed to bridge into a subsequent marathon training block. Reintroduction → threshold and VO2max development → race-specific sharpening.",
+        "key_features": [
+          "Two quality sessions per week (Tuesday and Thursday by default)",
+          "Saturday long run with one rest day per week",
+          "Threshold (T) and interval (I) work as primary stimuli",
+          "Race-specific 10K-pace work introduced in final 3 weeks",
+          "Strides only — no hill sprints, suitable for runners with hip/groin injury history",
+          "Mid-plan 5K race in week 3 to consolidate VDOT before sharper work begins"
+        ],
+        "description_short": "10-week 10K plan for an experienced runner transitioning from marathon to a 10K focus block. Two quality sessions per week, peak ~100 km. Threshold and VO2max development followed by race-specific sharpening. Bridges into a subsequent marathon training cycle."
+      },
+      "tags": [
+        "bespoke",
+        "10k",
+        "post_marathon",
+        "intermediate",
+        "advanced",
+        "10_weeks",
+        "6_days_week",
+        "vdot",
+        "threshold_focus",
+        "no_hill_sprints"
+      ],
+      "suitable_for": {
+        "good_fit": [
+          "Experienced runners returning from a marathon to a 10K focus",
+          "Runners with hip, groin or hamstring injury history (no hill sprints)",
+          "Athletes bridging from one marathon cycle to the next via a shorter focus block",
+          "Runners comfortable at 80-100 km per week"
+        ],
+        "not_recommended": [
+          "Runners less than 2 weeks post-marathon",
+          "Runners without recent marathon experience (use a standalone 10K plan)",
+          "New runners or those without VDOT/threshold training experience",
+          "Runners who cannot commit to 6 days per week"
+        ]
+      }
+    }
+  ]
+}

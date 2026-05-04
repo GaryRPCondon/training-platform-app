@@ -242,7 +242,7 @@ function NewPlanPageContent() {
                                         <SelectItem value="marathon">Marathon</SelectItem>
                                         <SelectItem value="5k">5K</SelectItem>
                                         <SelectItem value="half_marathon" disabled>Half Marathon</SelectItem>
-                                        <SelectItem value="10k" disabled>10K</SelectItem>
+                                        <SelectItem value="10k">10K</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>

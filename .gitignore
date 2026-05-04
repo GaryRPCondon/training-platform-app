@@ -55,7 +55,11 @@ strava-mcp/
 # documentation templates
 docs/
 docs/templates/
-public/templates/
+# public/templates/ contents are seed-only (authored elsewhere) except for bespoke
+# templates authored in this repo. Use glob + negation so exceptions take effect.
+public/templates/*
+!public/templates/bespoke_post_marathon_10k_template.json
+!public/templates/10k_plan_catalog.json
 
 # database backups
 backups/
