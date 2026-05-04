@@ -1,6 +1,6 @@
 import type { ParsedPlan } from './response-parser'
 import { calculateWorkoutDate } from './response-parser'
-import { resolvePace, type PaceTarget } from './pace-resolver'
+import { resolvePace, validatePaceTargets, type PaceTarget } from './pace-resolver'
 import { addDays, format, parseISO } from 'date-fns'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AllTrainingPaces } from '@/lib/training/vdot'
@@ -14,6 +14,7 @@ export interface PlanWriteOptions {
   supabase: SupabaseClient   // Supabase client to use (server or client)
   paceTargets?: Record<string, PaceTarget>   // Template methodology pace targets
   athletePaces?: AllTrainingPaces | null      // Athlete's training + race paces
+  templateId?: string        // Optional: included in pace_targets validation errors
 }
 
 /**
@@ -48,7 +49,14 @@ export async function writePlanToDatabase(
   parsedPlan: ParsedPlan,
   options: PlanWriteOptions
 ) {
-  const { planId, planStartDate, userStartDate, goalDate, supabase, paceTargets, athletePaces } = options
+  const { planId, planStartDate, userStartDate, goalDate, supabase, paceTargets, athletePaces, templateId } = options
+
+  // Validate pace_targets once before per-workout resolvePace calls. Throws
+  // PaceTargetsValidationError on invalid templates so corrupt data fails loudly
+  // rather than silently stamping null target paces onto every workout.
+  if (paceTargets) {
+    validatePaceTargets(paceTargets, templateId)
+  }
 
   // Get athlete_id from plan
   const { data: planData } = await supabase

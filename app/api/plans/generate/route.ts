@@ -366,6 +366,7 @@ export async function POST(request: Request) {
       supabase: supabase,
       paceTargets: fullTemplate.pace_targets,
       athletePaces: trainingPaces,
+      templateId: fullTemplate.template_id,
     })
 
     return NextResponse.json({

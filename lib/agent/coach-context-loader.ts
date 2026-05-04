@@ -32,6 +32,7 @@ export interface CoachAthleteProfile {
         tempo: number
         interval: number
         repetition: number
+        walk: number
     } | null
     week_starts_on: number  // 0 = Sunday, 1 = Monday
 }

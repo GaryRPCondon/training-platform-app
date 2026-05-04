@@ -13,6 +13,24 @@ import * as fs from 'fs/promises'
 import * as fsSync from 'fs'
 import * as path from 'path'
 import { createClient } from '@supabase/supabase-js'
+import { z } from 'zod'
+
+// Inlined to keep the seed script self-contained under ts-node's ESM/bundler
+// resolution. Must stay in sync with lib/templates/types.ts.
+const REFERENCE_PACE_KEYS = [
+  'easy', 'marathon', 'tempo', 'interval', 'repetition', 'walk',
+  'race_mile', 'race_3k', 'race_5k', 'race_10k', 'race_15k', 'race_half_marathon',
+] as const
+
+const paceTargetSchema = z.object({
+  reference_pace: z.enum(REFERENCE_PACE_KEYS),
+  offset_sec_per_km: z.number().optional(),
+  reference_pace_upper: z.enum(REFERENCE_PACE_KEYS).optional(),
+  description: z.string().min(1),
+  prescription: z.enum(['distance', 'time']).optional(),
+})
+
+const paceTargetsSchema = z.record(z.string().min(1), paceTargetSchema)
 
 // Load environment variables from .env.local manually (no dotenv dependency)
 const envPath = path.resolve(process.cwd(), '.env.local')
@@ -127,6 +145,22 @@ async function main() {
         console.error(`  ERROR: ${summary.template_id} not found in ${summary.source_file}`)
         errors++
         continue
+      }
+
+      // Validate pace_targets against the canonical Zod schema. Bad templates
+      // abort the run rather than silently seeding with unresolvable pace keys.
+      const paceTargets = (fullTemplate as { pace_targets?: unknown }).pace_targets
+      if (paceTargets !== undefined) {
+        const parsed = paceTargetsSchema.safeParse(paceTargets)
+        if (!parsed.success) {
+          const issues = parsed.error.issues.map(issue => {
+            const path = issue.path.length > 0 ? issue.path.join('.') : '<root>'
+            return `${path}: ${issue.message}`
+          }).join('; ')
+          throw new Error(
+            `Template ${summary.template_id}: invalid pace_targets — ${issues}`
+          )
+        }
       }
 
       // Build row

@@ -1,3 +1,5 @@
+import { z } from 'zod'
+
 // Template catalog types
 export interface TemplateCatalog {
   catalog_version: string
@@ -141,14 +143,38 @@ export interface WorkoutDetail {
   pace?: string
 }
 
-// Pace target types (methodology-specific intensity → athlete pace mapping)
-export interface PaceTarget {
-  reference_pace: string           // key into AllTrainingPaces (e.g. "easy", "race_5k")
-  offset_sec_per_km?: number       // negative=faster, positive=slower. Default 0
-  reference_pace_upper?: string    // for range targets (e.g. Pfitz LT: race_15k → race_half_marathon)
-  description: string              // human-readable, shown in coach prompt
-  prescription?: 'distance' | 'time'  // default 'distance'. 'time' → LLM emits duration_seconds + distance_meters:null
-}
+// Pace target types (methodology-specific intensity → athlete pace mapping).
+// Canonical reference_pace keys correspond to AllTrainingPaces in lib/training/vdot.ts.
+// Templates whose reference_pace is not in this enum will fail seed-time and runtime validation.
+export const REFERENCE_PACE_KEYS = [
+  'easy',
+  'marathon',
+  'tempo',
+  'interval',
+  'repetition',
+  'walk',
+  'race_mile',
+  'race_3k',
+  'race_5k',
+  'race_10k',
+  'race_15k',
+  'race_half_marathon',
+] as const
+
+export type ReferencePaceKey = (typeof REFERENCE_PACE_KEYS)[number]
+
+export const paceTargetSchema = z.object({
+  reference_pace: z.enum(REFERENCE_PACE_KEYS),
+  offset_sec_per_km: z.number().optional(),
+  reference_pace_upper: z.enum(REFERENCE_PACE_KEYS).optional(),
+  description: z.string().min(1),
+  prescription: z.enum(['distance', 'time']).optional(),
+})
+
+export const paceTargetsSchema = z.record(z.string().min(1), paceTargetSchema)
+
+export type PaceTarget = z.infer<typeof paceTargetSchema>
+export type PaceTargets = z.infer<typeof paceTargetsSchema>
 
 // Recommendation types
 export interface UserCriteria {

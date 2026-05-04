@@ -64,7 +64,12 @@ export interface TrainingPaces {
   tempo: number         // Threshold/tempo pace (seconds/km)
   interval: number      // VO2max/5K pace (seconds/km)
   repetition: number    // Speed/3K pace (seconds/km)
+  walk: number          // Brisk walking pace (seconds/km) — fitness-independent constant
 }
+
+// Brisk walking pace (~10 min/km, 6 km/h). Fitness-independent; templates that use
+// `walk` as a reference_pace set prescription:'time' so the numeric value is informational.
+export const WALK_PACE_SEC_PER_KM = 600
 
 export function calculateTrainingPaces(vdot: number): TrainingPaces {
   // Formulas based on Jack Daniels' VDOT tables
@@ -91,7 +96,8 @@ export function calculateTrainingPaces(vdot: number): TrainingPaces {
     marathon: Math.round(marathonPace),
     tempo: Math.round(tempoPace),
     interval: Math.round(intervalPace),
-    repetition: Math.round(repetitionPace)
+    repetition: Math.round(repetitionPace),
+    walk: WALK_PACE_SEC_PER_KM,
   }
 }
 

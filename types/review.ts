@@ -46,6 +46,7 @@ export interface PlanReviewContext {
     tempo: number
     interval: number
     repetition: number
+    walk: number
   } | null
   phases: TrainingPhase[]
   weeks: WeekViewData[]
