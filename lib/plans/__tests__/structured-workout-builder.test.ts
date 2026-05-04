@@ -159,6 +159,107 @@ describe('buildStructuredWorkout', () => {
     })
   })
 
+  describe('10K-shaped sessions', () => {
+    it('preserves race-pace 10K intervals (5×1km @ race_10k, 90s recovery)', () => {
+      const result = buildStructuredWorkout({
+        type: 'intervals',
+        intensity: 'race_10k',
+        structured_workout: {
+          warmup: { duration_minutes: 15, intensity: 'easy' },
+          main_set: [{
+            repeat: 5,
+            intervals: [
+              { distance_meters: 1000, intensity: 'race_10k' },
+              { duration_seconds: 90, intensity: 'recovery' },
+            ],
+          }],
+          cooldown: { duration_minutes: 10, intensity: 'easy' },
+        },
+      })
+
+      const mainSet = result.main_set as Array<{ repeat: number; intervals: Array<Record<string, unknown>> }>
+      expect(mainSet).toHaveLength(1)
+      expect(mainSet[0].repeat).toBe(5)
+      expect(mainSet[0].intervals).toHaveLength(2)
+      // Mixed distance + duration in one repeat group survives normalization
+      expect(mainSet[0].intervals[0]).toMatchObject({ distance_meters: 1000, intensity: 'race_10k' })
+      expect(mainSet[0].intervals[1]).toMatchObject({ duration_seconds: 90, intensity: 'recovery' })
+    })
+
+    it('handles mixed T-pace and race-pace within one workout (two main_set groups)', () => {
+      const result = buildStructuredWorkout({
+        type: 'intervals',
+        intensity: 'tempo',
+        structured_workout: {
+          warmup: { duration_minutes: 15, intensity: 'easy' },
+          main_set: [
+            { repeat: 1, intervals: [{ distance_meters: 3000, intensity: 'tempo' }]},
+            { repeat: 1, intervals: [{ duration_seconds: 120, intensity: 'recovery' }]},
+            { repeat: 3, intervals: [
+              { distance_meters: 1000, intensity: 'race_10k' },
+              { duration_seconds: 90, intensity: 'recovery' },
+            ]},
+          ],
+          cooldown: { duration_minutes: 10, intensity: 'easy' },
+        },
+      })
+
+      const mainSet = result.main_set as Array<{ repeat: number; intervals: Array<Record<string, unknown>> }>
+      expect(mainSet).toHaveLength(3)
+      expect(mainSet[0].intervals[0]).toMatchObject({ intensity: 'tempo' })
+      expect(mainSet[2].repeat).toBe(3)
+      expect(mainSet[2].intervals[0]).toMatchObject({ intensity: 'race_10k' })
+    })
+
+    it('handles threshold segment embedded in a long easy run', () => {
+      const result = buildStructuredWorkout({
+        type: 'long_run',
+        intensity: 'easy',
+        structured_workout: {
+          main_set: [
+            { repeat: 1, intervals: [{ distance_meters: 8000, intensity: 'easy' }]},
+            { repeat: 1, intervals: [{ distance_meters: 6000, intensity: 'tempo' }]},
+            { repeat: 1, intervals: [{ distance_meters: 8000, intensity: 'easy' }]},
+          ],
+        },
+      })
+
+      const mainSet = result.main_set as Array<{ repeat: number; intervals: Array<Record<string, unknown>> }>
+      expect(mainSet).toHaveLength(3)
+      expect(mainSet[0].intervals[0]).toMatchObject({ distance_meters: 8000, intensity: 'easy' })
+      expect(mainSet[1].intervals[0]).toMatchObject({ distance_meters: 6000, intensity: 'tempo' })
+      expect(mainSet[2].intervals[0]).toMatchObject({ distance_meters: 8000, intensity: 'easy' })
+    })
+
+    it('emits time-based threshold session correctly (4×6min @ T pace, 90s rest)', () => {
+      const result = buildStructuredWorkout({
+        type: 'tempo',
+        intensity: 'tempo',
+        structured_workout: {
+          warmup: { duration_minutes: 15, intensity: 'easy' },
+          main_set: [{
+            repeat: 4,
+            intervals: [
+              { duration_seconds: 360, intensity: 'tempo' },
+              { duration_seconds: 90, intensity: 'recovery' },
+            ],
+          }],
+          cooldown: { duration_minutes: 10, intensity: 'easy' },
+        },
+      })
+
+      const mainSet = result.main_set as Array<{ repeat: number; intervals: Array<Record<string, unknown>> }>
+      expect(mainSet).toHaveLength(1)
+      expect(mainSet[0].repeat).toBe(4)
+      // duration_seconds is preserved on main_set intervals (only warmup/cooldown are normalized to minutes)
+      expect(mainSet[0].intervals[0]).toMatchObject({ duration_seconds: 360, intensity: 'tempo' })
+      expect(mainSet[0].intervals[1]).toMatchObject({ duration_seconds: 90, intensity: 'recovery' })
+      // Warmup/cooldown stay in minutes
+      expect(result.warmup).toEqual({ duration_minutes: 15, intensity: 'easy' })
+      expect(result.cooldown).toEqual({ duration_minutes: 10, intensity: 'easy' })
+    })
+  })
+
   describe('without structured_workout', () => {
     it('returns only pace_guidance/notes when LLM omits structured_workout', () => {
       const result = buildStructuredWorkout({
