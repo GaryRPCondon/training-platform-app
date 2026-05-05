@@ -44,6 +44,8 @@ interface CoachInterfaceProps {
     onSessionChange?: (sessionId: number) => void
     workoutId?: number
     activityId?: number
+    /** Workout shown in the page header — used as the default Replace target for proposals */
+    workoutContext?: { id: number; scheduled_date: string } | null
 }
 
 // ---------------------------------------------------------------------------
@@ -66,7 +68,7 @@ function AssistantMessage({ content }: { content: string }) {
 // Component
 // ---------------------------------------------------------------------------
 
-export function CoachInterface({ sessionId: propSessionId, onSessionChange, workoutId, activityId }: CoachInterfaceProps = {}) {
+export function CoachInterface({ sessionId: propSessionId, onSessionChange, workoutId, activityId, workoutContext }: CoachInterfaceProps = {}) {
     const [messages, setMessages] = useState<CoachMessage[]>([])
     const [input, setInput] = useState('')
     const [internalSessionId, setInternalSessionId] = useState<number | null>(null)
@@ -314,6 +316,7 @@ export function CoachInterface({ sessionId: propSessionId, onSessionChange, work
                                             athleteId={athleteSettings?.id ?? ''}
                                             trainingPaces={athleteSettings?.training_paces}
                                             vdot={athleteSettings?.vdot}
+                                            replaceTarget={workoutContext ?? null}
                                             onStatusChange={(pi, status) =>
                                                 handleProposalStatusChange(msgIdx, pi, status)
                                             }

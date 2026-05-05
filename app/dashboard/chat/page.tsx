@@ -276,6 +276,9 @@ function ChatPageInner() {
                         onSessionChange={handleSessionChange}
                         workoutId={workoutId ?? undefined}
                         activityId={activityId ?? undefined}
+                        workoutContext={workoutContext
+                            ? { id: workoutContext.id, scheduled_date: workoutContext.scheduled_date }
+                            : null}
                     />
                 </div>
             </div>

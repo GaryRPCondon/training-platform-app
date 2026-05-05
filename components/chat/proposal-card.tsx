@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { CheckCircle, Star, X, Pencil, Plus, Trash2, Loader2 } from 'lucide-react'
+import { CheckCircle, Star, X, Pencil, Plus, Loader2, Replace as ReplaceIcon } from 'lucide-react'
 import { WorkoutCard } from '@/components/review/workout-card'
 import type { WorkoutProposal } from '@/lib/agent/coach-tools'
 import type { WorkoutWithDetails } from '@/types/review'
@@ -179,6 +179,8 @@ interface ProposalCardProps {
     athleteId: string
     trainingPaces?: TrainingPaces | null
     vdot?: number | null
+    /** Workout the user is currently focused on (shown in chat header) — Replace target when its date matches the proposal */
+    replaceTarget?: { id: number; scheduled_date: string } | null
     /** Called when the proposal's status changes so parent can update its state */
     onStatusChange?: (proposalIndex: number, status: 'applied' | 'dismissed') => void
 }
@@ -194,15 +196,20 @@ export function ProposalCard({
     athleteId,
     trainingPaces,
     vdot,
+    replaceTarget,
     onStatusChange,
 }: ProposalCardProps) {
     const queryClient = useQueryClient()
     const [status, setStatus] = useState(proposal.proposal_status ?? 'pending')
     const [isApplying, setIsApplying] = useState(false)
-    const [showRemovePrompt, setShowRemovePrompt] = useState(false)
-    const [isRemoving, setIsRemoving] = useState(false)
-    const [removed, setRemoved] = useState(false)
+    const [isReplacing, setIsReplacing] = useState(false)
     const [showEditDialog, setShowEditDialog] = useState(false)
+
+    // Replace target: prefer the LLM's explicit supersedes hint, fall back to the
+    // workout shown in the chat page header when its date matches the proposal.
+    const replaceTargetId =
+        proposal.supersedes_workout_id
+        ?? (replaceTarget?.scheduled_date === proposal.scheduled_date ? replaceTarget.id : null)
 
     // -----------------------------------------------------------------------
     // Helpers
@@ -227,37 +234,35 @@ export function ProposalCard({
     }
 
     // -----------------------------------------------------------------------
-    // Apply to plan
+    // Add to plan (just create the new workout — leave any existing in place)
     // -----------------------------------------------------------------------
 
-    async function handleApply() {
+    async function createProposedWorkout() {
+        const res = await fetch('/api/workouts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                scheduled_date: proposal.scheduled_date,
+                workout_type: proposal.workout_type,
+                description: proposal.description,
+                distance_target_meters: displayDistanceMeters,
+                duration_target_seconds: proposal.duration_target_seconds,
+                intensity_target: proposal.intensity_target,
+                structured_workout: proposal.structured_workout,
+                target_pace_sec_per_km: proposal.target_pace_sec_per_km,
+                target_pace_min_sec_per_km: proposal.target_pace_min_sec_per_km,
+                target_pace_max_sec_per_km: proposal.target_pace_max_sec_per_km,
+            }),
+        })
+        if (!res.ok) throw new Error('Failed to create workout')
+    }
+
+    async function handleAdd() {
         setIsApplying(true)
         try {
-            const res = await fetch('/api/workouts', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    scheduled_date: proposal.scheduled_date,
-                    workout_type: proposal.workout_type,
-                    description: proposal.description,
-                    distance_target_meters: displayDistanceMeters,
-                    duration_target_seconds: proposal.duration_target_seconds,
-                    intensity_target: proposal.intensity_target,
-                    structured_workout: proposal.structured_workout,
-                    target_pace_sec_per_km: proposal.target_pace_sec_per_km,
-                    target_pace_min_sec_per_km: proposal.target_pace_min_sec_per_km,
-                    target_pace_max_sec_per_km: proposal.target_pace_max_sec_per_km,
-                }),
-            })
-
-            if (!res.ok) throw new Error('Failed to create workout')
-
+            await createProposedWorkout()
             applyStatus('applied')
             queryClient.invalidateQueries({ queryKey: ['workouts'] })
-
-            if (proposal.supersedes_workout_id) {
-                setShowRemovePrompt(true)
-            }
         } catch {
             // Leave as pending so the athlete can retry
         } finally {
@@ -266,24 +271,22 @@ export function ProposalCard({
     }
 
     // -----------------------------------------------------------------------
-    // Remove superseded workout
+    // Replace (delete the existing target workout, then add the new one)
     // -----------------------------------------------------------------------
 
-    async function handleRemoveOld() {
-        if (!proposal.supersedes_workout_id) return
-        setIsRemoving(true)
+    async function handleReplace() {
+        if (!replaceTargetId) return
+        setIsReplacing(true)
         try {
-            const res = await fetch(`/api/workouts?id=${proposal.supersedes_workout_id}`, {
-                method: 'DELETE',
-            })
-            if (!res.ok) throw new Error('Failed to delete workout')
-            setRemoved(true)
-            setShowRemovePrompt(false)
+            const delRes = await fetch(`/api/workouts?id=${replaceTargetId}`, { method: 'DELETE' })
+            if (!delRes.ok) throw new Error('Failed to delete existing workout')
+            await createProposedWorkout()
+            applyStatus('applied')
             queryClient.invalidateQueries({ queryKey: ['workouts'] })
         } catch {
-            // Leave prompt visible so they can retry
+            // Leave as pending so the athlete can retry
         } finally {
-            setIsRemoving(false)
+            setIsReplacing(false)
         }
     }
 
@@ -346,51 +349,11 @@ export function ProposalCard({
     if (status === 'applied') {
         return (
             <Card className="border-green-200 dark:border-green-900">
-                <CardContent className="py-3 px-4 space-y-3">
+                <CardContent className="py-3 px-4">
                     <span className="text-sm text-green-700 dark:text-green-400 flex items-center gap-2">
                         <CheckCircle className="h-4 w-4" />
                         Applied: {workoutTypeLabel} on {dateLabel}
                     </span>
-
-                    {/* Remove old workout prompt */}
-                    {showRemovePrompt && !removed && (
-                        <div className="rounded-md bg-muted p-3 text-sm space-y-2">
-                            <p className="text-muted-foreground">
-                                This was suggested as a replacement for the existing workout.
-                                Would you like to remove the old one?
-                            </p>
-                            <div className="flex gap-2">
-                                <Button
-                                    size="sm"
-                                    variant="destructive"
-                                    onClick={handleRemoveOld}
-                                    disabled={isRemoving}
-                                    className="gap-1"
-                                >
-                                    {isRemoving
-                                        ? <Loader2 className="h-3 w-3 animate-spin" />
-                                        : <Trash2 className="h-3 w-3" />
-                                    }
-                                    Remove Old Workout
-                                </Button>
-                                <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => setShowRemovePrompt(false)}
-                                    disabled={isRemoving}
-                                >
-                                    Keep Both
-                                </Button>
-                            </div>
-                        </div>
-                    )}
-
-                    {removed && (
-                        <p className="text-sm text-muted-foreground flex items-center gap-1">
-                            <Trash2 className="h-3 w-3" />
-                            Old workout removed.
-                        </p>
-                    )}
                 </CardContent>
             </Card>
         )
@@ -453,20 +416,36 @@ export function ProposalCard({
                 <CardFooter className="pt-0 gap-2 flex-wrap">
                     <Button
                         size="sm"
-                        onClick={handleApply}
-                        disabled={isApplying}
+                        onClick={handleAdd}
+                        disabled={isApplying || isReplacing}
                         className="gap-1"
                     >
                         {isApplying
                             ? <Loader2 className="h-3 w-3 animate-spin" />
                             : <Plus className="h-3 w-3" />
                         }
-                        Apply to Plan
+                        Add to Plan
                     </Button>
+                    {replaceTargetId && (
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={handleReplace}
+                            disabled={isApplying || isReplacing}
+                            className="gap-1"
+                        >
+                            {isReplacing
+                                ? <Loader2 className="h-3 w-3 animate-spin" />
+                                : <ReplaceIcon className="h-3 w-3" />
+                            }
+                            Replace
+                        </Button>
+                    )}
                     <Button
                         size="sm"
                         variant="outline"
                         onClick={() => setShowEditDialog(true)}
+                        disabled={isApplying || isReplacing}
                         className="gap-1"
                     >
                         <Pencil className="h-3 w-3" />
@@ -476,6 +455,7 @@ export function ProposalCard({
                         size="sm"
                         variant="ghost"
                         onClick={handleDismiss}
+                        disabled={isApplying || isReplacing}
                         className="gap-1 text-muted-foreground"
                     >
                         <X className="h-3 w-3" />
@@ -499,9 +479,6 @@ export function ProposalCard({
                             setShowEditDialog(false)
                             applyStatus('applied')
                             queryClient.invalidateQueries({ queryKey: ['workouts'] })
-                            if (proposal.supersedes_workout_id) {
-                                setShowRemovePrompt(true)
-                            }
                         }}
                         onClose={() => setShowEditDialog(false)}
                     />
