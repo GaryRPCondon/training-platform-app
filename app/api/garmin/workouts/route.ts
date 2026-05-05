@@ -110,15 +110,32 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Failed to load workouts' }, { status: 500 })
     }
 
-    // Load training paces from the active plan
+    // Load training paces and template ID from the active plan
     const { data: activePlan } = await supabase
       .from('training_plans')
-      .select('training_paces')
+      .select('training_paces, template_id')
       .eq('athlete_id', user.id)
       .eq('status', 'active')
       .maybeSingle()
 
     const trainingPaces = activePlan?.training_paces ?? null
+
+    // Load the template's pace_targets so the mapper can resolve methodology
+    // labels (E/T/I/R, vo2max, lactate_threshold, 5k_pace, etc.) authoritatively
+    // rather than guessing via substring matching. Without this, intensity
+    // labels that don't contain a recognised English keyword (e.g. "E", "T",
+    // "vo2max", "LT") fall through to the workout-type default — which means a
+    // tempo workout's E warmup gets stamped with tempo pace.
+    let paceTargets: Record<string, unknown> | undefined
+    if (activePlan?.template_id) {
+      const { data: tpl } = await supabase
+        .from('plan_templates')
+        .select('full_template')
+        .eq('template_id', activePlan.template_id)
+        .maybeSingle()
+      const ft = tpl?.full_template as { pace_targets?: Record<string, unknown> } | null
+      paceTargets = ft?.pace_targets
+    }
 
     // Initialize Garmin client
     const garminClient = new GarminClient()
@@ -144,7 +161,11 @@ export async function POST(request: Request) {
     for (const workout of workouts) {
       try {
         // Map workout to Garmin format
-        const garminPayload = mapToGarminWorkout(workout, trainingPaces)
+        const garminPayload = mapToGarminWorkout(
+          workout,
+          trainingPaces,
+          paceTargets as Parameters<typeof mapToGarminWorkout>[2]
+        )
 
         let garminWorkoutId: string
         let needsSchedule = false
