@@ -22,7 +22,8 @@ import type {
   GarminEndCondition,
   GarminTargetType,
 } from './types'
-import { getWorkoutPaceType } from '@/lib/training/vdot'
+import { getWorkoutPaceType, type AllTrainingPaces } from '@/lib/training/vdot'
+import { resolvePace, type PaceTarget } from '@/lib/plans/pace-resolver'
 
 // ============================================================================
 // Constants
@@ -97,13 +98,41 @@ function buildPaceTarget(centerSecPerKm: number): { targetValueOne: number; targ
 /**
  * Resolve a pace target from an intensity label and/or training paces.
  * Returns null if no pace can be determined.
+ *
+ * Resolution order:
+ *   1. Template's `pace_targets` (authoritative, methodology-aware) — handles
+ *      every template's label conventions: Daniels single-letter (E/T/I/R),
+ *      Hansons (strength/speed), Pfitz (vo2max/lactate_threshold), Magness
+ *      (LT/MP/5k_pace), Hal Higdon (intervals_400), bespoke (T_time/R10), etc.
+ *   2. Built-in substring matcher — fallback for legacy templates with no
+ *      pace_targets, recognises longform labels like "easy"/"tempo".
+ *   3. Workout-type default — last resort.
  */
 function resolvePaceFromIntensity(
   intensity: string | undefined,
   workoutType: string,
-  trainingPaces: TrainingPaces | null | undefined
+  trainingPaces: TrainingPaces | null | undefined,
+  paceTargets?: Record<string, PaceTarget>
 ): { targetValueOne: number; targetValueTwo: number } | null {
   if (!trainingPaces) return null
+
+  // 1. Template-driven lookup — exact label match against template's pace_targets.
+  // The training_paces JSONB blob includes race paces too (see plan generate route)
+  // so AllTrainingPaces is the right shape here.
+  if (intensity && paceTargets) {
+    const resolved = resolvePace(intensity, paceTargets, trainingPaces as AllTrainingPaces)
+    if (resolved) {
+      // resolvePace returns sec/km; if it has an upper bound, that's the slower
+      // bound of a range, otherwise we apply the same ±15 sec/km tolerance.
+      if (resolved.target_pace_upper_sec_per_km != null) {
+        return {
+          targetValueOne: parseFloat(secPerKmToMps(resolved.target_pace_upper_sec_per_km).toFixed(4)),
+          targetValueTwo: parseFloat(secPerKmToMps(resolved.target_pace_sec_per_km).toFixed(4)),
+        }
+      }
+      return buildPaceTarget(resolved.target_pace_sec_per_km)
+    }
+  }
 
   // Map intensity label to a pace type, falling back to workout type
   let paceType: keyof TrainingPaces
@@ -151,7 +180,8 @@ function buildExecutableStep(
   workoutType: string,
   trainingPaces: TrainingPaces | null | undefined,
   intensityOverride?: string,
-  targetPaceOverride?: string
+  targetPaceOverride?: string,
+  paceTargets?: Record<string, PaceTarget>
 ): GarminWorkoutStep {
   // Determine end condition
   let endCondition: GarminEndCondition = END_CONDITIONS.lapButton
@@ -196,7 +226,7 @@ function buildExecutableStep(
     }
   } else {
     const intensityLabel = intensityOverride ?? part.intensity
-    const target = resolvePaceFromIntensity(intensityLabel, workoutType, trainingPaces)
+    const target = resolvePaceFromIntensity(intensityLabel, workoutType, trainingPaces, paceTargets)
     if (target) {
       targetType = TARGET_TYPES.paceZone
       targetValueOne = target.targetValueOne
@@ -228,13 +258,23 @@ function buildRepeatStep(
   workoutType: string,
   trainingPaces: TrainingPaces | null | undefined,
   smartRepeat?: boolean,
-  stampedPaceStr?: string
+  stampedPaceStr?: string,
+  workoutIntensity?: string,
+  paceTargets?: Record<string, PaceTarget>
 ): GarminWorkoutStep {
   const childSteps: GarminWorkoutStep[] = set.intervals.map((interval, idx) => {
     const isRecovery = interval.intensity?.toLowerCase().includes('recovery') ||
                        interval.intensity?.toLowerCase().includes('rest') ||
                        interval.intensity?.toLowerCase().includes('walk')
     const stepType = isRecovery ? 'recovery' : 'interval'
+
+    // The workout-level stamped pace only applies to intervals that share the
+    // workout's primary intensity. A recovery jog at "E" inside a "T" workout
+    // must NOT inherit the tempo stamp — let intensity-based resolution kick in
+    // (which consults pace_targets first, then the substring matcher).
+    const matchesPrimary = interval.intensity != null && workoutIntensity != null &&
+      interval.intensity.toLowerCase() === workoutIntensity.toLowerCase()
+    const stampFallback = matchesPrimary ? stampedPaceStr : undefined
 
     return buildExecutableStep(
       interval,
@@ -244,7 +284,8 @@ function buildRepeatStep(
       workoutType,
       trainingPaces,
       interval.intensity,
-      interval.target_pace ?? (isRecovery ? undefined : stampedPaceStr)
+      interval.target_pace ?? stampFallback,
+      paceTargets
     )
   })
 
@@ -286,7 +327,8 @@ export function mapToGarminWorkout(
     'description' | 'workout_type' | 'distance_target_meters' |
     'duration_target_seconds' | 'intensity_target' | 'structured_workout'
   >,
-  trainingPaces?: TrainingPaces | null
+  trainingPaces?: TrainingPaces | null,
+  paceTargets?: Record<string, PaceTarget>
 ): GarminWorkoutPayload {
   const workoutName = workout.description || formatWorkoutTypeName(workout.workout_type)
 
@@ -299,8 +341,8 @@ export function mapToGarminWorkout(
   // For simple workouts, pass through a custom pace override if intensity is 'custom'
   const customPace = stampedPaceStr ?? (!hasMainSet && workout.intensity_target === 'custom' ? sw?.target_pace : undefined)
   const steps = hasMainSet
-    ? buildStructuredSteps(workout, trainingPaces, stampedPaceStr)
-    : buildSimpleSteps(workout, trainingPaces, customPace)
+    ? buildStructuredSteps(workout, trainingPaces, stampedPaceStr, paceTargets)
+    : buildSimpleSteps(workout, trainingPaces, customPace, paceTargets)
 
   return {
     workoutName,
@@ -367,13 +409,15 @@ function buildStampedPaceString(sw: (WorkoutStructure & StampedPace) | null): st
 function buildStructuredSteps(
   workout: Pick<PlannedWorkout, 'workout_type' | 'structured_workout' | 'intensity_target'>,
   trainingPaces: TrainingPaces | null | undefined,
-  stampedPaceStr?: string
+  stampedPaceStr?: string,
+  paceTargets?: Record<string, PaceTarget>
 ): GarminWorkoutStep[] {
   const structure = workout.structured_workout as WorkoutStructure
   const steps: GarminWorkoutStep[] = []
   let stepOrder = 1
+  const workoutIntensity = workout.intensity_target ?? undefined
 
-  // Warmup
+  // Warmup — always resolved from its own intensity (never the workout's stamped pace)
   if (structure.warmup) {
     steps.push(buildExecutableStep(
       structure.warmup,
@@ -383,7 +427,8 @@ function buildStructuredSteps(
       workout.workout_type,
       trainingPaces,
       structure.warmup.intensity ?? 'easy',
-      structure.warmup.target_pace
+      structure.warmup.target_pace,
+      paceTargets
     ))
   }
 
@@ -400,10 +445,17 @@ function buildStructuredSteps(
         workout.workout_type,
         trainingPaces,
         set.skip_last_recovery ?? false,
-        stampedPaceStr
+        stampedPaceStr,
+        workoutIntensity,
+        paceTargets
       ))
     } else {
       const stepType = set.intensity?.toLowerCase().includes('recovery') ? 'recovery' : 'interval'
+      // Same primary-intensity guard as buildRepeatStep: only inherit the
+      // workout's stamped pace when this leaf interval shares its intensity.
+      const matchesPrimary = set.intensity != null && workoutIntensity != null &&
+        set.intensity.toLowerCase() === workoutIntensity.toLowerCase()
+      const stampFallback = matchesPrimary ? stampedPaceStr : undefined
       steps.push(buildExecutableStep(
         set,
         stepOrder++,
@@ -412,12 +464,13 @@ function buildStructuredSteps(
         workout.workout_type,
         trainingPaces,
         set.intensity,
-        set.target_pace ?? stampedPaceStr
+        set.target_pace ?? stampFallback,
+        paceTargets
       ))
     }
   }
 
-  // Cooldown
+  // Cooldown — always resolved from its own intensity (never the workout's stamped pace)
   if (structure.cooldown) {
     steps.push(buildExecutableStep(
       structure.cooldown,
@@ -427,7 +480,8 @@ function buildStructuredSteps(
       workout.workout_type,
       trainingPaces,
       structure.cooldown.intensity ?? 'easy',
-      structure.cooldown.target_pace
+      structure.cooldown.target_pace,
+      paceTargets
     ))
   }
 
@@ -457,7 +511,8 @@ function buildStructuredSteps(
 function buildSimpleSteps(
   workout: Pick<PlannedWorkout, 'workout_type' | 'distance_target_meters' | 'duration_target_seconds' | 'intensity_target'>,
   trainingPaces: TrainingPaces | null | undefined,
-  targetPaceOverride?: string
+  targetPaceOverride?: string,
+  paceTargets?: Record<string, PaceTarget>
 ): GarminWorkoutStep[] {
   // Simple workout: single step with distance or time target.
   // No lap-button warmup/cooldown — those are only meaningful for structured workouts.
@@ -469,7 +524,8 @@ function buildSimpleSteps(
     paceTarget = resolvePaceFromIntensity(
       workout.intensity_target ?? undefined,
       workout.workout_type,
-      trainingPaces
+      trainingPaces,
+      paceTargets
     )
   }
 
