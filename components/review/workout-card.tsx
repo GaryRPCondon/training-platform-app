@@ -38,7 +38,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 
-const INTENSITY_OPTIONS = ['easy', 'moderate', 'marathon', 'hard', 'tempo', 'threshold', 'interval', 'recovery', 'custom']
+const INTENSITY_OPTIONS = ['easy', 'moderate', 'marathon', 'hard', 'tempo', 'threshold', 'interval', 'repetition', 'recovery', 'custom']
 
 const WORKOUT_TYPES = ['easy_run', 'long_run', 'intervals', 'tempo', 'rest', 'cross_training', 'recovery', 'race'] as const
 
@@ -225,7 +225,8 @@ function intensityToPaceKey(intensity: string): keyof TrainingPaces {
   if (l.includes('moderate')) return 'marathon'
   if (l.includes('marathon') || l === 'race') return 'marathon'
   if (l.includes('tempo') || l.includes('threshold')) return 'tempo'
-  if (l.includes('interval') || l.includes('hard') || l.includes('repetition')) return 'interval'
+  if (l.includes('repetition') || l.includes('speed')) return 'repetition'
+  if (l.includes('interval') || l.includes('hard')) return 'interval'
   return 'easy'
 }
 
@@ -496,6 +497,19 @@ function IntervalStep({
     if (stampedPaceSec && interval.intensity && !isRecoveryIntensity(interval.intensity)) {
       const synth = `${Math.floor(stampedPaceSec / 60)}:${String(Math.round(stampedPaceSec % 60)).padStart(2, '0')}`
       return parsePaceToDisplayInputs(synth, units)
+    }
+    // Fallback: derive from VDOT trainingPaces ± 15 sec/km tolerance
+    if (trainingPaces && interval.intensity) {
+      const centerSecKm = trainingPaces[intensityToPaceKey(interval.intensity)]
+      if (centerSecKm) {
+        const toDisplay = (secKm: number) => {
+          const sec = units === 'imperial' ? secKm * PACE_SCALE_KM_TO_MI : secKm
+          return { m: String(Math.floor(sec / 60)), s: String(Math.round(sec % 60)).padStart(2, '0') }
+        }
+        const f = toDisplay(centerSecKm - 15)
+        const sl = toDisplay(centerSecKm + 15)
+        return { fasterM: f.m, fasterS: f.s, slowerM: sl.m, slowerS: sl.s }
+      }
     }
     return parsePaceToDisplayInputs(undefined, units)
   })
