@@ -32,6 +32,7 @@ export interface Athlete {
     ai_summaries_enabled: boolean
     push_summary_to_garmin: boolean
     push_summary_to_strava: boolean
+    feedback_tone: 'critical' | 'balanced' | 'positive'
     created_at: string
     updated_at: string
 }
