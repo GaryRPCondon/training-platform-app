@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import { Slider } from '@/components/ui/slider'
 import {
     AlertDialog,
     AlertDialogAction,
@@ -24,6 +25,14 @@ interface ProviderAvailability {
     available: boolean
 }
 
+type FeedbackTone = 'critical' | 'balanced' | 'positive'
+const TONE_VALUES: FeedbackTone[] = ['critical', 'balanced', 'positive']
+const TONE_LABELS: Record<FeedbackTone, string> = {
+    critical: 'Value critical feedback',
+    balanced: 'Tell it like it is',
+    positive: 'Positive Reinforcement',
+}
+
 export function AISettingsCard() {
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
@@ -31,9 +40,16 @@ export function AISettingsCard() {
     const [model, setModel] = useState('')
     const [useFastModel, setUseFastModel] = useState(true)
     const [aiSummariesEnabled, setAiSummariesEnabled] = useState(false)
+    const [feedbackTone, setFeedbackTone] = useState<FeedbackTone>('balanced')
     const [showCostWarning, setShowCostWarning] = useState(false)
     const [availableProviders, setAvailableProviders] = useState<ProviderAvailability[]>([])
-    const savedValues = useRef({ provider: 'deepseek', model: '', useFastModel: true, aiSummariesEnabled: false })
+    const savedValues = useRef<{
+        provider: string
+        model: string
+        useFastModel: boolean
+        aiSummariesEnabled: boolean
+        feedbackTone: FeedbackTone
+    }>({ provider: 'deepseek', model: '', useFastModel: true, aiSummariesEnabled: false, feedbackTone: 'balanced' })
 
     useEffect(() => {
         fetchSettings()
@@ -62,16 +78,21 @@ export function AISettingsCard() {
             const response = await fetch('/api/settings/get')
             if (response.ok) {
                 const data = await response.json()
+                const tone: FeedbackTone = TONE_VALUES.includes(data.feedbackTone)
+                    ? data.feedbackTone
+                    : 'balanced'
                 const vals = {
                     provider: data.provider || 'deepseek',
                     model: data.model || '',
                     useFastModel: data.useFastModelForOperations ?? true,
                     aiSummariesEnabled: data.aiSummariesEnabled ?? false,
+                    feedbackTone: tone,
                 }
                 setProvider(vals.provider)
                 setModel(vals.model)
                 setUseFastModel(vals.useFastModel)
                 setAiSummariesEnabled(vals.aiSummariesEnabled)
+                setFeedbackTone(vals.feedbackTone)
                 savedValues.current = vals
             }
         } catch (error) {
@@ -85,7 +106,8 @@ export function AISettingsCard() {
     const hasChanges = provider !== savedValues.current.provider ||
         model !== savedValues.current.model ||
         useFastModel !== savedValues.current.useFastModel ||
-        aiSummariesEnabled !== savedValues.current.aiSummariesEnabled
+        aiSummariesEnabled !== savedValues.current.aiSummariesEnabled ||
+        feedbackTone !== savedValues.current.feedbackTone
 
     const handleSave = async () => {
         setSaving(true)
@@ -98,12 +120,13 @@ export function AISettingsCard() {
                     model,
                     useFastModelForOperations: useFastModel,
                     ai_summaries_enabled: aiSummariesEnabled,
+                    feedback_tone: feedbackTone,
                 })
             })
 
             if (!response.ok) throw new Error('Failed to update settings')
 
-            savedValues.current = { provider, model, useFastModel, aiSummariesEnabled }
+            savedValues.current = { provider, model, useFastModel, aiSummariesEnabled, feedbackTone }
             toast.success('AI settings saved successfully')
         } catch (error) {
             console.error('Failed to save settings:', error)
@@ -222,6 +245,35 @@ export function AISettingsCard() {
                             }
                         }}
                     />
+                </div>
+
+                <div className="p-3 sm:p-4 border rounded-lg space-y-3">
+                    <div>
+                        <Label htmlFor="feedbackTone">Feedback tone</Label>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                            How the AI Coach frames summaries. The verdict still lands honestly — only the emphasis shifts.
+                        </p>
+                    </div>
+                    <Slider
+                        id="feedbackTone"
+                        value={[TONE_VALUES.indexOf(feedbackTone)]}
+                        min={0}
+                        max={2}
+                        step={1}
+                        disabled={!aiSummariesEnabled}
+                        onValueChange={(v) => setFeedbackTone(TONE_VALUES[v[0]])}
+                        aria-label="Feedback tone"
+                    />
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                        {TONE_VALUES.map((t) => (
+                            <span
+                                key={t}
+                                className={feedbackTone === t ? 'font-medium text-foreground' : ''}
+                            >
+                                {TONE_LABELS[t]}
+                            </span>
+                        ))}
+                    </div>
                 </div>
 
                 <AlertDialog open={showCostWarning} onOpenChange={setShowCostWarning}>

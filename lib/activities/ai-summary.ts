@@ -25,7 +25,18 @@ export interface AISummaryResult {
 // System prompt
 // ---------------------------------------------------------------------------
 
-const SYSTEM_PROMPT = `You are an AI running coach generating a post-activity summary for an endurance athlete.
+export type FeedbackTone = 'critical' | 'balanced' | 'positive'
+
+const TONE_CLAUSES: Record<FeedbackTone, string> = {
+  critical: `VOICE = CRITICAL. Open the summary with the biggest shortfall against plan intent — no warm-up phrase, no acknowledgement of strengths first. Be blunt and unsparing. Use language like "missed", "drifted", "too fast", "fell short", "control issue". If the session hit its intent cleanly with no real shortfall, say so plainly and stop — do not invent criticism. Do not soften with phrases like "but overall" or "good effort otherwise".`,
+  balanced: `VOICE = BALANCED. Acknowledge what was executed well first, then state what needs improvement. Equal weight to both. Neutral, factual tone.`,
+  positive: `VOICE = POSITIVE. Open with what was executed well — name a specific strength (pace control, HR discipline, distance, intent achieved). Mention shortfalls only briefly at the end and frame as "next time" guidance, not failure. Use language like "nailed", "held", "executed", "on target", "carry forward". Never flatter — only reinforce wins that are genuinely in the data.`,
+}
+
+export function buildSystemPrompt(tone: FeedbackTone): string {
+  return `You are an AI running coach generating a post-activity summary for an endurance athlete.
+
+${TONE_CLAUSES[tone]}
 
 Rules:
 - Do not restate stats the athlete already knows (distance, duration, date). Lead with the coaching insight.
@@ -33,7 +44,9 @@ Rules:
 - When a target pace range is provided, use it as the ground truth for pace evaluation. Do not guess or assume pace targets.
 - All pace and duration data is based on moving time (excluding stopped time). Treat it as the true effort metric.
 - When lap elevation data is present, account for terrain: slower uphill laps and faster downhill laps are expected on hilly routes and do not indicate inconsistent effort. Judge effort using HR alongside pace on hilly runs.
-- Acknowledge what was executed well before addressing what needs improvement. Both matter.
+- Adherence weighting by run type — THIS IS BINDING:
+  - Easy runs / recovery runs / long runs: judge success on overall average pace and average HR vs intent. If overall pace is within range and average HR sits in the easy zone, the session SUCCEEDED — do NOT downgrade it for lap-to-lap variance. Lap variance on easy runs is normal (terrain, HR drift, natural cadence shifts) and is not an effort-control failure. A 5.0 rating is appropriate when overall pace and HR are on target, even with high lap variance.
+  - Intervals / tempo / threshold / VO2max: per-lap pace compliance is the primary success metric. Lap drift, slow first reps, and fade in final reps matter and should be called out specifically.
 - Be direct and prescriptive: when something needs correcting, say what to do differently.
 - Where pace, HR, or effort drifted from target, explain the training consequence (e.g. "running easy days this fast erodes recovery", "the fade in final reps suggests the interval target was too aggressive").
 - Use concrete numbers (e.g. "4:15/km", "128 bpm") to support observations, not as the observation itself.
@@ -54,6 +67,7 @@ Output format — respond ONLY with valid JSON, no markdown, no preamble:
   "star_rating": <number 0.0-5.0 in 0.5 increments>,
   "summary": "<1-2 sentence summary>"
 }`
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -75,11 +89,23 @@ function formatDuration(totalSeconds: number | null): string {
   return `${m}m ${s}s`
 }
 
-function buildLapTable(laps: Lap[]): string {
+type WorkoutType = PlannedWorkout['workout_type']
+
+const LOW_INTENSITY_TYPES: ReadonlySet<WorkoutType> = new Set(['easy_run', 'long_run', 'recovery'])
+
+function isLowIntensity(workoutType: WorkoutType): boolean {
+  return LOW_INTENSITY_TYPES.has(workoutType)
+}
+
+function buildLapTable(laps: Lap[], showAdherence: boolean): string {
   if (laps.length === 0) return ''
 
-  const header = 'Lap | Distance | Pace | Avg HR | Max HR | Elev Gain | Type | Adherence%'
-  const divider = '--- | -------- | ---- | ------ | ------ | --------- | ---- | ----------'
+  const header = showAdherence
+    ? 'Lap | Distance | Pace | Avg HR | Max HR | Elev Gain | Type | Adherence%'
+    : 'Lap | Distance | Pace | Avg HR | Max HR | Elev Gain | Type'
+  const divider = showAdherence
+    ? '--- | -------- | ---- | ------ | ------ | --------- | ---- | ----------'
+    : '--- | -------- | ---- | ------ | ------ | --------- | ----'
   const rows = laps.map(lap => {
     const dist = lap.distance_meters ? `${(lap.distance_meters / 1000).toFixed(2)} km` : 'N/A'
     const pace = formatPace(lap.avg_pace)
@@ -87,8 +113,10 @@ function buildLapTable(laps: Lap[]): string {
     const maxHr = lap.max_hr ? `${lap.max_hr}` : 'N/A'
     const elev = lap.elevation_gain_meters != null ? `${Math.round(lap.elevation_gain_meters)}m` : '-'
     const type = lap.intensity_type || lap.split_type || '-'
+    const base = `${lap.lap_index} | ${dist} | ${pace} | ${avgHr} | ${maxHr} | ${elev} | ${type}`
+    if (!showAdherence) return base
     const adherence = lap.compliance_score != null ? `${lap.compliance_score}%` : 'N/A'
-    return `${lap.lap_index} | ${dist} | ${pace} | ${avgHr} | ${maxHr} | ${elev} | ${type} | ${adherence}`
+    return `${base} | ${adherence}`
   })
 
   return `\nLap breakdown:\n${header}\n${divider}\n${rows.join('\n')}`
@@ -130,8 +158,15 @@ function buildUserMessage(
     : null
 
   const targetPace = extractTargetPace(workout)
+  const lowIntensity = isLowIntensity(workout.workout_type)
 
-  let msg = `Planned workout:
+  const primaryMetric = lowIntensity
+    ? `PRIMARY EVALUATION CRITERIA — this is a ${workout.workout_type.replace('_', ' ')}: judge success on overall average pace and average HR alignment with intent. Lap-to-lap pace variance is informational only and MUST NOT lower the rating. If overall pace is on target and average HR sits in the easy zone, rate this 4.5–5.0.`
+    : `PRIMARY EVALUATION CRITERIA — this is a ${workout.workout_type.replace('_', ' ')}: judge success on per-lap pace compliance and intensity control. Lap drift, slow first reps, and fade in final reps are the key signals.`
+
+  let msg = `${primaryMetric}
+
+Planned workout:
 - Type: ${workout.workout_type}
 - Target distance: ${effectiveDistance ? `${(effectiveDistance / 1000).toFixed(2)} km` : 'N/A'}
 - Target duration: ${workout.duration_target_seconds ? formatDuration(workout.duration_target_seconds) : 'N/A'}
@@ -148,11 +183,11 @@ Actual activity:
 - Distance variance vs plan: ${distanceVariance !== 0 ? `${distanceVariance > 0 ? '+' : ''}${distanceVariance.toFixed(1)}%` : '0%'}
 - Duration variance vs plan: ${durationVariance !== 0 ? `${durationVariance > 0 ? '+' : ''}${durationVariance.toFixed(1)}%` : '0%'}`
 
-  if (paceCompliancePct != null) {
+  if (paceCompliancePct != null && !lowIntensity) {
     msg += `\n- Pace compliance: ${paceCompliancePct}%`
   }
 
-  const lapTable = buildLapTable(laps)
+  const lapTable = buildLapTable(laps, !lowIntensity)
   if (lapTable) {
     msg += `\n${lapTable}`
   }
@@ -235,10 +270,10 @@ export async function generateActivitySummary(
       .eq('activity_id', activityId)
       .order('lap_index', { ascending: true })
 
-    // Fetch athlete for LLM preference
+    // Fetch athlete for LLM preference and feedback tone
     const { data: athlete } = await supabase
       .from('athletes')
-      .select('preferred_llm_provider, preferred_llm_model')
+      .select('preferred_llm_provider, preferred_llm_model, feedback_tone')
       .eq('id', activity.athlete_id)
       .single()
 
@@ -252,6 +287,9 @@ export async function generateActivitySummary(
     }
 
     // Build prompt and call LLM
+    const tone: FeedbackTone = (athlete.feedback_tone as FeedbackTone | null | undefined) ?? 'balanced'
+    const systemPrompt = buildSystemPrompt(tone)
+    console.log(`[AI Summary] Activity ${activityId} — tone="${tone}" (athlete ${activity.athlete_id})`)
     const userMessage = buildUserMessage(activity, workout, (laps || []) as Lap[])
     // For summaries, use Flash Lite when Gemini is selected — summarisation doesn't need thinking mode
     const summaryModel = (athlete.preferred_llm_provider === 'gemini' && !athlete.preferred_llm_model)
@@ -264,7 +302,7 @@ export async function generateActivitySummary(
     // chat history issue where a single user message gets duplicated.
     const llmRequest = {
       messages: [
-        { role: 'user' as const, content: `Instructions:\n${SYSTEM_PROMPT}` },
+        { role: 'user' as const, content: `Instructions:\n${systemPrompt}` },
         { role: 'assistant' as const, content: 'Understood. Send me the workout data and I will respond with the JSON rating and summary.' },
         { role: 'user' as const, content: userMessage },
       ],
