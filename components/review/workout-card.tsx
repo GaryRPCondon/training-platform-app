@@ -445,7 +445,7 @@ function IntervalStep({
   set, interval, isFirstInSet,
   rowKey, expandedKey, onToggle,
   onChange, onChangeSet, onRemove,
-  trainingPaces, units, stampedPaceSec,
+  trainingPaces, units, stampedPaceSec, workoutIntensity,
 }: {
   set: EditableSet
   interval: EditableInterval
@@ -459,6 +459,7 @@ function IntervalStep({
   trainingPaces: TrainingPaces | null | undefined
   units: UnitSystem
   stampedPaceSec?: number
+  workoutIntensity?: string
 }) {
   const isExpanded = expandedKey === rowKey
   const isIndented = !isFirstInSet
@@ -468,6 +469,15 @@ function IntervalStep({
     i => i.intensity?.toLowerCase().includes('recovery') || i.intensity?.toLowerCase().includes('rest')
   )
 
+  // Only inherit the workout's stamped pace when this interval shares the
+  // workout's primary intensity. Recovery jogs (e.g. intensity="E" inside a
+  // tempo workout, or "recovery" inside an interval workout) MUST fall back to
+  // VDOT-based easy pace, never the stamped tempo/interval pace. Mirrors the
+  // primary-intensity guard in lib/garmin/workout-mapper.ts (PR #13).
+  const matchesPrimary = interval.intensity != null && workoutIntensity != null &&
+    interval.intensity.toLowerCase() === workoutIntensity.toLowerCase()
+  const effectiveStampedPace = matchesPrimary ? stampedPaceSec : undefined
+
   const distLabel = interval.distance_meters
     ? `${interval.distance_meters} m`
     : interval.duration_seconds
@@ -476,14 +486,14 @@ function IntervalStep({
   const label = showRepeat ? `${set.repeat} × ${distLabel}` : distLabel
 
   const paceDisplay = isFirstInSet
-    ? fmtPaceRangeDisplay(interval.target_pace, trainingPaces, interval.intensity, units, stampedPaceSec)
+    ? fmtPaceRangeDisplay(interval.target_pace, trainingPaces, interval.intensity, units, effectiveStampedPace)
     : ''
 
   const vdotLabel = (() => {
     if (!interval.intensity) return null
     // Prefer stamped methodology pace for work intervals
-    if (stampedPaceSec && !isRecoveryIntensity(interval.intensity)) {
-      return fmtCenterPace(stampedPaceSec, units)
+    if (effectiveStampedPace && !isRecoveryIntensity(interval.intensity)) {
+      return fmtCenterPace(effectiveStampedPace, units)
     }
     if (!trainingPaces) return null
     const sec = trainingPaces[intensityToPaceKey(interval.intensity)]
@@ -494,8 +504,8 @@ function IntervalStep({
   const [paceInputs, setPaceInputs] = useState(() => {
     if (interval.target_pace) return parsePaceToDisplayInputs(interval.target_pace, units)
     // Pre-populate from stamped methodology pace for work intervals
-    if (stampedPaceSec && interval.intensity && !isRecoveryIntensity(interval.intensity)) {
-      const synth = `${Math.floor(stampedPaceSec / 60)}:${String(Math.round(stampedPaceSec % 60)).padStart(2, '0')}`
+    if (effectiveStampedPace && interval.intensity && !isRecoveryIntensity(interval.intensity)) {
+      const synth = `${Math.floor(effectiveStampedPace / 60)}:${String(Math.round(effectiveStampedPace % 60)).padStart(2, '0')}`
       return parsePaceToDisplayInputs(synth, units)
     }
     // Fallback: derive from VDOT trainingPaces ± 15 sec/km tolerance
@@ -700,12 +710,14 @@ function StructuredWorkoutEditor({
   trainingPaces,
   units,
   stampedPaceSec,
+  workoutIntensity,
 }: {
   structured: EditableStructured
   onChange: (v: EditableStructured) => void
   trainingPaces: TrainingPaces | null | undefined
   units: UnitSystem
   stampedPaceSec?: number
+  workoutIntensity?: string
 }) {
   const [expandedKey, setExpandedKey] = useState<string | null>(null)
   const totalMeters = useMemo(
@@ -793,6 +805,7 @@ function StructuredWorkoutEditor({
               trainingPaces={trainingPaces}
               units={units}
               stampedPaceSec={stampedPaceSec}
+              workoutIntensity={workoutIntensity}
             />
           )
         })
@@ -1692,6 +1705,7 @@ export function WorkoutCard({
                       ? (workout.structured_workout as Record<string, unknown>).target_pace_sec_per_km as number
                       : undefined
                   }
+                  workoutIntensity={workout.intensity_target ?? undefined}
                 />
               </div>
             ) : (
