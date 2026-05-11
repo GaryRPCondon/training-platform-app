@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { buildSplitDescription } from '@/lib/workouts/description-helpers'
 import { z } from 'zod'
 
 const unsplitSchema = z.object({
@@ -46,6 +47,17 @@ export async function POST(request: Request) {
       }, { status: 400 })
     }
 
+    if (dayRows.some(r =>
+      r.completed_activity_id ||
+      r.completion_status === 'completed' ||
+      r.completion_status === 'partial'
+    )) {
+      return NextResponse.json(
+        { error: 'Cannot merge: one or both sessions are completed or matched' },
+        { status: 400 }
+      )
+    }
+
     const [run1, run2] = dayRows
     const summed = (run1.distance_target_meters ?? 0) + (run2.distance_target_meters ?? 0)
     if (summed <= 0) {
@@ -63,7 +75,7 @@ export async function POST(request: Request) {
       workout_type: canonical.workout_type,
       workout_index: canonical.workout_index,
       session_order: 1,
-      description: canonical.description,
+      description: buildSplitDescription(canonical.workout_type, summed),
       distance_target_meters: summed,
       duration_target_seconds: null,
       intensity_target: intensity,

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { buildSplitDescription } from '@/lib/workouts/description-helpers'
 import { z } from 'zod'
 
 const SPLITTABLE_TYPES = new Set(['easy_run', 'long_run', 'recovery'])
@@ -38,6 +39,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Workout type cannot be split' }, { status: 400 })
     }
 
+    if (
+      workout.completed_activity_id ||
+      workout.completion_status === 'completed' ||
+      workout.completion_status === 'partial'
+    ) {
+      return NextResponse.json(
+        { error: 'Cannot split a completed or matched workout' },
+        { status: 400 }
+      )
+    }
+
     const total = workout.distance_target_meters
     if (!total || total <= 0) {
       return NextResponse.json({ error: 'Workout has no distance target to split' }, { status: 400 })
@@ -60,7 +72,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Date already has multiple workouts; cannot split' }, { status: 400 })
     }
 
-    const baseDescription = workout.description ?? formatDefaultName(workout.workout_type)
     const intensity = workout.intensity_target ?? 'easy'
 
     const buildChild = (run: number, distance: number) => ({
@@ -71,11 +82,11 @@ export async function POST(request: Request) {
       workout_type: workout.workout_type,
       workout_index: workout.workout_index,
       session_order: run,
-      description: `${baseDescription} (Run ${run})`,
+      description: buildSplitDescription(workout.workout_type, distance),
       distance_target_meters: distance,
       duration_target_seconds: null,
       intensity_target: intensity,
-      structured_workout: { pace_guidance: intensity, notes: `Run ${run} of 2` },
+      structured_workout: { pace_guidance: intensity, notes: null },
       status: 'scheduled',
       notes: workout.notes,
       version: 1,
@@ -117,6 +128,3 @@ export async function POST(request: Request) {
   }
 }
 
-function formatDefaultName(type: string): string {
-  return type.split('_').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ')
-}

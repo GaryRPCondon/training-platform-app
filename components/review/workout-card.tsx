@@ -889,15 +889,28 @@ export function WorkoutCard({
 
   const SPLITTABLE_TYPES = ['easy_run', 'long_run', 'recovery']
   const isPartOfSplit = siblings.length > 0
-  const totalSessions = siblings.length + 1
+  const isCompletedOrMatched =
+    !!workout.completed_activity_id ||
+    workout.completion_status === 'completed' ||
+    workout.completion_status === 'partial'
   const canSplit =
     editable &&
     !isNew &&
     !isPartOfSplit &&
+    !isCompletedOrMatched &&
     SPLITTABLE_TYPES.includes(workout.workout_type) &&
     !!workout.distance_target_meters &&
     workout.distance_target_meters > 0
-  const canUnsplit = editable && !isNew && siblings.length === 1
+  const canUnsplit =
+    editable &&
+    !isNew &&
+    siblings.length === 1 &&
+    !isCompletedOrMatched &&
+    !(
+      !!siblings[0].completed_activity_id ||
+      siblings[0].completion_status === 'completed' ||
+      siblings[0].completion_status === 'partial'
+    )
 
   async function handleUnsplit() {
     setIsMergeConfirmOpen(false)
@@ -1282,9 +1295,6 @@ export function WorkoutCard({
             {formatWorkoutType(isNew ? editWorkoutType : workout.workout_type)}
           </h3>
           <div className="flex items-center gap-2">
-            {!isNew && isPartOfSplit && (
-              <Badge variant="secondary">Run {workout.session_order} of {totalSessions}</Badge>
-            )}
             {!isNew && workout.workout_index && (
               <Badge variant="outline">{workout.workout_index}</Badge>
             )}
