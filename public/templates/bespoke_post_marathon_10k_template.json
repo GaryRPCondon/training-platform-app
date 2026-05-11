@@ -10,8 +10,8 @@
       "duration_weeks": 10,
       "training_days_per_week": 6,
       "peak_weekly_mileage": {
-        "miles": 62,
-        "km": 100
+        "miles": 53,
+        "km": 85
       },
       "difficulty_score": 7,
       "structure_type": "periodized"
@@ -23,7 +23,7 @@
         "At least one week of easy running already completed post-marathon",
         "No residual injuries or lingering soreness from the marathon",
         "Established 5+ years of running experience",
-        "Comfortable with 80-100 km per week",
+        "Comfortable with max mileage in the 60-100 km/week range",
         "Familiar with VDOT or pace-based training",
         "Experience with threshold and interval training"
       ],
@@ -39,7 +39,7 @@
         "Strides only \u2014 no hill sprints, suitable for runners with hip/groin injury history",
         "Mid-plan 5K race in week 3 to consolidate VDOT before sharper work begins"
       ],
-      "description_short": "10-week 10K plan for an experienced runner transitioning from marathon to a 10K focus block. Two quality sessions per week, peak ~100 km. Threshold and VO2max development followed by race-specific sharpening. Bridges into a subsequent marathon training cycle."
+      "description_short": "10-week 10K plan for an experienced runner transitioning from marathon to a 10K focus block. Two quality sessions per week, scalable peak in the 60-100 km/week range. Threshold and VO2max development followed by race-specific sharpening. Bridges into a subsequent marathon training cycle."
     },
     "tags": [
       "bespoke",
@@ -58,7 +58,7 @@
         "Experienced runners returning from a marathon to a 10K focus",
         "Runners with hip, groin or hamstring injury history (no hill sprints)",
         "Athletes bridging from one marathon cycle to the next via a shorter focus block",
-        "Runners comfortable at 80-100 km per week"
+        "Runners comfortable with max mileage in the 60-100 km/week range"
       ],
       "not_recommended": [
         "Runners less than 2 weeks post-marathon",
@@ -78,7 +78,7 @@
     "source_reference": {
       "pacing_guidance_note": "All paces are derived from VDOT. Threshold (T) work uses Daniels' tempo pace; Interval (I) work uses VDOT interval pace; race-specific work in the final phase uses goal 10K race pace. If the athlete races the 5K in week 3 and the result warrants it, update VDOT before week 4."
     },
-    "description": "Three-phase 10-week training plan for an experienced runner transitioning from marathon training to a 10K focus block, with the design intent of bridging into a subsequent marathon training cycle. Phase 1 (weeks 1-3) reintroduces structured quality work and culminates in a 5K race. Phase 2 (weeks 4-7) develops threshold and VO2max as the primary 10K-specific stimuli. Phase 3 (weeks 8-10) introduces race-specific 10K-pace work and tapers into the goal race. Volume is moderate (peak ~100 km) and quality is concentrated in two weekly sessions to leave room for aerobic maintenance.",
+    "description": "Three-phase 10-week training plan for an experienced runner transitioning from marathon training to a 10K focus block, with the design intent of bridging into a subsequent marathon training cycle. Phase 1 (weeks 1-3) reintroduces structured quality work and culminates in a 5K race. Phase 2 (weeks 4-7) develops threshold and VO2max as the primary 10K-specific stimuli. Phase 3 (weeks 8-10) introduces race-specific 10K-pace work and tapers into the goal race. Volume is moderate and scales to the athlete's comfort (template content peaks at 85 km but the plan should be adapted across roughly 60-100 km/week peak depending on the athlete). Quality is concentrated in two weekly sessions, with the day between Q sessions kept short (~12% of weekly volume) to protect quality of the harder days.",
     "target_audience": {
       "experience_level": "intermediate_to_advanced",
       "prerequisites": [
@@ -86,11 +86,11 @@
         "At least one week of easy running already completed post-marathon",
         "No residual injuries or lingering soreness from the marathon",
         "Established 5+ years of running experience",
-        "Comfortable with 80-100 km per week",
+        "Comfortable with max mileage in the 60-100 km/week range",
         "Familiar with VDOT or pace-based training",
         "Experience with threshold and interval training"
       ],
-      "weekly_mileage_range": "Peak 100 km. Athletes can scale total volume up or down by adjusting easy-day distance; quality sessions are fixed."
+      "weekly_mileage_range": "Scalable plan: peak somewhere in the 60-100 km/week range depending on athlete comfort. Reference content peaks at 85 km with most weeks 65-82 km; scale weekly totals proportionally for athletes with lower or higher comfort peaks. The day between quality sessions (Wednesday by default) is capped to protect quality of the harder days. Monday is the longest easy day; athletes can split it into a double if preferred."
     },
     "program_structure": {
       "duration_weeks": 10,
@@ -99,19 +99,19 @@
           "name": "Phase 1 \u2014 Reintroduction",
           "weeks": 3,
           "week_range": "1-3",
-          "description": "Re-establish quality-session rhythm post-marathon. Threshold work introduced first, VO2max work introduced in week 2. Volume builds from 75 to 85 km, with a deliberate cutback to ~72 km in week 3 around the 5K race. Phase culminates in a 5K race in week 3 to consolidate VDOT before harder training."
+          "description": "Re-establish quality-session rhythm post-marathon. Threshold work introduced first, VO2max work introduced in week 2. Volume is 75 km in weeks 1-2, with a deliberate cutback to ~63 km in week 3 around the 5K race. Phase culminates in a 5K race in week 3 to consolidate VDOT before harder training."
         },
         {
           "name": "Phase 2 \u2014 Threshold and VO2max Development",
           "weeks": 4,
           "week_range": "4-7",
-          "description": "Build the metabolic substrate for 10K racing. Threshold sessions develop sustainable pace; VO2max sessions raise the ceiling. Volume peaks at 100 km in weeks 5-6. Two threshold-supported long runs in this phase build aerobic strength alongside threshold density."
+          "description": "Build the metabolic substrate for 10K racing. Threshold sessions develop sustainable pace; VO2max sessions raise the ceiling. Volume peaks at 85 km in week 6. Two threshold-supported long runs in this phase build aerobic strength alongside threshold density."
         },
         {
           "name": "Phase 3 \u2014 Race-Specific Sharpening and Taper",
           "weeks": 3,
           "week_range": "8-10",
-          "description": "Convert general fitness into race-specific sharpness. Race-pace 10K work introduced in week 8. Volume drops from 90 km to ~50 km in race week. Race on Sunday of week 10."
+          "description": "Convert general fitness into race-specific sharpness. Race-pace 10K work introduced in week 8. Volume drops from 76 km to 50 km in race week. Race on Sunday of week 10."
         }
       ],
       "training_week_structure": "Two quality sessions per week (Q1 on Tuesday, Q2 on Thursday by default). Long run on Saturday. Rest day on Sunday. Remaining days at E (easy) pace to reach the weekly volume target."
@@ -193,25 +193,25 @@
         "week": 2,
         "plan_week": 2,
         "phase": "Phase 1 \u2014 Reintroduction",
-        "total_km": 85,
-        "monday": "Easy 14 km at E pace",
+        "total_km": 75,
+        "monday": "Easy 13 km at E pace",
         "tuesday": "Q1: 5 \u00d7 1km at T pace, 90s recovery jogs (11 km total)",
-        "wednesday": "Easy 19 km at E pace",
+        "wednesday": "Easy 10 km at E pace",
         "thursday": "Q2: 8 \u00d7 400m at I pace, 400m recovery jogs (11 km total)",
         "friday": "Easy 10 km at E pace",
         "saturday": "Long run, 20 km at E pace",
         "sunday": "Rest",
-        "notes": "Threshold volume increases by one rep. First proper VO2max session \u2014 modest rep length (400m) to ease the system into faster work."
+        "notes": "Threshold volume increases by one rep. First proper VO2max session \u2014 modest rep length (400m) to ease the system into faster work. Wednesday capped at 10 km to protect Q2 recovery."
       },
       {
         "week": 3,
         "plan_week": 3,
         "phase": "Phase 1 \u2014 Reintroduction",
-        "total_km": 72,
+        "total_km": 63,
         "monday": "Easy 14 km at E pace",
         "tuesday": "Q1: 20 min continuous tempo at T_time pace (9 km total)",
-        "wednesday": "Easy 17 km at E pace",
-        "thursday": "Easy 14 km at E pace",
+        "wednesday": "Easy 10 km at E pace",
+        "thursday": "Easy 12 km at E pace",
         "friday": "Easy 6 km at E pace",
         "saturday": "5K race, plus easy cool-down at E pace (12 km total)",
         "sunday": "Rest",
@@ -221,54 +221,54 @@
         "week": 4,
         "plan_week": 4,
         "phase": "Phase 2 \u2014 Threshold and VO2max Development",
-        "total_km": 95,
-        "monday": "Easy 16 km at E pace",
+        "total_km": 79,
+        "monday": "Easy 14 km at E pace",
         "tuesday": "Q1: 5 \u00d7 1km at T pace, 60s recovery jogs (11 km total)",
-        "wednesday": "Easy 20 km at E pace",
+        "wednesday": "Easy 10 km at E pace",
         "thursday": "Q2: 5 \u00d7 800m at I pace, 90s recovery jogs (12 km total)",
-        "friday": "Easy 14 km at E pace",
+        "friday": "Easy 10 km at E pace",
         "saturday": "Long run, 22 km at E pace",
         "sunday": "Rest",
-        "notes": "Recovery between threshold reps shortens to 60s, building threshold density. I-pace reps lengthen to 800m."
+        "notes": "Recovery between threshold reps shortens to 60s, building threshold density. I-pace reps lengthen to 800m. Wednesday capped at 10 km to protect Q2 recovery."
       },
       {
         "week": 5,
         "plan_week": 5,
         "phase": "Phase 2 \u2014 Threshold and VO2max Development",
-        "total_km": 100,
-        "monday": "Easy 17 km at E pace",
+        "total_km": 82,
+        "monday": "Easy 15 km at E pace",
         "tuesday": "Q1: 2 \u00d7 3km at T pace, 3 min jog between (13 km total)",
-        "wednesday": "Easy 22 km at E pace",
+        "wednesday": "Easy 10 km at E pace",
         "thursday": "Q2: 6 \u00d7 800m at I pace, 90s recovery jogs (12 km total)",
-        "friday": "Easy 14 km at E pace",
+        "friday": "Easy 10 km at E pace",
         "saturday": "Long run, 22 km at E pace with last 4 km at T pace",
         "sunday": "Rest",
-        "notes": "First threshold-supported long run \u2014 T-pace segment at the end when the athlete is warmed up. Threshold session moves to longer continuous blocks."
+        "notes": "First threshold-supported long run \u2014 T-pace segment at the end when the athlete is warmed up. Threshold session moves to longer continuous blocks. Wednesday capped at 10 km."
       },
       {
         "week": 6,
         "plan_week": 6,
         "phase": "Phase 2 \u2014 Threshold and VO2max Development",
-        "total_km": 100,
-        "monday": "Easy 17 km at E pace",
+        "total_km": 85,
+        "monday": "Easy 16 km at E pace",
         "tuesday": "Q1: 6 \u00d7 1km at T pace, 60s recovery jogs (12 km total)",
-        "wednesday": "Easy 21 km at E pace",
+        "wednesday": "Easy 10 km at E pace",
         "thursday": "Q2: 5 \u00d7 1000m at I pace, 2 min recovery jogs (13 km total)",
-        "friday": "Easy 13 km at E pace",
+        "friday": "Easy 10 km at E pace",
         "saturday": "Long run, 24 km at E pace with 6 km at T pace embedded mid-run (km 12-18)",
         "sunday": "Rest",
-        "notes": "Peak threshold density. I-pace reps lengthen to 1000m. Threshold-supported long run with T-pace embedded mid-run \u2014 harder version of the previous week's long run."
+        "notes": "Peak threshold density and peak weekly volume. I-pace reps lengthen to 1000m. Threshold-supported long run with T-pace embedded mid-run. Monday is the longest easy day at 16 km \u2014 may be split into a double if preferred."
       },
       {
         "week": 7,
         "plan_week": 7,
         "phase": "Phase 2 \u2014 Threshold and VO2max Development",
-        "total_km": 95,
+        "total_km": 81,
         "monday": "Easy 15 km at E pace",
         "tuesday": "Q1: 4 \u00d7 1.5km at T pace, 90s recovery jogs (12 km total)",
-        "wednesday": "Easy 21 km at E pace",
+        "wednesday": "Easy 10 km at E pace",
         "thursday": "Q2: 4 \u00d7 1200m at I pace, 2 min recovery jogs (12 km total)",
-        "friday": "Easy 13 km at E pace",
+        "friday": "Easy 10 km at E pace",
         "saturday": "Long run, 22 km at E pace",
         "sunday": "Rest",
         "notes": "Small cutback in volume after peak. Quality remains demanding but with slightly less total work. Long run drops embedded threshold to allow recovery before the race-specific phase."
@@ -277,12 +277,12 @@
         "week": 8,
         "plan_week": 8,
         "phase": "Phase 3 \u2014 Race-Specific Sharpening",
-        "total_km": 90,
-        "monday": "Easy 15 km at E pace",
+        "total_km": 76,
+        "monday": "Easy 14 km at E pace",
         "tuesday": "Q1: 5 \u00d7 1km at R10 pace, 90s recovery jogs (11 km total)",
-        "wednesday": "Easy 20 km at E pace",
+        "wednesday": "Easy 10 km at E pace",
         "thursday": "Q2: 25 min continuous tempo at T_time pace (11 km total)",
-        "friday": "Easy 13 km at E pace",
+        "friday": "Easy 10 km at E pace",
         "saturday": "Long run, 20 km at E pace",
         "sunday": "Rest",
         "notes": "First race-pace work. Goal 10K pace is set from the most recent VDOT (updated after the week 3 race if applicable). Threshold session shifts to continuous tempo to consolidate threshold fitness."
@@ -291,12 +291,12 @@
         "week": 9,
         "plan_week": 9,
         "phase": "Phase 3 \u2014 Race-Specific Sharpening",
-        "total_km": 80,
-        "monday": "Easy 14 km at E pace",
+        "total_km": 70,
+        "monday": "Easy 13 km at E pace",
         "tuesday": "Q1: 3 \u00d7 2km at R10 pace, 2 min recovery jogs (12 km total)",
-        "wednesday": "Easy 17 km at E pace",
+        "wednesday": "Easy 9 km at E pace",
         "thursday": "Q2: 6 \u00d7 400m at I pace, 90s recovery jogs (9 km total)",
-        "friday": "Easy 11 km at E pace",
+        "friday": "Easy 10 km at E pace",
         "saturday": "Long run, 17 km at E pace",
         "sunday": "Rest",
         "notes": "Volume drops noticeably. Tuesday session is the key sharpener \u2014 longer race-pace segments. Thursday returns to short fast reps to keep the system primed without fatigue."

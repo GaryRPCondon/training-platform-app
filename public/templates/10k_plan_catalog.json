@@ -15,8 +15,8 @@
         "duration_weeks": 10,
         "training_days_per_week": 6,
         "peak_weekly_mileage": {
-          "miles": 62,
-          "km": 100
+          "miles": 53,
+          "km": 85
         },
         "difficulty_score": 7,
         "structure_type": "periodized"
@@ -28,7 +28,7 @@
           "At least one week of easy running already completed post-marathon",
           "No residual injuries or lingering soreness from the marathon",
           "Established 5+ years of running experience",
-          "Comfortable with 80-100 km per week",
+          "Comfortable with max mileage in the 60-100 km/week range",
           "Familiar with VDOT or pace-based training",
           "Experience with threshold and interval training"
         ],
@@ -44,7 +44,7 @@
           "Strides only — no hill sprints, suitable for runners with hip/groin injury history",
           "Mid-plan 5K race in week 3 to consolidate VDOT before sharper work begins"
         ],
-        "description_short": "10-week 10K plan for an experienced runner transitioning from marathon to a 10K focus block. Two quality sessions per week, peak ~100 km. Threshold and VO2max development followed by race-specific sharpening. Bridges into a subsequent marathon training cycle."
+        "description_short": "10-week 10K plan for an experienced runner transitioning from marathon to a 10K focus block. Two quality sessions per week, scalable peak in the 60-100 km/week range. Threshold and VO2max development followed by race-specific sharpening. Bridges into a subsequent marathon training cycle."
       },
       "tags": [
         "bespoke",
@@ -63,7 +63,7 @@
           "Experienced runners returning from a marathon to a 10K focus",
           "Runners with hip, groin or hamstring injury history (no hill sprints)",
           "Athletes bridging from one marathon cycle to the next via a shorter focus block",
-          "Runners comfortable at 80-100 km per week"
+          "Runners comfortable with max mileage in the 60-100 km/week range"
         ],
         "not_recommended": [
           "Runners less than 2 weeks post-marathon",
