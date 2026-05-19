@@ -366,3 +366,97 @@ export interface SyncLog {
     error_message: string | null
     created_at: string
 }
+
+// ---------------------------------------------------------------------------
+// Strength & Mobility module
+// ---------------------------------------------------------------------------
+
+export interface StrengthExerciseMeasurement {
+    type: 'reps' | 'duration' | 'distance'
+    sets: number
+    reps_per_set?: number
+    duration_seconds?: number
+    distance_meters?: number
+    weight_kg?: number | null
+    rest_seconds?: number
+}
+
+export interface StrengthExercise {
+    canonical_name: string
+    display_name: string
+    user_text: string
+    measurement: StrengthExerciseMeasurement
+    garmin_supported: boolean
+    garmin_unsupported_reason?: string
+    notes?: string
+}
+
+export interface ParsedStrengthSession {
+    session_index: number
+    title: string
+    exercises: StrengthExercise[]
+    estimated_duration_minutes?: number
+    coaching_note?: string
+}
+
+export interface ParsedStrengthProgram {
+    schema_version: '1.0'
+    content_type: 'strength' | 'mobility' | 'mixed'
+    name: string
+    description?: string
+    sessions: ParsedStrengthSession[]
+    parse_warnings?: string[]
+}
+
+export interface StrengthProgram {
+    id: number
+    athlete_id: string
+    name: string
+    source_text: string | null
+    source_format: 'free_text' | 'json'
+    parsed_program: ParsedStrengthProgram
+    parse_confidence: number | null
+    parse_metadata: Record<string, unknown> | null
+    cadence_days: number
+    start_date: string
+    status: 'active' | 'completed' | 'deleted'
+    created_at: string
+    updated_at: string
+}
+
+export interface StrengthSession {
+    id: number
+    program_id: number | null
+    athlete_id: string
+    session_index: number
+    scheduled_date: string
+    display_order: number
+    title: string
+    exercises: StrengthExercise[]
+    estimated_duration_minutes: number | null
+    placement_rationale: string | null
+    coaching_note: string | null
+    completion_status: 'pending' | 'completed' | 'partial' | 'skipped'
+    completed_at: string | null
+    actual_duration_minutes: number | null
+    completion_notes: string | null
+    garmin_workout_id: string | null
+    garmin_scheduled_at: string | null
+    garmin_sync_status: 'synced' | 'stale' | 'failed' | 'unsupported' | null
+    garmin_sync_metadata: Record<string, unknown> | null
+    created_at: string
+    updated_at: string
+}
+
+export interface StrengthExerciseCatalog {
+    id: number
+    canonical_name: string
+    display_name: string
+    aliases: string[]
+    measurement_type: 'reps' | 'duration' | 'distance'
+    garmin_exercise_category: string | null
+    garmin_exercise_name: string | null
+    garmin_step_type: 'STRENGTH' | 'CARDIO' | 'OTHER'
+    garmin_supported: boolean
+    created_at: string
+}

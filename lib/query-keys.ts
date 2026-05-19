@@ -19,4 +19,7 @@ export const queryKeys = {
   phaseProgress: () => ['phase-progress'] as const,
   todaysWorkout: () => ['todays-workout'] as const,
   weeklyProgress: () => ['weekly-progress'] as const,
+  strengthPrograms: () => ['strength-programs'] as const,
+  strengthSessions: (start?: string, end?: string) =>
+    start && end ? ['strength-sessions', start, end] as const : ['strength-sessions'] as const,
 }
