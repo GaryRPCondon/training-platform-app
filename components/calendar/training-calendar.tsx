@@ -20,9 +20,13 @@ import { toDisplayDistance, distanceLabel, type UnitSystem } from '@/lib/utils/u
 import { WeeklyTotals } from './weekly-totals'
 import { CustomToolbar } from './custom-toolbar'
 import { createClient } from '@/lib/supabase/client'
-import type { TrainingPaces } from '@/types/database'
+import type { TrainingPaces, StrengthSession } from '@/types/database'
 import type { WorkoutWithDetails } from '@/types/review'
 import { useRouter } from 'next/navigation'
+import { getSessionsForDateRange } from '@/lib/supabase/strength-queries'
+import { queryKeys } from '@/lib/query-keys'
+import { StrengthCellContext, StrengthDayCellWrapper } from './strength-day-cell-wrapper'
+import { Dumbbell } from 'lucide-react'
 
 // Custom styles to enable text wrapping in calendar events (max 2 lines)
 const calendarStyles = `
@@ -69,8 +73,15 @@ const calendarStyles = `
   .rbc-day-bg {
     cursor: pointer;
     position: relative;
+    padding-bottom: 18px;
+  }
+  /* Highlight cells while a strength session is being dragged over them. */
+  .rbc-day-bg[data-strength-drop-active="true"] {
+    background-color: rgba(59, 130, 246, 0.08);
   }
 `
+
+const QUALITY_WORKOUT_TYPES = new Set(['tempo', 'intervals', 'race_pace', 'race', 'long_run'])
 
 const localizer = momentLocalizer(moment)
 const DnDCalendar = withDragAndDrop(Calendar)
@@ -138,9 +149,10 @@ function makeNewWorkout(date: Date): WorkoutWithDetails {
 
 interface TrainingCalendarProps {
     openWorkoutId?: number
+    openStrengthSessionId?: number
 }
 
-export function TrainingCalendar({ openWorkoutId }: TrainingCalendarProps = {}) {
+export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: TrainingCalendarProps = {}) {
     const [currentDate, setCurrentDate] = useState(new Date())
     const [selectedWorkout, setSelectedWorkout] = useState<WorkoutWithDetails | null>(null)
     const [selectedActivity, setSelectedActivity] = useState<any | null>(null)
@@ -149,6 +161,8 @@ export function TrainingCalendar({ openWorkoutId }: TrainingCalendarProps = {}) 
     const [isAutoMatching, setIsAutoMatching] = useState(false)
     const [createDate, setCreateDate] = useState<Date | null>(null)
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+    const [selectedStrengthSession, setSelectedStrengthSession] = useState<StrengthSession | null>(null)
+    const [isStrengthDialogOpen, setIsStrengthDialogOpen] = useState(false)
     const [runningOnly, setRunningOnly] = useState(() => {
         if (typeof window !== 'undefined') {
             return localStorage.getItem('calendar-running-only') === 'true'
@@ -242,6 +256,29 @@ export function TrainingCalendar({ openWorkoutId }: TrainingCalendarProps = {}) 
         queryFn: () => getActivitiesForDateRange(queryStart, queryEnd),
     })
 
+    // Strength sessions in the visible window.
+    const { data: strengthSessions } = useQuery({
+        queryKey: queryKeys.strengthSessions(queryStart, queryEnd),
+        queryFn: async () => {
+            if (!athlete?.id) return [] as StrengthSession[]
+            return getSessionsForDateRange(supabase, athlete.id, queryStart, queryEnd)
+        },
+        enabled: !!athlete?.id,
+    })
+
+    const sessionsByDate = useMemo(() => {
+        const map = new Map<string, StrengthSession[]>()
+        for (const session of strengthSessions ?? []) {
+            const bucket = map.get(session.scheduled_date)
+            if (bucket) bucket.push(session)
+            else map.set(session.scheduled_date, [session])
+        }
+        for (const list of map.values()) {
+            list.sort((a, b) => (a.display_order ?? 1) - (b.display_order ?? 1) || a.id - b.id)
+        }
+        return map
+    }, [strengthSessions])
+
     // Convert raw workouts to WorkoutWithDetails format
     const workouts: WorkoutWithDetails[] = useMemo(() => {
         if (!rawWorkouts) return []
@@ -294,6 +331,77 @@ export function TrainingCalendar({ openWorkoutId }: TrainingCalendarProps = {}) 
             toast.error('Failed to reschedule workout')
         }
     })
+
+    const strengthRescheduleMutation = useMutation({
+        mutationFn: async ({ sessionId, newDate }: { sessionId: number, newDate: string }) => {
+            const response = await fetch('/api/strength/reschedule', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sessionId, newDate }),
+            })
+            const result = await response.json()
+            if (!response.ok) throw new Error(result.error || 'Failed to reschedule')
+            return result.session as StrengthSession
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['strength-sessions'] })
+            toast.success('Strength session rescheduled')
+        },
+        onError: (err: unknown) => {
+            toast.error(err instanceof Error ? err.message : 'Failed to reschedule strength session')
+        },
+    })
+
+    const handleOpenStrengthSession = useCallback((sessionId: number) => {
+        const session = (strengthSessions ?? []).find(s => s.id === sessionId)
+        if (!session) return
+        setSelectedStrengthSession(session)
+        setIsStrengthDialogOpen(true)
+    }, [strengthSessions])
+
+    const handleStrengthDrop = useCallback((sessionId: number, newDate: string) => {
+        const session = (strengthSessions ?? []).find(s => s.id === sessionId)
+        if (!session) return
+        if (session.scheduled_date === newDate) return
+
+        const conflict = (workouts || []).find(
+            w => w.scheduled_date === newDate && QUALITY_WORKOUT_TYPES.has(w.workout_type as string)
+        )
+        if (conflict) {
+            toast.warning(
+                `${conflict.description || conflict.workout_type} is scheduled for ${format(parseISO(newDate), 'EEE, MMM d')}. Strength training the same day may compromise it.`,
+                {
+                    action: {
+                        label: 'Move anyway',
+                        onClick: () => strengthRescheduleMutation.mutate({ sessionId, newDate }),
+                    },
+                    duration: 8000,
+                },
+            )
+            return
+        }
+        strengthRescheduleMutation.mutate({ sessionId, newDate })
+    }, [strengthSessions, workouts, strengthRescheduleMutation])
+
+    const strengthCellValue = useMemo(() => ({
+        sessionsByDate,
+        onOpen: handleOpenStrengthSession,
+        onDragStart: () => { /* reserved for visual feedback in future */ },
+        onDragEnd: () => { /* reserved for visual feedback in future */ },
+        onDrop: handleStrengthDrop,
+    }), [sessionsByDate, handleOpenStrengthSession, handleStrengthDrop])
+
+    // Auto-open strength dialog when navigated with ?strengthSessionId=
+    const openedStrengthRef = useRef<number | undefined>(undefined)
+    useEffect(() => {
+        if (!openStrengthSessionId || !strengthSessions?.length || openedStrengthRef.current === openStrengthSessionId) return
+        const session = strengthSessions.find(s => s.id === openStrengthSessionId)
+        if (session) {
+            openedStrengthRef.current = openStrengthSessionId
+            setSelectedStrengthSession(session)
+            setIsStrengthDialogOpen(true)
+        }
+    }, [openStrengthSessionId, strengthSessions])
 
     // Phase 6: Auto-match activities mutation
     const handleAutoMatch = useCallback(async () => {
@@ -573,30 +681,33 @@ export function TrainingCalendar({ openWorkoutId }: TrainingCalendarProps = {}) 
             <div className="flex-1 w-full flex flex-col landscape:grid landscape:grid-cols-[1fr_220px] md:grid md:grid-cols-[1fr_220px] overflow-visible landscape:overflow-hidden md:overflow-hidden rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] ring-1 ring-black/8 dark:ring-white/20 dark:shadow-[0_8px_30px_rgb(0,0,0,0.35)]">
                 <div className="h-[550px] landscape:h-full md:h-full w-full bg-background overflow-visible relative min-w-0 border-b landscape:border-b-0 landscape:border-r md:border-b-0 md:border-r">
                     <style>{calendarStyles}</style>
-                    <DnDCalendar
-                        localizer={localizer}
-                        events={events}
-                        startAccessor={(event: any) => event.start}
-                        endAccessor={(event: any) => event.end}
-                        onSelectEvent={handleSelectEvent}
-                        onSelectSlot={(slot: any) => {
-                            setCreateDate(slot.start)
-                            setIsCreateDialogOpen(true)
-                        }}
-                        selectable={true}
-                        date={currentDate}
-                        onNavigate={setCurrentDate}
-                        view="month"
-                        views={['month']}
-                        defaultView="month"
-                        style={{ height: '100%', width: '100%' }}
-                        onEventDrop={onEventDrop}
-                        draggableAccessor={() => true}
-                        resizable={false}
-                        eventPropGetter={eventStyleGetter}
-                        toolbar={false}
-                        popup={true}
-                    />
+                    <StrengthCellContext.Provider value={strengthCellValue}>
+                        <DnDCalendar
+                            localizer={localizer}
+                            events={events}
+                            startAccessor={(event: any) => event.start}
+                            endAccessor={(event: any) => event.end}
+                            onSelectEvent={handleSelectEvent}
+                            onSelectSlot={(slot: any) => {
+                                setCreateDate(slot.start)
+                                setIsCreateDialogOpen(true)
+                            }}
+                            selectable={true}
+                            date={currentDate}
+                            onNavigate={setCurrentDate}
+                            view="month"
+                            views={['month']}
+                            defaultView="month"
+                            style={{ height: '100%', width: '100%' }}
+                            onEventDrop={onEventDrop}
+                            draggableAccessor={() => true}
+                            resizable={false}
+                            eventPropGetter={eventStyleGetter}
+                            toolbar={false}
+                            popup={true}
+                            components={{ dateCellWrapper: StrengthDayCellWrapper }}
+                        />
+                    </StrengthCellContext.Provider>
                 </div>
 
                 <WeeklyTotals
@@ -674,6 +785,59 @@ export function TrainingCalendar({ openWorkoutId }: TrainingCalendarProps = {}) 
                             onClose={() => setIsCreateDialogOpen(false)}
                             onCreated={() => setIsCreateDialogOpen(false)}
                         />
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            {/* Strength Session Dialog (Phase 6 stub — full dialog ships in Phase 7) */}
+            <Dialog open={isStrengthDialogOpen} onOpenChange={setIsStrengthDialogOpen}>
+                <DialogContent className="max-w-lg">
+                    <DialogTitle className="flex items-center gap-2">
+                        <Dumbbell className="h-4 w-4" />
+                        {selectedStrengthSession?.title || 'Strength session'}
+                    </DialogTitle>
+                    {selectedStrengthSession && (
+                        <div className="space-y-3 text-sm">
+                            <div className="text-muted-foreground">
+                                {format(parseISO(selectedStrengthSession.scheduled_date), 'EEEE, MMM d')}
+                                {selectedStrengthSession.estimated_duration_minutes && (
+                                    <span> · ~{selectedStrengthSession.estimated_duration_minutes} min</span>
+                                )}
+                            </div>
+                            {selectedStrengthSession.placement_rationale && (
+                                <div className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
+                                    {selectedStrengthSession.placement_rationale}
+                                </div>
+                            )}
+                            {selectedStrengthSession.coaching_note && (
+                                <div className="text-xs italic text-muted-foreground">
+                                    {selectedStrengthSession.coaching_note}
+                                </div>
+                            )}
+                            <div>
+                                <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                    Exercises
+                                </div>
+                                <ul className="space-y-1">
+                                    {selectedStrengthSession.exercises.map((ex, i) => {
+                                        const m = ex.measurement
+                                        let dose = ''
+                                        if (m.type === 'reps' && m.reps_per_set) dose = `${m.sets} × ${m.reps_per_set}`
+                                        else if (m.type === 'duration' && m.duration_seconds) dose = `${m.sets} × ${m.duration_seconds}s`
+                                        else if (m.type === 'distance' && m.distance_meters) dose = `${m.sets} × ${m.distance_meters}m`
+                                        return (
+                                            <li key={i} className="flex justify-between gap-2 border-b border-border/40 pb-1 last:border-0">
+                                                <span>{ex.display_name}</span>
+                                                <span className="text-muted-foreground">{dose}</span>
+                                            </li>
+                                        )
+                                    })}
+                                </ul>
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                                Full edit and completion UI lands in Phase 7.
+                            </div>
+                        </div>
                     )}
                 </DialogContent>
             </Dialog>

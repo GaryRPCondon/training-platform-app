@@ -18,6 +18,9 @@ function CalendarContent() {
     const openWorkoutId = searchParams.get('workoutId')
         ? Number(searchParams.get('workoutId'))
         : undefined
+    const openStrengthSessionId = searchParams.get('strengthSessionId')
+        ? Number(searchParams.get('strengthSessionId'))
+        : undefined
 
     return (
         <div className="flex flex-col h-full md:overflow-hidden min-h-screen md:min-h-0">
@@ -28,7 +31,7 @@ function CalendarContent() {
                 This pattern matches the working review page. DO NOT change to flex-1 min-h-0 only. */}
             <div className="flex-1 grid grid-cols-1 overflow-visible md:overflow-hidden">
                 <div className="h-full w-full min-w-0">
-                    <TrainingCalendar openWorkoutId={openWorkoutId} />
+                    <TrainingCalendar openWorkoutId={openWorkoutId} openStrengthSessionId={openStrengthSessionId} />
                 </div>
             </div>
         </div>
