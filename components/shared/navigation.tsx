@@ -11,6 +11,7 @@ import {
     Sparkles,
     Activity,
     ClipboardList,
+    Dumbbell,
     Menu,
 } from 'lucide-react'
 import { Dialog, DialogContent, DialogTrigger, DialogTitle } from '@/components/ui/dialog'
@@ -38,6 +39,11 @@ const navItems: NavItem[] = [
         title: 'Plans',
         href: '/dashboard/plans',
         icon: ClipboardList,
+    },
+    {
+        title: 'Strength',
+        href: '/dashboard/strength',
+        icon: Dumbbell,
     },
     {
         title: 'Activities',
