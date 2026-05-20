@@ -26,7 +26,7 @@ import { useRouter } from 'next/navigation'
 import { getSessionsForDateRange } from '@/lib/supabase/strength-queries'
 import { queryKeys } from '@/lib/query-keys'
 import { StrengthCellContext, StrengthDayCellWrapper } from './strength-day-cell-wrapper'
-import { Dumbbell } from 'lucide-react'
+import { SessionDetailDialog } from '@/components/strength/session-detail-dialog'
 
 // Custom styles to enable text wrapping in calendar events (max 2 lines)
 const calendarStyles = `
@@ -789,55 +789,23 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
                 </DialogContent>
             </Dialog>
 
-            {/* Strength Session Dialog (Phase 6 stub — full dialog ships in Phase 7) */}
+            {/* Strength Session Dialog */}
             <Dialog open={isStrengthDialogOpen} onOpenChange={setIsStrengthDialogOpen}>
-                <DialogContent className="max-w-lg">
-                    <DialogTitle className="flex items-center gap-2">
-                        <Dumbbell className="h-4 w-4" />
-                        {selectedStrengthSession?.title || 'Strength session'}
-                    </DialogTitle>
+                <DialogContent className="max-w-xl">
+                    <DialogTitle className="sr-only">Strength Session Details</DialogTitle>
                     {selectedStrengthSession && (
-                        <div className="space-y-3 text-sm">
-                            <div className="text-muted-foreground">
-                                {format(parseISO(selectedStrengthSession.scheduled_date), 'EEEE, MMM d')}
-                                {selectedStrengthSession.estimated_duration_minutes && (
-                                    <span> · ~{selectedStrengthSession.estimated_duration_minutes} min</span>
-                                )}
-                            </div>
-                            {selectedStrengthSession.placement_rationale && (
-                                <div className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
-                                    {selectedStrengthSession.placement_rationale}
-                                </div>
-                            )}
-                            {selectedStrengthSession.coaching_note && (
-                                <div className="text-xs italic text-muted-foreground">
-                                    {selectedStrengthSession.coaching_note}
-                                </div>
-                            )}
-                            <div>
-                                <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                    Exercises
-                                </div>
-                                <ul className="space-y-1">
-                                    {selectedStrengthSession.exercises.map((ex, i) => {
-                                        const m = ex.measurement
-                                        let dose = ''
-                                        if (m.type === 'reps' && m.reps_per_set) dose = `${m.sets} × ${m.reps_per_set}`
-                                        else if (m.type === 'duration' && m.duration_seconds) dose = `${m.sets} × ${m.duration_seconds}s`
-                                        else if (m.type === 'distance' && m.distance_meters) dose = `${m.sets} × ${m.distance_meters}m`
-                                        return (
-                                            <li key={i} className="flex justify-between gap-2 border-b border-border/40 pb-1 last:border-0">
-                                                <span>{ex.display_name}</span>
-                                                <span className="text-muted-foreground">{dose}</span>
-                                            </li>
-                                        )
-                                    })}
-                                </ul>
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                                Full edit and completion UI lands in Phase 7.
-                            </div>
-                        </div>
+                        <SessionDetailDialog
+                            session={selectedStrengthSession}
+                            onClose={() => setIsStrengthDialogOpen(false)}
+                            onSaved={(updated) => {
+                                setSelectedStrengthSession(updated)
+                                queryClient.invalidateQueries({ queryKey: ['strength-sessions'] })
+                            }}
+                            onDeleted={() => {
+                                setIsStrengthDialogOpen(false)
+                                queryClient.invalidateQueries({ queryKey: ['strength-sessions'] })
+                            }}
+                        />
                     )}
                 </DialogContent>
             </Dialog>

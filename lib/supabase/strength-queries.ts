@@ -242,6 +242,28 @@ export async function deleteProgram(supabase: Client, athleteId: string, program
   if (updErr) throw updErr
 }
 
+export async function deleteSession(
+  supabase: Client,
+  athleteId: string,
+  sessionId: number,
+): Promise<void> {
+  const { data: existing, error: fetchErr } = await supabase
+    .from('strength_sessions')
+    .select('id')
+    .eq('id', sessionId)
+    .eq('athlete_id', athleteId)
+    .maybeSingle()
+  if (fetchErr) throw fetchErr
+  if (!existing) throw new Error('Session not found')
+
+  const { error } = await supabase
+    .from('strength_sessions')
+    .delete()
+    .eq('id', sessionId)
+    .eq('athlete_id', athleteId)
+  if (error) throw error
+}
+
 export async function loadExerciseCatalog(supabase: Client): Promise<StrengthExerciseCatalog[]> {
   const { data, error } = await supabase
     .from('strength_exercise_catalog')
