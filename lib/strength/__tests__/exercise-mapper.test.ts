@@ -89,4 +89,76 @@ describe('resolveExerciseAgainstCatalog', () => {
     expect(result.canonical_name).toBe('pushup')
     expect(result.garmin_supported).toBe(true)
   })
+
+  it('stamps catalog enum strings onto the exercise on catalog hit', () => {
+    const result = resolveExerciseAgainstCatalog(
+      baseExercise({ canonical_name: 'pushup' }),
+      lookup,
+    )
+    expect(result.garmin_exercise_category).toBe('CHEST')
+    expect(result.garmin_exercise_name).toBe('PUSH_UP')
+  })
+
+  it('stamps LLM-suggested enum when no catalog hit but suggestion is exact + known', () => {
+    const result = resolveExerciseAgainstCatalog(
+      baseExercise({
+        canonical_name: 'nordic_curl',
+        display_name: 'Nordic Curl',
+        user_text: 'nordic curl',
+        garmin_suggested_category: 'PLANK',
+        garmin_suggested_name: 'SIDE_PLANK',
+        garmin_suggested_confidence: 'exact',
+      }),
+      lookup,
+    )
+    expect(result.garmin_supported).toBe(true)
+    expect(result.garmin_exercise_category).toBe('PLANK')
+    expect(result.garmin_exercise_name).toBe('SIDE_PLANK')
+    expect(result.garmin_suggested_category).toBeUndefined()
+    expect(result.garmin_suggested_name).toBeUndefined()
+    expect(result.garmin_suggested_confidence).toBeUndefined()
+  })
+
+  it('ignores LLM suggestion when confidence is partial', () => {
+    const result = resolveExerciseAgainstCatalog(
+      baseExercise({
+        canonical_name: 'nordic_curl',
+        garmin_suggested_category: 'PLANK',
+        garmin_suggested_name: 'SIDE_PLANK',
+        garmin_suggested_confidence: 'partial',
+      }),
+      lookup,
+    )
+    expect(result.garmin_supported).toBe(false)
+    expect(result.garmin_exercise_category).toBeUndefined()
+    expect(result.garmin_exercise_name).toBeUndefined()
+  })
+
+  it('ignores LLM suggestion when pair is not in the enum table', () => {
+    const result = resolveExerciseAgainstCatalog(
+      baseExercise({
+        canonical_name: 'made_up_exercise',
+        garmin_suggested_category: 'NOT_A_CATEGORY',
+        garmin_suggested_name: 'FAKE_NAME',
+        garmin_suggested_confidence: 'exact',
+      }),
+      lookup,
+    )
+    expect(result.garmin_supported).toBe(false)
+    expect(result.garmin_unsupported_reason).toBe('Exercise not in catalog')
+  })
+
+  it('catalog hit overrides any LLM suggestion', () => {
+    const result = resolveExerciseAgainstCatalog(
+      baseExercise({
+        canonical_name: 'pushup',
+        garmin_suggested_category: 'PLANK',
+        garmin_suggested_name: 'SIDE_PLANK',
+        garmin_suggested_confidence: 'exact',
+      }),
+      lookup,
+    )
+    expect(result.garmin_exercise_category).toBe('CHEST')
+    expect(result.garmin_exercise_name).toBe('PUSH_UP')
+  })
 })

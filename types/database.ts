@@ -389,6 +389,18 @@ export interface StrengthExercise {
     garmin_supported: boolean
     garmin_unsupported_reason?: string
     notes?: string
+    // Per-exercise Garmin enum stamps (populated at parse time when the LLM's
+    // suggestion is verbatim-known in the canonical enum table). When present,
+    // the Garmin mapper uses these directly instead of the catalog lookup —
+    // lets the catalog stay curated while still supporting one-off exercises.
+    garmin_exercise_category?: string
+    garmin_exercise_name?: string
+    // Raw LLM-suggested enum mapping. Only consumed by `resolveExerciseAgainstCatalog`
+    // — it strips these and (if verified) promotes them to garmin_exercise_*. Should
+    // never appear on a persisted exercise.
+    garmin_suggested_category?: string
+    garmin_suggested_name?: string
+    garmin_suggested_confidence?: 'exact' | 'partial' | 'none'
 }
 
 export interface ParsedStrengthSession {

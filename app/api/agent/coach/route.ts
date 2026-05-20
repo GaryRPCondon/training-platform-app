@@ -114,6 +114,7 @@ const postSchema = z.object({
     sessionId: z.number().nullable().optional(),
     workoutId: z.number().nullable().optional(),
     activityId: z.number().nullable().optional(),
+    strengthSessionId: z.number().nullable().optional(),
 })
 
 export async function PATCH(request: Request) {
@@ -178,7 +179,7 @@ export async function POST(request: Request) {
     if (!parsed.success) {
         return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
     }
-    const { messages, sessionId, workoutId, activityId } = parsed.data
+    const { messages, sessionId, workoutId, activityId, strengthSessionId } = parsed.data
 
     // -----------------------------------------------------------------------
     // Auth + athlete (must complete before streaming starts)
@@ -394,6 +395,73 @@ export async function POST(request: Request) {
                     }
                 }
 
+                if (strengthSessionId) {
+                    const { data: focusSession } = await supabase
+                        .from('strength_sessions')
+                        .select(`
+                            scheduled_date, title, completion_status,
+                            estimated_duration_minutes, actual_duration_minutes,
+                            placement_rationale, coaching_note, completion_notes,
+                            exercises,
+                            strength_programs ( name )
+                        `)
+                        .eq('id', strengthSessionId)
+                        .eq('athlete_id', athleteId)
+                        .single()
+
+                    if (focusSession) {
+                        const programName = (focusSession.strength_programs as { name?: string } | null)?.name ?? null
+                        systemPrompt += `\n\n## Strength Session in Focus\nThe athlete navigated here from this specific strength session. Address it directly in your first response.\n`
+                        systemPrompt += `Date: ${focusSession.scheduled_date}\n`
+                        systemPrompt += `Title: ${focusSession.title}\n`
+                        if (programName) systemPrompt += `Program: ${programName}\n`
+                        systemPrompt += `Status: ${focusSession.completion_status}\n`
+                        if (focusSession.estimated_duration_minutes != null) {
+                            systemPrompt += `Planned duration: ${focusSession.estimated_duration_minutes} min\n`
+                        }
+                        if (focusSession.actual_duration_minutes != null) {
+                            systemPrompt += `Actual duration: ${focusSession.actual_duration_minutes} min\n`
+                        }
+                        if (focusSession.placement_rationale) {
+                            systemPrompt += `Placement rationale: ${focusSession.placement_rationale}\n`
+                        }
+                        if (focusSession.coaching_note) {
+                            systemPrompt += `Coaching note: ${focusSession.coaching_note}\n`
+                        }
+                        if (focusSession.completion_notes) {
+                            systemPrompt += `Athlete's completion notes: ${focusSession.completion_notes}\n`
+                        }
+                        const exercises = (focusSession.exercises ?? []) as Array<{
+                            display_name: string
+                            measurement: {
+                                type: string
+                                sets: number
+                                reps_per_set?: number
+                                duration_seconds?: number
+                                distance_meters?: number
+                                weight_kg?: number | null
+                            }
+                            notes?: string
+                        }>
+                        if (exercises.length > 0) {
+                            systemPrompt += `Exercises:\n`
+                            for (const ex of exercises) {
+                                const m = ex.measurement
+                                let dose = `${m.sets} sets`
+                                if (m.type === 'reps' && m.reps_per_set != null) {
+                                    dose = `${m.sets} × ${m.reps_per_set}${m.weight_kg != null ? ` @ ${m.weight_kg}kg` : ''}`
+                                } else if (m.type === 'duration' && m.duration_seconds != null) {
+                                    dose = `${m.sets} × ${m.duration_seconds}s`
+                                } else if (m.type === 'distance' && m.distance_meters != null) {
+                                    dose = `${m.sets} × ${m.distance_meters}m`
+                                }
+                                const noteStr = ex.notes ? ` — ${ex.notes}` : ''
+                                systemPrompt += `  - ${ex.display_name}: ${dose}${noteStr}\n`
+                            }
+                        }
+                    }
+                }
+
                 const estimatedInputTokens = estimateTokens(systemPrompt + JSON.stringify(messages))
                 const maxTokens = calculateMaxTokens(estimatedInputTokens, providerName, 'coach')
                 const allMessages = [...sessionHistory, ...messages]
@@ -452,6 +520,7 @@ export async function POST(request: Request) {
                     athleteId,
                     workoutId: workoutId ?? null,
                     activityId: activityId ?? null,
+                    strengthSessionId: strengthSessionId ?? null,
                     provider: providerName,
                     model: llmResponse.model,
                     generationTimeSeconds: parseFloat(llmDurationSec),

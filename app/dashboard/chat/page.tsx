@@ -7,7 +7,7 @@ import { CoachInterface } from '@/components/chat/coach-interface'
 import { SessionList } from '@/components/chat/session-list'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { PlusCircle, X, Calendar, Ruler, Clock, TrendingUp } from 'lucide-react'
+import { PlusCircle, X, Calendar, Ruler, Clock, TrendingUp, Dumbbell } from 'lucide-react'
 
 interface ActivityContext {
     id: number
@@ -30,6 +30,15 @@ interface WorkoutContext {
     duration_target_seconds: number | null
     intensity_target: string | null
     completion_status: string
+}
+
+interface StrengthSessionContext {
+    id: number
+    scheduled_date: string
+    title: string
+    completion_status: 'pending' | 'completed' | 'partial' | 'skipped'
+    estimated_duration_minutes: number | null
+    exercises: Array<{ display_name: string }>
 }
 
 const WORKOUT_TYPE_LABELS: Record<string, string> = {
@@ -85,6 +94,7 @@ function ChatPageInner() {
     }, [queryClient])
     const [workoutContext, setWorkoutContext] = useState<WorkoutContext | null>(null)
     const [activityContext, setActivityContext] = useState<ActivityContext | null>(null)
+    const [strengthSessionContext, setStrengthSessionContext] = useState<StrengthSessionContext | null>(null)
 
     const workoutId = useMemo(() => {
         const raw = searchParams.get('workoutId')
@@ -95,6 +105,13 @@ function ChatPageInner() {
 
     const activityId = useMemo(() => {
         const raw = searchParams.get('activityId')
+        if (!raw) return null
+        const id = parseInt(raw, 10)
+        return isNaN(id) ? null : id
+    }, [searchParams])
+
+    const strengthSessionId = useMemo(() => {
+        const raw = searchParams.get('strengthSessionId')
         if (!raw) return null
         const id = parseInt(raw, 10)
         return isNaN(id) ? null : id
@@ -126,10 +143,24 @@ function ChatPageInner() {
         return () => { cancelled = true }
     }, [activityId])
 
+    // Fetch strength session details when strengthSessionId is set
+    useEffect(() => {
+        if (!strengthSessionId) return
+        let cancelled = false
+        fetch(`/api/strength/sessions/${strengthSessionId}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (!cancelled && data?.session) setStrengthSessionContext(data.session)
+            })
+            .catch(() => { /* non-critical */ })
+        return () => { cancelled = true }
+    }, [strengthSessionId])
+
     const handleNewChat = () => {
         setSelectedSessionId(null)
         setWorkoutContext(null)
         setActivityContext(null)
+        setStrengthSessionContext(null)
         router.replace('/dashboard/chat')
     }
 
@@ -140,6 +171,11 @@ function ChatPageInner() {
 
     const dismissActivityContext = () => {
         setActivityContext(null)
+        router.replace('/dashboard/chat')
+    }
+
+    const dismissStrengthSessionContext = () => {
+        setStrengthSessionContext(null)
         router.replace('/dashboard/chat')
     }
 
@@ -200,6 +236,48 @@ function ChatPageInner() {
                         onClick={dismissWorkoutContext}
                         className="text-muted-foreground hover:text-foreground transition-colors mt-0.5 shrink-0"
                         aria-label="Dismiss workout context"
+                    >
+                        <X className="h-4 w-4" />
+                    </button>
+                </div>
+            )}
+
+            {strengthSessionContext && (
+                <div className="flex items-start gap-3 px-4 py-3 rounded-lg border bg-card shadow-sm">
+                    <div className="flex-1 min-w-0 space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                Strength session context
+                            </span>
+                            <Badge variant="outline" className="text-xs bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-900 dark:text-slate-200 dark:border-slate-700">
+                                <Dumbbell className="h-3 w-3 mr-1" />
+                                Strength
+                            </Badge>
+                        </div>
+                        <p className="text-sm font-medium truncate">{strengthSessionContext.title}</p>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                            <span className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                {formatDate(strengthSessionContext.scheduled_date)}
+                            </span>
+                            {strengthSessionContext.estimated_duration_minutes != null && (
+                                <span className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    ~{strengthSessionContext.estimated_duration_minutes} min
+                                </span>
+                            )}
+                            <span className="capitalize">{strengthSessionContext.completion_status}</span>
+                            {strengthSessionContext.exercises.length > 0 && (
+                                <span className="truncate">
+                                    {strengthSessionContext.exercises.length} exercise{strengthSessionContext.exercises.length === 1 ? '' : 's'}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                    <button
+                        onClick={dismissStrengthSessionContext}
+                        className="text-muted-foreground hover:text-foreground transition-colors mt-0.5 shrink-0"
+                        aria-label="Dismiss strength session context"
                     >
                         <X className="h-4 w-4" />
                     </button>
@@ -276,6 +354,7 @@ function ChatPageInner() {
                         onSessionChange={handleSessionChange}
                         workoutId={workoutId ?? undefined}
                         activityId={activityId ?? undefined}
+                        strengthSessionId={strengthSessionId ?? undefined}
                         workoutContext={workoutContext
                             ? { id: workoutContext.id, scheduled_date: workoutContext.scheduled_date }
                             : null}

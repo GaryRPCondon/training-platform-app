@@ -24,6 +24,8 @@ export function buildCoachSystemPrompt(context: CoachContext): string {
         buildConstraintsSection(context),
         buildFeedbackSection(context),
         buildPersonalRecordsSection(context),
+        buildStrengthProgramsSection(context),
+        buildStrengthSessionsSection(context, new Date()),
         buildToolInstructionsSection(),
     ]
 
@@ -345,6 +347,83 @@ function buildRecentActivitiesSection(context: CoachContext): string {
     }
 
     return lines.join('\n')
+}
+
+function buildStrengthProgramsSection(context: CoachContext): string {
+    const programs = context.strengthPrograms
+    if (!programs || programs.length === 0) return ''
+
+    const lines = ['## Strength Programs']
+    for (const p of programs) {
+        lines.push(
+            `- ${p.name}: every ${p.cadence_days}d cadence, ${p.session_count} session${p.session_count === 1 ? '' : 's'}, started ${formatDate(p.start_date)}`
+        )
+    }
+    return lines.join('\n')
+}
+
+function buildStrengthSessionsSection(context: CoachContext, today: Date): string {
+    const sessions = context.strengthSessions
+    if (!sessions || sessions.length === 0) return ''
+
+    const todayStr = format(today, 'yyyy-MM-dd')
+    const fortnightAhead = format(addDaysSafe(today, 14), 'yyyy-MM-dd')
+    const fortnightBack = format(addDaysSafe(today, -14), 'yyyy-MM-dd')
+
+    const upcoming = sessions.filter(s => s.scheduled_date >= todayStr && s.scheduled_date <= fortnightAhead)
+    const recent = sessions.filter(s => s.scheduled_date < todayStr && s.scheduled_date >= fortnightBack)
+
+    const lines: string[] = []
+
+    if (upcoming.length > 0) {
+        lines.push('## Upcoming Strength Sessions (Next 14 Days)')
+        for (const s of upcoming) {
+            lines.push(formatStrengthSessionLine(s))
+        }
+    }
+
+    if (recent.length > 0) {
+        if (lines.length > 0) lines.push('')
+        lines.push('## Recent Strength Sessions (Last 14 Days)')
+        for (const s of recent) {
+            lines.push(formatStrengthSessionLine(s))
+        }
+    }
+
+    return lines.join('\n')
+}
+
+function formatStrengthSessionLine(s: CoachContext['strengthSessions'][number]): string {
+    const day = format(new Date(s.scheduled_date + 'T12:00:00'), 'EEE d MMM')
+    const program = s.program_name ? ` (${s.program_name})` : ''
+    const planned = s.estimated_duration_minutes != null ? ` ~${s.estimated_duration_minutes}min` : ''
+
+    let statusTag = ''
+    if (s.completion_status === 'completed') {
+        const actual = s.actual_duration_minutes != null ? ` in ${s.actual_duration_minutes}min` : ''
+        statusTag = ` [DONE${actual}]`
+    } else if (s.completion_status === 'partial') {
+        statusTag = ' [partial]'
+    } else if (s.completion_status === 'skipped') {
+        statusTag = ' [skipped]'
+    } else {
+        statusTag = ' [scheduled]'
+    }
+
+    const exerciseSummary = s.exercises.length > 0
+        ? ` — ${s.exercises.slice(0, 4).map(e => e.display_name).join(', ')}${s.exercises.length > 4 ? `, +${s.exercises.length - 4} more` : ''}`
+        : ''
+
+    const note = s.coaching_note ? ` · ${s.coaching_note}` : ''
+
+    return `${day}: ${s.title}${program}${planned}${exerciseSummary}${statusTag}${note}`
+}
+
+/** date-fns addDays-safe wrapper that accepts negative offsets. */
+function addDaysSafe(date: Date, days: number): Date {
+    const d = new Date(date)
+    d.setDate(d.getDate() + days)
+    return d
 }
 
 function buildToolInstructionsSection(): string {

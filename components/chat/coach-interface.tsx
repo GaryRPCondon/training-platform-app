@@ -44,6 +44,7 @@ interface CoachInterfaceProps {
     onSessionChange?: (sessionId: number) => void
     workoutId?: number
     activityId?: number
+    strengthSessionId?: number
     /** Workout shown in the page header — used as the default Replace target for proposals */
     workoutContext?: { id: number; scheduled_date: string } | null
 }
@@ -68,7 +69,7 @@ function AssistantMessage({ content }: { content: string }) {
 // Component
 // ---------------------------------------------------------------------------
 
-export function CoachInterface({ sessionId: propSessionId, onSessionChange, workoutId, activityId, workoutContext }: CoachInterfaceProps = {}) {
+export function CoachInterface({ sessionId: propSessionId, onSessionChange, workoutId, activityId, strengthSessionId, workoutContext }: CoachInterfaceProps = {}) {
     const [messages, setMessages] = useState<CoachMessage[]>([])
     const [input, setInput] = useState('')
     const [internalSessionId, setInternalSessionId] = useState<number | null>(null)
@@ -170,7 +171,7 @@ export function CoachInterface({ sessionId: propSessionId, onSessionChange, work
             const res = await fetch('/api/agent/coach', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ messages: outgoing, sessionId: activeSessionId, workoutId, activityId }),
+                body: JSON.stringify({ messages: outgoing, sessionId: activeSessionId, workoutId, activityId, strengthSessionId }),
             })
 
             if (!res.ok || !res.body) throw new Error('Stream unavailable')
@@ -251,7 +252,7 @@ export function CoachInterface({ sessionId: propSessionId, onSessionChange, work
             setIsSending(false)
             setLoadingStatus(null)
         }
-    }, [input, isSending, messages, activeSessionId, onSessionChange, workoutId, activityId])
+    }, [input, isSending, messages, activeSessionId, onSessionChange, workoutId, activityId, strengthSessionId])
 
     // -----------------------------------------------------------------------
     // Render

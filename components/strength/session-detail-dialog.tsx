@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { format, parseISO } from 'date-fns'
 import { useRouter } from 'next/navigation'
+import { useQuery } from '@tanstack/react-query'
+import { getAthleteProfile } from '@/lib/supabase/queries'
 import {
   Dumbbell,
   Sparkles,
@@ -48,6 +50,13 @@ interface SessionDetailDialogProps {
   onClose?: () => void
 }
 
+const GARMIN_STATUS_LABELS: Record<NonNullable<StrengthSession['garmin_sync_status']>, { label: string; tone: string }> = {
+  synced:      { label: 'Synced to Garmin',    tone: 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-200 dark:border-emerald-900' },
+  stale:       { label: 'Garmin sync out of date', tone: 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950 dark:text-amber-200 dark:border-amber-900' },
+  failed:      { label: 'Garmin sync failed',  tone: 'bg-red-100 text-red-800 border-red-200 dark:bg-red-950 dark:text-red-200 dark:border-red-900' },
+  unsupported: { label: 'Garmin: unsupported', tone: 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800' },
+}
+
 type CompletionStatus = StrengthSession['completion_status']
 
 const STATUS_OPTIONS: Array<{ value: CompletionStatus; label: string; icon: typeof Circle }> = [
@@ -82,9 +91,20 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+  const [isSendingGarmin, setIsSendingGarmin] = useState(false)
+  const [isRemovingGarmin, setIsRemovingGarmin] = useState(false)
+
+  const { data: athlete } = useQuery({
+    queryKey: ['athlete'],
+    queryFn: getAthleteProfile,
+    staleTime: 60_000,
+  })
+  const garminConnected = !!athlete?.garmin_connected
 
   const allGarminSupported = session.exercises.length > 0 && session.exercises.every(e => e.garmin_supported)
   const unsupportedNames = session.exercises.filter(e => !e.garmin_supported).map(e => e.display_name)
+  const garminStatus = session.garmin_sync_status
+  const isSynced = !!session.garmin_workout_id && garminStatus === 'synced'
 
   const hasChanges =
     status !== session.completion_status ||
@@ -139,6 +159,61 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
   const handleDiscuss = () => {
     onClose?.()
     router.push(`/dashboard/chat?strengthSessionId=${session.id}`)
+  }
+
+  const handleSendToGarmin = async () => {
+    setIsSendingGarmin(true)
+    try {
+      const res = await fetch('/api/garmin/strength-workouts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionIds: [session.id], action: 'send' }),
+      })
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error || 'Failed to send')
+      if (result.sent > 0) {
+        toast.success('Sent to Garmin')
+        onSaved?.({ ...session, garmin_sync_status: 'synced' })
+      } else if (result.skipped > 0) {
+        toast.error(result.errors?.[0]?.error || 'Session contains unsupported exercises')
+      } else if (result.failed > 0) {
+        toast.error(result.errors?.[0]?.error || 'Failed to send to Garmin')
+      } else {
+        toast.error('No sessions were sent')
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to send to Garmin')
+    } finally {
+      setIsSendingGarmin(false)
+    }
+  }
+
+  const handleRemoveFromGarmin = async () => {
+    setIsRemovingGarmin(true)
+    try {
+      const res = await fetch('/api/garmin/strength-workouts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionIds: [session.id], action: 'delete' }),
+      })
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error || 'Failed to remove')
+      if (result.deleted > 0) {
+        toast.success('Removed from Garmin')
+        onSaved?.({
+          ...session,
+          garmin_workout_id: null,
+          garmin_sync_status: null,
+          garmin_scheduled_at: null,
+        })
+      } else {
+        toast.error(result.errors?.[0]?.error || 'Nothing to remove')
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to remove from Garmin')
+    } finally {
+      setIsRemovingGarmin(false)
+    }
   }
 
   return (
@@ -303,26 +378,65 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
       <Separator />
 
       <div className="flex items-center justify-between gap-2">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span tabIndex={0}>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled
-                aria-label="Send to Garmin (available in Phase 9)"
-              >
-                <Watch className="mr-2 h-4 w-4" />
-                Send to Garmin
-              </Button>
-            </span>
-          </TooltipTrigger>
-          <TooltipContent className="max-w-xs text-xs">
-            {allGarminSupported
-              ? 'Garmin sync ships in the next update.'
-              : `Unsupported: ${unsupportedNames.join(', ')}`}
-          </TooltipContent>
-        </Tooltip>
+        <div className="flex items-center gap-2">
+          {garminStatus && GARMIN_STATUS_LABELS[garminStatus] && (
+            <Badge variant="outline" className={`text-[10px] ${GARMIN_STATUS_LABELS[garminStatus].tone}`}>
+              {GARMIN_STATUS_LABELS[garminStatus].label}
+            </Badge>
+          )}
+          {garminConnected ? (
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span tabIndex={0}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!allGarminSupported || isSendingGarmin}
+                      onClick={handleSendToGarmin}
+                      aria-label={isSynced ? 'Resend to Garmin' : 'Send to Garmin'}
+                    >
+                      {isSendingGarmin
+                        ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        : <Watch className="mr-2 h-4 w-4" />}
+                      {isSynced ? 'Resend to Garmin' : 'Send to Garmin'}
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {!allGarminSupported && (
+                  <TooltipContent className="max-w-xs text-xs">
+                    Unsupported: {unsupportedNames.join(', ')}
+                  </TooltipContent>
+                )}
+              </Tooltip>
+              {!!session.garmin_workout_id && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRemoveFromGarmin}
+                  disabled={isRemovingGarmin}
+                >
+                  {isRemovingGarmin && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Remove from Garmin
+                </Button>
+              )}
+            </>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span tabIndex={0}>
+                  <Button variant="outline" size="sm" disabled aria-label="Garmin not connected">
+                    <Watch className="mr-2 h-4 w-4" />
+                    Send to Garmin
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs text-xs">
+                Connect Garmin in Settings to enable strength workout sync.
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           {onClose && (
             <Button variant="ghost" size="sm" onClick={onClose}>

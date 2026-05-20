@@ -26,6 +26,15 @@ export const exerciseSchema = z.object({
   garmin_supported: z.boolean(),
   garmin_unsupported_reason: z.string().optional(),
   notes: z.string().optional(),
+  // LLM-suggested Garmin enum mapping. Only stamped onto the persisted
+  // exercise when garmin_suggested_confidence === 'exact' AND the pair is
+  // verbatim-known in the canonical enum (lib/garmin/exercise-enum.ts).
+  garmin_suggested_category: z.string().optional(),
+  garmin_suggested_name: z.string().optional(),
+  garmin_suggested_confidence: z.enum(['exact', 'partial', 'none']).optional(),
+  // Verified-and-stamped enum (persisted on strength_sessions.exercises).
+  garmin_exercise_category: z.string().optional(),
+  garmin_exercise_name: z.string().optional(),
 })
 
 // ---------------------------------------------------------------------------

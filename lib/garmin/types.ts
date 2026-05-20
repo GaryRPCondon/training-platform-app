@@ -171,7 +171,7 @@ export interface GarminWorkoutStep {
   stepId: null
   stepOrder: number
   childStepId: number | null
-  description: null
+  description: null | string
   stepType: { stepTypeId: number; stepTypeKey: string }
   endCondition: GarminEndCondition
   endConditionValue: number | null
@@ -186,6 +186,13 @@ export interface GarminWorkoutStep {
   smartRepeat?: boolean        // always true for structured repeat groups
   skipLastRestStep?: boolean   // "Skip Last Recover" checkbox in Garmin Connect
   workoutSteps?: GarminWorkoutStep[]
+  // STRENGTH_TRAINING ExecutableStepDTO only — Garmin's exerciseCategory + exerciseName
+  // identify the labelled exercise on the watch face. Both are enum strings (or numeric
+  // IDs) captured from the Garmin Connect API; see docs/garmin_exercise_catalog.md.
+  category?: string | null
+  exerciseName?: string | null
+  weightValue?: number | null  // kilograms (Garmin stores in kg, displays in user's units)
+  weightDisplayUnit?: { unitId: number; unitKey: string } | null
 }
 
 export interface GarminWorkoutPayload {

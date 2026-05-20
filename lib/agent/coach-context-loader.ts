@@ -12,10 +12,12 @@ import {
     startOfWeek,
     endOfWeek,
     addWeeks,
+    addDays,
     differenceInWeeks,
     subDays,
     startOfDay,
 } from 'date-fns'
+import type { StrengthExercise } from '@/types/database'
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -152,6 +154,27 @@ export interface CoachActivitySummary {
     laps: CoachLapSummary[]
 }
 
+export interface CoachStrengthProgramSummary {
+    id: number
+    name: string
+    cadence_days: number
+    start_date: string
+    session_count: number
+}
+
+export interface CoachStrengthSessionSummary {
+    id: number
+    program_id: number | null
+    program_name: string | null
+    scheduled_date: string
+    title: string
+    completion_status: 'pending' | 'completed' | 'partial' | 'skipped'
+    estimated_duration_minutes: number | null
+    actual_duration_minutes: number | null
+    coaching_note: string | null
+    exercises: StrengthExercise[]
+}
+
 export interface CoachContext {
     athlete: CoachAthleteProfile
     plan: CoachPlanContext | null
@@ -163,6 +186,8 @@ export interface CoachContext {
     recentFeedback: CoachFeedback[]
     personalRecords: Record<string, CoachPersonalRecord>
     recentActivities: CoachActivitySummary[]
+    strengthPrograms: CoachStrengthProgramSummary[]
+    strengthSessions: CoachStrengthSessionSummary[]
 }
 
 // ---------------------------------------------------------------------------
@@ -183,16 +208,27 @@ export async function loadCoachContext(
     ])
 
     // Round 2: everything that depends on plan.id or just needs athleteId + today
-    const [currentPhase, thisWeek, upcomingWeeks, constraints, recentFeedback, personalRecords, recentActivities] =
-        await Promise.all([
-            plan ? loadCurrentPhase(supabase, plan.id, todayStr) : Promise.resolve(null),
-            loadThisWeek(supabase, athleteId, today),
-            loadUpcomingWeeks(supabase, athleteId, today, 4),
-            loadConstraints(supabase, athleteId),
-            loadRecentFeedback(supabase, athleteId),
-            loadPersonalRecords(supabase, athleteId),
-            loadRecentActivities(supabase, athleteId, today),
-        ])
+    const [
+        currentPhase,
+        thisWeek,
+        upcomingWeeks,
+        constraints,
+        recentFeedback,
+        personalRecords,
+        recentActivities,
+        strengthPrograms,
+        strengthSessions,
+    ] = await Promise.all([
+        plan ? loadCurrentPhase(supabase, plan.id, todayStr) : Promise.resolve(null),
+        loadThisWeek(supabase, athleteId, today),
+        loadUpcomingWeeks(supabase, athleteId, today, 4),
+        loadConstraints(supabase, athleteId),
+        loadRecentFeedback(supabase, athleteId),
+        loadPersonalRecords(supabase, athleteId),
+        loadRecentActivities(supabase, athleteId, today),
+        loadStrengthPrograms(supabase, athleteId),
+        loadStrengthSessions(supabase, athleteId, today),
+    ])
 
     // Round 3: phase execution (needs phase start/end dates)
     const phaseExecution = currentPhase
@@ -210,6 +246,8 @@ export async function loadCoachContext(
         recentFeedback,
         personalRecords,
         recentActivities,
+        strengthPrograms,
+        strengthSessions,
     }
 }
 
@@ -571,6 +609,97 @@ async function loadRecentActivities(
             avg_hr: a.avg_hr,
             max_hr: a.max_hr,
             laps,
+        }
+    })
+}
+
+async function loadStrengthPrograms(
+    supabase: SupabaseClient,
+    athleteId: string
+): Promise<CoachStrengthProgramSummary[]> {
+    const { data } = await supabase
+        .from('strength_programs')
+        .select('id, name, cadence_days, start_date, strength_sessions(count)')
+        .eq('athlete_id', athleteId)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+
+    if (!data) return []
+
+    type ProgramRow = {
+        id: number
+        name: string
+        cadence_days: number
+        start_date: string
+        strength_sessions: Array<{ count: number }> | null
+    }
+
+    return (data as ProgramRow[]).map(p => ({
+        id: p.id,
+        name: p.name,
+        cadence_days: p.cadence_days,
+        start_date: p.start_date,
+        session_count: Array.isArray(p.strength_sessions) && p.strength_sessions[0]?.count
+            ? p.strength_sessions[0].count
+            : 0,
+    }))
+}
+
+async function loadStrengthSessions(
+    supabase: SupabaseClient,
+    athleteId: string,
+    today: Date
+): Promise<CoachStrengthSessionSummary[]> {
+    // ±21 days window per spec — broad enough to cover the active phase
+    // and recent execution without bloating the context.
+    const windowStart = format(subDays(today, 21), 'yyyy-MM-dd')
+    const windowEnd = format(addDays(today, 21), 'yyyy-MM-dd')
+
+    const { data } = await supabase
+        .from('strength_sessions')
+        .select(`
+            id, program_id, scheduled_date, title, completion_status,
+            estimated_duration_minutes, actual_duration_minutes,
+            coaching_note, exercises,
+            strength_programs ( name )
+        `)
+        .eq('athlete_id', athleteId)
+        .gte('scheduled_date', windowStart)
+        .lte('scheduled_date', windowEnd)
+        .order('scheduled_date', { ascending: true })
+        .order('display_order', { ascending: true })
+
+    if (!data) return []
+
+    type SessionRow = {
+        id: number
+        program_id: number | null
+        scheduled_date: string
+        title: string
+        completion_status: 'pending' | 'completed' | 'partial' | 'skipped'
+        estimated_duration_minutes: number | null
+        actual_duration_minutes: number | null
+        coaching_note: string | null
+        exercises: StrengthExercise[] | null
+        // Supabase types FK joins as arrays even when it's a to-one relation.
+        strength_programs: { name: string } | Array<{ name: string }> | null
+    }
+
+    return (data as unknown as SessionRow[]).map(s => {
+        const program = Array.isArray(s.strength_programs)
+            ? s.strength_programs[0] ?? null
+            : s.strength_programs
+        return {
+        id: s.id,
+        program_id: s.program_id ?? null,
+        program_name: program?.name ?? null,
+        scheduled_date: s.scheduled_date,
+        title: s.title,
+        completion_status: s.completion_status,
+        estimated_duration_minutes: s.estimated_duration_minutes ?? null,
+        actual_duration_minutes: s.actual_duration_minutes ?? null,
+        coaching_note: s.coaching_note ?? null,
+        exercises: (s.exercises ?? []) as StrengthExercise[],
         }
     })
 }
