@@ -65,26 +65,74 @@ function flattenNestedGroup(group: Record<string, unknown>): MainSetGroup[] {
   return result
 }
 
+const VALID_ROLES: readonly IntervalRole[] = ['work', 'recovery', 'rest', 'warmup', 'cooldown'] as const
+
+/**
+ * Enforce the `role` contract on a repeat group's intervals.
+ *
+ * Rules:
+ *   - Multi-interval groups MUST declare role on every child (work/recovery/rest).
+ *     Missing or invalid role throws — this is the loud failure surface that
+ *     keeps LLM ambiguity from leaking downstream to Garmin and the AI summary.
+ *   - Single-interval groups default to role:'work' when missing — there's no
+ *     ambiguity to resolve, and treating it as work matches every running
+ *     methodology's convention.
+ */
+function enforceRoleContract(
+  group: MainSetGroup,
+  groupIndex: number
+): MainSetGroup {
+  const intervals = group.intervals
+  if (!Array.isArray(intervals) || intervals.length === 0) return group
+
+  if (intervals.length === 1) {
+    const only = intervals[0]
+    const role = only.role ?? 'work'
+    if (!VALID_ROLES.includes(role)) {
+      throw new Error(
+        `main_set[${groupIndex}].intervals[0].role="${role}" invalid (expected work|recovery|rest|warmup|cooldown)`
+      )
+    }
+    return { ...group, intervals: [{ ...only, role }] }
+  }
+
+  const validated = intervals.map((iv, ivIdx) => {
+    if (!iv.role) {
+      throw new Error(
+        `main_set[${groupIndex}].intervals[${ivIdx}] missing required "role" — multi-interval repeats must declare work/recovery/rest/warmup/cooldown on every child`
+      )
+    }
+    if (!VALID_ROLES.includes(iv.role)) {
+      throw new Error(
+        `main_set[${groupIndex}].intervals[${ivIdx}].role="${iv.role}" invalid (expected work|recovery|rest|warmup|cooldown)`
+      )
+    }
+    return iv
+  })
+  return { ...group, intervals: validated }
+}
+
 /**
  * Normalise a raw main_set from the LLM into the canonical [{repeat, intervals:[...]}] format.
  * Handles three LLM quirks:
  *   1. Flat step arrays [{distance_meters, intensity}, ...] → wrap each in a single-rep group.
  *   2. Nested repeat groups inside a parent's intervals[] → flatten into sibling groups.
  *   3. Well-formed groups are passed through.
+ * Then enforces the role contract on every emitted group.
  */
 function normalizeMainSet(raw: unknown): MainSetGroup[] {
   if (!Array.isArray(raw)) return []
-  const out: MainSetGroup[] = []
+  const collected: MainSetGroup[] = []
   for (const item of raw as Record<string, unknown>[]) {
     if (Array.isArray(item.intervals)) {
-      out.push(...flattenNestedGroup(item))
+      collected.push(...flattenNestedGroup(item))
     } else {
       // Flat step — wrap into a single-rep group
       const { repeat, ...step } = item
-      out.push({ repeat: typeof repeat === 'number' ? repeat : 1, intervals: [step] } as MainSetGroup)
+      collected.push({ repeat: typeof repeat === 'number' ? repeat : 1, intervals: [step] } as MainSetGroup)
     }
   }
-  return out
+  return collected.map((group, idx) => enforceRoleContract(group, idx))
 }
 
 /**
@@ -139,12 +187,15 @@ export function enrichPreWeekWorkouts(workouts: PreWeekWorkout[]): void {
 
 type StructuredWorkout = Record<string, unknown>
 
+export type IntervalRole = 'work' | 'recovery' | 'rest' | 'warmup' | 'cooldown'
+
 interface MainSetInterval {
   distance_meters?: number
   duration_minutes?: number
   duration_seconds?: number
   intensity?: string
   target_pace?: string
+  role?: IntervalRole
 }
 
 interface MainSetGroup {
@@ -278,8 +329,15 @@ export function updateStructuredWorkoutIntensity(
     if (g.intervals) {
       g.intervals = g.intervals.map(interval => {
         const i = { ...interval }
-        // Only update non-recovery intervals — recovery stays as-is
-        if (i.intensity && !i.intensity.toLowerCase().includes('recovery') && !i.intensity.toLowerCase().includes('rest')) {
+        // Only update work intervals — recovery/rest segments keep their pacing intent.
+        // Role is authoritative; fall back to substring check only for legacy data
+        // that pre-dates the role contract.
+        const isWork = i.role
+          ? i.role === 'work'
+          : i.intensity != null &&
+            !i.intensity.toLowerCase().includes('recovery') &&
+            !i.intensity.toLowerCase().includes('rest')
+        if (isWork && i.intensity) {
           i.intensity = newIntensity
         }
         return i

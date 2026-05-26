@@ -252,8 +252,56 @@ function buildExecutableStep(
   }
 }
 
+type RepeatChildInterval = {
+  distance_meters?: number
+  duration_minutes?: number
+  duration_seconds?: number
+  intensity?: string
+  target_pace?: string
+  role?: 'work' | 'recovery' | 'rest' | 'warmup' | 'cooldown'
+}
+
+/**
+ * Resolve the Garmin step type for a child interval inside a repeat group.
+ *
+ * Authoritative: the structured_workout's explicit `role` field. Set by the
+ * LLM (validated by structured-workout-builder) on every interval emitted in
+ * a multi-interval repeat block.
+ *
+ * Legacy data path: plans generated before the `role` contract existed don't
+ * carry the field. We fall back to a narrow intensity-keyword heuristic and
+ * emit a one-time warn so the user can regenerate the plan. This catches the
+ * common "recovery"/"rest"/"walk"/"jog" labels but NOT methodology codes like
+ * Daniels "E" — by design, since silently inferring those was the bug that
+ * motivated this contract in the first place.
+ */
+function resolveRepeatChildStepType(
+  interval: RepeatChildInterval,
+  childCount: number
+): 'interval' | 'recovery' | 'rest' | 'warmup' | 'cooldown' {
+  if (interval.role === 'recovery') return 'recovery'
+  if (interval.role === 'rest') return 'rest'
+  if (interval.role === 'warmup') return 'warmup'
+  if (interval.role === 'cooldown') return 'cooldown'
+  if (interval.role === 'work') return 'interval'
+
+  if (childCount > 1) {
+    const lower = interval.intensity?.toLowerCase() ?? ''
+    const looksRecovery =
+      lower.includes('recovery') || lower.includes('rest') ||
+      lower.includes('walk') || lower.includes('jog')
+    if (looksRecovery) {
+      console.warn(
+        `[workout-mapper] structured_workout interval missing "role" — inferred "recovery" from intensity "${interval.intensity}". Regenerate this plan to remove the warning.`
+      )
+      return 'recovery'
+    }
+  }
+  return 'interval'
+}
+
 function buildRepeatStep(
-  set: { repeat: number; intervals: { distance_meters?: number; duration_minutes?: number; duration_seconds?: number; intensity?: string; target_pace?: string }[] },
+  set: { repeat: number; intervals: RepeatChildInterval[] },
   stepOrder: number,
   workoutType: string,
   trainingPaces: TrainingPaces | null | undefined,
@@ -263,10 +311,7 @@ function buildRepeatStep(
   paceTargets?: Record<string, PaceTarget>
 ): GarminWorkoutStep {
   const childSteps: GarminWorkoutStep[] = set.intervals.map((interval, idx) => {
-    const isRecovery = interval.intensity?.toLowerCase().includes('recovery') ||
-                       interval.intensity?.toLowerCase().includes('rest') ||
-                       interval.intensity?.toLowerCase().includes('walk')
-    const stepType = isRecovery ? 'recovery' : 'interval'
+    const stepType = resolveRepeatChildStepType(interval, set.intervals.length)
 
     // The workout-level stamped pace only applies to intervals that share the
     // workout's primary intensity. A recovery jog at "E" inside a "T" workout
