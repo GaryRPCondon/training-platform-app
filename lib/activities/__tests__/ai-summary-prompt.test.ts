@@ -49,4 +49,19 @@ describe('buildSystemPrompt', () => {
       expect(prompt).toContain('respond ONLY with valid JSON')
     }
   })
+
+  it('tells the LLM that only active laps are evaluated against the work-rep target', () => {
+    const tones: FeedbackTone[] = ['critical', 'balanced', 'positive']
+    for (const tone of tones) {
+      const prompt = buildSystemPrompt(tone)
+      expect(prompt).toContain('ONLY active work-rep laps')
+      expect(prompt).toContain('Warmup, cooldown, and recovery laps')
+      expect(prompt).toContain('MUST NOT be counted as misses')
+    }
+  })
+
+  it('requires the summary to state pace direction (too fast / too slow / on target)', () => {
+    const prompt = buildSystemPrompt('balanced')
+    expect(prompt).toContain('too fast, too slow, or on target')
+  })
 })
