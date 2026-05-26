@@ -1,6 +1,6 @@
 import OpenAI from 'openai'
 import { LLMProvider, LLMRequest, LLMResponse, ToolCall } from '../provider-interface'
-import { streamOpenAICompatible } from './stream-utils'
+import { mapToolChoiceToOpenAI, streamOpenAICompatible } from './stream-utils'
 
 export class OpenAIProvider implements LLMProvider {
     private client: OpenAI
@@ -40,7 +40,8 @@ export class OpenAIProvider implements LLMProvider {
             messages: messages,
             max_tokens: request.maxTokens,
             temperature: request.temperature,
-            tools: tools as any
+            tools: tools as any,
+            tool_choice: mapToolChoiceToOpenAI(request.toolChoice) as any,
         })
 
         const message = response.choices[0].message
@@ -87,6 +88,8 @@ export class OpenAIProvider implements LLMProvider {
             temperature: request.temperature,
         }
         if (tools) body.tools = tools
+        const toolChoice = mapToolChoiceToOpenAI(request.toolChoice)
+        if (toolChoice) body.tool_choice = toolChoice
 
         return streamOpenAICompatible(
             'https://api.openai.com/v1/chat/completions',

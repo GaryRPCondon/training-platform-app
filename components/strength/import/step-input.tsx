@@ -6,7 +6,11 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Label } from '@/components/ui/label'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { HelpCircle } from 'lucide-react'
+
+export type ProgramType = 'fixed' | 'weekly'
 
 const RECOMMENDED_FORMAT = `Week 1 / Day 1: Core
 - 20 crunches
@@ -28,11 +32,12 @@ export function StepInput({
   onCancel,
 }: {
   submitting: boolean
-  onParse: (text: string, format: 'free_text' | 'json') => void
+  onParse: (text: string, format: 'free_text' | 'json', programType: ProgramType) => void
   onCancel: () => void
 }) {
   const [tab, setTab] = useState<'free_text' | 'file' | 'json'>('free_text')
   const [text, setText] = useState('')
+  const [programType, setProgramType] = useState<ProgramType>('fixed')
 
   function handleFile(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -44,7 +49,7 @@ export function StepInput({
 
   function submit() {
     const format = tab === 'json' ? 'json' : 'free_text'
-    onParse(text.trim(), format)
+    onParse(text.trim(), format, programType)
   }
 
   return (
@@ -77,6 +82,40 @@ export function StepInput({
         </div>
       </CardHeader>
       <CardContent>
+        <div className="mb-6">
+          <Label className="text-sm font-medium">Program type</Label>
+          <RadioGroup
+            value={programType}
+            onValueChange={v => setProgramType(v as ProgramType)}
+            className="mt-2 grid gap-3 sm:grid-cols-2"
+          >
+            <label
+              htmlFor="program-type-fixed"
+              className={`flex cursor-pointer flex-col gap-1 rounded-md border p-3 transition-colors hover:bg-accent ${programType === 'fixed' ? 'border-primary ring-1 ring-primary' : ''}`}
+            >
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="fixed" id="program-type-fixed" />
+                <span className="font-medium">Full plan</span>
+              </div>
+              <span className="ml-6 text-xs text-muted-foreground">
+                The complete schedule, written out session by session. Sessions are placed on the calendar once.
+              </span>
+            </label>
+            <label
+              htmlFor="program-type-weekly"
+              className={`flex cursor-pointer flex-col gap-1 rounded-md border p-3 transition-colors hover:bg-accent ${programType === 'weekly' ? 'border-primary ring-1 ring-primary' : ''}`}
+            >
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="weekly" id="program-type-weekly" />
+                <span className="font-medium">Weekly routine</span>
+              </div>
+              <span className="ml-6 text-xs text-muted-foreground">
+                One week of sessions. The set repeats each week for the number of weeks chosen on the next step.
+              </span>
+            </label>
+          </RadioGroup>
+        </div>
+
         <Tabs value={tab} onValueChange={v => setTab(v as typeof tab)}>
           <TabsList>
             <TabsTrigger value="free_text">Paste text</TabsTrigger>

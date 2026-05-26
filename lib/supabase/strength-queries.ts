@@ -88,8 +88,12 @@ export async function createProgramWithSessions(
     parsed_program: ParsedStrengthProgram
     parse_confidence: number | null
     parse_metadata: Record<string, unknown> | null
-    cadence_days: number
+    program_type: 'fixed' | 'weekly'
+    weeks_to_repeat: number | null
     start_date: string
+    // For 'weekly' programs the placements list has length = template_sessions × weeks_to_repeat.
+    // Each placement's session_index runs 1..(template_sessions × weeks_to_repeat) and we map it
+    // back to the template session via modulo.
     placements: Array<{ session_index: number; scheduled_date: string; placement_rationale: string }>
   },
 ): Promise<{ program: StrengthProgram; sessions: StrengthSession[] }> {
@@ -103,7 +107,8 @@ export async function createProgramWithSessions(
       parsed_program: input.parsed_program,
       parse_confidence: input.parse_confidence,
       parse_metadata: input.parse_metadata,
-      cadence_days: input.cadence_days,
+      program_type: input.program_type,
+      weeks_to_repeat: input.weeks_to_repeat,
       start_date: input.start_date,
       status: 'active',
     })
@@ -111,13 +116,22 @@ export async function createProgramWithSessions(
     .single()
   if (progErr) throw progErr
 
-  const sessionsToInsert = input.parsed_program.sessions.map(ps => {
-    const placement = input.placements.find(p => p.session_index === ps.session_index)
-    if (!placement) throw new Error(`Missing placement for session_index ${ps.session_index}`)
+  const templateSessions = input.parsed_program.sessions
+  const templateLen = templateSessions.length
+  if (templateLen === 0) {
+    throw new Error('Parsed program has no sessions')
+  }
+
+  const sessionsToInsert = input.placements.map(placement => {
+    // Map expanded session_index → template index. Works for both modes:
+    //   fixed:  session_index ∈ [1..N]            → template[(idx-1)]
+    //   weekly: session_index ∈ [1..N*weeks]      → template[(idx-1) % N]
+    const templateIdx = (placement.session_index - 1) % templateLen
+    const ps = templateSessions[templateIdx]
     return {
       program_id: program.id,
       athlete_id: athleteId,
-      session_index: ps.session_index,
+      session_index: placement.session_index,
       scheduled_date: placement.scheduled_date,
       display_order: 1,
       title: ps.title,

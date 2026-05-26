@@ -26,13 +26,17 @@ export async function POST(request: Request) {
   // Pull the athlete's planned workouts in a generous window around the
   // scheduling range so the LLM can see context. Window math is determined
   // by the scheduler itself, so we over-fetch by ±30 days here.
-  const sessionCount = parsed.data.parsedProgram.sessions.length
+  const templateSessions = parsed.data.parsedProgram.sessions.length
   const startDate = parsed.data.startDate
   const dayMs = 86_400_000
   const startMs = Date.parse(startDate + 'T00:00:00Z')
+  // Worst-case span: weekly mode runs templateSessions × weeksToRepeat sessions over
+  // weeksToRepeat weeks; fixed mode runs templateSessions sessions ~3 days apart.
+  const spanDays = parsed.data.programType === 'weekly'
+    ? (parsed.data.weeksToRepeat ?? 1) * 7
+    : templateSessions * 3
   const windowMin = new Date(startMs - 30 * dayMs).toISOString().slice(0, 10)
-  const windowMax = new Date(startMs + (sessionCount * parsed.data.cadenceDays + 30) * dayMs)
-    .toISOString().slice(0, 10)
+  const windowMax = new Date(startMs + (spanDays + 30) * dayMs).toISOString().slice(0, 10)
 
   const { data: plannedWorkouts, error: pwErr } = await supabase
     .from('planned_workouts')
@@ -56,7 +60,8 @@ export async function POST(request: Request) {
     const placements = await placeSessionsWithLLM({
       parsedProgram: parsed.data.parsedProgram,
       startDate: parsed.data.startDate,
-      cadenceDays: parsed.data.cadenceDays,
+      programType: parsed.data.programType,
+      weeksToRepeat: parsed.data.weeksToRepeat,
       plannedWorkouts: plannedWorkouts ?? [],
       providerName: athlete?.preferred_llm_provider ?? undefined,
       modelName: athlete?.preferred_llm_model ?? undefined,

@@ -9,11 +9,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
 
 import { ParsedProgram } from '@/lib/strength/schemas'
+import type { ProgramType } from './step-input'
 
 interface Placement {
   session_index: number
@@ -27,29 +25,40 @@ interface PlannedWorkoutSummary {
   description: string | null
 }
 
-const QUALITY_TYPES = new Set(['intervals', 'tempo', 'long_run', 'race'])
+const QUALITY_TYPES = new Set(['intervals', 'tempo', 'long_run', 'race', 'race_pace'])
+const DEFAULT_WEEKS_TO_REPEAT = 8
 
 export function StepSchedule({
-  program, submitting, onBack, onConfirm,
+  program, programType, submitting, onBack, onConfirm,
 }: {
   program: ParsedProgram
+  programType: ProgramType
   submitting: boolean
   onBack: () => void
-  onConfirm: (startDate: string, cadenceDays: number, placements: Placement[]) => void
+  onConfirm: (startDate: string, weeksToRepeat: number | null, placements: Placement[]) => void
 }) {
   const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10))
-  const [cadenceDays, setCadenceDays] = useState(2)
+  const [weeksToRepeat, setWeeksToRepeat] = useState<number>(DEFAULT_WEEKS_TO_REPEAT)
   const [generating, setGenerating] = useState(false)
   const [placements, setPlacements] = useState<Placement[]>([])
   const [workouts, setWorkouts] = useState<PlannedWorkoutSummary[]>([])
 
+  const templateLen = program.sessions.length
+
   async function generateSchedule() {
     setGenerating(true)
     try {
+      const body: Record<string, unknown> = {
+        parsedProgram: program,
+        startDate,
+        programType,
+      }
+      if (programType === 'weekly') body.weeksToRepeat = weeksToRepeat
+
       const res = await fetch('/api/strength/schedule', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ parsedProgram: program, startDate, cadenceDays }),
+        body: JSON.stringify(body),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Failed to generate schedule')
@@ -85,13 +94,21 @@ export function StepSchedule({
     return workouts.find(w => w.scheduled_date === date)
   }
 
+  // For weekly programs, sessions are placed in groups: session_index 1..N is
+  // week 1, N+1..2N is week 2, etc. Map expanded index → template session.
+  function templateSessionFor(sessionIndex: number) {
+    const templateIdx = (sessionIndex - 1) % templateLen
+    return program.sessions[templateIdx]
+  }
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Schedule sessions</CardTitle>
         <CardDescription>
-          Pick a start date and cadence. The AI will distribute sessions around your running plan,
-          avoiding quality and long-run days. You can adjust individual dates before importing.
+          {programType === 'weekly'
+            ? `Pick a start date and how many weeks to repeat the routine. The AI will distribute each week's sessions around your running plan, avoiding quality and long-run days.`
+            : `Pick a start date. The AI will distribute sessions around your running plan, avoiding quality and long-run days. You can adjust individual dates before importing.`}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -105,22 +122,31 @@ export function StepSchedule({
               onChange={e => setStartDate(e.target.value)}
             />
           </div>
-          <div>
-            <Label htmlFor="cadence" className="mb-1.5 block">Cadence</Label>
-            <Select value={String(cadenceDays)} onValueChange={v => setCadenceDays(Number(v))}>
-              <SelectTrigger id="cadence">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1">Every day</SelectItem>
-                <SelectItem value="2">Every 2 days</SelectItem>
-                <SelectItem value="3">Every 3 days</SelectItem>
-                <SelectItem value="4">Every 4 days</SelectItem>
-                <SelectItem value="5">Every 5 days</SelectItem>
-                <SelectItem value="7">Once a week</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {programType === 'weekly' && (
+            <div>
+              <Label htmlFor="weeks" className="mb-1.5 block">Repeat for</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="weeks"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={52}
+                  value={weeksToRepeat}
+                  onChange={e => {
+                    const v = parseInt(e.target.value, 10)
+                    if (Number.isFinite(v) && v >= 1 && v <= 52) setWeeksToRepeat(v)
+                    else if (e.target.value === '') setWeeksToRepeat(1)
+                  }}
+                />
+                <span className="text-sm text-muted-foreground">weeks</span>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {templateLen} session{templateLen === 1 ? '' : 's'} × {weeksToRepeat} weeks ={' '}
+                {templateLen * weeksToRepeat} sessions
+              </p>
+            </div>
+          )}
         </div>
 
         <div>
@@ -136,16 +162,21 @@ export function StepSchedule({
               Edit a date below to override the AI&apos;s choice.
             </p>
             {placements.map(placement => {
-              const session = program.sessions.find(s => s.session_index === placement.session_index)
+              const session = templateSessionFor(placement.session_index)
               const conflict = workoutOn(placement.scheduled_date)
               const isQualityConflict = conflict && QUALITY_TYPES.has(conflict.workout_type)
+              const weekNumber = programType === 'weekly'
+                ? Math.floor((placement.session_index - 1) / templateLen) + 1
+                : null
               return (
                 <div key={placement.session_index} className="rounded-md border p-3">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground">
-                          Session {placement.session_index}
+                          {weekNumber != null
+                            ? `Week ${weekNumber}`
+                            : `Session ${placement.session_index}`}
                         </span>
                         <span className="font-medium">{session?.title ?? 'Untitled'}</span>
                       </div>
@@ -184,7 +215,11 @@ export function StepSchedule({
         <Button variant="outline" onClick={onBack}>Back</Button>
         <Button
           disabled={placements.length === 0 || submitting}
-          onClick={() => onConfirm(startDate, cadenceDays, placements)}
+          onClick={() => onConfirm(
+            startDate,
+            programType === 'weekly' ? weeksToRepeat : null,
+            placements,
+          )}
         >
           {submitting ? 'Importing...' : 'Confirm and import'}
         </Button>

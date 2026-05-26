@@ -132,7 +132,9 @@ function ProgramRow({ program, onDelete }: { program: StrengthProgram; onDelete:
         </div>
         <div className="mt-1 text-sm text-muted-foreground">
           {sessionCount} session{sessionCount === 1 ? '' : 's'} ·
-          {' '}cadence every {program.cadence_days} day{program.cadence_days === 1 ? '' : 's'} ·
+          {' '}{program.program_type === 'weekly'
+            ? `weekly routine × ${program.weeks_to_repeat ?? '?'} weeks`
+            : 'full plan'} ·
           {' '}starts {format(new Date(program.start_date), 'MMM d, yyyy')}
         </div>
       </div>

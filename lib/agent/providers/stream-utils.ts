@@ -6,7 +6,34 @@
  * and returns the complete LLMResponse once the stream ends.
  */
 
-import { LLMResponse, ToolCall } from '../provider-interface'
+import { LLMRequest, LLMResponse, ToolCall } from '../provider-interface'
+
+/**
+ * Translate our interface's `toolChoice` to the OpenAI-compatible
+ * `tool_choice` field (used by OpenAI, DeepSeek, Grok). Returns undefined
+ * when no toolChoice was supplied so the API uses its own default.
+ */
+export function mapToolChoiceToOpenAI(
+    toolChoice: LLMRequest['toolChoice']
+): 'auto' | 'none' | 'required' | { type: 'function'; function: { name: string } } | undefined {
+    if (!toolChoice) return undefined
+    if (toolChoice === 'auto' || toolChoice === 'none') return toolChoice
+    return { type: 'function', function: { name: toolChoice.function.name } }
+}
+
+/**
+ * Translate our interface's `toolChoice` to Anthropic's `tool_choice`
+ * format (different shape). Returns undefined when no toolChoice was
+ * supplied so the API uses its own default.
+ */
+export function mapToolChoiceToAnthropic(
+    toolChoice: LLMRequest['toolChoice']
+): { type: 'auto' } | { type: 'any' } | { type: 'tool'; name: string } | { type: 'none' } | undefined {
+    if (!toolChoice) return undefined
+    if (toolChoice === 'auto') return { type: 'auto' }
+    if (toolChoice === 'none') return { type: 'none' }
+    return { type: 'tool', name: toolChoice.function.name }
+}
 
 interface ToolCallAccumulator {
     id: string

@@ -2,7 +2,7 @@ import { createLLMProvider } from '@/lib/agent/factory'
 import { writeLLMLog } from '@/lib/agent/llm-logger'
 import { PLACE_STRENGTH_SESSIONS_TOOL } from '@/lib/strength/tools'
 import { STRENGTH_SCHEDULER_SYSTEM_PROMPT } from '@/lib/strength/scheduling-prompts'
-import { ParsedProgram } from '@/lib/strength/schemas'
+import { ParsedProgram, ParsedSession } from '@/lib/strength/schemas'
 import { z } from 'zod'
 
 // ---------------------------------------------------------------------------
@@ -16,37 +16,91 @@ export interface PlannedWorkoutSummary {
 }
 
 export interface Placement {
-  session_index: number
+  session_index: number      // 1..N for fixed; 1..(N*weeks) for weekly
   scheduled_date: string
   placement_rationale: string
 }
 
+export type ProgramType = 'fixed' | 'weekly'
+
 export interface ScheduleInput {
   parsedProgram: ParsedProgram
   startDate: string         // YYYY-MM-DD
-  cadenceDays: number       // 1..7
+  programType: ProgramType
+  weeksToRepeat?: number    // required when programType === 'weekly'
   plannedWorkouts: PlannedWorkoutSummary[]
   providerName?: string
   modelName?: string
 }
 
 // ---------------------------------------------------------------------------
-// Pure date math — deterministic candidate generation
+// Pure expansion + date math — deterministic candidate generation
 // ---------------------------------------------------------------------------
 
+// Default spacing for 'fixed' mode when sessions don't carry their own
+// preferred-day hints. The LLM can shift ±7 days per session to avoid
+// running-quality conflicts.
+const FIXED_MODE_DEFAULT_SPACING_DAYS = 3
+
+/**
+ * Expand a parsed program's template sessions into the full list of sessions
+ * the scheduler will place. For 'fixed' mode this is the original list. For
+ * 'weekly' mode the template sessions are replicated `weeksToRepeat` times
+ * with monotonically increasing session_index values.
+ *
+ * The returned indices align 1:1 with `generateCandidateDates` below.
+ */
+export function expandSessionsForScheduling(
+  parsedSessions: ParsedSession[],
+  programType: ProgramType,
+  weeksToRepeat?: number,
+): ParsedSession[] {
+  if (programType === 'fixed') return parsedSessions
+  if (!weeksToRepeat || weeksToRepeat < 1) {
+    throw new Error('weeksToRepeat is required for weekly programs')
+  }
+  const out: ParsedSession[] = []
+  const n = parsedSessions.length
+  for (let week = 0; week < weeksToRepeat; week++) {
+    for (const s of parsedSessions) {
+      out.push({ ...s, session_index: week * n + s.session_index })
+    }
+  }
+  return out
+}
+
+/**
+ * Deterministic candidate dates for the scheduler — one per expanded session.
+ *
+ * Fixed mode: sequential days spaced by FIXED_MODE_DEFAULT_SPACING_DAYS.
+ * Weekly mode: spread `sessionsPerWeek` evenly across each 7-day window for
+ *   `weeksToRepeat` weeks. Spacing within a week = floor(7 / sessionsPerWeek)
+ *   so 2/week → ~Mon/Thu, 3/week → ~Mon/Wed/Fri.
+ *
+ * The LLM may shift any candidate ±7 days to avoid running conflicts.
+ */
 export function generateCandidateDates(
   startDate: string,
-  cadenceDays: number,
-  sessionCount: number,
+  programType: ProgramType,
+  sessionsPerWeek: number,
+  weeksToRepeat?: number,
 ): string[] {
-  if (cadenceDays < 1) throw new Error('cadenceDays must be >= 1')
-  if (sessionCount < 1) return []
-  const start = parseISODate(startDate)
+  if (sessionsPerWeek < 1) return []
+
+  if (programType === 'fixed') {
+    return Array.from({ length: sessionsPerWeek }, (_, i) =>
+      addDaysISO(startDate, i * FIXED_MODE_DEFAULT_SPACING_DAYS),
+    )
+  }
+
+  const weeks = weeksToRepeat ?? 0
+  if (weeks < 1) throw new Error('weeksToRepeat is required for weekly programs')
+  const spacing = Math.max(1, Math.floor(7 / sessionsPerWeek))
   const out: string[] = []
-  for (let i = 0; i < sessionCount; i++) {
-    const d = new Date(start)
-    d.setUTCDate(d.getUTCDate() + i * cadenceDays)
-    out.push(toISODate(d))
+  for (let week = 0; week < weeks; week++) {
+    for (let k = 0; k < sessionsPerWeek; k++) {
+      out.push(addDaysISO(startDate, week * 7 + k * spacing))
+    }
   }
   return out
 }
@@ -64,7 +118,7 @@ function toISODate(d: Date): string {
   return `${y}-${m}-${day}`
 }
 
-function addDays(s: string, n: number): string {
+function addDaysISO(s: string, n: number): string {
   const d = parseISODate(s)
   d.setUTCDate(d.getUTCDate() + n)
   return toISODate(d)
@@ -85,18 +139,36 @@ const toolResponseSchema = z.object({
 })
 
 export async function placeSessionsWithLLM(input: ScheduleInput): Promise<Placement[]> {
-  const sessions = input.parsedProgram.sessions
-  const candidates = generateCandidateDates(input.startDate, input.cadenceDays, sessions.length)
+  const templateSessions = input.parsedProgram.sessions
+  const expandedSessions = expandSessionsForScheduling(
+    templateSessions,
+    input.programType,
+    input.weeksToRepeat,
+  )
+  const candidates = generateCandidateDates(
+    input.startDate,
+    input.programType,
+    templateSessions.length,
+    input.weeksToRepeat,
+  )
 
-  const windowStart = addDays(candidates[0]!, -7)
-  const windowEnd = addDays(candidates[candidates.length - 1]!, 7)
+  if (expandedSessions.length !== candidates.length) {
+    throw new SchedulingFailedError(
+      `Internal: expanded sessions (${expandedSessions.length}) and candidates (${candidates.length}) mismatched`,
+      { templateCount: templateSessions.length, weeksToRepeat: input.weeksToRepeat },
+    )
+  }
+
+  const windowStart = addDaysISO(candidates[0]!, -7)
+  const windowEnd = addDaysISO(candidates[candidates.length - 1]!, 7)
   const workoutsInWindow = input.plannedWorkouts.filter(
     w => w.scheduled_date >= windowStart && w.scheduled_date <= windowEnd,
   )
 
   const userMessage = JSON.stringify({
-    cadence_days: input.cadenceDays,
-    sessions: sessions.map(s => ({
+    program_type: input.programType,
+    weeks_to_repeat: input.weeksToRepeat ?? null,
+    sessions: expandedSessions.map(s => ({
       session_index: s.session_index,
       title: s.title,
       estimated_duration_minutes: s.estimated_duration_minutes ?? null,
@@ -114,7 +186,7 @@ export async function placeSessionsWithLLM(input: ScheduleInput): Promise<Placem
     systemPrompt: STRENGTH_SCHEDULER_SYSTEM_PROMPT,
     tools: [PLACE_STRENGTH_SESSIONS_TOOL],
     toolChoice: { type: 'function', function: { name: PLACE_STRENGTH_SESSIONS_TOOL.name } },
-    maxTokens: 2000,
+    maxTokens: 8000,
     temperature: 0.1,
   })
 
@@ -142,13 +214,20 @@ export async function placeSessionsWithLLM(input: ScheduleInput): Promise<Placem
     })
   }
 
-  const placements = enforceConstraints(validated.data.placements, sessions.length, windowStart, windowEnd)
+  const placements = enforceConstraints(
+    validated.data.placements,
+    expandedSessions.length,
+    windowStart,
+    windowEnd,
+  )
 
   writeLLMLog('strength-schedule', {
     model: response.model,
     startDate: input.startDate,
-    cadenceDays: input.cadenceDays,
-    sessionsCount: sessions.length,
+    programType: input.programType,
+    weeksToRepeat: input.weeksToRepeat ?? null,
+    templateSessionsCount: templateSessions.length,
+    expandedSessionsCount: expandedSessions.length,
     workoutsInWindow: workoutsInWindow.length,
     placements,
   })

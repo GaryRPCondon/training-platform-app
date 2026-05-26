@@ -74,11 +74,20 @@ export const parseRequestSchema = z.object({
   source_format: z.enum(['free_text', 'json']),
 })
 
+// program_type: how the user described the program.
+//   'fixed'  — every session of every week is written out; schedule each once.
+//   'weekly' — one week of sessions; repeat the set for `weeks_to_repeat` weeks.
+export const programTypeSchema = z.enum(['fixed', 'weekly'])
+
 export const scheduleRequestSchema = z.object({
   parsedProgram: parsedProgramSchema,
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'startDate must be YYYY-MM-DD'),
-  cadenceDays: z.number().int().min(1).max(7),
-})
+  programType: programTypeSchema,
+  weeksToRepeat: z.number().int().min(1).max(52).optional(),
+}).refine(
+  data => data.programType === 'fixed' || data.weeksToRepeat !== undefined,
+  { message: 'weeksToRepeat is required when programType is "weekly"' },
+)
 
 export const createProgramRequestSchema = z.object({
   name: z.string().min(1),
@@ -87,14 +96,18 @@ export const createProgramRequestSchema = z.object({
   parsed_program: parsedProgramSchema,
   parse_confidence: z.number().min(0).max(1).nullable(),
   parse_metadata: z.record(z.string(), z.unknown()).nullable(),
-  cadence_days: z.number().int().min(1).max(7),
+  program_type: programTypeSchema,
+  weeks_to_repeat: z.number().int().min(1).max(52).nullable(),
   start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   placements: z.array(z.object({
     session_index: z.number().int().min(1),
     scheduled_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     placement_rationale: z.string(),
   })).min(1),
-})
+}).refine(
+  data => data.program_type === 'fixed' || (data.weeks_to_repeat !== null && data.weeks_to_repeat !== undefined),
+  { message: 'weeks_to_repeat is required when program_type is "weekly"' },
+)
 
 export const rescheduleSessionSchema = z.object({
   sessionId: z.number().int().min(1),

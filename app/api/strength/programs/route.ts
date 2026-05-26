@@ -43,15 +43,28 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Validate: every parsed session must have a placement.
-  const sessionIndices = new Set(parsed.data.parsed_program.sessions.map(s => s.session_index))
-  const placementIndices = new Set(parsed.data.placements.map(p => p.session_index))
-  if (sessionIndices.size !== placementIndices.size ||
-      [...sessionIndices].some(i => !placementIndices.has(i))) {
+  // Validate placement count:
+  //   fixed  → one placement per template session
+  //   weekly → template sessions × weeks_to_repeat placements
+  const templateCount = parsed.data.parsed_program.sessions.length
+  const expectedPlacements = parsed.data.program_type === 'weekly'
+    ? templateCount * (parsed.data.weeks_to_repeat ?? 0)
+    : templateCount
+  if (parsed.data.placements.length !== expectedPlacements) {
     return NextResponse.json(
-      { error: 'placements must include one entry per session' },
+      { error: `Expected ${expectedPlacements} placements but got ${parsed.data.placements.length}` },
       { status: 400 },
     )
+  }
+  // Each placement's session_index must be in 1..expectedPlacements with no gaps.
+  const placementIndices = new Set(parsed.data.placements.map(p => p.session_index))
+  for (let i = 1; i <= expectedPlacements; i++) {
+    if (!placementIndices.has(i)) {
+      return NextResponse.json(
+        { error: `Missing placement for session_index ${i}` },
+        { status: 400 },
+      )
+    }
   }
 
   try {
@@ -62,7 +75,8 @@ export async function POST(request: Request) {
       parsed_program: parsed.data.parsed_program,
       parse_confidence: parsed.data.parse_confidence,
       parse_metadata: parsed.data.parse_metadata,
-      cadence_days: parsed.data.cadence_days,
+      program_type: parsed.data.program_type,
+      weeks_to_repeat: parsed.data.weeks_to_repeat,
       start_date: parsed.data.start_date,
       placements: parsed.data.placements,
     })

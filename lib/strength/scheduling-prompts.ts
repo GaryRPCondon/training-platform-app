@@ -17,10 +17,11 @@ export const STRENGTH_SCHEDULER_SYSTEM_PROMPT = `You are scheduling strength tra
 
 # Inputs you will receive
 
-- "sessions": the strength sessions to place (session_index, title, estimated duration, brief exercise summary, optional content_type)
-- "candidate_dates": the runtime's deterministic candidates (start_date + N * cadence_days). You may shift dates ±3 days to satisfy the constraints above. If no valid date exists within ±3 days, pick the closest valid date and flag it in placement_rationale.
+- "sessions": the strength sessions to place (session_index, title, estimated duration, brief exercise summary, optional content_type). For weekly programs the template's sessions have been expanded × weeks_to_repeat, so session_index runs 1..(N×weeks).
+- "candidate_dates": the runtime's deterministic candidates. You may shift dates ±7 days to satisfy the constraints above. If no valid date exists within ±7 days, pick the closest valid date and flag it in placement_rationale.
 - "planned_workouts": the athlete's existing running plan in the relevant date window — each with scheduled_date, workout_type, short description.
-- "cadence_days": the athlete's preferred gap between sessions.
+- "program_type": "fixed" (every session of every week was written out — schedule each once) or "weekly" (one week of sessions has been replicated; keep weekly cadence stable).
+- "weeks_to_repeat": for weekly programs, how many weeks the template is being repeated for. null for fixed.
 
 # Output
 

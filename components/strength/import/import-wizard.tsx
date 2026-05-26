@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { ParsedProgram } from '@/lib/strength/schemas'
-import { StepInput } from './step-input'
+import { StepInput, type ProgramType } from './step-input'
 import { StepReview } from './step-review'
 import { StepSchedule } from './step-schedule'
 
@@ -32,12 +32,14 @@ export function ImportWizard({
   const [step, setStep] = useState<Step>('input')
   const [sourceText, setSourceText] = useState('')
   const [sourceFormat, setSourceFormat] = useState<'free_text' | 'json'>('free_text')
+  const [programType, setProgramType] = useState<ProgramType>('fixed')
   const [parseResult, setParseResult] = useState<ParseResult | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
-  async function handleParse(text: string, format: 'free_text' | 'json') {
+  async function handleParse(text: string, format: 'free_text' | 'json', type: ProgramType) {
     setSourceText(text)
     setSourceFormat(format)
+    setProgramType(type)
     setSubmitting(true)
     try {
       const res = await fetch('/api/strength/parse', {
@@ -71,7 +73,7 @@ export function ImportWizard({
 
   async function handleSchedule(
     startDate: string,
-    cadenceDays: number,
+    weeksToRepeat: number | null,
     placements: Placement[],
   ) {
     if (!parseResult) return
@@ -90,7 +92,8 @@ export function ImportWizard({
             contentType: parseResult.contentType,
             warnings: parseResult.warnings,
           },
-          cadence_days: cadenceDays,
+          program_type: programType,
+          weeks_to_repeat: programType === 'weekly' ? weeksToRepeat : null,
           start_date: startDate,
           placements,
         }),
@@ -123,6 +126,7 @@ export function ImportWizard({
     return (
       <StepSchedule
         program={parseResult.program}
+        programType={programType}
         submitting={submitting}
         onBack={() => setStep('review')}
         onConfirm={handleSchedule}

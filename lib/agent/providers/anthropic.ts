@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { LLMProvider, LLMRequest, LLMResponse, ToolCall } from '../provider-interface'
+import { mapToolChoiceToAnthropic } from './stream-utils'
 
 export class AnthropicProvider implements LLMProvider {
     private client: Anthropic
@@ -35,7 +36,8 @@ export class AnthropicProvider implements LLMProvider {
             temperature: request.temperature,
             system: systemMessage,
             messages: messages,
-            tools: tools as any
+            tools: tools as any,
+            tool_choice: mapToolChoiceToAnthropic(request.toolChoice) as any,
         })
 
         // Accumulate the streamed response
@@ -87,6 +89,7 @@ export class AnthropicProvider implements LLMProvider {
             system: systemMessage,
             messages,
             tools: tools as any,
+            tool_choice: mapToolChoiceToAnthropic(request.toolChoice) as any,
         })
 
         // Emit text chunks as they arrive

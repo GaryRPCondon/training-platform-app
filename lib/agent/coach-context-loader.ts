@@ -157,7 +157,8 @@ export interface CoachActivitySummary {
 export interface CoachStrengthProgramSummary {
     id: number
     name: string
-    cadence_days: number
+    program_type: 'fixed' | 'weekly'
+    weeks_to_repeat: number | null
     start_date: string
     session_count: number
 }
@@ -619,7 +620,7 @@ async function loadStrengthPrograms(
 ): Promise<CoachStrengthProgramSummary[]> {
     const { data } = await supabase
         .from('strength_programs')
-        .select('id, name, cadence_days, start_date, strength_sessions(count)')
+        .select('id, name, program_type, weeks_to_repeat, start_date, strength_sessions(count)')
         .eq('athlete_id', athleteId)
         .eq('status', 'active')
         .order('created_at', { ascending: false })
@@ -629,7 +630,8 @@ async function loadStrengthPrograms(
     type ProgramRow = {
         id: number
         name: string
-        cadence_days: number
+        program_type: 'fixed' | 'weekly'
+        weeks_to_repeat: number | null
         start_date: string
         strength_sessions: Array<{ count: number }> | null
     }
@@ -637,7 +639,8 @@ async function loadStrengthPrograms(
     return (data as ProgramRow[]).map(p => ({
         id: p.id,
         name: p.name,
-        cadence_days: p.cadence_days,
+        program_type: p.program_type,
+        weeks_to_repeat: p.weeks_to_repeat,
         start_date: p.start_date,
         session_count: Array.isArray(p.strength_sessions) && p.strength_sessions[0]?.count
             ? p.strength_sessions[0].count

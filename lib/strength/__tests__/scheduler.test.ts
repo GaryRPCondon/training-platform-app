@@ -7,6 +7,7 @@ vi.mock('@/lib/agent/llm-logger', () => ({ writeLLMLog: vi.fn() }))
 import { createLLMProvider } from '@/lib/agent/factory'
 import {
   generateCandidateDates,
+  expandSessionsForScheduling,
   placeSessionsWithLLM,
   SchedulingFailedError,
 } from '../scheduler'
@@ -56,52 +57,85 @@ const makeProgram = (sessionCount: number): ParsedProgram => ({
   })),
 })
 
-describe('generateCandidateDates', () => {
-  it('produces N evenly-spaced dates starting at start_date', () => {
-    expect(generateCandidateDates('2026-06-01', 2, 4)).toEqual([
-      '2026-06-01', '2026-06-03', '2026-06-05', '2026-06-07',
+describe('generateCandidateDates (fixed)', () => {
+  it('produces one date per template session spaced ~3 days apart', () => {
+    expect(generateCandidateDates('2026-06-01', 'fixed', 4)).toEqual([
+      '2026-06-01', '2026-06-04', '2026-06-07', '2026-06-10',
     ])
   })
 
-  it('handles cadence_days=1 (daily) correctly', () => {
-    expect(generateCandidateDates('2026-06-01', 1, 3)).toEqual([
-      '2026-06-01', '2026-06-02', '2026-06-03',
-    ])
+  it('handles a single-session fixed program', () => {
+    expect(generateCandidateDates('2026-06-01', 'fixed', 1)).toEqual(['2026-06-01'])
   })
 
   it('handles month boundaries', () => {
-    expect(generateCandidateDates('2026-05-30', 2, 3)).toEqual([
-      '2026-05-30', '2026-06-01', '2026-06-03',
-    ])
-  })
-
-  it('handles year boundaries', () => {
-    expect(generateCandidateDates('2025-12-30', 3, 3)).toEqual([
-      '2025-12-30', '2026-01-02', '2026-01-05',
+    expect(generateCandidateDates('2026-05-30', 'fixed', 2)).toEqual([
+      '2026-05-30', '2026-06-02',
     ])
   })
 
   it('returns an empty array for zero sessions', () => {
-    expect(generateCandidateDates('2026-06-01', 2, 0)).toEqual([])
-  })
-
-  it('throws for cadence_days < 1', () => {
-    expect(() => generateCandidateDates('2026-06-01', 0, 1)).toThrow()
+    expect(generateCandidateDates('2026-06-01', 'fixed', 0)).toEqual([])
   })
 })
 
-describe('placeSessionsWithLLM', () => {
+describe('generateCandidateDates (weekly)', () => {
+  it('replicates the per-week candidates × weeksToRepeat', () => {
+    // 2 sessions/week × 2 weeks = 4 dates; intra-week spacing = floor(7/2) = 3
+    expect(generateCandidateDates('2026-06-01', 'weekly', 2, 2)).toEqual([
+      '2026-06-01', '2026-06-04',           // week 1
+      '2026-06-08', '2026-06-11',           // week 2
+    ])
+  })
+
+  it('handles 3 sessions/week (Mon/Wed/Fri spacing)', () => {
+    // intra-week spacing = floor(7/3) = 2
+    expect(generateCandidateDates('2026-06-01', 'weekly', 3, 2)).toEqual([
+      '2026-06-01', '2026-06-03', '2026-06-05',
+      '2026-06-08', '2026-06-10', '2026-06-12',
+    ])
+  })
+
+  it('throws when weeksToRepeat is missing for weekly mode', () => {
+    expect(() => generateCandidateDates('2026-06-01', 'weekly', 2)).toThrow()
+  })
+})
+
+describe('expandSessionsForScheduling', () => {
+  it('passes through unchanged for fixed mode', () => {
+    const expanded = expandSessionsForScheduling(makeProgram(3).sessions, 'fixed')
+    expect(expanded).toHaveLength(3)
+    expect(expanded.map(s => s.session_index)).toEqual([1, 2, 3])
+  })
+
+  it('replicates sessions × weeks with monotonically increasing indices', () => {
+    const expanded = expandSessionsForScheduling(makeProgram(2).sessions, 'weekly', 3)
+    expect(expanded).toHaveLength(6)
+    expect(expanded.map(s => s.session_index)).toEqual([1, 2, 3, 4, 5, 6])
+    // Template title repeats — sessions 1 & 3 & 5 share the same template title.
+    expect(expanded[0].title).toBe('Day 1')
+    expect(expanded[2].title).toBe('Day 1')
+    expect(expanded[4].title).toBe('Day 1')
+    expect(expanded[1].title).toBe('Day 2')
+  })
+
+  it('throws if weeksToRepeat is missing for weekly mode', () => {
+    expect(() => expandSessionsForScheduling(makeProgram(2).sessions, 'weekly')).toThrow()
+  })
+})
+
+describe('placeSessionsWithLLM (fixed)', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns LLM placements when they satisfy the constraints', async () => {
     mockToolCall([
       { session_index: 1, scheduled_date: '2026-06-01', placement_rationale: 'Rest day' },
-      { session_index: 2, scheduled_date: '2026-06-03', placement_rationale: 'Easy day' },
+      { session_index: 2, scheduled_date: '2026-06-04', placement_rationale: 'Easy day' },
     ])
     const result = await placeSessionsWithLLM({
       parsedProgram: makeProgram(2),
       startDate: '2026-06-01',
-      cadenceDays: 2,
+      programType: 'fixed',
       plannedWorkouts: [
         { scheduled_date: '2026-06-01', workout_type: 'rest', description: null },
         { scheduled_date: '2026-06-02', workout_type: 'easy_run', description: 'Easy 6k' },
@@ -117,7 +151,7 @@ describe('placeSessionsWithLLM', () => {
     await expect(placeSessionsWithLLM({
       parsedProgram: makeProgram(1),
       startDate: '2026-06-01',
-      cadenceDays: 2,
+      programType: 'fixed',
       plannedWorkouts: [],
     })).rejects.toThrow(SchedulingFailedError)
   })
@@ -129,7 +163,7 @@ describe('placeSessionsWithLLM', () => {
     await expect(placeSessionsWithLLM({
       parsedProgram: makeProgram(2),
       startDate: '2026-06-01',
-      cadenceDays: 2,
+      programType: 'fixed',
       plannedWorkouts: [],
     })).rejects.toThrow(SchedulingFailedError)
   })
@@ -142,7 +176,7 @@ describe('placeSessionsWithLLM', () => {
     await expect(placeSessionsWithLLM({
       parsedProgram: makeProgram(2),
       startDate: '2026-06-01',
-      cadenceDays: 2,
+      programType: 'fixed',
       plannedWorkouts: [],
     })).rejects.toThrow(SchedulingFailedError)
   })
@@ -150,13 +184,14 @@ describe('placeSessionsWithLLM', () => {
   it('rejects placements outside the ±7-day window', async () => {
     mockToolCall([
       { session_index: 1, scheduled_date: '2026-06-01', placement_rationale: 'r' },
-      // Candidate for session 2 is 2026-06-03; window end is 2026-06-10.
+      // Candidate for session 2 in fixed mode at 3-day spacing is 2026-06-04;
+      // window is candidates[0]-7 .. candidates[N-1]+7 = 2026-05-25..2026-06-11.
       { session_index: 2, scheduled_date: '2026-06-30', placement_rationale: 'r' },
     ])
     await expect(placeSessionsWithLLM({
       parsedProgram: makeProgram(2),
       startDate: '2026-06-01',
-      cadenceDays: 2,
+      programType: 'fixed',
       plannedWorkouts: [],
     })).rejects.toThrow(SchedulingFailedError)
   })
@@ -169,20 +204,20 @@ describe('placeSessionsWithLLM', () => {
     await expect(placeSessionsWithLLM({
       parsedProgram: makeProgram(2),
       startDate: '2026-06-01',
-      cadenceDays: 2,
+      programType: 'fixed',
       plannedWorkouts: [],
     })).rejects.toThrow(SchedulingFailedError)
   })
 
   it('sorts placements by session_index even if LLM returns them out of order', async () => {
     mockToolCall([
-      { session_index: 2, scheduled_date: '2026-06-03', placement_rationale: 'second' },
+      { session_index: 2, scheduled_date: '2026-06-04', placement_rationale: 'second' },
       { session_index: 1, scheduled_date: '2026-06-01', placement_rationale: 'first' },
     ])
     const result = await placeSessionsWithLLM({
       parsedProgram: makeProgram(2),
       startDate: '2026-06-01',
-      cadenceDays: 2,
+      programType: 'fixed',
       plannedWorkouts: [],
     })
     expect(result.map(p => p.session_index)).toEqual([1, 2])
@@ -196,9 +231,48 @@ describe('placeSessionsWithLLM', () => {
     const result = await placeSessionsWithLLM({
       parsedProgram: makeProgram(1),
       startDate: '2026-01-01',
-      cadenceDays: 2,
+      programType: 'fixed',
       plannedWorkouts: [],
     })
     expect(result[0].scheduled_date).toBe('2026-01-01')
+  })
+})
+
+describe('placeSessionsWithLLM (weekly)', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('expects template_sessions × weeksToRepeat placements', async () => {
+    // 2 template sessions × 3 weeks = 6 expected placements
+    mockToolCall([
+      { session_index: 1, scheduled_date: '2026-06-01', placement_rationale: 'r' },
+      { session_index: 2, scheduled_date: '2026-06-04', placement_rationale: 'r' },
+      { session_index: 3, scheduled_date: '2026-06-08', placement_rationale: 'r' },
+      { session_index: 4, scheduled_date: '2026-06-11', placement_rationale: 'r' },
+      { session_index: 5, scheduled_date: '2026-06-15', placement_rationale: 'r' },
+      { session_index: 6, scheduled_date: '2026-06-18', placement_rationale: 'r' },
+    ])
+    const result = await placeSessionsWithLLM({
+      parsedProgram: makeProgram(2),
+      startDate: '2026-06-01',
+      programType: 'weekly',
+      weeksToRepeat: 3,
+      plannedWorkouts: [],
+    })
+    expect(result).toHaveLength(6)
+    expect(result.map(p => p.session_index)).toEqual([1, 2, 3, 4, 5, 6])
+  })
+
+  it('rejects placement count mismatch (LLM returned only one week)', async () => {
+    mockToolCall([
+      { session_index: 1, scheduled_date: '2026-06-01', placement_rationale: 'r' },
+      { session_index: 2, scheduled_date: '2026-06-04', placement_rationale: 'r' },
+    ])
+    await expect(placeSessionsWithLLM({
+      parsedProgram: makeProgram(2),
+      startDate: '2026-06-01',
+      programType: 'weekly',
+      weeksToRepeat: 3,
+      plannedWorkouts: [],
+    })).rejects.toThrow(SchedulingFailedError)
   })
 })

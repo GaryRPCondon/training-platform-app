@@ -355,8 +355,11 @@ function buildStrengthProgramsSection(context: CoachContext): string {
 
     const lines = ['## Strength Programs']
     for (const p of programs) {
+        const shape = p.program_type === 'weekly'
+            ? `weekly routine × ${p.weeks_to_repeat ?? '?'} weeks`
+            : 'full plan'
         lines.push(
-            `- ${p.name}: every ${p.cadence_days}d cadence, ${p.session_count} session${p.session_count === 1 ? '' : 's'}, started ${formatDate(p.start_date)}`
+            `- ${p.name}: ${shape}, ${p.session_count} scheduled session${p.session_count === 1 ? '' : 's'}, started ${formatDate(p.start_date)}`
         )
     }
     return lines.join('\n')

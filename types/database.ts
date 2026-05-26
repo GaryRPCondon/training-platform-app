@@ -429,7 +429,10 @@ export interface StrengthProgram {
     parsed_program: ParsedStrengthProgram
     parse_confidence: number | null
     parse_metadata: Record<string, unknown> | null
-    cadence_days: number
+    // 'fixed' = every session of every week written out (sessions placed once).
+    // 'weekly' = one week of sessions; expanded × weeks_to_repeat.
+    program_type: 'fixed' | 'weekly'
+    weeks_to_repeat: number | null   // null for 'fixed'
     start_date: string
     status: 'active' | 'completed' | 'deleted'
     created_at: string

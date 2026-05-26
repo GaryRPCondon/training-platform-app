@@ -1,5 +1,5 @@
 import { LLMProvider, LLMResponse, LLMRequest, ToolCall } from '../provider-interface'
-import { streamOpenAICompatible } from './stream-utils'
+import { mapToolChoiceToOpenAI, streamOpenAICompatible } from './stream-utils'
 
 export class DeepSeekProvider implements LLMProvider {
     private apiKey: string
@@ -42,6 +42,8 @@ export class DeepSeekProvider implements LLMProvider {
         if (tools) {
             requestBody.tools = tools
         }
+        const toolChoice = mapToolChoiceToOpenAI(params.toolChoice)
+        if (toolChoice) requestBody.tool_choice = toolChoice
 
         const response = await fetch(`${this.baseURL}/chat/completions`, {
             method: 'POST',
@@ -130,6 +132,8 @@ export class DeepSeekProvider implements LLMProvider {
             temperature: params.temperature || 0.7,
         }
         if (tools) body.tools = tools
+        const toolChoice = mapToolChoiceToOpenAI(params.toolChoice)
+        if (toolChoice) body.tool_choice = toolChoice
 
         return streamOpenAICompatible(
             `${this.baseURL}/chat/completions`,
