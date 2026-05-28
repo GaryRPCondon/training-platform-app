@@ -107,8 +107,12 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
   })
   const garminConnected = !!athlete?.garmin_connected
 
+  // Per Stage 2.5, every exercise can be sent — unsupported ones become
+  // generic-fallback or label-only steps. `unsupportedNames` is now a list of
+  // exercises that won't render with a real Garmin label on the watch.
   const allGarminSupported = session.exercises.length > 0 && session.exercises.every(e => e.garmin_supported)
   const unsupportedNames = session.exercises.filter(e => !e.garmin_supported).map(e => e.display_name)
+  const hasUnsupported = unsupportedNames.length > 0
   const garminStatus = session.garmin_sync_status
   const isSynced = !!session.garmin_workout_id && garminStatus === 'synced'
 
@@ -361,10 +365,23 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
             Exercises
           </h4>
           {session.exercises.length > 0 && (
-            <Badge variant={allGarminSupported ? 'default' : 'secondary'} className="text-xs">
-              <Watch className="mr-1 h-3 w-3" />
-              {allGarminSupported ? 'All Garmin-ready' : `${unsupportedNames.length} unsupported`}
-            </Badge>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant={allGarminSupported ? 'default' : 'secondary'} className="cursor-help text-xs">
+                  <Watch className="mr-1 h-3 w-3" />
+                  {allGarminSupported
+                    ? 'All Garmin-ready'
+                    : `${unsupportedNames.length} as fallback`}
+                </Badge>
+              </TooltipTrigger>
+              {hasUnsupported && (
+                <TooltipContent className="max-w-xs text-xs">
+                  <div className="font-medium">Sent as fallback to Garmin:</div>
+                  <div className="mt-0.5 text-muted-foreground">{unsupportedNames.join(', ')}</div>
+                  <div className="mt-1 text-muted-foreground">These will appear on the watch using a close-enough Garmin exercise label, or as a generic step with the exercise name in the description.</div>
+                </TooltipContent>
+              )}
+            </Tooltip>
           )}
         </div>
         <ul className="space-y-2">
@@ -379,10 +396,13 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
                 {!ex.garmin_supported && (
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Badge variant="outline" className="cursor-help text-[10px]">No Garmin</Badge>
+                      <Badge variant="outline" className="cursor-help text-[10px]">Fallback</Badge>
                     </TooltipTrigger>
                     <TooltipContent className="max-w-xs text-xs">
-                      {ex.garmin_unsupported_reason ?? 'No matching Garmin exercise.'}
+                      No exact Garmin match. Will send as a close-enough Garmin exercise, or as a generic step with the exercise name shown in the description.
+                      {ex.garmin_unsupported_reason && (
+                        <div className="mt-1 text-muted-foreground">{ex.garmin_unsupported_reason}</div>
+                      )}
                     </TooltipContent>
                   </Tooltip>
                 )}
@@ -465,7 +485,7 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
                     <Button
                       variant="outline"
                       size="sm"
-                      disabled={!allGarminSupported || isSendingGarmin}
+                      disabled={session.exercises.length === 0 || isSendingGarmin}
                       onClick={handleSendToGarmin}
                       aria-label={isSynced ? 'Resend to Garmin' : 'Send to Garmin'}
                     >
@@ -476,9 +496,12 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
                     </Button>
                   </span>
                 </TooltipTrigger>
-                {!allGarminSupported && (
+                {hasUnsupported && (
                   <TooltipContent className="max-w-xs text-xs">
-                    Unsupported: {unsupportedNames.join(', ')}
+                    <div className="font-medium">Will send all {session.exercises.length} exercise{session.exercises.length === 1 ? '' : 's'}.</div>
+                    <div className="mt-0.5 text-muted-foreground">
+                      {unsupportedNames.length} as fallback or label-only: {unsupportedNames.join(', ')}
+                    </div>
                   </TooltipContent>
                 )}
               </Tooltip>

@@ -80,40 +80,77 @@ const KG_UNIT = { unitId: 8, unitKey: 'kilogram' } as const
 // Public API
 // ============================================================================
 
+/**
+ * Tier of resolution achieved for a single exercise.
+ *   • native     — exact stamped enum or catalog hit; watch shows the exercise
+ *                  with its real label and any structured tracking.
+ *   • fallback   — known close-enough Garmin enum (e.g. lunge → LUNGE/LUNGE,
+ *                  bird_dog → WARM_UP/OPPOSITE_ARM_AND_LEG_BALANCE). Watch
+ *                  shows a real labelled exercise but it may not match the
+ *                  athlete's mental model perfectly.
+ *   • label_only — no Garmin enum match; sent as a generic step with the
+ *                  display name in the description so the watch still shows
+ *                  the exercise name, but without a structured category.
+ */
+export type GarminMappingTier = 'native' | 'fallback' | 'label_only'
+
+export interface ExerciseMappingNote {
+  canonicalName: string
+  displayName: string
+  tier: GarminMappingTier
+}
+
 export interface StrengthMapperResult {
   payload: GarminWorkoutPayload
   /**
-   * Exercises that were skipped because they had no matching catalog row.
-   * The API route should treat any non-empty list as an error.
+   * Per-exercise mapping notes. Use the tier breakdown to surface what the
+   * watch will actually show (e.g. "3 native, 1 generic, 2 label-only").
+   * Always populated; an exercise that fell back is still in the payload.
+   */
+  mappings: ExerciseMappingNote[]
+  /**
+   * @deprecated kept for callers that still check it; always empty now that
+   * the mapper falls back to a label-only step instead of skipping.
    */
   skippedExercises: Array<{ canonicalName: string; reason: string }>
 }
 
 /**
- * Single source of truth for "can this exercise be sent to Garmin?".
+ * Known generic fallbacks for canonical names whose catalog rows are
+ * legitimately unsupported but where Garmin has a "close enough" enum.
  *
- * Resolution precedence (must match mapStrengthSessionToGarmin):
- *   1. Per-exercise stamped enum (parser-time match against the verbatim Garmin
- *      enum). Honoured even if the catalog row says false — the LLM may have
- *      mapped a generic name (e.g. "lunge") to a verbatim enum like
- *      FORWARD_LUNGE that *is* in Garmin's strength catalog.
- *   2. Catalog row's garmin_supported flag.
+ * Order of consultation: stamped enum → catalog → this map → label-only.
  *
- * The send route uses this for its pre-flight gate; the mapper uses the same
- * precedence inline when building the payload. They MUST agree.
+ * Add entries here after sanity-checking against
+ * `lib/garmin/garmin-exercise-enum.json`. Each (category, name) pair MUST
+ * be verbatim-known in that file or `isKnownEnum` will reject it.
+ */
+const GENERIC_FALLBACKS: Record<string, { category: string; name: string }> = {
+  // Generic bodyweight lunge → Garmin's category-level "LUNGE" entry.
+  lunge: { category: 'LUNGE', name: 'LUNGE' },
+  // Bird dog is the canonical OPPOSITE_ARM_AND_LEG_BALANCE in Garmin's enum.
+  bird_dog: { category: 'WARM_UP', name: 'OPPOSITE_ARM_AND_LEG_BALANCE' },
+  // STRETCH_QUAD is the verbatim Garmin warmup entry.
+  quad_stretch: { category: 'WARM_UP', name: 'STRETCH_QUAD' },
+  // Closest yoga-adjacent stretch — child's pose. Not identical but on-theme.
+  downward_dog: { category: 'WARM_UP', name: 'STRETCH_CHILDS_POSE' },
+}
+
+/**
+ * Always true unless the session has no exercises. The mapper handles every
+ * exercise via the 3-tier resolution (native → fallback → label-only), so the
+ * send route no longer needs a pre-flight gate.
+ *
+ * Kept for back-compat with any caller checking it.
  */
 export function isExerciseGarminSendable(
-  exercise: Pick<
+  _exercise: Pick<
     StrengthExercise,
     'canonical_name' | 'garmin_supported' | 'garmin_exercise_category' | 'garmin_exercise_name'
   >,
-  catalogByName: Map<string, StrengthExerciseCatalog>,
+  _catalogByName: Map<string, StrengthExerciseCatalog>,
 ): boolean {
-  if (exercise.garmin_supported && exercise.garmin_exercise_category && exercise.garmin_exercise_name) {
-    return true
-  }
-  const catalogRow = catalogByName.get(exercise.canonical_name)
-  return !!catalogRow && catalogRow.garmin_supported
+  return true
 }
 
 /**
@@ -130,47 +167,63 @@ export function mapStrengthSessionToGarmin(
   const catalogByName = new Map(catalog.map(row => [row.canonical_name, row]))
 
   const steps: GarminWorkoutStep[] = []
-  const skippedExercises: StrengthMapperResult['skippedExercises'] = []
+  const mappings: ExerciseMappingNote[] = []
   let stepOrder = 1
 
   for (const exercise of session.exercises) {
-    // Resolution order:
-    //   1. Per-exercise stamped enum (added at parse time when the LLM's
-    //      suggestion is verbatim-known) — takes priority so one-off
-    //      exercises work without a catalog row.
-    //   2. Catalog row (curated source of truth for canonical exercises).
-    //   3. Skip — recorded in skippedExercises for the route to report.
+    // 3-tier resolution. The mapper never skips: an unmappable exercise still
+    // becomes a label-only step so the athlete sees it on the watch.
+    //   1. native      — stamped enum (parser-time LLM match) or catalog row.
+    //   2. fallback    — known generic from GENERIC_FALLBACKS.
+    //   3. label_only  — no Garmin enum; display_name surfaces via description.
     const stampedCategory = exercise.garmin_exercise_category
     const stampedName = exercise.garmin_exercise_name
     let resolvedCategory: string | null = null
     let resolvedName: string | null = null
     let resolvedStepType: StrengthExerciseCatalog['garmin_step_type'] = 'STRENGTH'
+    let tier: GarminMappingTier = 'label_only'
 
     if (exercise.garmin_supported && stampedCategory && stampedName) {
       resolvedCategory = stampedCategory
       resolvedName = stampedName
       const catalogRow = catalogByName.get(exercise.canonical_name)
       if (catalogRow) resolvedStepType = catalogRow.garmin_step_type
+      tier = 'native'
     } else {
       const catalogRow = catalogByName.get(exercise.canonical_name)
-      if (!catalogRow || !catalogRow.garmin_supported) {
-        skippedExercises.push({
-          canonicalName: exercise.canonical_name,
-          reason: catalogRow
-            ? 'Marked garmin_supported=false in catalog'
-            : 'No matching catalog row',
-        })
-        continue
+      if (catalogRow && catalogRow.garmin_supported && catalogRow.garmin_exercise_category && catalogRow.garmin_exercise_name) {
+        resolvedCategory = catalogRow.garmin_exercise_category
+        resolvedName = catalogRow.garmin_exercise_name
+        resolvedStepType = catalogRow.garmin_step_type
+        tier = 'native'
+      } else {
+        const fallback = GENERIC_FALLBACKS[exercise.canonical_name]
+        if (fallback) {
+          resolvedCategory = fallback.category
+          resolvedName = fallback.name
+          if (catalogRow) resolvedStepType = catalogRow.garmin_step_type
+          tier = 'fallback'
+        } else {
+          // Tier 3: label-only step. No Garmin category; rely on description.
+          resolvedCategory = null
+          resolvedName = null
+          if (catalogRow) resolvedStepType = catalogRow.garmin_step_type
+          tier = 'label_only'
+        }
       }
-      resolvedCategory = catalogRow.garmin_exercise_category
-      resolvedName = catalogRow.garmin_exercise_name
-      resolvedStepType = catalogRow.garmin_step_type
     }
+
+    mappings.push({
+      canonicalName: exercise.canonical_name,
+      displayName: exercise.display_name,
+      tier,
+    })
 
     const repeatGroup = buildExerciseRepeatGroup(
       exercise,
       { category: resolvedCategory, exerciseName: resolvedName, stepType: resolvedStepType },
       stepOrder++,
+      tier === 'label_only',
     )
     steps.push(repeatGroup)
   }
@@ -210,7 +263,8 @@ export function mapStrengthSessionToGarmin(
         },
       ],
     },
-    skippedExercises,
+    mappings,
+    skippedExercises: [],
   }
 }
 
@@ -228,12 +282,13 @@ function buildExerciseRepeatGroup(
   exercise: StrengthExercise,
   resolved: ResolvedExerciseEnums,
   stepOrder: number,
+  labelOnly: boolean,
 ): GarminWorkoutStep {
   const m = exercise.measurement
   const childSteps: GarminWorkoutStep[] = []
   let childOrder = 1
 
-  childSteps.push(buildExerciseStep(exercise, resolved, childOrder++))
+  childSteps.push(buildExerciseStep(exercise, resolved, childOrder++, labelOnly))
 
   // Inject a REST step inside the repeat group when the athlete specified
   // rest_seconds. smartRepeat + skipLastRestStep tells Garmin to drop the
@@ -268,6 +323,7 @@ function buildExerciseStep(
   exercise: StrengthExercise,
   resolved: ResolvedExerciseEnums,
   stepOrder: number,
+  labelOnly: boolean,
 ): GarminWorkoutStep {
   const m = exercise.measurement
 
@@ -289,12 +345,23 @@ function buildExerciseStep(
     endConditionValue = null
   }
 
+  // For label-only steps, prepend the display name to the description so the
+  // watch surfaces what the exercise actually is. Without category/exerciseName
+  // Garmin renders it as a generic "Custom Exercise" and the description is
+  // the only label the athlete sees.
+  let description: string | null = exercise.notes ?? null
+  if (labelOnly) {
+    description = exercise.notes
+      ? `${exercise.display_name} — ${exercise.notes}`
+      : exercise.display_name
+  }
+
   return {
     type: 'ExecutableStepDTO',
     stepId: null,
     stepOrder,
     childStepId: null,
-    description: exercise.notes ?? null,
+    description,
     // Strength exercises use stepTypeId 3 (interval) per Garmin convention.
     // The exerciseName/category fields below identify the labelled exercise.
     stepType: STRENGTH_STEP_TYPES.interval,

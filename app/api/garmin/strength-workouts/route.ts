@@ -12,9 +12,9 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { GarminClient } from '@/lib/garmin/client'
-import { mapStrengthSessionToGarmin, isExerciseGarminSendable } from '@/lib/garmin/strength-workout-mapper'
+import { mapStrengthSessionToGarmin, type ExerciseMappingNote } from '@/lib/garmin/strength-workout-mapper'
 import { loadExerciseCatalog } from '@/lib/supabase/strength-queries'
-import type { StrengthExerciseCatalog, StrengthSession } from '@/types/database'
+import type { StrengthSession } from '@/types/database'
 
 const DELAY_BETWEEN_REQUESTS_MS = 500
 
@@ -152,35 +152,21 @@ async function handleSend(
     failed: 0,
     skipped: 0,
     errors: [] as Array<{ sessionId: number; error: string }>,
+    // Per-session mapping notes so the UI can surface "X exercises sent as
+    // generic fallback / label-only" without re-running the mapper.
+    sessionMappings: [] as Array<{ sessionId: number; mappings: ExerciseMappingNote[] }>,
   }
 
   for (const session of sessions) {
     try {
-      const allSupported = isSessionGarminReady(session, catalog)
-      if (!allSupported) {
+      if (session.exercises.length === 0) {
         results.skipped++
-        results.errors.push({
-          sessionId: session.id,
-          error: 'Session contains exercises that are not Garmin-supported',
-        })
-        await supabase
-          .from('strength_sessions')
-          .update({ garmin_sync_status: 'unsupported' })
-          .eq('id', session.id)
+        results.errors.push({ sessionId: session.id, error: 'Session has no exercises' })
         continue
       }
 
-      const { payload, skippedExercises } = mapStrengthSessionToGarmin(session, catalog)
-
-      if (skippedExercises.length > 0) {
-        // Belt-and-braces — isSessionGarminReady should have caught this.
-        results.skipped++
-        results.errors.push({
-          sessionId: session.id,
-          error: `Skipped exercises: ${skippedExercises.map(s => s.canonicalName).join(', ')}`,
-        })
-        continue
-      }
+      const { payload, mappings } = mapStrengthSessionToGarmin(session, catalog)
+      results.sessionMappings.push({ sessionId: session.id, mappings })
 
       let garminWorkoutId: string
       let needsSchedule = false
@@ -256,8 +242,3 @@ async function handleSend(
   return NextResponse.json(results)
 }
 
-function isSessionGarminReady(session: StrengthSession, catalog: StrengthExerciseCatalog[]): boolean {
-  if (session.exercises.length === 0) return false
-  const byName = new Map(catalog.map(c => [c.canonical_name, c]))
-  return session.exercises.every(ex => isExerciseGarminSendable(ex, byName))
-}

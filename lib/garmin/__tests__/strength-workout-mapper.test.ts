@@ -131,7 +131,7 @@ describe('mapStrengthSessionToGarmin', () => {
     expect(group.workoutSteps![0].endConditionValue).toBe(30)
   })
 
-  it('skips exercises with no catalog row and reports them', () => {
+  it('emits a label-only step (with display_name in description) for unknown exercises instead of skipping', () => {
     const session = baseSession({
       exercises: [
         {
@@ -151,13 +151,21 @@ describe('mapStrengthSessionToGarmin', () => {
       ],
     })
 
-    const { payload, skippedExercises } = mapStrengthSessionToGarmin(session, catalog)
-    expect(skippedExercises).toHaveLength(1)
-    expect(skippedExercises[0].canonicalName).toBe('unknown_exercise')
-    expect(payload.workoutSegments[0].workoutSteps).toHaveLength(1) // only pushup landed
+    const { payload, mappings, skippedExercises } = mapStrengthSessionToGarmin(session, catalog)
+    expect(skippedExercises).toEqual([])
+    expect(mappings).toHaveLength(2)
+    expect(mappings[0]).toEqual({ canonicalName: 'pushup', displayName: 'Push-up', tier: 'native' })
+    expect(mappings[1]).toEqual({ canonicalName: 'unknown_exercise', displayName: 'Mystery move', tier: 'label_only' })
+
+    expect(payload.workoutSegments[0].workoutSteps).toHaveLength(2)
+    const mysteryGroup = payload.workoutSegments[0].workoutSteps[1]
+    const mysteryStep = mysteryGroup.workoutSteps![0]
+    expect(mysteryStep.category).toBeNull()
+    expect(mysteryStep.exerciseName).toBeNull()
+    expect(mysteryStep.description).toBe('Mystery move')
   })
 
-  it('skips exercises whose catalog row has garmin_supported=false', () => {
+  it('emits a label-only step for catalog rows marked garmin_supported=false without a known fallback', () => {
     const session = baseSession({
       exercises: [
         {
@@ -166,16 +174,66 @@ describe('mapStrengthSessionToGarmin', () => {
           user_text: 'foam roll quads 60s',
           measurement: { type: 'duration', sets: 1, duration_seconds: 60 },
           garmin_supported: false,
+          notes: 'gentle',
         },
       ],
     })
 
-    const { payload, skippedExercises } = mapStrengthSessionToGarmin(session, catalog)
-    expect(skippedExercises).toHaveLength(1)
-    expect(skippedExercises[0].reason).toMatch(/garmin_supported=false/)
-    // Empty list falls back to a single lap-button step (mapper safety guard).
+    const { payload, mappings, skippedExercises } = mapStrengthSessionToGarmin(session, catalog)
+    expect(skippedExercises).toEqual([])
+    expect(mappings).toEqual([
+      { canonicalName: 'foam_roll_quads', displayName: 'Foam Roll — Quads', tier: 'label_only' },
+    ])
     expect(payload.workoutSegments[0].workoutSteps).toHaveLength(1)
-    expect(payload.workoutSegments[0].workoutSteps[0].endCondition.conditionTypeKey).toBe('lap.button')
+    const group = payload.workoutSegments[0].workoutSteps[0]
+    const step = group.workoutSteps![0]
+    expect(step.category).toBeNull()
+    expect(step.exerciseName).toBeNull()
+    // Display name + notes are surfaced in the description so the watch shows
+    // something meaningful even without a Garmin enum.
+    expect(step.description).toBe('Foam Roll — Quads — gentle')
+  })
+
+  it('uses a known generic fallback (LUNGE/LUNGE) for bodyweight lunge with no catalog row', () => {
+    const session = baseSession({
+      exercises: [
+        {
+          canonical_name: 'lunge',
+          display_name: 'Lunge',
+          user_text: 'lunges 3x10',
+          measurement: { type: 'reps', sets: 3, reps_per_set: 10 },
+          garmin_supported: false,
+        },
+      ],
+    })
+
+    const { payload, mappings } = mapStrengthSessionToGarmin(session, catalog)
+    expect(mappings).toEqual([
+      { canonicalName: 'lunge', displayName: 'Lunge', tier: 'fallback' },
+    ])
+    const step = payload.workoutSegments[0].workoutSteps[0].workoutSteps![0]
+    expect(step.category).toBe('LUNGE')
+    expect(step.exerciseName).toBe('LUNGE')
+  })
+
+  it('uses a WARM_UP fallback for bird_dog with no catalog row', () => {
+    const session = baseSession({
+      exercises: [
+        {
+          canonical_name: 'bird_dog',
+          display_name: 'Bird Dog',
+          user_text: 'bird dog 3x10',
+          measurement: { type: 'reps', sets: 3, reps_per_set: 10 },
+          garmin_supported: false,
+        },
+      ],
+    })
+
+    const { payload, mappings } = mapStrengthSessionToGarmin(session, catalog)
+    expect(mappings[0].tier).toBe('fallback')
+    const step = payload.workoutSegments[0].workoutSteps[0].workoutSteps![0]
+    expect(step.category).toBe('WARM_UP')
+    expect(step.exerciseName).toBe('OPPOSITE_ARM_AND_LEG_BALANCE')
   })
 
   it('passes weight_kg through with the kilogram unit', () => {
