@@ -90,6 +90,33 @@ export interface StrengthMapperResult {
 }
 
 /**
+ * Single source of truth for "can this exercise be sent to Garmin?".
+ *
+ * Resolution precedence (must match mapStrengthSessionToGarmin):
+ *   1. Per-exercise stamped enum (parser-time match against the verbatim Garmin
+ *      enum). Honoured even if the catalog row says false — the LLM may have
+ *      mapped a generic name (e.g. "lunge") to a verbatim enum like
+ *      FORWARD_LUNGE that *is* in Garmin's strength catalog.
+ *   2. Catalog row's garmin_supported flag.
+ *
+ * The send route uses this for its pre-flight gate; the mapper uses the same
+ * precedence inline when building the payload. They MUST agree.
+ */
+export function isExerciseGarminSendable(
+  exercise: Pick<
+    StrengthExercise,
+    'canonical_name' | 'garmin_supported' | 'garmin_exercise_category' | 'garmin_exercise_name'
+  >,
+  catalogByName: Map<string, StrengthExerciseCatalog>,
+): boolean {
+  if (exercise.garmin_supported && exercise.garmin_exercise_category && exercise.garmin_exercise_name) {
+    return true
+  }
+  const catalogRow = catalogByName.get(exercise.canonical_name)
+  return !!catalogRow && catalogRow.garmin_supported
+}
+
+/**
  * Convert a StrengthSession + catalog to a Garmin STRENGTH_TRAINING payload.
  *
  * @param session    the strength session being exported

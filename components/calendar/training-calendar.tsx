@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { WorkoutCard } from '@/components/review/workout-card'
 import { ActivityDetail } from '@/components/activities/activity-detail'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { AlertTriangle, X as XIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { getWorkoutColor, normalizeActivityType, isRunningActivityType } from '@/lib/constants/workout-colors'
 import { toDisplayDistance, distanceLabel, type UnitSystem } from '@/lib/utils/units'
@@ -73,11 +74,13 @@ const calendarStyles = `
   .rbc-day-bg {
     cursor: pointer;
     position: relative;
-    padding-bottom: 18px;
+    padding-bottom: 30px;
   }
   /* Highlight cells while a strength session is being dragged over them. */
   .rbc-day-bg[data-strength-drop-active="true"] {
-    background-color: rgba(59, 130, 246, 0.08);
+    background-color: rgba(59, 130, 246, 0.12);
+    outline: 2px dashed rgb(59, 130, 246);
+    outline-offset: -2px;
   }
 `
 
@@ -359,6 +362,15 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
         setIsStrengthDialogOpen(true)
     }, [strengthSessions])
 
+    // Pending conflict from a strength drop: drives the centered confirm dialog
+    // (replaces a sonner toast whose default bottom-right position landed off
+    // the usable canvas).
+    const [strengthConflict, setStrengthConflict] = useState<{
+        sessionId: number
+        newDate: string
+        conflictLabel: string
+    } | null>(null)
+
     const handleStrengthDrop = useCallback((sessionId: number, newDate: string) => {
         const session = (strengthSessions ?? []).find(s => s.id === sessionId)
         if (!session) return
@@ -368,20 +380,51 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
             w => w.scheduled_date === newDate && QUALITY_WORKOUT_TYPES.has(w.workout_type as string)
         )
         if (conflict) {
-            toast.warning(
-                `${conflict.description || conflict.workout_type} is scheduled for ${format(parseISO(newDate), 'EEE, MMM d')}. Strength training the same day may compromise it.`,
-                {
-                    action: {
-                        label: 'Move anyway',
-                        onClick: () => strengthRescheduleMutation.mutate({ sessionId, newDate }),
-                    },
-                    duration: 8000,
-                },
-            )
+            setStrengthConflict({
+                sessionId,
+                newDate,
+                conflictLabel: `${conflict.description || conflict.workout_type} on ${format(parseISO(newDate), 'EEE, MMM d')}`,
+            })
             return
         }
         strengthRescheduleMutation.mutate({ sessionId, newDate })
     }, [strengthSessions, workouts, strengthRescheduleMutation])
+
+    // Suppress RBC's onSelectSlot when the user is interacting with a strength
+    // icon. Two layers of defence (RBC's native handlers bubble through DOM
+    // before React's delegate, so React stopPropagation alone is unreliable):
+    //   1. strengthClickRef — checked inside onSelectSlot to bail out early.
+    //   2. isStrengthDragging state — pipes through `selectable={!isStrengthDragging}`
+    //      so RBC never even tracks slot selection during a strength drag.
+    const strengthClickRef = useRef(false)
+    const strengthClickClearTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const [isStrengthDragging, setIsStrengthDragging] = useState(false)
+    const dragOffTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+    const setStrengthSuppression = useCallback((autoClearMs?: number) => {
+        strengthClickRef.current = true
+        if (strengthClickClearTimer.current) clearTimeout(strengthClickClearTimer.current)
+        if (autoClearMs == null) {
+            // Persistent — caller is starting a drag and will clear later.
+            setIsStrengthDragging(true)
+            if (dragOffTimer.current) {
+                clearTimeout(dragOffTimer.current)
+                dragOffTimer.current = null
+            }
+        } else {
+            strengthClickClearTimer.current = setTimeout(() => {
+                strengthClickRef.current = false
+                strengthClickClearTimer.current = null
+            }, autoClearMs)
+            // For drag-end (autoClearMs ~300), defer turning selectable back on
+            // so any post-drop synthesised click stays suppressed.
+            if (dragOffTimer.current) clearTimeout(dragOffTimer.current)
+            dragOffTimer.current = setTimeout(() => {
+                setIsStrengthDragging(false)
+                dragOffTimer.current = null
+            }, autoClearMs)
+        }
+    }, [])
 
     const strengthCellValue = useMemo(() => ({
         sessionsByDate,
@@ -389,7 +432,8 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
         onDragStart: () => { /* reserved for visual feedback in future */ },
         onDragEnd: () => { /* reserved for visual feedback in future */ },
         onDrop: handleStrengthDrop,
-    }), [sessionsByDate, handleOpenStrengthSession, handleStrengthDrop])
+        setSuppression: setStrengthSuppression,
+    }), [sessionsByDate, handleOpenStrengthSession, handleStrengthDrop, setStrengthSuppression])
 
     // Auto-open strength dialog when navigated with ?strengthSessionId=
     const openedStrengthRef = useRef<number | undefined>(undefined)
@@ -681,6 +725,56 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
             <div className="flex-1 w-full flex flex-col landscape:grid landscape:grid-cols-[1fr_220px] md:grid md:grid-cols-[1fr_220px] overflow-visible landscape:overflow-hidden md:overflow-hidden rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] ring-1 ring-black/8 dark:ring-white/20 dark:shadow-[0_8px_30px_rgb(0,0,0,0.35)]">
                 <div className="h-[550px] landscape:h-full md:h-full w-full bg-background overflow-visible relative min-w-0 border-b landscape:border-b-0 landscape:border-r md:border-b-0 md:border-r">
                     <style>{calendarStyles}</style>
+
+                    {/* Centered inline confirmation for strength reschedule conflicts.
+                        Replaces a sonner toast (off-screen on this layout) and an
+                        AlertDialog (centered on viewport, which is not the visual
+                        center of the calendar canvas because of the sidebar). */}
+                    {strengthConflict && (
+                        <div
+                            role="alertdialog"
+                            aria-label="Quality session conflict"
+                            className="absolute left-1/2 top-4 z-50 -translate-x-1/2 w-[min(420px,calc(100%-2rem))] rounded-lg border bg-popover p-4 text-popover-foreground shadow-lg"
+                        >
+                            <div className="flex items-start gap-3">
+                                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+                                <div className="min-w-0 flex-1">
+                                    <div className="text-sm font-semibold">Quality session conflict</div>
+                                    <p className="mt-1 text-sm text-muted-foreground">
+                                        {strengthConflict.conflictLabel} is scheduled here. Strength training the same day may compromise it.
+                                    </p>
+                                    <div className="mt-3 flex justify-end gap-2">
+                                        <Button variant="ghost" size="sm" onClick={() => setStrengthConflict(null)}>
+                                            Cancel
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            onClick={() => {
+                                                if (strengthConflict) {
+                                                    strengthRescheduleMutation.mutate({
+                                                        sessionId: strengthConflict.sessionId,
+                                                        newDate: strengthConflict.newDate,
+                                                    })
+                                                }
+                                                setStrengthConflict(null)
+                                            }}
+                                        >
+                                            Move anyway
+                                        </Button>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setStrengthConflict(null)}
+                                    aria-label="Dismiss"
+                                    className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                >
+                                    <XIcon className="h-4 w-4" />
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     <StrengthCellContext.Provider value={strengthCellValue}>
                         <DnDCalendar
                             localizer={localizer}
@@ -689,10 +783,11 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
                             endAccessor={(event: any) => event.end}
                             onSelectEvent={handleSelectEvent}
                             onSelectSlot={(slot: any) => {
+                                if (strengthClickRef.current) return
                                 setCreateDate(slot.start)
                                 setIsCreateDialogOpen(true)
                             }}
-                            selectable={true}
+                            selectable={!isStrengthDragging}
                             date={currentDate}
                             onNavigate={setCurrentDate}
                             view="month"
@@ -791,7 +886,7 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
 
             {/* Strength Session Dialog */}
             <Dialog open={isStrengthDialogOpen} onOpenChange={setIsStrengthDialogOpen}>
-                <DialogContent className="max-w-xl">
+                <DialogContent className="max-w-2xl">
                     <DialogTitle className="sr-only">Strength Session Details</DialogTitle>
                     {selectedStrengthSession && (
                         <SessionDetailDialog
@@ -809,6 +904,7 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
                     )}
                 </DialogContent>
             </Dialog>
+
 
             {/* Activity Dialog */}
             <Dialog open={isActivityDialogOpen} onOpenChange={setIsActivityDialogOpen}>

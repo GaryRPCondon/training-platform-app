@@ -1,12 +1,13 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { AlertCircle, Check, X, Code2 } from 'lucide-react'
+import { AlertCircle, Check, X, Code2, Loader2 } from 'lucide-react'
 import { ParsedProgram, parsedProgramSchema, Exercise } from '@/lib/strength/schemas'
 
 interface ParseResult {
@@ -30,20 +31,49 @@ export function StepReview({
   const [jsonText, setJsonText] = useState(() => JSON.stringify(result.program, null, 2))
   const [jsonError, setJsonError] = useState<string | null>(null)
   const [editedProgram, setEditedProgram] = useState<ParsedProgram>(result.program)
+  const [revalidating, setRevalidating] = useState(false)
 
-  function applyJson() {
+  async function applyJson() {
+    let parsed: unknown
     try {
-      const parsed = JSON.parse(jsonText)
-      const validated = parsedProgramSchema.safeParse(parsed)
-      if (!validated.success) {
-        setJsonError(JSON.stringify(validated.error.flatten(), null, 2))
-        return
-      }
-      setEditedProgram(validated.data)
-      setJsonError(null)
-      setEditingJson(false)
+      parsed = JSON.parse(jsonText)
     } catch (err) {
       setJsonError(err instanceof Error ? err.message : 'Invalid JSON')
+      return
+    }
+    const validated = parsedProgramSchema.safeParse(parsed)
+    if (!validated.success) {
+      setJsonError(JSON.stringify(validated.error.flatten(), null, 2))
+      return
+    }
+    setJsonError(null)
+    setRevalidating(true)
+    try {
+      const res = await fetch('/api/strength/revalidate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ parsed_program: validated.data }),
+      })
+      const body = await res.json()
+      if (!res.ok) {
+        setJsonError(body.error ?? 'Re-validation failed')
+        return
+      }
+      const restamped = body.program as ParsedProgram
+      const changes = (body.changes ?? []) as Array<{ canonical_name: string; after: { garmin_supported: boolean } }>
+      setEditedProgram(restamped)
+      setJsonText(JSON.stringify(restamped, null, 2))
+      setEditingJson(false)
+      if (changes.length > 0) {
+        const flipped = changes.map(c => `${c.canonical_name}→${c.after.garmin_supported ? 'supported' : 'unsupported'}`).join(', ')
+        toast.success(`Re-validated against catalog. ${changes.length} exercise${changes.length === 1 ? '' : 's'} updated: ${flipped}`)
+      } else {
+        toast.success('Re-validated against catalog. No changes.')
+      }
+    } catch (err) {
+      setJsonError(err instanceof Error ? err.message : 'Re-validation failed')
+    } finally {
+      setRevalidating(false)
     }
   }
 
@@ -110,7 +140,10 @@ export function StepReview({
             {jsonError && (
               <pre className="rounded bg-destructive/10 p-2 text-xs text-destructive whitespace-pre-wrap">{jsonError}</pre>
             )}
-            <Button size="sm" onClick={applyJson}>Validate and apply</Button>
+            <Button size="sm" onClick={applyJson} disabled={revalidating}>
+              {revalidating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Validate and re-check Garmin support
+            </Button>
           </div>
         )}
 

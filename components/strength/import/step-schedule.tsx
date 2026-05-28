@@ -180,6 +180,12 @@ export function StepSchedule({
                         </span>
                         <span className="font-medium">{session?.title ?? 'Untitled'}</span>
                       </div>
+                      {session && session.exercises.length > 0 && (
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {session.exercises.slice(0, 4).map(e => e.display_name).join(' · ')}
+                          {session.exercises.length > 4 && ` +${session.exercises.length - 4} more`}
+                        </p>
+                      )}
                       <p className="mt-1 text-sm italic text-muted-foreground">
                         {placement.placement_rationale}
                       </p>

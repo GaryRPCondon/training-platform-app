@@ -15,6 +15,9 @@ import {
   XCircle,
   Circle,
   Loader2,
+  CalendarDays,
+  Check,
+  X,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -93,6 +96,9 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [isSendingGarmin, setIsSendingGarmin] = useState(false)
   const [isRemovingGarmin, setIsRemovingGarmin] = useState(false)
+  const [isEditingDate, setIsEditingDate] = useState(false)
+  const [draftDate, setDraftDate] = useState(session.scheduled_date)
+  const [isRescheduling, setIsRescheduling] = useState(false)
 
   const { data: athlete } = useQuery({
     queryKey: ['athlete'],
@@ -161,6 +167,30 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
     router.push(`/dashboard/chat?strengthSessionId=${session.id}`)
   }
 
+  const handleReschedule = async () => {
+    if (draftDate === session.scheduled_date) {
+      setIsEditingDate(false)
+      return
+    }
+    setIsRescheduling(true)
+    try {
+      const res = await fetch('/api/strength/reschedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: session.id, newDate: draftDate }),
+      })
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error || 'Failed to reschedule')
+      toast.success(`Moved to ${format(parseISO(draftDate), 'EEE, MMM d')}`)
+      setIsEditingDate(false)
+      onSaved?.(result.session as StrengthSession)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to reschedule')
+    } finally {
+      setIsRescheduling(false)
+    }
+  }
+
   const handleSendToGarmin = async () => {
     setIsSendingGarmin(true)
     try {
@@ -222,14 +252,52 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-start gap-2">
             <Dumbbell className="mt-1 h-5 w-5 text-muted-foreground" />
-            <div>
+            <div className="min-w-0 flex-1">
               <h3 className="text-xl font-semibold">{session.title}</h3>
-              <div className="mt-0.5 text-sm text-muted-foreground">
-                {format(parseISO(session.scheduled_date), 'EEEE, MMM d')}
-                {session.estimated_duration_minutes != null && (
-                  <span> · ~{session.estimated_duration_minutes} min planned</span>
-                )}
-              </div>
+              {isEditingDate ? (
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <Input
+                    type="date"
+                    value={draftDate}
+                    onChange={(e) => setDraftDate(e.target.value)}
+                    className="h-8 w-auto"
+                    disabled={isRescheduling}
+                  />
+                  <Button size="sm" variant="ghost" onClick={handleReschedule} disabled={isRescheduling} aria-label="Save date">
+                    {isRescheduling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => { setDraftDate(session.scheduled_date); setIsEditingDate(false) }}
+                    disabled={isRescheduling}
+                    aria-label="Cancel"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                  <span>{format(parseISO(session.scheduled_date), 'EEEE, MMM d')}</span>
+                  {session.estimated_duration_minutes != null && (
+                    <span>· ~{session.estimated_duration_minutes} min planned</span>
+                  )}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                        onClick={() => { setDraftDate(session.scheduled_date); setIsEditingDate(true) }}
+                        aria-label="Reschedule"
+                      >
+                        <CalendarDays className="h-3.5 w-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Reschedule</TooltipContent>
+                  </Tooltip>
+                </div>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-1">
@@ -296,13 +364,13 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
         </div>
         <ul className="space-y-2">
           {session.exercises.map((ex, i) => (
-            <li key={i} className="flex items-start justify-between gap-3 rounded-md border border-border/60 px-3 py-2 text-sm">
-              <div>
+            <li key={i} className="grid grid-cols-[1fr_auto] items-start gap-3 rounded-md border border-border/60 px-3 py-2 text-sm">
+              <div className="min-w-0">
                 <div className="font-medium">{ex.display_name}</div>
                 {ex.notes && <div className="mt-0.5 text-xs text-muted-foreground">{ex.notes}</div>}
               </div>
-              <div className="flex shrink-0 flex-col items-end gap-1">
-                <span className="text-xs text-muted-foreground">{formatMeasurement(ex)}</span>
+              <div className="flex flex-col items-end gap-1">
+                <span className="whitespace-nowrap text-xs text-muted-foreground">{formatMeasurement(ex)}</span>
                 {!ex.garmin_supported && (
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -377,8 +445,8 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
 
       <Separator />
 
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {garminStatus && GARMIN_STATUS_LABELS[garminStatus] && (
             <Badge variant="outline" className={`text-[10px] ${GARMIN_STATUS_LABELS[garminStatus].tone}`}>
               {GARMIN_STATUS_LABELS[garminStatus].label}

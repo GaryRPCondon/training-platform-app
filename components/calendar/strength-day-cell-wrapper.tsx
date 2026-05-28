@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext } from 'react'
+import React, { createContext, useContext, useState } from 'react'
 import { format } from 'date-fns'
 import type { StrengthSession } from '@/types/database'
 import { StrengthIconStrip } from './strength-icon-strip'
@@ -11,6 +11,13 @@ interface StrengthCellContextValue {
   onDragStart: (sessionId: number) => void
   onDragEnd: () => void
   onDrop: (sessionId: number, newDate: string) => void
+  /**
+   * Tell the calendar parent to suppress RBC's onSelectSlot. Pass `autoClearMs`
+   * for a single click (auto-clears after the gesture completes). Omit for a
+   * drag (caller must invoke again with an autoClearMs on dragend — a real
+   * drag exceeds any short timeout window).
+   */
+  setSuppression: (autoClearMs?: number) => void
 }
 
 export const StrengthCellContext = createContext<StrengthCellContextValue | null>(null)
@@ -29,24 +36,34 @@ type DayCellElement = React.ReactElement<{
   children?: React.ReactNode
   onDragOver?: (e: React.DragEvent) => void
   onDrop?: (e: React.DragEvent) => void
+  onDragLeave?: (e: React.DragEvent) => void
+  'data-strength-drop-active'?: 'true' | 'false'
 }>
 
 export function StrengthDayCellWrapper({ value, children }: DayCellWrapperProps) {
   const ctx = useContext(StrengthCellContext)
   const dateKey = format(value, 'yyyy-MM-dd')
   const sessions = ctx?.sessionsByDate.get(dateKey) ?? []
+  const [isDropActive, setIsDropActive] = useState(false)
 
   const typedChild = children as DayCellElement
   const existingDragOver = typedChild.props.onDragOver
   const existingDrop = typedChild.props.onDrop
+  const existingDragLeave = typedChild.props.onDragLeave
 
   const handleDragOver = (e: React.DragEvent) => {
     if (e.dataTransfer.types.includes(DRAG_MIME)) {
       e.preventDefault()
       e.dataTransfer.dropEffect = 'move'
+      if (!isDropActive) setIsDropActive(true)
       return
     }
     existingDragOver?.(e)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    if (isDropActive) setIsDropActive(false)
+    existingDragLeave?.(e)
   }
 
   const handleDrop = (e: React.DragEvent) => {
@@ -54,16 +71,20 @@ export function StrengthDayCellWrapper({ value, children }: DayCellWrapperProps)
     if (sessionIdRaw) {
       e.preventDefault()
       e.stopPropagation()
+      setIsDropActive(false)
       const sessionId = Number(sessionIdRaw)
       if (Number.isFinite(sessionId)) ctx?.onDrop(sessionId, dateKey)
       return
     }
+    setIsDropActive(false)
     existingDrop?.(e)
   }
 
   return React.cloneElement(typedChild, {
     onDragOver: handleDragOver,
+    onDragLeave: handleDragLeave,
     onDrop: handleDrop,
+    'data-strength-drop-active': isDropActive ? 'true' : 'false',
     children: (
       <>
         {typedChild.props.children}
@@ -73,6 +94,7 @@ export function StrengthDayCellWrapper({ value, children }: DayCellWrapperProps)
             onOpen={ctx.onOpen}
             onDragStart={ctx.onDragStart}
             onDragEnd={ctx.onDragEnd}
+            setSuppression={ctx.setSuppression}
           />
         )}
       </>

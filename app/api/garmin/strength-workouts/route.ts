@@ -12,7 +12,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { GarminClient } from '@/lib/garmin/client'
-import { mapStrengthSessionToGarmin } from '@/lib/garmin/strength-workout-mapper'
+import { mapStrengthSessionToGarmin, isExerciseGarminSendable } from '@/lib/garmin/strength-workout-mapper'
 import { loadExerciseCatalog } from '@/lib/supabase/strength-queries'
 import type { StrengthExerciseCatalog, StrengthSession } from '@/types/database'
 
@@ -259,8 +259,5 @@ async function handleSend(
 function isSessionGarminReady(session: StrengthSession, catalog: StrengthExerciseCatalog[]): boolean {
   if (session.exercises.length === 0) return false
   const byName = new Map(catalog.map(c => [c.canonical_name, c]))
-  return session.exercises.every(ex => {
-    const row = byName.get(ex.canonical_name)
-    return !!row && row.garmin_supported
-  })
+  return session.exercises.every(ex => isExerciseGarminSendable(ex, byName))
 }
