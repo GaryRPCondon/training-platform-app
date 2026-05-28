@@ -59,7 +59,7 @@ export default function StrengthPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Strength &amp; Mobility</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Strength and Mobility Plans</h1>
         <Button asChild>
           <Link href="/dashboard/strength/import">Import new program</Link>
         </Button>

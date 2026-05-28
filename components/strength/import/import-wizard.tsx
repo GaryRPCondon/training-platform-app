@@ -32,14 +32,27 @@ export function ImportWizard({
   const [step, setStep] = useState<Step>('input')
   const [sourceText, setSourceText] = useState('')
   const [sourceFormat, setSourceFormat] = useState<'free_text' | 'json'>('free_text')
-  const [programType, setProgramType] = useState<ProgramType>('fixed')
+  const [programType, setProgramType] = useState<ProgramType>('weekly')
+  // Scheduling inputs are captured on step 1 alongside the program-type toggle
+  // so the user picks everything that drives placement before parsing.
+  const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [weeksToRepeat, setWeeksToRepeat] = useState(8)
   const [parseResult, setParseResult] = useState<ParseResult | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
-  async function handleParse(text: string, format: 'free_text' | 'json', type: ProgramType, nameOverride: string | null) {
+  async function handleParse(
+    text: string,
+    format: 'free_text' | 'json',
+    type: ProgramType,
+    nameOverride: string | null,
+    nextStartDate: string,
+    nextWeeksToRepeat: number,
+  ) {
     setSourceText(text)
     setSourceFormat(format)
     setProgramType(type)
+    setStartDate(nextStartDate)
+    setWeeksToRepeat(nextWeeksToRepeat)
     setSubmitting(true)
     try {
       const res = await fetch('/api/strength/parse', {
@@ -75,8 +88,6 @@ export function ImportWizard({
   }
 
   async function handleSchedule(
-    startDate: string,
-    weeksToRepeat: number | null,
     placements: Placement[],
   ) {
     if (!parseResult) return
@@ -99,6 +110,7 @@ export function ImportWizard({
           weeks_to_repeat: programType === 'weekly' ? weeksToRepeat : null,
           start_date: startDate,
           placements,
+          // ↑ startDate + weeksToRepeat come from wizard state (set on step 1).
         }),
       })
       const data = await res.json()
@@ -130,6 +142,8 @@ export function ImportWizard({
       <StepSchedule
         program={parseResult.program}
         programType={programType}
+        startDate={startDate}
+        weeksToRepeat={weeksToRepeat}
         submitting={submitting}
         onBack={() => setStep('review')}
         onConfirm={handleSchedule}

@@ -36,7 +36,7 @@ const navItems: NavItem[] = [
         icon: Calendar,
     },
     {
-        title: 'Plans',
+        title: 'Running',
         href: '/dashboard/plans',
         icon: ClipboardList,
     },

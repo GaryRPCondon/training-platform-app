@@ -1,17 +1,17 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { format, parseISO } from 'date-fns'
 import { toast } from 'sonner'
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 
 import { ParsedProgram } from '@/lib/strength/schemas'
 import type { ProgramType } from './step-input'
+import { SchedulePreviewCalendar } from './schedule-preview-calendar'
 
 interface Placement {
   session_index: number
@@ -26,19 +26,18 @@ interface PlannedWorkoutSummary {
 }
 
 const QUALITY_TYPES = new Set(['intervals', 'tempo', 'long_run', 'race', 'race_pace'])
-const DEFAULT_WEEKS_TO_REPEAT = 8
 
 export function StepSchedule({
-  program, programType, submitting, onBack, onConfirm,
+  program, programType, startDate, weeksToRepeat, submitting, onBack, onConfirm,
 }: {
   program: ParsedProgram
   programType: ProgramType
+  startDate: string
+  weeksToRepeat: number
   submitting: boolean
   onBack: () => void
-  onConfirm: (startDate: string, weeksToRepeat: number | null, placements: Placement[]) => void
+  onConfirm: (placements: Placement[]) => void
 }) {
-  const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10))
-  const [weeksToRepeat, setWeeksToRepeat] = useState<number>(DEFAULT_WEEKS_TO_REPEAT)
   const [generating, setGenerating] = useState(false)
   const [placements, setPlacements] = useState<Placement[]>([])
   const [workouts, setWorkouts] = useState<PlannedWorkoutSummary[]>([])
@@ -101,54 +100,40 @@ export function StepSchedule({
     return program.sessions[templateIdx]
   }
 
+  // Refs per placement row so a click on the preview calendar can scroll the
+  // corresponding row into view and flash it.
+  const rowRefs = useRef(new Map<number, HTMLDivElement | null>())
+  const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null)
+  const placementLabel = useCallback((p: { session_index: number }) => {
+    const session = templateSessionFor(p.session_index)
+    if (programType === 'weekly') {
+      const week = Math.floor((p.session_index - 1) / templateLen) + 1
+      return `W${week}: ${session?.title ?? 'Untitled'}`
+    }
+    return session?.title ?? `Session ${p.session_index}`
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [programType, templateLen, program.sessions])
+
+  const handlePlacementClick = useCallback((sessionIndex: number) => {
+    const node = rowRefs.current.get(sessionIndex)
+    if (node) {
+      node.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      setHighlightedIndex(sessionIndex)
+      window.setTimeout(() => setHighlightedIndex(prev => prev === sessionIndex ? null : prev), 1500)
+    }
+  }, [])
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Schedule sessions</CardTitle>
+        <CardTitle>Preview placement</CardTitle>
         <CardDescription>
           {programType === 'weekly'
-            ? `Pick a start date and how many weeks to repeat the routine. The AI will distribute each week's sessions around your running plan, avoiding quality and long-run days.`
-            : `Pick a start date. The AI will distribute sessions around your running plan, avoiding quality and long-run days. You can adjust individual dates before importing.`}
+            ? `Starting ${format(parseISO(startDate), 'EEE, MMM d')}, ${templateLen} session${templateLen === 1 ? '' : 's'} per week × ${weeksToRepeat} weeks = ${templateLen * weeksToRepeat} sessions. The AI distributes them around your running plan; adjust individual dates below before importing.`
+            : `Starting ${format(parseISO(startDate), 'EEE, MMM d')}. The AI distributes sessions around your running plan; adjust individual dates below before importing.`}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <Label htmlFor="start-date" className="mb-1.5 block">Start date</Label>
-            <Input
-              id="start-date"
-              type="date"
-              value={startDate}
-              onChange={e => setStartDate(e.target.value)}
-            />
-          </div>
-          {programType === 'weekly' && (
-            <div>
-              <Label htmlFor="weeks" className="mb-1.5 block">Repeat for</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="weeks"
-                  type="number"
-                  inputMode="numeric"
-                  min={1}
-                  max={52}
-                  value={weeksToRepeat}
-                  onChange={e => {
-                    const v = parseInt(e.target.value, 10)
-                    if (Number.isFinite(v) && v >= 1 && v <= 52) setWeeksToRepeat(v)
-                    else if (e.target.value === '') setWeeksToRepeat(1)
-                  }}
-                />
-                <span className="text-sm text-muted-foreground">weeks</span>
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {templateLen} session{templateLen === 1 ? '' : 's'} × {weeksToRepeat} weeks ={' '}
-                {templateLen * weeksToRepeat} sessions
-              </p>
-            </div>
-          )}
-        </div>
-
         <div>
           <Button onClick={generateSchedule} disabled={generating}>
             {generating ? 'Generating...' : placements.length === 0 ? 'Generate schedule' : 'Regenerate'}
@@ -156,10 +141,21 @@ export function StepSchedule({
         </div>
 
         {placements.length > 0 && (
+          <>
+            <SchedulePreviewCalendar
+              startDate={startDate}
+              placements={placements}
+              placementLabel={placementLabel}
+              onPlacementClick={handlePlacementClick}
+            />
+          </>
+        )}
+
+        {placements.length > 0 && (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
               {placements.length} session{placements.length === 1 ? '' : 's'} scheduled.
-              Edit a date below to override the AI&apos;s choice.
+              Edit a date below to override the AI&apos;s choice, or click a session on the calendar above to jump to it.
             </p>
             {placements.map(placement => {
               const session = templateSessionFor(placement.session_index)
@@ -168,8 +164,13 @@ export function StepSchedule({
               const weekNumber = programType === 'weekly'
                 ? Math.floor((placement.session_index - 1) / templateLen) + 1
                 : null
+              const isHighlighted = highlightedIndex === placement.session_index
               return (
-                <div key={placement.session_index} className="rounded-md border p-3">
+                <div
+                  key={placement.session_index}
+                  ref={(el) => { rowRefs.current.set(placement.session_index, el) }}
+                  className={`rounded-md border p-3 transition-colors ${isHighlighted ? 'bg-accent ring-2 ring-primary' : ''}`}
+                >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
@@ -221,13 +222,9 @@ export function StepSchedule({
         <Button variant="outline" onClick={onBack}>Back</Button>
         <Button
           disabled={placements.length === 0 || submitting}
-          onClick={() => onConfirm(
-            startDate,
-            programType === 'weekly' ? weeksToRepeat : null,
-            placements,
-          )}
+          onClick={() => onConfirm(placements)}
         >
-          {submitting ? 'Importing...' : 'Confirm and import'}
+          {submitting ? 'Importing...' : 'Looks good — schedule it'}
         </Button>
       </CardFooter>
     </Card>

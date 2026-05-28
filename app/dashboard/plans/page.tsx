@@ -92,7 +92,7 @@ export default function PlansPage() {
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
-                <h1 className="text-3xl font-bold tracking-tight">Training Plans</h1>
+                <h1 className="text-3xl font-bold tracking-tight">Running Plans</h1>
                 <Button asChild>
                     <Link href="/dashboard/plans/new">Create New Plan</Link>
                 </Button>

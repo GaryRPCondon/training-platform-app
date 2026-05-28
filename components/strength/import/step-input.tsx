@@ -33,13 +33,22 @@ export function StepInput({
   onCancel,
 }: {
   submitting: boolean
-  onParse: (text: string, format: 'free_text' | 'json', programType: ProgramType, nameOverride: string | null) => void
+  onParse: (
+    text: string,
+    format: 'free_text' | 'json',
+    programType: ProgramType,
+    nameOverride: string | null,
+    startDate: string,
+    weeksToRepeat: number,
+  ) => void
   onCancel: () => void
 }) {
   const [tab, setTab] = useState<'free_text' | 'file' | 'json'>('free_text')
   const [text, setText] = useState('')
-  const [programType, setProgramType] = useState<ProgramType>('fixed')
+  const [programType, setProgramType] = useState<ProgramType>('weekly')
   const [nameOverride, setNameOverride] = useState('')
+  const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [weeksToRepeat, setWeeksToRepeat] = useState(8)
 
   function handleFile(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -52,7 +61,7 @@ export function StepInput({
   function submit() {
     const format = tab === 'json' ? 'json' : 'free_text'
     const trimmedName = nameOverride.trim()
-    onParse(text.trim(), format, programType, trimmedName.length > 0 ? trimmedName : null)
+    onParse(text.trim(), format, programType, trimmedName.length > 0 ? trimmedName : null, startDate, weeksToRepeat)
   }
 
   return (
@@ -62,8 +71,7 @@ export function StepInput({
           <div>
             <CardTitle>Paste your program</CardTitle>
             <CardDescription>
-              The AI will parse the text into structured sessions. You can review and edit the
-              result before scheduling.
+              Insert your strength workout details and timing requirements and they will be interpreted and presented for scheduling.
             </CardDescription>
           </div>
           <Popover>
@@ -93,6 +101,18 @@ export function StepInput({
             className="mt-2 grid gap-3 sm:grid-cols-2"
           >
             <label
+              htmlFor="program-type-weekly"
+              className={`flex cursor-pointer flex-col gap-1 rounded-md border p-3 transition-colors hover:bg-accent ${programType === 'weekly' ? 'border-primary ring-1 ring-primary' : ''}`}
+            >
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="weekly" id="program-type-weekly" />
+                <span className="font-medium">Weekly routine</span>
+              </div>
+              <span className="ml-6 text-xs text-muted-foreground">
+                Fixed number of sessions, repeats for the number of weeks selected below.
+              </span>
+            </label>
+            <label
               htmlFor="program-type-fixed"
               className={`flex cursor-pointer flex-col gap-1 rounded-md border p-3 transition-colors hover:bg-accent ${programType === 'fixed' ? 'border-primary ring-1 ring-primary' : ''}`}
             >
@@ -102,18 +122,6 @@ export function StepInput({
               </div>
               <span className="ml-6 text-xs text-muted-foreground">
                 The complete schedule, written out session by session. Sessions are placed on the calendar once.
-              </span>
-            </label>
-            <label
-              htmlFor="program-type-weekly"
-              className={`flex cursor-pointer flex-col gap-1 rounded-md border p-3 transition-colors hover:bg-accent ${programType === 'weekly' ? 'border-primary ring-1 ring-primary' : ''}`}
-            >
-              <div className="flex items-center gap-2">
-                <RadioGroupItem value="weekly" id="program-type-weekly" />
-                <span className="font-medium">Weekly routine</span>
-              </div>
-              <span className="ml-6 text-xs text-muted-foreground">
-                One week of sessions. The set repeats each week for the number of weeks chosen on the next step.
               </span>
             </label>
           </RadioGroup>
@@ -132,8 +140,46 @@ export function StepInput({
             maxLength={120}
           />
           <p className="mt-1 text-xs text-muted-foreground">
-            Helps you tell plans apart on the calendar and in the program list. If left blank, the AI will suggest one from the text.
+            Helps you to uniquely identify your plans.
           </p>
+        </div>
+
+        <div className="mb-6">
+          <Label className="text-sm font-medium">Scheduling</Label>
+          <p className="mt-1 mb-3 text-xs text-muted-foreground">
+            Select your start date and if applicable, number of repeat weeks.
+          </p>
+          <div className="flex flex-wrap items-end gap-4">
+            <div className="w-40">
+              <Label htmlFor="start-date" className="text-xs text-muted-foreground">Start date</Label>
+              <Input
+                id="start-date"
+                type="date"
+                value={startDate}
+                onChange={e => setStartDate(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            {programType === 'weekly' && (
+              <div className="w-32">
+                <Label htmlFor="weeks-to-repeat" className="text-xs text-muted-foreground">Repeat for (weeks)</Label>
+                <Input
+                  id="weeks-to-repeat"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={52}
+                  value={weeksToRepeat}
+                  onChange={e => {
+                    const v = parseInt(e.target.value, 10)
+                    if (Number.isFinite(v) && v >= 1 && v <= 52) setWeeksToRepeat(v)
+                    else if (e.target.value === '') setWeeksToRepeat(1)
+                  }}
+                  className="mt-1"
+                />
+              </div>
+            )}
+          </div>
         </div>
 
         <Tabs value={tab} onValueChange={v => setTab(v as typeof tab)}>
