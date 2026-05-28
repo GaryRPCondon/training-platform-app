@@ -92,6 +92,9 @@ export function StrengthIconStrip({ sessions, onOpen, onDragStart, onDragEnd, se
             </TooltipTrigger>
             <TooltipContent side="top" className="max-w-xs text-xs">
               <div className="font-medium">{session.title}</div>
+              {session.program_name && (
+                <div className="text-muted-foreground">from {session.program_name}</div>
+              )}
               {session.estimated_duration_minutes && (
                 <div className="text-muted-foreground">~{session.estimated_duration_minutes} min</div>
               )}

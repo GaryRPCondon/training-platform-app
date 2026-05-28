@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
+import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
@@ -32,12 +33,13 @@ export function StepInput({
   onCancel,
 }: {
   submitting: boolean
-  onParse: (text: string, format: 'free_text' | 'json', programType: ProgramType) => void
+  onParse: (text: string, format: 'free_text' | 'json', programType: ProgramType, nameOverride: string | null) => void
   onCancel: () => void
 }) {
   const [tab, setTab] = useState<'free_text' | 'file' | 'json'>('free_text')
   const [text, setText] = useState('')
   const [programType, setProgramType] = useState<ProgramType>('fixed')
+  const [nameOverride, setNameOverride] = useState('')
 
   function handleFile(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -49,7 +51,8 @@ export function StepInput({
 
   function submit() {
     const format = tab === 'json' ? 'json' : 'free_text'
-    onParse(text.trim(), format, programType)
+    const trimmedName = nameOverride.trim()
+    onParse(text.trim(), format, programType, trimmedName.length > 0 ? trimmedName : null)
   }
 
   return (
@@ -114,6 +117,23 @@ export function StepInput({
               </span>
             </label>
           </RadioGroup>
+        </div>
+
+        <div className="mb-6 max-w-md">
+          <Label htmlFor="plan-name" className="text-sm font-medium">
+            Plan name <span className="text-xs font-normal text-muted-foreground">(optional)</span>
+          </Label>
+          <Input
+            id="plan-name"
+            className="mt-2"
+            value={nameOverride}
+            onChange={e => setNameOverride(e.target.value)}
+            placeholder="e.g. Glute & Core Block — Spring 2026"
+            maxLength={120}
+          />
+          <p className="mt-1 text-xs text-muted-foreground">
+            Helps you tell plans apart on the calendar and in the program list. If left blank, the AI will suggest one from the text.
+          </p>
         </div>
 
         <Tabs value={tab} onValueChange={v => setTab(v as typeof tab)}>

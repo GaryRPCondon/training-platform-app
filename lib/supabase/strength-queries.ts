@@ -45,6 +45,17 @@ export async function getProgramWithSessions(
   return { program: program as StrengthProgram, sessions: (sessions ?? []) as StrengthSession[] }
 }
 
+// Supabase auto-types a FK-to-one as either an object or an array. Unwrap
+// defensively so callers always see a plain string | null.
+function extractProgramName(joined: unknown): string | null {
+  if (!joined) return null
+  if (Array.isArray(joined)) {
+    const first = joined[0] as { name?: string } | undefined
+    return first?.name ?? null
+  }
+  return (joined as { name?: string }).name ?? null
+}
+
 export async function getSessionsForDateRange(
   supabase: Client,
   athleteId: string,
@@ -53,14 +64,17 @@ export async function getSessionsForDateRange(
 ): Promise<StrengthSession[]> {
   const { data, error } = await supabase
     .from('strength_sessions')
-    .select('*')
+    .select('*, strength_programs(name)')
     .eq('athlete_id', athleteId)
     .gte('scheduled_date', startDate)
     .lte('scheduled_date', endDate)
     .order('scheduled_date', { ascending: true })
     .order('display_order', { ascending: true })
   if (error) throw error
-  return (data ?? []) as StrengthSession[]
+  return ((data ?? []) as Array<StrengthSession & { strength_programs?: unknown }>).map(row => ({
+    ...row,
+    program_name: extractProgramName(row.strength_programs),
+  }))
 }
 
 export async function getSessionById(
@@ -70,12 +84,14 @@ export async function getSessionById(
 ): Promise<StrengthSession | null> {
   const { data, error } = await supabase
     .from('strength_sessions')
-    .select('*')
+    .select('*, strength_programs(name)')
     .eq('id', sessionId)
     .eq('athlete_id', athleteId)
     .maybeSingle()
   if (error) throw error
-  return (data as StrengthSession | null) ?? null
+  if (!data) return null
+  const row = data as StrengthSession & { strength_programs?: unknown }
+  return { ...row, program_name: extractProgramName(row.strength_programs) }
 }
 
 export async function createProgramWithSessions(

@@ -36,7 +36,7 @@ export function ImportWizard({
   const [parseResult, setParseResult] = useState<ParseResult | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
-  async function handleParse(text: string, format: 'free_text' | 'json', type: ProgramType) {
+  async function handleParse(text: string, format: 'free_text' | 'json', type: ProgramType, nameOverride: string | null) {
     setSourceText(text)
     setSourceFormat(format)
     setProgramType(type)
@@ -51,8 +51,11 @@ export function ImportWizard({
       if (!res.ok) {
         throw new Error(data.error ?? 'Failed to parse plan')
       }
+      const program: ParsedProgram = nameOverride
+        ? { ...data.program, name: nameOverride }
+        : data.program
       setParseResult({
-        program: data.program,
+        program,
         confidence: data.confidence,
         contentType: data.contentType,
         warnings: data.warnings ?? [],

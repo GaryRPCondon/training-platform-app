@@ -254,6 +254,11 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
             <Dumbbell className="mt-1 h-5 w-5 text-muted-foreground" />
             <div className="min-w-0 flex-1">
               <h3 className="text-xl font-semibold">{session.title}</h3>
+              {session.program_name && (
+                <div className="text-xs text-muted-foreground">
+                  from <span className="font-medium">{session.program_name}</span>
+                </div>
+              )}
               {isEditingDate ? (
                 <div className="mt-1 flex flex-wrap items-center gap-2">
                   <Input

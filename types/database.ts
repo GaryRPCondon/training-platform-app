@@ -461,6 +461,10 @@ export interface StrengthSession {
     garmin_sync_metadata: Record<string, unknown> | null
     created_at: string
     updated_at: string
+    // Derived (joined from strength_programs) — populated by queries that ask
+    // for it; not a column on strength_sessions. Used to disambiguate sessions
+    // when multiple programs are active concurrently.
+    program_name?: string | null
 }
 
 export interface StrengthExerciseCatalog {
