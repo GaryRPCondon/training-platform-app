@@ -336,7 +336,7 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
     })
 
     const strengthRescheduleMutation = useMutation({
-        mutationFn: async ({ sessionId, newDate }: { sessionId: number, newDate: string }) => {
+        mutationFn: async ({ sessionId, newDate, wasSyncedOnGarmin }: { sessionId: number, newDate: string, wasSyncedOnGarmin: boolean }) => {
             const response = await fetch('/api/strength/reschedule', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -344,11 +344,23 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
             })
             const result = await response.json()
             if (!response.ok) throw new Error(result.error || 'Failed to reschedule')
-            return result.session as StrengthSession
+            return {
+                session: result.session as StrengthSession,
+                newDate,
+                wasSyncedOnGarmin,
+                garminMoved: !!result.garminMoved,
+            }
         },
-        onSuccess: () => {
+        onSuccess: ({ newDate, wasSyncedOnGarmin, garminMoved }) => {
             queryClient.invalidateQueries({ queryKey: ['strength-sessions'] })
-            toast.success('Strength session rescheduled')
+            const dateLabel = format(parseISO(newDate), 'EEE, MMM d')
+            if (wasSyncedOnGarmin && garminMoved) {
+                toast.success(`Moved to ${dateLabel} (Garmin updated)`)
+            } else if (wasSyncedOnGarmin && !garminMoved) {
+                toast.warning(`Moved to ${dateLabel}. Couldn't update Garmin — resend manually.`)
+            } else {
+                toast.success('Strength session rescheduled')
+            }
         },
         onError: (err: unknown) => {
             toast.error(err instanceof Error ? err.message : 'Failed to reschedule strength session')
@@ -376,6 +388,7 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
         if (!session) return
         if (session.scheduled_date === newDate) return
 
+        const wasSyncedOnGarmin = !!session.garmin_workout_id && session.garmin_sync_status === 'synced'
         const conflict = (workouts || []).find(
             w => w.scheduled_date === newDate && QUALITY_WORKOUT_TYPES.has(w.workout_type as string)
         )
@@ -387,7 +400,7 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
             })
             return
         }
-        strengthRescheduleMutation.mutate({ sessionId, newDate })
+        strengthRescheduleMutation.mutate({ sessionId, newDate, wasSyncedOnGarmin })
     }, [strengthSessions, workouts, strengthRescheduleMutation])
 
     // Suppress RBC's onSelectSlot when the user is interacting with a strength
@@ -751,9 +764,12 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
                                             size="sm"
                                             onClick={() => {
                                                 if (strengthConflict) {
+                                                    const conflictSession = (strengthSessions ?? []).find(s => s.id === strengthConflict.sessionId)
+                                                    const wasSyncedOnGarmin = !!conflictSession?.garmin_workout_id && conflictSession?.garmin_sync_status === 'synced'
                                                     strengthRescheduleMutation.mutate({
                                                         sessionId: strengthConflict.sessionId,
                                                         newDate: strengthConflict.newDate,
+                                                        wasSyncedOnGarmin,
                                                     })
                                                 }
                                                 setStrengthConflict(null)
@@ -886,7 +902,7 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
 
             {/* Strength Session Dialog */}
             <Dialog open={isStrengthDialogOpen} onOpenChange={setIsStrengthDialogOpen}>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
                     <DialogTitle className="sr-only">Strength Session Details</DialogTitle>
                     {selectedStrengthSession && (
                         <SessionDetailDialog

@@ -3,9 +3,13 @@ import { createClient } from '@/lib/supabase/server'
 import {
   deleteSession,
   getSessionById,
+  loadExerciseCatalog,
   updateSessionCompletion,
+  updateSessionExercises,
 } from '@/lib/supabase/strength-queries'
 import { updateSessionSchema } from '@/lib/strength/schemas'
+import { buildCatalogLookup, resolveExerciseAgainstCatalog } from '@/lib/strength/exercise-mapper'
+import type { StrengthExercise, StrengthSession } from '@/types/database'
 
 interface Ctx { params: Promise<{ id: string }> }
 
@@ -64,8 +68,19 @@ export async function PATCH(request: Request, { params }: Ctx) {
   const existing = await getSessionById(supabase, user.id, sessionId)
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+  const { exercises, ...completionPatch } = parsed.data
+
   try {
-    const session = await updateSessionCompletion(supabase, user.id, sessionId, parsed.data)
+    let session: StrengthSession = existing
+    if (exercises !== undefined) {
+      const catalog = await loadExerciseCatalog(supabase)
+      const lookup = buildCatalogLookup(catalog)
+      const resolved = exercises.map(ex => resolveExerciseAgainstCatalog(ex as StrengthExercise, lookup))
+      session = await updateSessionExercises(supabase, user.id, sessionId, resolved)
+    }
+    if (Object.keys(completionPatch).length > 0) {
+      session = await updateSessionCompletion(supabase, user.id, sessionId, completionPatch)
+    }
     return NextResponse.json({ session })
   } catch (err) {
     console.error('Strength session update error:', err)

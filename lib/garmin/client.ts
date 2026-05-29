@@ -510,6 +510,13 @@ export class GarminClient {
    * Schedule a workout on a specific date in Garmin Connect.
    * Uses POST /workout-service/schedule/{workoutId}
    * (scheduleWorkout is in README but not in garmin-connect@1.6.2 types)
+   *
+   * NOTE on move semantics (verified 2026-05-29): re-POSTing this endpoint
+   * for an already-scheduled workout *stacks* a second calendar entry
+   * instead of replacing the prior date. Callers that want move semantics
+   * must delete the old workout (or its specific schedule entry) first —
+   * see app/api/strength/reschedule/route.ts for the delete-then-recreate
+   * pattern.
    */
   async scheduleWorkout(workoutId: string, date: string): Promise<void> {
     if (!this.client) throw new Error('Garmin client not initialized')

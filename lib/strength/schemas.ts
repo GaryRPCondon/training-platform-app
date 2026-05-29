@@ -118,6 +118,7 @@ export const updateSessionSchema = z.object({
   completion_status: z.enum(['pending', 'completed', 'partial', 'skipped']).optional(),
   actual_duration_minutes: z.number().int().min(0).nullable().optional(),
   completion_notes: z.string().nullable().optional(),
+  exercises: z.array(exerciseSchema).min(1).optional(),
 })
 
 // Inferred TS types — use these everywhere instead of re-defining shape.

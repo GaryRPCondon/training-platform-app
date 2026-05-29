@@ -18,6 +18,8 @@ import {
   CalendarDays,
   Check,
   X,
+  Pencil,
+  Plus,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -69,6 +71,16 @@ const STATUS_OPTIONS: Array<{ value: CompletionStatus; label: string; icon: type
   { value: 'skipped', label: 'Skipped', icon: XCircle },
 ]
 
+function makeBlankExercise(): StrengthExercise {
+  return {
+    canonical_name: 'new_exercise',
+    display_name: 'New exercise',
+    user_text: 'New exercise',
+    measurement: { type: 'reps', sets: 3, reps_per_set: 10 },
+    garmin_supported: false,
+  }
+}
+
 function formatMeasurement(ex: StrengthExercise): string {
   const m = ex.measurement
   if (m.type === 'reps' && m.reps_per_set !== undefined) {
@@ -99,6 +111,9 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
   const [isEditingDate, setIsEditingDate] = useState(false)
   const [draftDate, setDraftDate] = useState(session.scheduled_date)
   const [isRescheduling, setIsRescheduling] = useState(false)
+  const [isEditingExercises, setIsEditingExercises] = useState(false)
+  const [draftExercises, setDraftExercises] = useState<StrengthExercise[]>(session.exercises)
+  const [isSavingExercises, setIsSavingExercises] = useState(false)
 
   const { data: athlete } = useQuery({
     queryKey: ['athlete'],
@@ -185,7 +200,15 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
       })
       const result = await res.json()
       if (!res.ok) throw new Error(result.error || 'Failed to reschedule')
-      toast.success(`Moved to ${format(parseISO(draftDate), 'EEE, MMM d')}`)
+      const dateLabel = format(parseISO(draftDate), 'EEE, MMM d')
+      const wasOnGarmin = !!session.garmin_workout_id && session.garmin_sync_status === 'synced'
+      if (wasOnGarmin && result.garminMoved) {
+        toast.success(`Moved to ${dateLabel} (Garmin updated)`)
+      } else if (wasOnGarmin && !result.garminMoved) {
+        toast.warning(`Moved to ${dateLabel}. Couldn't update Garmin — resend manually.`)
+      } else {
+        toast.success(`Moved to ${dateLabel}`)
+      }
       setIsEditingDate(false)
       onSaved?.(result.session as StrengthSession)
     } catch (err) {
@@ -250,9 +273,80 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
     }
   }
 
+  const enterEditExercises = () => {
+    setDraftExercises(session.exercises.map(ex => ({ ...ex, measurement: { ...ex.measurement } })))
+    setIsEditingExercises(true)
+  }
+
+  const cancelEditExercises = () => {
+    setDraftExercises(session.exercises)
+    setIsEditingExercises(false)
+  }
+
+  const updateDraftAt = (idx: number, patch: Partial<StrengthExercise>) => {
+    setDraftExercises(prev => prev.map((ex, i) => (i === idx ? { ...ex, ...patch } : ex)))
+  }
+
+  const updateDraftMeasurement = (idx: number, patch: Partial<StrengthExercise['measurement']>) => {
+    setDraftExercises(prev => prev.map((ex, i) => {
+      if (i !== idx) return ex
+      return { ...ex, measurement: { ...ex.measurement, ...patch } }
+    }))
+  }
+
+  const changeMeasurementType = (idx: number, type: StrengthExercise['measurement']['type']) => {
+    setDraftExercises(prev => prev.map((ex, i) => {
+      if (i !== idx) return ex
+      const base = { type, sets: ex.measurement.sets }
+      if (type === 'reps') return { ...ex, measurement: { ...base, reps_per_set: ex.measurement.reps_per_set ?? 10 } }
+      if (type === 'duration') return { ...ex, measurement: { ...base, duration_seconds: ex.measurement.duration_seconds ?? 30 } }
+      return { ...ex, measurement: { ...base, distance_meters: ex.measurement.distance_meters ?? 100 } }
+    }))
+  }
+
+  const removeDraftAt = (idx: number) => {
+    setDraftExercises(prev => prev.filter((_, i) => i !== idx))
+  }
+
+  const addDraftExercise = () => {
+    setDraftExercises(prev => [...prev, makeBlankExercise()])
+  }
+
+  const saveExercises = async () => {
+    if (draftExercises.length === 0) {
+      toast.error('At least one exercise is required')
+      return
+    }
+    setIsSavingExercises(true)
+    try {
+      // Mirror the LLM-emitted shape: canonical_name + user_text track display_name
+      // for user-added rows so the catalog re-stamp on the server has something to
+      // match against.
+      const payload = draftExercises.map(ex => ({
+        ...ex,
+        canonical_name: ex.canonical_name?.trim() || ex.display_name.trim().toLowerCase().replace(/\s+/g, '_'),
+        user_text: ex.user_text?.trim() || ex.display_name,
+      }))
+      const res = await fetch(`/api/strength/sessions/${session.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ exercises: payload }),
+      })
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error || 'Failed to update exercises')
+      toast.success('Exercises updated')
+      setIsEditingExercises(false)
+      onSaved?.(result.session as StrengthSession)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update exercises')
+    } finally {
+      setIsSavingExercises(false)
+    }
+  }
+
   return (
-    <div className="space-y-4 pt-2">
-      <div>
+    <div className="flex min-h-0 flex-1 flex-col pt-2">
+      <div className="shrink-0">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-start gap-2">
             <Dumbbell className="mt-1 h-5 w-5 text-muted-foreground" />
@@ -343,6 +437,7 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
         </div>
       </div>
 
+      <div className="mt-4 min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
       {(session.placement_rationale || session.coaching_note) && (
         <div className="space-y-2">
           {session.placement_rationale && (
@@ -360,56 +455,104 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
       <Separator />
 
       <div>
-        <div className="mb-2 flex items-center justify-between">
+        <div className="mb-2 flex items-center justify-between gap-2">
           <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Exercises
           </h4>
-          {session.exercises.length > 0 && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Badge variant={allGarminSupported ? 'default' : 'secondary'} className="cursor-help text-xs">
-                  <Watch className="mr-1 h-3 w-3" />
-                  {allGarminSupported
-                    ? 'All Garmin-ready'
-                    : `${unsupportedNames.length} as fallback`}
-                </Badge>
-              </TooltipTrigger>
-              {hasUnsupported && (
-                <TooltipContent className="max-w-xs text-xs">
-                  <div className="font-medium">Sent as fallback to Garmin:</div>
-                  <div className="mt-0.5 text-muted-foreground">{unsupportedNames.join(', ')}</div>
-                  <div className="mt-1 text-muted-foreground">These will appear on the watch using a close-enough Garmin exercise label, or as a generic step with the exercise name in the description.</div>
-                </TooltipContent>
-              )}
-            </Tooltip>
-          )}
-        </div>
-        <ul className="space-y-2">
-          {session.exercises.map((ex, i) => (
-            <li key={i} className="grid grid-cols-[1fr_auto] items-start gap-3 rounded-md border border-border/60 px-3 py-2 text-sm">
-              <div className="min-w-0">
-                <div className="font-medium">{ex.display_name}</div>
-                {ex.notes && <div className="mt-0.5 text-xs text-muted-foreground">{ex.notes}</div>}
-              </div>
-              <div className="flex flex-col items-end gap-1">
-                <span className="whitespace-nowrap text-xs text-muted-foreground">{formatMeasurement(ex)}</span>
-                {!ex.garmin_supported && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Badge variant="outline" className="cursor-help text-[10px]">Fallback</Badge>
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs text-xs">
-                      No exact Garmin match. Will send as a close-enough Garmin exercise, or as a generic step with the exercise name shown in the description.
-                      {ex.garmin_unsupported_reason && (
-                        <div className="mt-1 text-muted-foreground">{ex.garmin_unsupported_reason}</div>
-                      )}
-                    </TooltipContent>
-                  </Tooltip>
+          <div className="flex items-center gap-2">
+            {!isEditingExercises && session.exercises.length > 0 && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant={allGarminSupported ? 'default' : 'secondary'} className="cursor-help text-xs">
+                    <Watch className="mr-1 h-3 w-3" />
+                    {allGarminSupported
+                      ? 'All Garmin-ready'
+                      : `${unsupportedNames.length} as fallback`}
+                  </Badge>
+                </TooltipTrigger>
+                {hasUnsupported && (
+                  <TooltipContent className="max-w-xs text-xs">
+                    <div className="font-medium">Sent as fallback to Garmin:</div>
+                    <div className="mt-0.5 text-muted-foreground">{unsupportedNames.join(', ')}</div>
+                    <div className="mt-1 text-muted-foreground">These will appear on the watch using a close-enough Garmin exercise label, or as a generic step with the exercise name in the description.</div>
+                  </TooltipContent>
                 )}
-              </div>
-            </li>
-          ))}
-        </ul>
+              </Tooltip>
+            )}
+            {isEditingExercises ? (
+              <>
+                <Button size="sm" variant="ghost" onClick={cancelEditExercises} disabled={isSavingExercises}>
+                  Cancel
+                </Button>
+                <Button size="sm" onClick={saveExercises} disabled={isSavingExercises}>
+                  {isSavingExercises && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Save exercises
+                </Button>
+              </>
+            ) : (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                    onClick={enterEditExercises}
+                    aria-label="Edit exercises"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Edit exercises</TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+        </div>
+        {isEditingExercises ? (
+          <div className="space-y-2">
+            {draftExercises.map((ex, i) => (
+              <ExerciseEditRow
+                key={i}
+                exercise={ex}
+                canDelete={draftExercises.length > 1}
+                onChange={patch => updateDraftAt(i, patch)}
+                onMeasurementChange={patch => updateDraftMeasurement(i, patch)}
+                onTypeChange={t => changeMeasurementType(i, t)}
+                onDelete={() => removeDraftAt(i)}
+              />
+            ))}
+            <Button variant="outline" size="sm" onClick={addDraftExercise} className="w-full">
+              <Plus className="mr-2 h-4 w-4" />
+              Add exercise
+            </Button>
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {session.exercises.map((ex, i) => (
+              <li key={i} className="grid grid-cols-[1fr_auto] items-start gap-3 rounded-md border border-border/60 px-3 py-2 text-sm">
+                <div className="min-w-0">
+                  <div className="font-medium">{ex.display_name}</div>
+                  {ex.notes && <div className="mt-0.5 text-xs text-muted-foreground">{ex.notes}</div>}
+                </div>
+                <div className="flex flex-col items-end gap-1">
+                  <span className="whitespace-nowrap text-xs text-muted-foreground">{formatMeasurement(ex)}</span>
+                  {!ex.garmin_supported && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Badge variant="outline" className="cursor-help text-[10px]">Fallback</Badge>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs text-xs">
+                        No exact Garmin match. Will send as a close-enough Garmin exercise, or as a generic step with the exercise name shown in the description.
+                        {ex.garmin_unsupported_reason && (
+                          <div className="mt-1 text-muted-foreground">{ex.garmin_unsupported_reason}</div>
+                        )}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <Separator />
@@ -467,10 +610,11 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
           />
         </div>
       </div>
+      </div>
 
-      <Separator />
+      <Separator className="mt-4 shrink-0" />
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="mt-4 flex shrink-0 flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           {garminStatus && GARMIN_STATUS_LABELS[garminStatus] && (
             <Badge variant="outline" className={`text-[10px] ${GARMIN_STATUS_LABELS[garminStatus].tone}`}>
@@ -571,6 +715,169 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  )
+}
+
+interface ExerciseEditRowProps {
+  exercise: StrengthExercise
+  canDelete: boolean
+  onChange: (patch: Partial<StrengthExercise>) => void
+  onMeasurementChange: (patch: Partial<StrengthExercise['measurement']>) => void
+  onTypeChange: (type: StrengthExercise['measurement']['type']) => void
+  onDelete: () => void
+}
+
+function parseNumber(v: string): number | undefined {
+  if (v.trim() === '') return undefined
+  const n = Number(v)
+  return Number.isFinite(n) ? n : undefined
+}
+
+function ExerciseEditRow({ exercise, canDelete, onChange, onMeasurementChange, onTypeChange, onDelete }: ExerciseEditRowProps) {
+  const m = exercise.measurement
+  return (
+    <div className="space-y-2 rounded-md border border-border/60 px-3 py-2">
+      <div className="flex items-start gap-2">
+        <Input
+          value={exercise.display_name}
+          onChange={e => onChange({ display_name: e.target.value })}
+          placeholder="Exercise name"
+          className="h-8"
+        />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={onDelete}
+              disabled={!canDelete}
+              aria-label="Remove exercise"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{canDelete ? 'Remove' : 'At least one exercise is required'}</TooltipContent>
+        </Tooltip>
+      </div>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+        <div>
+          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Type</Label>
+          <Select value={m.type} onValueChange={v => onTypeChange(v as StrengthExercise['measurement']['type'])}>
+            <SelectTrigger className="h-8 mt-1">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="reps">Reps</SelectItem>
+              <SelectItem value="duration">Duration</SelectItem>
+              <SelectItem value="distance">Distance</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Sets</Label>
+          <Input
+            type="number"
+            inputMode="numeric"
+            min={1}
+            className="h-8 mt-1"
+            value={m.sets}
+            onChange={e => {
+              const n = parseNumber(e.target.value)
+              if (n !== undefined && n >= 1) onMeasurementChange({ sets: Math.floor(n) })
+            }}
+          />
+        </div>
+        {m.type === 'reps' && (
+          <div>
+            <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Reps</Label>
+            <Input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              className="h-8 mt-1"
+              value={m.reps_per_set ?? ''}
+              onChange={e => {
+                const n = parseNumber(e.target.value)
+                onMeasurementChange({ reps_per_set: n !== undefined ? Math.floor(n) : undefined })
+              }}
+            />
+          </div>
+        )}
+        {m.type === 'duration' && (
+          <div>
+            <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Seconds</Label>
+            <Input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              className="h-8 mt-1"
+              value={m.duration_seconds ?? ''}
+              onChange={e => {
+                const n = parseNumber(e.target.value)
+                onMeasurementChange({ duration_seconds: n !== undefined ? Math.floor(n) : undefined })
+              }}
+            />
+          </div>
+        )}
+        {m.type === 'distance' && (
+          <div>
+            <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Metres</Label>
+            <Input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              className="h-8 mt-1"
+              value={m.distance_meters ?? ''}
+              onChange={e => {
+                const n = parseNumber(e.target.value)
+                onMeasurementChange({ distance_meters: n !== undefined ? Math.floor(n) : undefined })
+              }}
+            />
+          </div>
+        )}
+        {m.type === 'reps' && (
+          <div>
+            <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Weight (kg)</Label>
+            <Input
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step={0.5}
+              className="h-8 mt-1"
+              value={m.weight_kg ?? ''}
+              onChange={e => {
+                const n = parseNumber(e.target.value)
+                onMeasurementChange({ weight_kg: n ?? null })
+              }}
+            />
+          </div>
+        )}
+        <div>
+          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Rest (s)</Label>
+          <Input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            className="h-8 mt-1"
+            value={m.rest_seconds ?? ''}
+            onChange={e => {
+              const n = parseNumber(e.target.value)
+              onMeasurementChange({ rest_seconds: n !== undefined ? Math.floor(n) : undefined })
+            }}
+          />
+        </div>
+      </div>
+      <div>
+        <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Notes</Label>
+        <Input
+          value={exercise.notes ?? ''}
+          onChange={e => onChange({ notes: e.target.value || undefined })}
+          placeholder="Optional cue or coaching note"
+          className="h-8 mt-1"
+        />
+      </div>
     </div>
   )
 }

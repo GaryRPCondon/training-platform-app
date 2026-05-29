@@ -202,6 +202,39 @@ export async function updateSessionCompletion(
   return data as StrengthSession
 }
 
+export async function updateSessionExercises(
+  supabase: Client,
+  athleteId: string,
+  sessionId: number,
+  exercises: StrengthExercise[],
+): Promise<StrengthSession> {
+  const { data: existing, error: fetchErr } = await supabase
+    .from('strength_sessions')
+    .select('garmin_workout_id, garmin_sync_status')
+    .eq('id', sessionId)
+    .eq('athlete_id', athleteId)
+    .single()
+  if (fetchErr) throw fetchErr
+
+  const update: Record<string, unknown> = {
+    exercises,
+    updated_at: new Date().toISOString(),
+  }
+  if (existing?.garmin_workout_id && existing.garmin_sync_status === 'synced') {
+    update.garmin_sync_status = 'stale'
+  }
+
+  const { data, error } = await supabase
+    .from('strength_sessions')
+    .update(update)
+    .eq('id', sessionId)
+    .eq('athlete_id', athleteId)
+    .select('*')
+    .single()
+  if (error) throw error
+  return data as StrengthSession
+}
+
 export async function rescheduleSession(
   supabase: Client,
   athleteId: string,
