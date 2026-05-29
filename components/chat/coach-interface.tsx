@@ -9,7 +9,8 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Card } from '@/components/ui/card'
 import { Loader2 } from 'lucide-react'
 import { ProposalCard } from '@/components/chat/proposal-card'
-import type { WorkoutProposal } from '@/lib/agent/coach-tools'
+import { StrengthProposalCard } from '@/components/chat/strength-proposal-card'
+import type { WorkoutProposal, StrengthSessionProposal } from '@/lib/agent/coach-tools'
 import type { TrainingPaces } from '@/types/database'
 
 type LoadingStatus = 'loading' | 'thinking' | null
@@ -29,6 +30,7 @@ interface CoachMessage {
     role: 'user' | 'assistant'
     content: string
     proposals?: WorkoutProposal[]
+    strengthProposals?: StrengthSessionProposal[]
     /** DB message ID — needed to persist proposal status updates */
     messageId?: number
 }
@@ -121,6 +123,7 @@ export function CoachInterface({ sessionId: propSessionId, onSessionChange, work
                         content: m.content,
                         messageId: m.id,
                         proposals: m.action_taken?.proposals ?? undefined,
+                        strengthProposals: m.action_taken?.strengthProposals ?? undefined,
                     }))
                 setMessages(loaded)
             } catch {
@@ -147,6 +150,18 @@ export function CoachInterface({ sessionId: propSessionId, onSessionChange, work
                 const updated = [...msg.proposals]
                 updated[proposalIndex] = { ...updated[proposalIndex], proposal_status: newStatus }
                 return { ...msg, proposals: updated }
+            }))
+        },
+        []
+    )
+
+    const handleStrengthProposalStatusChange = useCallback(
+        (messageIndex: number, proposalIndex: number, newStatus: 'applied' | 'dismissed') => {
+            setMessages(prev => prev.map((msg, i) => {
+                if (i !== messageIndex || !msg.strengthProposals) return msg
+                const updated = [...msg.strengthProposals]
+                updated[proposalIndex] = { ...updated[proposalIndex], proposal_status: newStatus }
+                return { ...msg, strengthProposals: updated }
             }))
         },
         []
@@ -227,6 +242,7 @@ export function CoachInterface({ sessionId: propSessionId, onSessionChange, work
                                     ...last,
                                     messageId: event.messageId,
                                     proposals: event.proposals?.length > 0 ? event.proposals : undefined,
+                                    strengthProposals: event.strengthProposals?.length > 0 ? event.strengthProposals : undefined,
                                 }]
                             })
                             // Now safe to notify parent — assistant message is saved to DB,
@@ -320,6 +336,22 @@ export function CoachInterface({ sessionId: propSessionId, onSessionChange, work
                                             replaceTarget={workoutContext ?? null}
                                             onStatusChange={(pi, status) =>
                                                 handleProposalStatusChange(msgIdx, pi, status)
+                                            }
+                                        />
+                                    ))}
+                                </div>
+                            )}
+
+                            {msg.role === 'assistant' && msg.strengthProposals && msg.strengthProposals.length > 0 && (
+                                <div className="ml-2 space-y-2 max-w-[85%] min-w-0">
+                                    {msg.strengthProposals.map((proposal, propIdx) => (
+                                        <StrengthProposalCard
+                                            key={propIdx}
+                                            proposal={proposal}
+                                            messageId={msg.messageId ?? -1}
+                                            proposalIndex={propIdx}
+                                            onStatusChange={(pi, status) =>
+                                                handleStrengthProposalStatusChange(msgIdx, pi, status)
                                             }
                                         />
                                     ))}

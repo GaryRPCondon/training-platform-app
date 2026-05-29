@@ -151,12 +151,101 @@ For easy/long runs, omit structured_workout entirely.`,
             },
             required: ['scheduled_date', 'workout_type', 'description', 'rationale']
         }
+    },
+    {
+        name: 'modify_strength_session',
+        description: `Propose a modified set of exercises for an existing strength or mobility session.
+Use this when the athlete asks to substitute exercises (e.g. injury, equipment limits, preference),
+add or remove exercises, or change reps/sets/duration on an existing session.
+
+The exercises array is a FULL REPLACEMENT of the session's current exercises — include every exercise
+the modified session should contain, not just the ones that change. Order is preserved.
+
+The proposal renders as an editable card the athlete can tweak (edit individual rows, add or remove
+exercises) before applying. On apply, the server re-validates every exercise against the catalog and
+stamps Garmin support fields automatically — you do NOT need to set those.`,
+        parameters: {
+            type: 'object',
+            properties: {
+                session_id: {
+                    type: 'number',
+                    description: 'The strength session ID to modify. Use the IDs visible in the athlete context.'
+                },
+                exercises: {
+                    type: 'array',
+                    description: 'Full replacement list of exercises for the session. Order is preserved.',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            display_name: {
+                                type: 'string',
+                                description: 'Human-readable exercise name (e.g. "Glute Bridge", "Plank", "Hamstring Stretch").'
+                            },
+                            measurement: {
+                                type: 'object',
+                                properties: {
+                                    type: {
+                                        type: 'string',
+                                        enum: ['reps', 'duration', 'distance'],
+                                        description: 'Measurement family. reps for counted reps, duration for timed holds, distance for distance-based work.'
+                                    },
+                                    sets: { type: 'number', description: 'Number of sets (>= 1).' },
+                                    reps_per_set: { type: 'number', description: 'Required when type=reps.' },
+                                    duration_seconds: { type: 'number', description: 'Required when type=duration.' },
+                                    distance_meters: { type: 'number', description: 'Required when type=distance.' },
+                                    weight_kg: { type: 'number', description: 'Optional, only for type=reps. Omit for bodyweight.' },
+                                    rest_seconds: { type: 'number', description: 'Optional rest between sets.' }
+                                },
+                                required: ['type', 'sets']
+                            },
+                            notes: {
+                                type: 'string',
+                                description: 'Optional per-exercise cue or technique note.'
+                            }
+                        },
+                        required: ['display_name', 'measurement']
+                    }
+                },
+                rationale: {
+                    type: 'string',
+                    description: 'Why you are proposing this modification. Reference the athlete\'s stated constraint (e.g. tight hamstring) and how the substitutions address it.'
+                },
+                coaching_note: {
+                    type: 'string',
+                    description: 'Optional short note saved on the session (form cues, what to watch for, etc.).'
+                }
+            },
+            required: ['session_id', 'exercises', 'rationale']
+        }
     }
 ]
 
 // ---------------------------------------------------------------------------
 // Response types
 // ---------------------------------------------------------------------------
+
+export interface StrengthExerciseProposal {
+    display_name: string
+    measurement: {
+        type: 'reps' | 'duration' | 'distance'
+        sets: number
+        reps_per_set?: number
+        duration_seconds?: number
+        distance_meters?: number
+        weight_kg?: number | null
+        rest_seconds?: number
+    }
+    notes?: string
+}
+
+export interface StrengthSessionProposal {
+    session_id: number
+    exercises: StrengthExerciseProposal[]
+    rationale: string
+    coaching_note?: string
+    /** Set by the UI after the athlete acts on the card */
+    proposal_status?: 'pending' | 'applied' | 'dismissed'
+}
 
 export interface WorkoutProposal {
     scheduled_date: string

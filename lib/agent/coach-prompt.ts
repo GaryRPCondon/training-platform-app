@@ -419,7 +419,7 @@ function formatStrengthSessionLine(s: CoachContext['strengthSessions'][number]):
 
     const note = s.coaching_note ? ` · ${s.coaching_note}` : ''
 
-    return `${day}: ${s.title}${program}${planned}${exerciseSummary}${statusTag}${note}`
+    return `${day} [id:${s.id}]: ${s.title}${program}${planned}${exerciseSummary}${statusTag}${note}`
 }
 
 /** date-fns addDays-safe wrapper that accepts negative offsets. */
@@ -442,7 +442,23 @@ When proposing multiple alternatives:
 Always include in your text response:
 - Why you are suggesting this workout specifically
 - Where it fits physiologically in the training week or phase
-- Any trade-offs vs the original plan`
+- Any trade-offs vs the original plan
+
+## Modifying Strength & Mobility Sessions
+When the athlete asks to substitute, add, or remove exercises in a strength or mobility session — for
+example "I can't do lunges, my hamstring is tight, suggest alternatives" or "swap the planks for
+glute bridges" — use the \`modify_strength_session\` tool.
+
+- The session_id is the strength session's numeric ID (shown in the athlete context).
+- The exercises array is a FULL REPLACEMENT of the session's current exercises. Include every exercise
+  the modified session should have, in the order it should run — not just the ones that change.
+- Don't worry about garmin_supported, canonical_name, or user_text. The server re-validates each
+  exercise against the catalog on apply.
+- Your text response should call out which exercises you swapped, which you kept, and why the
+  substitutions match the athlete's stated constraint (e.g. low-back-friendly hip mobility instead
+  of deep lunges).
+- The proposal renders as an editable card — the athlete can tweak sets/reps/notes or add another
+  exercise before applying, so propose what you think is right and let them refine.`
 }
 
 // ---------------------------------------------------------------------------

@@ -22,7 +22,7 @@ import { ensureAthleteExists } from '@/lib/supabase/ensure-athlete'
 import { createLLMProvider } from '@/lib/agent/factory'
 import { loadCoachContext } from '@/lib/agent/coach-context-loader'
 import { buildCoachSystemPrompt } from '@/lib/agent/coach-prompt'
-import { COACH_TOOLS, WorkoutProposal } from '@/lib/agent/coach-tools'
+import { COACH_TOOLS, WorkoutProposal, StrengthSessionProposal, StrengthExerciseProposal } from '@/lib/agent/coach-tools'
 import { createChatSession, getChatSession, saveMessage } from '@/lib/agent/session-manager'
 import { calculateMaxTokens, estimateTokens } from '@/lib/chat/token-budget'
 import { writeLLMLog } from '@/lib/agent/llm-logger'
@@ -104,6 +104,7 @@ const patchSchema = z.object({
     messageId: z.number(),
     proposalIndex: z.number().int().min(0),
     status: z.enum(['applied', 'dismissed']),
+    proposalKind: z.enum(['workout', 'strength']).default('workout'),
 })
 
 const postSchema = z.object({
@@ -124,7 +125,7 @@ export async function PATCH(request: Request) {
         if (!parsed.success) {
             return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
         }
-        const { messageId, proposalIndex, status } = parsed.data
+        const { messageId, proposalIndex, status, proposalKind } = parsed.data
 
         const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()
@@ -152,16 +153,17 @@ export async function PATCH(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
         }
 
-        // Update the proposal status in the JSONB array
-        const actionTaken = message.action_taken ?? { proposals: [] }
-        const proposals = actionTaken.proposals ?? []
-        if (proposals[proposalIndex]) {
-            proposals[proposalIndex].proposal_status = status
+        // Update the proposal status in the appropriate JSONB array
+        const actionTaken = message.action_taken ?? {}
+        const key = proposalKind === 'strength' ? 'strengthProposals' : 'proposals'
+        const list = actionTaken[key] ?? []
+        if (list[proposalIndex]) {
+            list[proposalIndex].proposal_status = status
         }
 
         const { error: updateError } = await supabase
             .from('chat_messages')
-            .update({ action_taken: { ...actionTaken, proposals } })
+            .update({ action_taken: { ...actionTaken, [key]: list } })
             .eq('id', messageId)
 
         if (updateError) throw updateError
@@ -411,7 +413,7 @@ export async function POST(request: Request) {
 
                     if (focusSession) {
                         const programName = (focusSession.strength_programs as { name?: string } | null)?.name ?? null
-                        systemPrompt += `\n\n## Strength Session in Focus\nThe athlete navigated here from this specific strength session. Address it directly in your first response.\n`
+                        systemPrompt += `\n\n## Strength Session in Focus\nThe athlete navigated here from this specific strength session. Address it directly in your first response.\nIf you call \`modify_strength_session\`, use session_id: ${strengthSessionId}.\n`
                         systemPrompt += `Date: ${focusSession.scheduled_date}\n`
                         systemPrompt += `Title: ${focusSession.title}\n`
                         if (programName) systemPrompt += `Program: ${programName}\n`
@@ -515,6 +517,16 @@ export async function POST(request: Request) {
 
                 proposals.sort((a, b) => (b.is_preferred ? 1 : 0) - (a.is_preferred ? 1 : 0))
 
+                const strengthProposals: StrengthSessionProposal[] = (llmResponse.toolCalls ?? [])
+                    .filter(tc => tc.name === 'modify_strength_session')
+                    .map(tc => ({
+                        session_id: tc.arguments.session_id as number,
+                        exercises: (tc.arguments.exercises as StrengthExerciseProposal[]) ?? [],
+                        rationale: tc.arguments.rationale as string,
+                        coaching_note: tc.arguments.coaching_note as string | undefined,
+                        proposal_status: 'pending' as const,
+                    }))
+
                 writeLLMLog('coach', {
                     sessionId: currentSessionId,
                     athleteId,
@@ -534,16 +546,21 @@ export async function POST(request: Request) {
                     usage: llmResponse.usage,
                 })
 
+                const action: Record<string, unknown> = {}
+                if (proposals.length > 0) action.proposals = proposals
+                if (strengthProposals.length > 0) action.strengthProposals = strengthProposals
+
                 const savedMessage = await saveMessage(currentSessionId, 'assistant', llmResponse.content, {
                     provider: providerName,
                     model: llmResponse.model,
                     tokenUsage: llmResponse.usage,
-                    actionTaken: proposals.length > 0 ? { proposals } : undefined,
+                    actionTaken: Object.keys(action).length > 0 ? action : undefined,
                 }, supabase)
 
                 send({
                     type: 'done',
                     proposals,
+                    strengthProposals,
                     sessionId: currentSessionId,
                     messageId: savedMessage.id,
                     usage: llmResponse.usage,
