@@ -22,7 +22,7 @@ import { ensureAthleteExists } from '@/lib/supabase/ensure-athlete'
 import { createLLMProvider } from '@/lib/agent/factory'
 import { loadCoachContext } from '@/lib/agent/coach-context-loader'
 import { buildCoachSystemPrompt } from '@/lib/agent/coach-prompt'
-import { COACH_TOOLS, WorkoutProposal, StrengthSessionProposal, StrengthExerciseProposal } from '@/lib/agent/coach-tools'
+import { buildCoachTools, WorkoutProposal, StrengthSessionProposal, StrengthExerciseProposal } from '@/lib/agent/coach-tools'
 import { createChatSession, getChatSession, saveMessage } from '@/lib/agent/session-manager'
 import { calculateMaxTokens, estimateTokens } from '@/lib/chat/token-budget'
 import { writeLLMLog } from '@/lib/agent/llm-logger'
@@ -473,7 +473,11 @@ export async function POST(request: Request) {
                     systemPrompt,
                     maxTokens,
                     temperature: 0.7,
-                    tools: COACH_TOOLS,
+                    // Constrain the proposal vocabulary to the active plan's methodology
+                    // pace labels (e.g. E/M/T/I/R/R10) so proposed workouts resolve to the
+                    // right paces and match generated workouts. Falls back to generic
+                    // intensities when there's no active plan.
+                    tools: buildCoachTools(Object.keys(coachContext.methodologyPaces ?? {})),
                 }
 
                 // ---------------------------------------------------------------

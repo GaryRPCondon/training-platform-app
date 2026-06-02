@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { mapToGarminWorkout } from '../workout-mapper'
 import type { TrainingPaces } from '@/types/database'
 import type { GarminWorkoutStep } from '../types'
@@ -396,5 +396,137 @@ describe('mapToGarminWorkout — race-day workouts get no pace target', () => {
     const step = result.workoutSegments[0].workoutSteps[0]
     expect(step.targetType.workoutTargetTypeKey).toBe('no.target')
     expect(step.targetValueOne).toBeNull()
+  })
+})
+
+describe('mapToGarminWorkout — role-driven step type selection', () => {
+  it('emits recovery step type when child interval declares role:"recovery", regardless of intensity label', () => {
+    // The exact bug case: Daniels-style "E" intensity on a recovery interval.
+    // Pre-role-contract this came through as step type "interval" → Garmin
+    // tagged the lap ACTIVE → AI summary judged it against the work-rep target.
+    const result = mapToGarminWorkout(makeWorkout({
+      workout_type: 'intervals',
+      intensity_target: 'interval',
+      structured_workout: {
+        main_set: [{
+          repeat: 8,
+          intervals: [
+            { distance_meters: 400, intensity: 'I', role: 'work' },
+            { distance_meters: 400, intensity: 'E', role: 'recovery' },
+          ],
+        }],
+      },
+    }), PACES)
+    const repeat = result.workoutSegments[0].workoutSteps[0]
+    const children = repeat.workoutSteps as GarminWorkoutStep[]
+    expect(children[0].stepType.stepTypeKey).toBe('interval')
+    expect(children[1].stepType.stepTypeKey).toBe('recovery')
+  })
+
+  it('emits all-interval step types when every child is role:"work" (multi-pace workout)', () => {
+    // 6 × (2min @ MP, 2min @ 10k, 30s @ mile) — no recovery in the repeat.
+    // Keyword inference and positional inference would both misclassify the
+    // 2nd and 3rd children; role makes it unambiguous.
+    const result = mapToGarminWorkout(makeWorkout({
+      workout_type: 'intervals',
+      intensity_target: 'interval',
+      structured_workout: {
+        main_set: [{
+          repeat: 6,
+          intervals: [
+            { duration_seconds: 120, intensity: 'marathon', role: 'work' },
+            { duration_seconds: 120, intensity: 'interval', role: 'work' },
+            { duration_seconds: 30,  intensity: 'repetition', role: 'work' },
+          ],
+        }],
+      },
+    }), PACES)
+    const children = result.workoutSegments[0].workoutSteps[0].workoutSteps as GarminWorkoutStep[]
+    expect(children.map(c => c.stepType.stepTypeKey)).toEqual(['interval', 'interval', 'interval'])
+  })
+
+  it('emits warmup/cooldown step types for W/C-included segments inside main_set', () => {
+    // Daniels "5E + 2T + 2E" — the leading and trailing E segments are tagged
+    // as warmup/cooldown roles so Garmin labels the laps correctly even though
+    // the segments live inside main_set rather than the top-level warmup/cooldown
+    // fields (per the [W/C: included] convention).
+    const result = mapToGarminWorkout(makeWorkout({
+      workout_type: 'tempo',
+      intensity_target: 'tempo',
+      structured_workout: {
+        main_set: [{
+          repeat: 1,
+          intervals: [
+            { distance_meters: 5000, intensity: 'E', role: 'warmup' },
+            { distance_meters: 2000, intensity: 'T', role: 'work' },
+            { distance_meters: 2000, intensity: 'E', role: 'cooldown' },
+          ],
+        }],
+      },
+    }), PACES)
+    const children = result.workoutSegments[0].workoutSteps[0].workoutSteps as GarminWorkoutStep[]
+    expect(children.map(c => c.stepType.stepTypeKey)).toEqual(['warmup', 'interval', 'cooldown'])
+  })
+
+  it('emits rest step type when child interval declares role:"rest"', () => {
+    const result = mapToGarminWorkout(makeWorkout({
+      workout_type: 'intervals',
+      structured_workout: {
+        main_set: [{
+          repeat: 6,
+          intervals: [
+            { duration_seconds: 10, intensity: 'repetition', role: 'work' },
+            { duration_seconds: 90, intensity: 'rest', role: 'rest' },
+          ],
+        }],
+      },
+    }), PACES)
+    const children = result.workoutSegments[0].workoutSteps[0].workoutSteps as GarminWorkoutStep[]
+    expect(children[0].stepType.stepTypeKey).toBe('interval')
+    expect(children[1].stepType.stepTypeKey).toBe('rest')
+  })
+
+  it('legacy fallback: no role + intensity contains "recovery" → recovery step type, with warn', () => {
+    // Plans generated before the role contract are still readable. The mapper
+    // falls back to a narrow keyword match and emits a console.warn so the
+    // user knows to regenerate.
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const result = mapToGarminWorkout(makeWorkout({
+      workout_type: 'intervals',
+      structured_workout: {
+        main_set: [{
+          repeat: 3,
+          intervals: [
+            { distance_meters: 1600, intensity: 'tempo' },
+            { distance_meters: 400, intensity: 'recovery' },
+          ],
+        }],
+      },
+    }), PACES)
+    const children = result.workoutSegments[0].workoutSteps[0].workoutSteps as GarminWorkoutStep[]
+    expect(children[1].stepType.stepTypeKey).toBe('recovery')
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('missing "role"'))
+    warnSpy.mockRestore()
+  })
+
+  it('legacy fallback: no role + ambiguous intensity ("E") → interval step type (silent, bug remains until regenerated)', () => {
+    // This is the bug shape — pre-contract plans with Daniels "E" recoveries.
+    // We intentionally don't infer recovery here because doing so was the
+    // root cause of the original silent corruption. User must regenerate.
+    const result = mapToGarminWorkout(makeWorkout({
+      workout_type: 'intervals',
+      structured_workout: {
+        main_set: [{
+          repeat: 5,
+          intervals: [
+            { distance_meters: 1000, intensity: 'T' },
+            { duration_seconds: 60, intensity: 'E' },
+          ],
+        }],
+      },
+    }), PACES)
+    const children = result.workoutSegments[0].workoutSteps[0].workoutSteps as GarminWorkoutStep[]
+    expect(children[0].stepType.stepTypeKey).toBe('interval')
+    expect(children[1].stepType.stepTypeKey).toBe('interval')
   })
 })

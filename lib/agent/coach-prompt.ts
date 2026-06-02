@@ -16,6 +16,7 @@ export function buildCoachSystemPrompt(context: CoachContext): string {
     const sections: string[] = [
         buildRoleSection(context.athlete.preferred_units, new Date()),
         buildAthleteSection(context),
+        buildMethodologyPacesSection(context),
         buildPlanSection(context),
         buildThisWeekSection(context),
         buildRecentActivitiesSection(context),
@@ -26,7 +27,7 @@ export function buildCoachSystemPrompt(context: CoachContext): string {
         buildPersonalRecordsSection(context),
         buildStrengthProgramsSection(context),
         buildStrengthSessionsSection(context, new Date()),
-        buildToolInstructionsSection(),
+        buildToolInstructionsSection(context),
     ]
 
     return sections.filter(Boolean).join('\n\n')
@@ -81,6 +82,28 @@ function buildAthleteSection(context: CoachContext): string {
         lines.push(`Training Paces: ${paces.join(' | ')}`)
     }
 
+    return lines.join('\n')
+}
+
+function buildMethodologyPacesSection(context: CoachContext): string {
+    const paces = context.methodologyPaces
+    if (!paces || Object.keys(paces).length === 0) return ''
+
+    const units = context.athlete.preferred_units
+    const unitLabel = units === 'imperial' ? '/mi' : '/km'
+    const lines = ['## Plan Pace Targets (methodology labels)']
+    lines.push(
+        'These are your athlete\'s plan-specific intensity labels and their resolved paces. ' +
+        'When proposing a workout, use these EXACT labels for `intensity_target` and for every ' +
+        'structured_workout intensity (warmup/work/recovery/cooldown) — never generic words or raw pace strings.'
+    )
+    for (const [label, resolved] of Object.entries(paces)) {
+        const lower = formatPace(resolved.target_pace_sec_per_km, units)
+        const range = resolved.target_pace_upper_sec_per_km
+            ? `${lower}–${formatPace(resolved.target_pace_upper_sec_per_km, units)}`
+            : lower
+        lines.push(`- ${label}: ${range}${unitLabel} — ${resolved.pace_description}`)
+    }
     return lines.join('\n')
 }
 
@@ -429,10 +452,14 @@ function addDaysSafe(date: Date, days: number): Date {
     return d
 }
 
-function buildToolInstructionsSection(): string {
+function buildToolInstructionsSection(context: CoachContext): string {
+    const labels = context.methodologyPaces ? Object.keys(context.methodologyPaces) : []
+    const labelGuidance = labels.length > 0
+        ? `\n\nUse the plan's methodology labels (${labels.join(', ')}) for \`intensity_target\` and every structured_workout intensity, and keep a distance_meters or duration_seconds on every interval (including recovery jogs). This keeps proposals consistent with the athlete's generated plan and lets the app resolve and display the correct pace.`
+        : ''
     return `## Proposing Workouts
 When your advice leads to a specific workout recommendation, use the \`propose_workout\` tool.
-The workout will render as a card the athlete can apply to their plan, edit, or dismiss.
+The workout will render as a card the athlete can apply to their plan, edit, or dismiss.${labelGuidance}
 
 When proposing multiple alternatives:
 - Mark your top recommendation \`is_preferred: true\`

@@ -11,8 +11,8 @@ describe('buildStructuredWorkout', () => {
           warmup: { duration_minutes: 15, intensity: 'easy' },
           main_set: [
             { repeat: 3, intervals: [
-              { distance_meters: 1600, intensity: 'hard' },
-              { distance_meters: 400, intensity: 'recovery' },
+              { distance_meters: 1600, intensity: 'hard', role: 'work' },
+              { distance_meters: 400, intensity: 'recovery', role: 'recovery' },
             ]},
           ],
           cooldown: { duration_minutes: 10, intensity: 'easy' },
@@ -126,8 +126,8 @@ describe('buildStructuredWorkout', () => {
             intervals: [
               { distance_meters: 1600, intensity: 'easy' },
               { repeat: 3, intervals: [
-                { distance_meters: 800, intensity: 'hard' },
-                { distance_meters: 400, intensity: 'recovery' },
+                { distance_meters: 800, intensity: 'hard', role: 'work' },
+                { distance_meters: 400, intensity: 'recovery', role: 'recovery' },
               ]},
             ],
           }],
@@ -169,8 +169,8 @@ describe('buildStructuredWorkout', () => {
           main_set: [{
             repeat: 5,
             intervals: [
-              { distance_meters: 1000, intensity: 'race_10k' },
-              { duration_seconds: 90, intensity: 'recovery' },
+              { distance_meters: 1000, intensity: 'race_10k', role: 'work' },
+              { duration_seconds: 90, intensity: 'recovery', role: 'recovery' },
             ],
           }],
           cooldown: { duration_minutes: 10, intensity: 'easy' },
@@ -196,8 +196,8 @@ describe('buildStructuredWorkout', () => {
             { repeat: 1, intervals: [{ distance_meters: 3000, intensity: 'tempo' }]},
             { repeat: 1, intervals: [{ duration_seconds: 120, intensity: 'recovery' }]},
             { repeat: 3, intervals: [
-              { distance_meters: 1000, intensity: 'race_10k' },
-              { duration_seconds: 90, intensity: 'recovery' },
+              { distance_meters: 1000, intensity: 'race_10k', role: 'work' },
+              { duration_seconds: 90, intensity: 'recovery', role: 'recovery' },
             ]},
           ],
           cooldown: { duration_minutes: 10, intensity: 'easy' },
@@ -240,8 +240,8 @@ describe('buildStructuredWorkout', () => {
           main_set: [{
             repeat: 4,
             intervals: [
-              { duration_seconds: 360, intensity: 'tempo' },
-              { duration_seconds: 90, intensity: 'recovery' },
+              { duration_seconds: 360, intensity: 'tempo', role: 'work' },
+              { duration_seconds: 90, intensity: 'recovery', role: 'recovery' },
             ],
           }],
           cooldown: { duration_minutes: 10, intensity: 'easy' },
@@ -257,6 +257,105 @@ describe('buildStructuredWorkout', () => {
       // Warmup/cooldown stay in minutes
       expect(result.warmup).toEqual({ duration_minutes: 15, intensity: 'easy' })
       expect(result.cooldown).toEqual({ duration_minutes: 10, intensity: 'easy' })
+    })
+  })
+
+  describe('role contract', () => {
+    it('throws on a multi-interval repeat missing role on any child', () => {
+      expect(() => buildStructuredWorkout({
+        type: 'intervals',
+        intensity: 'hard',
+        structured_workout: {
+          main_set: [
+            { repeat: 5, intervals: [
+              { distance_meters: 1000, intensity: 'T', role: 'work' },
+              { duration_seconds: 60, intensity: 'E' },  // role missing
+            ]},
+          ],
+        },
+      })).toThrow(/main_set\[0\]\.intervals\[1\] missing required "role"/)
+    })
+
+    it('throws on an invalid role value', () => {
+      expect(() => buildStructuredWorkout({
+        type: 'intervals',
+        intensity: 'hard',
+        structured_workout: {
+          main_set: [
+            { repeat: 5, intervals: [
+              { distance_meters: 1000, intensity: 'T', role: 'shakeout' as 'work' },
+              { duration_seconds: 60, intensity: 'E', role: 'recovery' },
+            ]},
+          ],
+        },
+      })).toThrow(/role="shakeout" invalid/)
+    })
+
+    it('defaults role to "work" on single-interval repeats when omitted', () => {
+      const result = buildStructuredWorkout({
+        type: 'intervals',
+        intensity: 'hard',
+        structured_workout: {
+          main_set: [
+            { repeat: 8, intervals: [{ distance_meters: 400, intensity: 'I' }] },
+          ],
+        },
+      })
+      const mainSet = result.main_set as Array<{ intervals: Array<{ role?: string }> }>
+      expect(mainSet[0].intervals[0].role).toBe('work')
+    })
+
+    it('preserves explicit roles through normalization', () => {
+      const result = buildStructuredWorkout({
+        type: 'intervals',
+        intensity: 'hard',
+        structured_workout: {
+          main_set: [
+            { repeat: 6, intervals: [
+              { duration_seconds: 120, intensity: 'marathon_pace', role: 'work' },
+              { duration_seconds: 120, intensity: '10k_pace', role: 'work' },
+              { duration_seconds: 30, intensity: 'mile_pace', role: 'work' },
+            ]},
+          ],
+        },
+      })
+      const mainSet = result.main_set as Array<{ intervals: Array<{ role?: string }> }>
+      expect(mainSet[0].intervals.map(i => i.role)).toEqual(['work', 'work', 'work'])
+    })
+
+    it('accepts role:"warmup" and role:"cooldown" for W/C-included sessions embedded in main_set', () => {
+      const result = buildStructuredWorkout({
+        type: 'tempo',
+        intensity: 'tempo',
+        structured_workout: {
+          main_set: [
+            { repeat: 1, intervals: [
+              { distance_meters: 5000, intensity: 'E', role: 'warmup' },
+              { distance_meters: 2000, intensity: 'T', role: 'work' },
+              { distance_meters: 2000, intensity: 'E', role: 'cooldown' },
+            ]},
+          ],
+        },
+      })
+      const mainSet = result.main_set as Array<{ intervals: Array<{ role?: string }> }>
+      expect(mainSet[0].intervals.map(i => i.role)).toEqual(['warmup', 'work', 'cooldown'])
+    })
+
+    it('accepts role:"rest" alongside role:"work" and role:"recovery"', () => {
+      const result = buildStructuredWorkout({
+        type: 'intervals',
+        intensity: 'speed',
+        structured_workout: {
+          main_set: [
+            { repeat: 6, intervals: [
+              { duration_seconds: 10, intensity: 'speed', role: 'work' },
+              { duration_seconds: 90, intensity: 'rest', role: 'rest' },
+            ]},
+          ],
+        },
+      })
+      const mainSet = result.main_set as Array<{ intervals: Array<{ role?: string }> }>
+      expect(mainSet[0].intervals.map(i => i.role)).toEqual(['work', 'rest'])
     })
   })
 

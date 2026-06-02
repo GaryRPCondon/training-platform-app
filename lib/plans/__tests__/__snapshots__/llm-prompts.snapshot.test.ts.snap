@@ -196,7 +196,7 @@ Sessions (intervals, tempo): emit warmup + main_set (with the prescribed work) +
 - Distance-based intervals: use distance_meters in each interval step
 - Time-based quality sessions (tempo by time, hill sprints, fartlek): use duration_seconds in each interval step
   Do NOT mix distance_meters and duration_seconds within the same main_set.
-CRITICAL: For type "intervals", main_set MUST contain at least one repeat group — never output main_set as an empty array []. Derive the structure from the description (e.g. "6 × 800m w/400m jog" → repeat:6 with distance_meters:800 work + distance_meters:400 recovery).
+CRITICAL: For type "intervals", main_set MUST contain at least one repeat group — never output main_set as an empty array []. Derive the structure from the description (e.g. "6 × 800m w/400m jog" → repeat:6 with {distance_meters:800, role:"work"} + {distance_meters:400, role:"recovery"}).
 
 EXAMPLE — easy run: Template prescribes "Easy 8 mi. (13 km)"
 {
@@ -235,8 +235,8 @@ EXAMPLE — distance-based intervals: Template says "Strength: 3 × 2 mi., 800 r
     "warmup": { "duration_minutes": 15, "intensity": "easy" },
     "main_set": [
       { "repeat": 3, "intervals": [
-        { "distance_meters": 3219, "intensity": "hard" },
-        { "distance_meters": 800, "intensity": "recovery" }
+        { "distance_meters": 3219, "intensity": "hard", "role": "work" },
+        { "distance_meters": 800, "intensity": "recovery", "role": "recovery" }
       ]}
     ],
     "cooldown": { "duration_minutes": 10, "intensity": "easy" }
@@ -270,8 +270,8 @@ EXAMPLE — hill sprints: Template says "Hill Sprints 6x10sec"
     "warmup": { "duration_minutes": 15, "intensity": "easy" },
     "main_set": [
       { "repeat": 6, "intervals": [
-        { "duration_seconds": 10, "intensity": "speed" },
-        { "duration_seconds": 120, "intensity": "recovery" }
+        { "duration_seconds": 10, "intensity": "speed", "role": "work" },
+        { "duration_seconds": 120, "intensity": "recovery", "role": "recovery" }
       ]}
     ],
     "cooldown": { "duration_minutes": 10, "intensity": "easy" }
@@ -285,6 +285,16 @@ STRUCTURED WORKOUT FIDELITY — CRITICAL:
 - The structured_workout MUST account for the FULL distance/time scope of the description. If the description prescribes a base run distance plus added work (e.g. "9 mi (14 km) easy run + Hill Sprints 8 × 10 sec", "Warmup: 4 miles easy. Main: 6 × 1 mile @ MP."), structured_workout MUST include that base distance — either as a leading easy main_set group or as warmup — never silently dropped.
 - distance_meters values MUST be in METERS. 1 mi = 1609 m, 1 km = 1000 m. NEVER write distance_meters: 9 for "9 mi" — write 14484. NEVER pick the kilometer value when the primary unit in the description is miles (e.g. "9 mi (14 km)" → 14484, not 9000 or 14000).
 
+ROLE FIELD ON INTERVALS — REQUIRED:
+Every interval inside a repeat group MUST include a "role" field. Allowed values: "work", "recovery", "rest", "warmup", "cooldown". Role is independent of "intensity" — intensity carries pace, role carries function. Examples:
+- A 400m jog between work reps: { "distance_meters": 400, "intensity": "E", "role": "recovery" }
+- A standing rest between hill sprints: { "duration_seconds": 60, "intensity": "rest", "role": "rest" }
+- The work portion of any interval: { "distance_meters": 1000, "intensity": "T", "role": "work" }
+- In a workout with multiple work paces and no recovery (e.g. 6 × (2min @ marathon, 2min @ 10k, 30s @ mile)), ALL THREE intervals are role:"work" — none are recovery.
+- Under [W/C: included] the leading/trailing easy segments embedded in main_set should be tagged role:"warmup" and role:"cooldown" respectively (e.g. Daniels "5E + 2T + 2E" → three main_set groups: first 5E is role:"warmup", the 2T is role:"work", the trailing 2E is role:"cooldown").
+- For single-interval repeats (e.g. { "repeat": 1, "intervals": [{ ... }] }) the role may be omitted; the system defaults to "work".
+Any other value (e.g. "shakeout", "easy_segment") fails plan validation. The system uses role to send the correct step type to Garmin and to evaluate per-rep adherence in the AI summary.
+
 EXAMPLE — easy run with sprints: Template says "9 mi (14 km) easy run + Hill Sprints 8 × 10 sec"
 {
   "type": "intervals",
@@ -295,8 +305,8 @@ EXAMPLE — easy run with sprints: Template says "9 mi (14 km) easy run + Hill S
     "main_set": [
       { "repeat": 1, "intervals": [{ "distance_meters": 14484, "intensity": "easy" }] },
       { "repeat": 8, "intervals": [
-        { "duration_seconds": 10, "intensity": "speed" },
-        { "duration_seconds": 120, "intensity": "recovery" }
+        { "duration_seconds": 10, "intensity": "speed", "role": "work" },
+        { "duration_seconds": 120, "intensity": "recovery", "role": "recovery" }
       ]}
     ]
   }
@@ -512,7 +522,7 @@ Sessions (intervals, tempo): emit warmup + main_set (with the prescribed work) +
 - Distance-based intervals: use distance_meters in each interval step
 - Time-based quality sessions (tempo by time, hill sprints, fartlek): use duration_seconds in each interval step
   Do NOT mix distance_meters and duration_seconds within the same main_set.
-CRITICAL: For type "intervals", main_set MUST contain at least one repeat group — never output main_set as an empty array []. Derive the structure from the description (e.g. "6 × 800m w/400m jog" → repeat:6 with distance_meters:800 work + distance_meters:400 recovery).
+CRITICAL: For type "intervals", main_set MUST contain at least one repeat group — never output main_set as an empty array []. Derive the structure from the description (e.g. "6 × 800m w/400m jog" → repeat:6 with {distance_meters:800, role:"work"} + {distance_meters:400, role:"recovery"}).
 
 EXAMPLE — easy run: Template prescribes "Easy 8 mi. (13 km)"
 {
@@ -551,8 +561,8 @@ EXAMPLE — distance-based intervals: Template says "Strength: 3 × 2 mi., 800 r
     "warmup": { "duration_minutes": 15, "intensity": "easy" },
     "main_set": [
       { "repeat": 3, "intervals": [
-        { "distance_meters": 3219, "intensity": "hard" },
-        { "distance_meters": 800, "intensity": "recovery" }
+        { "distance_meters": 3219, "intensity": "hard", "role": "work" },
+        { "distance_meters": 800, "intensity": "recovery", "role": "recovery" }
       ]}
     ],
     "cooldown": { "duration_minutes": 10, "intensity": "easy" }
@@ -586,8 +596,8 @@ EXAMPLE — hill sprints: Template says "Hill Sprints 6x10sec"
     "warmup": { "duration_minutes": 15, "intensity": "easy" },
     "main_set": [
       { "repeat": 6, "intervals": [
-        { "duration_seconds": 10, "intensity": "speed" },
-        { "duration_seconds": 120, "intensity": "recovery" }
+        { "duration_seconds": 10, "intensity": "speed", "role": "work" },
+        { "duration_seconds": 120, "intensity": "recovery", "role": "recovery" }
       ]}
     ],
     "cooldown": { "duration_minutes": 10, "intensity": "easy" }
@@ -601,6 +611,16 @@ STRUCTURED WORKOUT FIDELITY — CRITICAL:
 - The structured_workout MUST account for the FULL distance/time scope of the description. If the description prescribes a base run distance plus added work (e.g. "9 mi (14 km) easy run + Hill Sprints 8 × 10 sec", "Warmup: 4 miles easy. Main: 6 × 1 mile @ MP."), structured_workout MUST include that base distance — either as a leading easy main_set group or as warmup — never silently dropped.
 - distance_meters values MUST be in METERS. 1 mi = 1609 m, 1 km = 1000 m. NEVER write distance_meters: 9 for "9 mi" — write 14484. NEVER pick the kilometer value when the primary unit in the description is miles (e.g. "9 mi (14 km)" → 14484, not 9000 or 14000).
 
+ROLE FIELD ON INTERVALS — REQUIRED:
+Every interval inside a repeat group MUST include a "role" field. Allowed values: "work", "recovery", "rest", "warmup", "cooldown". Role is independent of "intensity" — intensity carries pace, role carries function. Examples:
+- A 400m jog between work reps: { "distance_meters": 400, "intensity": "E", "role": "recovery" }
+- A standing rest between hill sprints: { "duration_seconds": 60, "intensity": "rest", "role": "rest" }
+- The work portion of any interval: { "distance_meters": 1000, "intensity": "T", "role": "work" }
+- In a workout with multiple work paces and no recovery (e.g. 6 × (2min @ marathon, 2min @ 10k, 30s @ mile)), ALL THREE intervals are role:"work" — none are recovery.
+- Under [W/C: included] the leading/trailing easy segments embedded in main_set should be tagged role:"warmup" and role:"cooldown" respectively (e.g. Daniels "5E + 2T + 2E" → three main_set groups: first 5E is role:"warmup", the 2T is role:"work", the trailing 2E is role:"cooldown").
+- For single-interval repeats (e.g. { "repeat": 1, "intervals": [{ ... }] }) the role may be omitted; the system defaults to "work".
+Any other value (e.g. "shakeout", "easy_segment") fails plan validation. The system uses role to send the correct step type to Garmin and to evaluate per-rep adherence in the AI summary.
+
 EXAMPLE — easy run with sprints: Template says "9 mi (14 km) easy run + Hill Sprints 8 × 10 sec"
 {
   "type": "intervals",
@@ -611,8 +631,8 @@ EXAMPLE — easy run with sprints: Template says "9 mi (14 km) easy run + Hill S
     "main_set": [
       { "repeat": 1, "intervals": [{ "distance_meters": 14484, "intensity": "easy" }] },
       { "repeat": 8, "intervals": [
-        { "duration_seconds": 10, "intensity": "speed" },
-        { "duration_seconds": 120, "intensity": "recovery" }
+        { "duration_seconds": 10, "intensity": "speed", "role": "work" },
+        { "duration_seconds": 120, "intensity": "recovery", "role": "recovery" }
       ]}
     ]
   }
@@ -827,8 +847,8 @@ Every running workout requires a structured_workout. Use "walk" intensity for al
     "warmup": { "duration_minutes": N, "intensity": "walk" },
     "main_set": [
       { "repeat": N, "intervals": [
-        { "duration_seconds": XXXXX, "intensity": "easy" },
-        { "duration_seconds": XXXXX, "intensity": "walk" }
+        { "duration_seconds": XXXXX, "intensity": "easy", "role": "work" },
+        { "duration_seconds": XXXXX, "intensity": "walk", "role": "recovery" }
       ]}
     ]
   }
@@ -837,10 +857,10 @@ Every running workout requires a structured_workout. Use "walk" intensity for al
 - Cooldown: only include if the template specifies one — do NOT add one if the template omits it
 - For non-uniform intervals (e.g. "5 min run, 3 min walk, 8 min run, 3 min walk"), use repeat: 1 with the full sequence:
   { "repeat": 1, "intervals": [
-    { "duration_seconds": 300, "intensity": "easy" },
-    { "duration_seconds": 180, "intensity": "walk" },
-    { "duration_seconds": 480, "intensity": "easy" },
-    { "duration_seconds": 180, "intensity": "walk" }
+    { "duration_seconds": 300, "intensity": "easy", "role": "work" },
+    { "duration_seconds": 180, "intensity": "walk", "role": "recovery" },
+    { "duration_seconds": 480, "intensity": "easy", "role": "work" },
+    { "duration_seconds": 180, "intensity": "walk", "role": "recovery" }
   ]}
 
 EXAMPLE — run/walk intervals: Template says "5 min warm-up walk, then alternate 1 min running / 1.5 min walking for 20 min"
@@ -854,8 +874,8 @@ EXAMPLE — run/walk intervals: Template says "5 min warm-up walk, then alternat
     "warmup": { "duration_minutes": 5, "intensity": "walk" },
     "main_set": [
       { "repeat": 8, "intervals": [
-        { "duration_seconds": 60, "intensity": "easy" },
-        { "duration_seconds": 90, "intensity": "walk" }
+        { "duration_seconds": 60, "intensity": "easy", "role": "work" },
+        { "duration_seconds": 90, "intensity": "walk", "role": "recovery" }
       ]}
     ]
   }

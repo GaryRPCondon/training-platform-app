@@ -9,6 +9,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { calculateTotalWorkoutDistance } from '@/lib/training/vdot'
+import { resolveActivePlanPace } from '@/lib/plans/active-plan-pace'
 import { z } from 'zod'
 
 const createWorkoutSchema = z.object({
@@ -58,7 +59,8 @@ export async function POST(request: Request) {
 
     // Stamp athlete pace overrides onto structured_workout if provided
     let resolvedSw = structured_workout || null
-    if (target_pace_sec_per_km || target_pace_min_sec_per_km) {
+    const hasExplicitPace = !!(target_pace_sec_per_km || target_pace_min_sec_per_km)
+    if (hasExplicitPace) {
       const paceTarget = target_pace_sec_per_km ?? target_pace_min_sec_per_km!
       const paceUpper = target_pace_max_sec_per_km ?? null
       const fmtP = (s: number) => `${Math.floor(s / 60)}:${Math.round(s % 60).toString().padStart(2, '0')}/km`
@@ -79,6 +81,26 @@ export async function POST(request: Request) {
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // No explicit pace given → resolve the methodology intensity label (e.g. "T",
+    // "I") against the active plan's template + VDOT, mirroring plan generation so
+    // workouts added via manual "Add workout" or AI-coach add/replace get the same
+    // target_pace_sec_per_km / pace_label stamp. Skips silently when the intensity
+    // isn't a template pace label (returns null) — the card then falls back to a
+    // workout-type pace guess, as before.
+    if (!hasExplicitPace && intensity_target) {
+      const resolved = await resolveActivePlanPace(supabase, user.id, intensity_target)
+      if (resolved) {
+        resolvedSw = {
+          ...(resolvedSw ?? {}),
+          target_pace_sec_per_km: resolved.target_pace_sec_per_km,
+          target_pace_upper_sec_per_km: resolved.target_pace_upper_sec_per_km,
+          pace_label: resolved.pace_label,
+          pace_description: resolved.pace_description,
+          pace_source: resolved.pace_source,
+        }
+      }
     }
 
     const { data: workout, error } = await supabase

@@ -1121,7 +1121,14 @@ export function WorkoutCard({
       let structuredWorkoutValue: Record<string, unknown> | null = null
       // Only persist structured workout if it has at least one step
       if (editStructured && editStructured.main_set.length > 0) {
-        structuredWorkoutValue = editStructured as unknown as Record<string, unknown>
+        // Merge the edited structure over the existing JSONB rather than replacing it
+        // wholesale. editStructured only carries warmup/main_set/cooldown, so a bare
+        // assignment strips the resolved pace stamp (target_pace_sec_per_km, pace_label,
+        // pace_description, pace_source) plus pace_guidance/notes that plan generation
+        // wrote — which makes the card fall back to a workout-type pace guess (e.g.
+        // interval pace for a tempo session typed as `intervals`).
+        const existing = (workout.structured_workout ?? {}) as Record<string, unknown>
+        structuredWorkoutValue = { ...existing, ...(editStructured as unknown as Record<string, unknown>) }
       } else if (editIntensity === 'custom' && editCustomPaceM && editCustomPaceS) {
         const secDisplay = (parseInt(editCustomPaceM, 10) || 0) * 60 + (parseInt(editCustomPaceS, 10) || 0)
         const secKm = units === 'imperial' ? secDisplay / PACE_SCALE_KM_TO_MI : secDisplay
@@ -1185,18 +1192,20 @@ export function WorkoutCard({
       if (structuredWorkoutValue !== null) {
         updates.structured_workout = structuredWorkoutValue
 
-        // Recalculate distance_target_meters from main_set (excludes warmup/cooldown
-        // since calculateTotalWorkoutDistance adds those for display)
+        // Recalculate distance_target_meters as the *total* session distance
+        // (warmup + main_set + cooldown + estimated recovery), matching what plan
+        // generation stores via deriveTotals → calculateTotalWorkoutDistance. The
+        // duration estimate and weekly volume read this field directly and expect
+        // the total; storing main-set-only here silently halves both.
         if (editStructured && editStructured.main_set.length > 0) {
-          let mainSetMeters = 0
-          for (const set of editStructured.main_set) {
-            const repeats = set.repeat || 1
-            for (const interval of set.intervals) {
-              mainSetMeters += repeats * (interval.distance_meters || 0)
-            }
-          }
-          if (mainSetMeters > 0) {
-            updates.distance_target_meters = mainSetMeters
+          const total = calculateTotalWorkoutDistance(
+            null,
+            workout.workout_type,
+            structuredWorkoutValue,
+            trainingPaces
+          )
+          if (total > 0) {
+            updates.distance_target_meters = total
           }
         }
       }

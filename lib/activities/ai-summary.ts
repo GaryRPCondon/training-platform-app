@@ -47,6 +47,7 @@ Rules:
 - Adherence weighting by run type — THIS IS BINDING:
   - Easy runs / recovery runs / long runs: judge success on overall average pace and average HR vs intent. If overall pace is within range and average HR sits in the easy zone, the session SUCCEEDED — do NOT downgrade it for lap-to-lap variance. Lap variance on easy runs is normal (terrain, HR drift, natural cadence shifts) and is not an effort-control failure. A 5.0 rating is appropriate when overall pace and HR are on target, even with high lap variance.
   - Intervals / tempo / threshold / VO2max: per-lap pace compliance is the primary success metric. Lap drift, slow first reps, and fade in final reps matter and should be called out specifically.
+  - For intervals/tempo workouts: ONLY active work-rep laps (Role = ACTIVE or INTERVAL) are evaluated against the work-rep target pace. Warmup, cooldown, and recovery laps deliberately run easier than the target and MUST NOT be counted as misses. When the summary mentions pace adherence, name a direction: state whether the work reps were too fast, too slow, or on target. Never say "X% of laps in range" without specifying which laps and which direction.
 - Be direct and prescriptive: when something needs correcting, say what to do differently.
 - Where pace, HR, or effort drifted from target, explain the training consequence (e.g. "running easy days this fast erodes recovery", "the fade in final reps suggests the interval target was too aggressive").
 - Use concrete numbers (e.g. "4:15/km", "128 bpm") to support observations, not as the observation itself.
@@ -93,16 +94,26 @@ type WorkoutType = PlannedWorkout['workout_type']
 
 const LOW_INTENSITY_TYPES: ReadonlySet<WorkoutType> = new Set(['easy_run', 'long_run', 'recovery'])
 
+const ACTIVE_LAP_ROLES = new Set(['ACTIVE', 'INTERVAL'])
+
 function isLowIntensity(workoutType: WorkoutType): boolean {
   return LOW_INTENSITY_TYPES.has(workoutType)
+}
+
+function lapRole(lap: Lap): string {
+  return (lap.intensity_type || '').toUpperCase()
+}
+
+function isActiveLap(lap: Lap): boolean {
+  return ACTIVE_LAP_ROLES.has(lapRole(lap))
 }
 
 function buildLapTable(laps: Lap[], showAdherence: boolean): string {
   if (laps.length === 0) return ''
 
   const header = showAdherence
-    ? 'Lap | Distance | Pace | Avg HR | Max HR | Elev Gain | Type | Adherence%'
-    : 'Lap | Distance | Pace | Avg HR | Max HR | Elev Gain | Type'
+    ? 'Lap | Distance | Pace | Avg HR | Max HR | Elev Gain | Role | Adherence%'
+    : 'Lap | Distance | Pace | Avg HR | Max HR | Elev Gain | Role'
   const divider = showAdherence
     ? '--- | -------- | ---- | ------ | ------ | --------- | ---- | ----------'
     : '--- | -------- | ---- | ------ | ------ | --------- | ----'
@@ -112,10 +123,12 @@ function buildLapTable(laps: Lap[], showAdherence: boolean): string {
     const avgHr = lap.avg_hr ? `${lap.avg_hr}` : 'N/A'
     const maxHr = lap.max_hr ? `${lap.max_hr}` : 'N/A'
     const elev = lap.elevation_gain_meters != null ? `${Math.round(lap.elevation_gain_meters)}m` : '-'
-    const type = lap.intensity_type || lap.split_type || '-'
-    const base = `${lap.lap_index} | ${dist} | ${pace} | ${avgHr} | ${maxHr} | ${elev} | ${type}`
+    const role = lapRole(lap) || '-'
+    const base = `${lap.lap_index} | ${dist} | ${pace} | ${avgHr} | ${maxHr} | ${elev} | ${role}`
     if (!showAdherence) return base
-    const adherence = lap.compliance_score != null ? `${lap.compliance_score}%` : 'N/A'
+    // Only annotate adherence for active work-rep laps — recovery/warmup/cooldown
+    // laps deliberately miss the work-rep pace target and shouldn't be judged on it.
+    const adherence = isActiveLap(lap) && lap.compliance_score != null ? `${lap.compliance_score}%` : '—'
     return `${base} | ${adherence}`
   })
 
@@ -136,7 +149,67 @@ function extractTargetPace(workout: PlannedWorkout): string {
   return formatPace(lower)
 }
 
-function buildUserMessage(
+type StructuredPart = {
+  duration_minutes?: number
+  duration_seconds?: number
+  distance_meters?: number
+  intensity?: string
+}
+
+type MainSetEntry = { repeat?: number; intervals?: StructuredPart[] }
+
+function formatStructuredPart(part: StructuredPart): string {
+  const intensity = part.intensity || 'unspecified'
+  if (part.distance_meters) {
+    const km = part.distance_meters / 1000
+    const dist = km >= 1 ? `${km.toFixed(km >= 10 ? 1 : 2)} km` : `${part.distance_meters} m`
+    return `${dist} @ ${intensity}`
+  }
+  if (part.duration_minutes) return `${part.duration_minutes} min @ ${intensity}`
+  if (part.duration_seconds) {
+    return part.duration_seconds >= 60 && part.duration_seconds % 60 === 0
+      ? `${part.duration_seconds / 60} min @ ${intensity}`
+      : `${part.duration_seconds} s @ ${intensity}`
+  }
+  return `(open) @ ${intensity}`
+}
+
+function formatMainSetEntry(entry: MainSetEntry): string | null {
+  const intervals = entry.intervals
+  if (!Array.isArray(intervals) || intervals.length === 0) return null
+  const inner = intervals.map(formatStructuredPart).join(' + ')
+  const repeat = entry.repeat ?? 1
+  if (repeat === 1 && intervals.length === 1) return inner
+  return `${repeat} × (${inner})`
+}
+
+/**
+ * Render a compact summary of the planned structure (warmup / main_set / cooldown)
+ * so the LLM can see what each lap segment was *supposed* to do. Returns null when
+ * the workout has no main_set (simple workouts — no value in adding noise).
+ */
+function buildStructureBlock(workout: PlannedWorkout): string | null {
+  const sw = workout.structured_workout as Record<string, unknown> | null
+  if (!sw) return null
+  const mainSetRaw = sw.main_set
+  const mainSet: MainSetEntry[] = Array.isArray(mainSetRaw)
+    ? (mainSetRaw as MainSetEntry[])
+    : mainSetRaw && typeof mainSetRaw === 'object'
+      ? [mainSetRaw as MainSetEntry]
+      : []
+  if (mainSet.length === 0) return null
+
+  const lines: string[] = ['Workout structure:']
+  const warmup = sw.warmup as StructuredPart | undefined
+  if (warmup) lines.push(`  Warmup: ${formatStructuredPart(warmup)}`)
+  const mainLines = mainSet.map(formatMainSetEntry).filter((s): s is string => s !== null)
+  if (mainLines.length > 0) lines.push(`  Main set: ${mainLines.join('; ')}`)
+  const cooldown = sw.cooldown as StructuredPart | undefined
+  if (cooldown) lines.push(`  Cooldown: ${formatStructuredPart(cooldown)}`)
+  return lines.length > 1 ? lines.join('\n') : null
+}
+
+export function buildUserMessage(
   activity: Activity,
   workout: PlannedWorkout,
   laps: Lap[],
@@ -151,18 +224,32 @@ function buildUserMessage(
     ? (movingSeconds / (activity.distance_meters / 1000))
     : null
 
-  // Calculate pace compliance from lap compliance scores
-  const lapsWithCompliance = laps.filter(l => l.compliance_score != null)
-  const paceCompliancePct = lapsWithCompliance.length > 0
-    ? Math.round(lapsWithCompliance.reduce((sum, l) => sum + l.compliance_score!, 0) / lapsWithCompliance.length)
+  const lowIntensity = isLowIntensity(workout.workout_type)
+
+  // Pace compliance headline: for intervals/tempo/threshold, average only ACTIVE
+  // work-rep laps so the headline isn't diluted by warmup/recovery/cooldown laps
+  // that targeted a different (easier) pace. Falls back to all laps if no lap is
+  // tagged ACTIVE/INTERVAL (older activities or non-Garmin sources).
+  const lapsForCompliance = lowIntensity
+    ? laps.filter(l => l.compliance_score != null)
+    : (() => {
+        const active = laps.filter(l => isActiveLap(l) && l.compliance_score != null)
+        return active.length > 0 ? active : laps.filter(l => l.compliance_score != null)
+      })()
+  const paceCompliancePct = lapsForCompliance.length > 0
+    ? Math.round(lapsForCompliance.reduce((sum, l) => sum + l.compliance_score!, 0) / lapsForCompliance.length)
     : null
+  const complianceLabel = !lowIntensity && lapsForCompliance.some(isActiveLap)
+    ? 'Active-rep pace compliance'
+    : 'Pace compliance'
 
   const targetPace = extractTargetPace(workout)
-  const lowIntensity = isLowIntensity(workout.workout_type)
+  const targetPaceLabel = lowIntensity ? 'Target pace' : 'Target pace (work reps only)'
+  const structureBlock = buildStructureBlock(workout)
 
   const primaryMetric = lowIntensity
     ? `PRIMARY EVALUATION CRITERIA — this is a ${workout.workout_type.replace('_', ' ')}: judge success on overall average pace and average HR alignment with intent. Lap-to-lap pace variance is informational only and MUST NOT lower the rating. If overall pace is on target and average HR sits in the easy zone, rate this 4.5–5.0.`
-    : `PRIMARY EVALUATION CRITERIA — this is a ${workout.workout_type.replace('_', ' ')}: judge success on per-lap pace compliance and intensity control. Lap drift, slow first reps, and fade in final reps are the key signals.`
+    : `PRIMARY EVALUATION CRITERIA — this is a ${workout.workout_type.replace('_', ' ')}: judge success on per-lap pace compliance and intensity control. ONLY laps with Role = ACTIVE or INTERVAL are evaluated against the work-rep target pace. Warmup, cooldown, and recovery laps run at easier paces by design — do not count them as misses. When commenting on pace, state direction explicitly: too fast, too slow, or on target.`
 
   let msg = `${primaryMetric}
 
@@ -171,8 +258,14 @@ Planned workout:
 - Target distance: ${effectiveDistance ? `${(effectiveDistance / 1000).toFixed(2)} km` : 'N/A'}
 - Target duration: ${workout.duration_target_seconds ? formatDuration(workout.duration_target_seconds) : 'N/A'}
 - Intensity: ${workout.intensity_target || 'N/A'}
-- Target pace: ${targetPace}
-- Description: ${workout.description || 'N/A'}
+- ${targetPaceLabel}: ${targetPace}
+- Description: ${workout.description || 'N/A'}`
+
+  if (structureBlock) {
+    msg += `\n${structureBlock}`
+  }
+
+  msg += `
 
 Actual activity:
 - Distance: ${activity.distance_meters ? `${(activity.distance_meters / 1000).toFixed(2)} km` : 'N/A'}
@@ -184,7 +277,7 @@ Actual activity:
 - Duration variance vs plan: ${durationVariance !== 0 ? `${durationVariance > 0 ? '+' : ''}${durationVariance.toFixed(1)}%` : '0%'}`
 
   if (paceCompliancePct != null && !lowIntensity) {
-    msg += `\n- Pace compliance: ${paceCompliancePct}%`
+    msg += `\n- ${complianceLabel}: ${paceCompliancePct}%`
   }
 
   const lapTable = buildLapTable(laps, !lowIntensity)
