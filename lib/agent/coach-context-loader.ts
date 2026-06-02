@@ -16,6 +16,9 @@ import {
     subDays,
     startOfDay,
 } from 'date-fns'
+import { loadFullTemplate } from '@/lib/templates/template-loader'
+import { resolveAllPaces, type ResolvedPace } from '@/lib/plans/pace-resolver'
+import { calculateTrainingPaces, calculateRacePaces } from '@/lib/training/vdot'
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -163,6 +166,14 @@ export interface CoachContext {
     recentFeedback: CoachFeedback[]
     personalRecords: Record<string, CoachPersonalRecord>
     recentActivities: CoachActivitySummary[]
+    /**
+     * Active plan's methodology pace labels resolved against the athlete's VDOT
+     * (e.g. { T: {...4:05/km}, I: {...3:43/km}, R10: {...3:57/km} }). Drives both
+     * the prompt's pace table and the propose_workout tool's intensity vocabulary
+     * so coach proposals use the same labels generation does. Null when no active
+     * plan / template / VDOT.
+     */
+    methodologyPaces: Record<string, ResolvedPace> | null
 }
 
 // ---------------------------------------------------------------------------
@@ -194,10 +205,13 @@ export async function loadCoachContext(
             loadRecentActivities(supabase, athleteId, today),
         ])
 
-    // Round 3: phase execution (needs phase start/end dates)
-    const phaseExecution = currentPhase
-        ? await loadPhaseExecution(supabase, athleteId, currentPhase.start_date, currentPhase.end_date, todayStr)
-        : null
+    // Round 3: phase execution (needs phase start/end dates) + methodology paces
+    const [phaseExecution, methodologyPaces] = await Promise.all([
+        currentPhase
+            ? loadPhaseExecution(supabase, athleteId, currentPhase.start_date, currentPhase.end_date, todayStr)
+            : Promise.resolve(null),
+        loadMethodologyPaces(plan, athlete.vdot),
+    ])
 
     return {
         athlete,
@@ -210,6 +224,28 @@ export async function loadCoachContext(
         recentFeedback,
         personalRecords,
         recentActivities,
+        methodologyPaces,
+    }
+}
+
+/**
+ * Resolve the active plan's template pace_targets against the athlete's VDOT,
+ * mirroring plan generation. Returns null (callers fall back to generic
+ * vocabulary) when there's no active plan, template, VDOT, or pace_targets.
+ */
+async function loadMethodologyPaces(
+    plan: CoachPlanContext | null,
+    vdot: number | null
+): Promise<Record<string, ResolvedPace> | null> {
+    if (!plan?.template_id || !vdot) return null
+    try {
+        const template = await loadFullTemplate(plan.template_id)
+        if (!template.pace_targets) return null
+        const athletePaces = { ...calculateTrainingPaces(vdot), ...calculateRacePaces(vdot) }
+        const resolved = resolveAllPaces(template.pace_targets, athletePaces)
+        return Object.keys(resolved).length > 0 ? resolved : null
+    } catch {
+        return null
     }
 }
 

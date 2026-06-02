@@ -8,7 +8,26 @@
 
 import { ToolDefinition } from './provider-interface'
 
-export const COACH_TOOLS: ToolDefinition[] = [
+// Generic fallback vocabulary used only when no active-plan methodology labels
+// are available (e.g. athlete has no plan). When a plan IS active, the route
+// passes its template pace-target labels (e.g. E/M/T/I/R/R10) so proposals use
+// the same labels generation does — which lets resolveActivePlanPace stamp them.
+const GENERIC_INTENSITIES = ['easy', 'moderate', 'hard', 'tempo', 'threshold', 'interval', 'recovery']
+
+/**
+ * Build the coach tool list. When `paceLabels` (the active plan's template
+ * pace-target keys) are provided, the propose_workout tool constrains
+ * intensity_target and the structured_workout intensities to those exact
+ * labels, so resolved paces stamp correctly and proposals match the plan's
+ * methodology vocabulary.
+ */
+export function buildCoachTools(paceLabels?: string[]): ToolDefinition[] {
+    const labels = paceLabels && paceLabels.length > 0 ? paceLabels : GENERIC_INTENSITIES
+    const intensityListText = paceLabels && paceLabels.length > 0
+        ? `Use these EXACT methodology labels from the athlete's active plan: ${labels.join(', ')}. These resolve to the athlete's actual paces — do not invent generic words or pace strings.`
+        : `Valid intensity values: ${labels.join(', ')}.`
+
+    return [
     {
         name: 'propose_workout',
         description: `Propose a specific workout for the athlete to review and optionally add to their plan.
@@ -41,15 +60,18 @@ You may call this multiple times to propose alternatives.`,
                 },
                 intensity_target: {
                     type: 'string',
-                    enum: ['easy', 'moderate', 'hard', 'tempo', 'threshold', 'interval', 'recovery'],
-                    description: 'Overall intensity level for the workout.'
+                    enum: labels,
+                    description: `The workout's primary intensity label. ${intensityListText} Set this on every quality session so the app can resolve and display the correct pace.`
                 },
                 structured_workout: {
                     type: 'object',
                     description: `Optional structured breakdown for quality sessions (intervals, tempo).
 Use intensity labels — not pace strings — so the app can resolve correct paces from the
-athlete's training paces. Valid intensity values: easy, recovery, marathon, moderate,
-tempo, threshold, interval, hard, repetition.
+athlete's training paces. ${intensityListText}
+
+Every interval — including recovery/rest jogs — MUST keep a distance_meters or
+duration_seconds; never emit an interval that has only an intensity (that drops it from
+distance and duration totals).
 
 For optional target_pace fields use "M:SS/km" (single pace) or "M:SS-M:SS/km" (range,
 faster-slower). Only include target_pace when you want to override the intensity-derived pace.
@@ -152,7 +174,11 @@ For easy/long runs, omit structured_workout entirely.`,
             required: ['scheduled_date', 'workout_type', 'description', 'rationale']
         }
     }
-]
+    ]
+}
+
+/** Default generic tool list (no active-plan methodology labels). */
+export const COACH_TOOLS: ToolDefinition[] = buildCoachTools()
 
 // ---------------------------------------------------------------------------
 // Response types
