@@ -155,6 +155,42 @@ interface TrainingCalendarProps {
     openStrengthSessionId?: number
 }
 
+// Normalised result of one Garmin batch endpoint call (running or strength).
+// Lets the week handlers fan out to both endpoints and aggregate the outcome
+// into a single toast.
+interface GarminBatchResult {
+    ok: boolean
+    sent: number
+    deleted: number
+    skipped: number
+    failed: number
+    error?: string       // endpoint-level error (non-2xx response)
+    firstError?: string  // first per-item error, e.g. "unsupported exercises"
+}
+
+async function postGarminBatch(url: string, body: Record<string, unknown>): Promise<GarminBatchResult> {
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    })
+    const result = await res.json().catch(() => ({})) as {
+        error?: string; sent?: number; deleted?: number; skipped?: number; failed?: number
+        errors?: Array<{ error?: string }>
+    }
+    if (!res.ok) {
+        return { ok: false, sent: 0, deleted: 0, skipped: 0, failed: 0, error: result.error || 'Request failed' }
+    }
+    return {
+        ok: true,
+        sent: result.sent ?? 0,
+        deleted: result.deleted ?? 0,
+        skipped: result.skipped ?? 0,
+        failed: result.failed ?? 0,
+        firstError: result.errors?.[0]?.error,
+    }
+}
+
 export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: TrainingCalendarProps = {}) {
     const [currentDate, setCurrentDate] = useState(new Date())
     const [selectedWorkout, setSelectedWorkout] = useState<WorkoutWithDetails | null>(null)
@@ -652,61 +688,96 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
         }
     }
 
+    // One "Send to Garmin" for everything that week: running workouts AND
+    // strength sessions, fanned out to their separate batch endpoints and
+    // aggregated into a single toast.
     const handleSendWeekToGarmin = useCallback(async (weekStart: Date, weekEnd: Date) => {
+        const inWeek = (raw: string) => {
+            const d = new Date(raw)
+            return d >= weekStart && d <= weekEnd
+        }
         const weekWorkoutIds = (workouts || [])
-            .filter(w => {
-                const d = new Date(w.scheduled_date)
-                return d >= weekStart && d <= weekEnd && w.workout_type !== 'rest'
-            })
+            .filter(w => inWeek(w.scheduled_date) && w.workout_type !== 'rest')
             .map(w => w.id)
+        const weekStrengthIds = (strengthSessions || [])
+            .filter(s => inWeek(s.scheduled_date))
+            .map(s => s.id)
 
-        if (weekWorkoutIds.length === 0) {
+        if (weekWorkoutIds.length === 0 && weekStrengthIds.length === 0) {
             toast.error('No workouts to send this week')
             return
         }
 
         try {
-            const response = await fetch('/api/garmin/workouts', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ workoutIds: weekWorkoutIds, action: 'send' }),
-            })
-            const result = await response.json()
-            if (!response.ok) throw new Error(result.error || 'Failed to send')
+            const calls: Promise<GarminBatchResult>[] = []
+            if (weekWorkoutIds.length) {
+                calls.push(postGarminBatch('/api/garmin/workouts', { workoutIds: weekWorkoutIds, action: 'send' }))
+            }
+            if (weekStrengthIds.length) {
+                calls.push(postGarminBatch('/api/garmin/strength-workouts', { sessionIds: weekStrengthIds, action: 'send' }))
+            }
+            const results = await Promise.all(calls)
             queryClient.invalidateQueries({ queryKey: ['workouts'] })
-            toast.success(`Sent ${result.sent} workout${result.sent !== 1 ? 's' : ''} to Garmin`)
+            queryClient.invalidateQueries({ queryKey: ['strength-sessions'] })
+
+            const sent = results.reduce((n, r) => n + r.sent, 0)
+            const skipped = results.reduce((n, r) => n + r.skipped + r.failed, 0)
+            if (sent === 0) {
+                const reason = results.find(r => !r.ok)?.error
+                    ?? results.find(r => r.firstError)?.firstError
+                toast.error(reason ?? 'Nothing was sent to Garmin')
+                return
+            }
+            let msg = `Sent ${sent} workout${sent !== 1 ? 's' : ''} to Garmin`
+            if (skipped > 0) {
+                const detail = results.find(r => r.firstError)?.firstError
+                msg += ` · ${skipped} skipped${detail ? ` (${detail})` : ''}`
+            }
+            toast.success(msg)
         } catch (err: unknown) {
             toast.error(err instanceof Error ? err.message : 'Failed to send to Garmin')
         }
-    }, [workouts, queryClient])
+    }, [workouts, strengthSessions, queryClient])
 
     const handleRemoveWeekFromGarmin = useCallback(async (weekStart: Date, weekEnd: Date) => {
+        const inWeek = (raw: string) => {
+            const d = new Date(raw)
+            return d >= weekStart && d <= weekEnd
+        }
         const weekWorkoutIds = (workouts || [])
-            .filter(w => {
-                const d = new Date(w.scheduled_date)
-                return d >= weekStart && d <= weekEnd && w.garmin_workout_id
-            })
+            .filter(w => inWeek(w.scheduled_date) && w.garmin_workout_id)
             .map(w => w.id)
+        const weekStrengthIds = (strengthSessions || [])
+            .filter(s => inWeek(s.scheduled_date) && s.garmin_workout_id)
+            .map(s => s.id)
 
-        if (weekWorkoutIds.length === 0) {
+        if (weekWorkoutIds.length === 0 && weekStrengthIds.length === 0) {
             toast.error('No synced workouts to remove this week')
             return
         }
 
         try {
-            const response = await fetch('/api/garmin/workouts', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ workoutIds: weekWorkoutIds, action: 'delete' }),
-            })
-            const result = await response.json()
-            if (!response.ok) throw new Error(result.error || 'Failed to remove')
+            const calls: Promise<GarminBatchResult>[] = []
+            if (weekWorkoutIds.length) {
+                calls.push(postGarminBatch('/api/garmin/workouts', { workoutIds: weekWorkoutIds, action: 'delete' }))
+            }
+            if (weekStrengthIds.length) {
+                calls.push(postGarminBatch('/api/garmin/strength-workouts', { sessionIds: weekStrengthIds, action: 'delete' }))
+            }
+            const results = await Promise.all(calls)
             queryClient.invalidateQueries({ queryKey: ['workouts'] })
-            toast.success(`Removed ${result.deleted} workout${result.deleted !== 1 ? 's' : ''} from Garmin`)
+            queryClient.invalidateQueries({ queryKey: ['strength-sessions'] })
+
+            const deleted = results.reduce((n, r) => n + r.deleted, 0)
+            if (deleted === 0) {
+                toast.error(results.find(r => !r.ok)?.error ?? 'Nothing was removed from Garmin')
+                return
+            }
+            toast.success(`Removed ${deleted} workout${deleted !== 1 ? 's' : ''} from Garmin`)
         } catch (err: unknown) {
             toast.error(err instanceof Error ? err.message : 'Failed to remove from Garmin')
         }
-    }, [workouts, queryClient])
+    }, [workouts, strengthSessions, queryClient])
 
     const handleRemoveFromGarmin = useCallback(async (workoutId: number) => {
         try {
@@ -830,6 +901,7 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
                     garminConnected={garminConnected ?? false}
                     onSendToGarmin={handleSendWeekToGarmin}
                     onRemoveFromGarmin={handleRemoveWeekFromGarmin}
+                    strengthSessions={strengthSessions || []}
                     runningOnly={runningOnly}
                 />
             </div>

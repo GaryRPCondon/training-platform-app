@@ -23,6 +23,11 @@ interface ActivityRow {
     strava_data?: { workout_type?: number | null } | null
 }
 
+interface StrengthRow {
+    scheduled_date?: string | null
+    garmin_workout_id?: string | null
+}
+
 interface WeeklyTotalsProps {
     workouts: WorkoutRow[]
     activities?: ActivityRow[]
@@ -32,11 +37,12 @@ interface WeeklyTotalsProps {
     garminConnected?: boolean
     onSendToGarmin?: (weekStart: Date, weekEnd: Date) => Promise<void>
     onRemoveFromGarmin?: (weekStart: Date, weekEnd: Date) => Promise<void>
+    strengthSessions?: StrengthRow[]
     runningOnly?: boolean
     weeklyIntents?: Record<string, number>  // key: yyyy-MM-dd of week start; value: template-intent meters
 }
 
-export function WeeklyTotals({ workouts, activities = [], currentDate, weekStartsOn, showActual = false, garminConnected, onSendToGarmin, onRemoveFromGarmin, runningOnly, weeklyIntents }: WeeklyTotalsProps) {
+export function WeeklyTotals({ workouts, activities = [], currentDate, weekStartsOn, showActual = false, garminConnected, onSendToGarmin, onRemoveFromGarmin, strengthSessions = [], runningOnly, weeklyIntents }: WeeklyTotalsProps) {
     const [sendingWeek, setSendingWeek] = useState<string | null>(null)
     const [removingWeek, setRemovingWeek] = useState<string | null>(null)
     const { toDisplayDistance, distanceLabel } = useUnits()
@@ -97,6 +103,16 @@ export function WeeklyTotals({ workouts, activities = [], currentDate, weekStart
 
             const hasSyncedWorkouts = weekWorkouts.some(w => w.garmin_workout_id)
 
+            // Strength sessions in this week — so the Garmin buttons appear on
+            // strength-only weeks (e.g. past the end of the running plan) too.
+            const weekStrength = strengthSessions.filter(s => {
+                if (!s.scheduled_date) return false
+                const d = new Date(s.scheduled_date)
+                return d >= weekStart && d <= weekEnd
+            })
+            const strengthCount = weekStrength.length
+            const hasSyncedStrength = weekStrength.some(s => s.garmin_workout_id)
+
             const intentKey = format(weekStart, 'yyyy-MM-dd')
             const intentMeters = weeklyIntents?.[intentKey]
 
@@ -107,10 +123,12 @@ export function WeeklyTotals({ workouts, activities = [], currentDate, weekStart
                 plannedMeters,
                 actualMeters,
                 hasSyncedWorkouts,
+                strengthCount,
+                hasSyncedStrength,
                 intentMeters,
             }
         })
-    }, [workouts, activities, currentDate, weekStartsOn, runningOnly, weeklyIntents])
+    }, [workouts, activities, currentDate, weekStartsOn, runningOnly, weeklyIntents, strengthSessions])
 
     return (
         <div className="hidden landscape:flex md:flex flex-col h-full bg-muted/20 border-l-0 landscape:border-l md:border-l">
@@ -160,7 +178,7 @@ export function WeeklyTotals({ workouts, activities = [], currentDate, weekStart
                                 </div>
                             )}
                         </div>
-                        {garminConnected && onSendToGarmin && week.plannedMeters > 0 && (
+                        {garminConnected && onSendToGarmin && (week.plannedMeters > 0 || week.strengthCount > 0) && (
                             <Button
                                 variant="outline"
                                 size="sm"
@@ -178,7 +196,7 @@ export function WeeklyTotals({ workouts, activities = [], currentDate, weekStart
                                 {sendingWeek === week.weekLabel ? 'Sending...' : 'Send to Garmin'}
                             </Button>
                         )}
-                        {garminConnected && onRemoveFromGarmin && week.hasSyncedWorkouts && (
+                        {garminConnected && onRemoveFromGarmin && (week.hasSyncedWorkouts || week.hasSyncedStrength) && (
                             <Button
                                 variant="outline"
                                 size="sm"
