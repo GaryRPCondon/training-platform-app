@@ -31,6 +31,15 @@ export interface ParseOutput {
  * names ("rest" vs "rest_seconds"), enforce canonical exercise names, and
  * stamp the parse metadata uniformly.
  */
+// A full multi-week program runs to 150+ exercises, each emitting a fat JSON
+// object (canonical/display/user_text + measurement + garmin suggestion
+// fields), so an 8-week plan needs ~16-18k output tokens; the old 4000/16000
+// caps truncated mid-stream → invalid JSON. 32000 covers a ~12-wk/36-session
+// plan with headroom and sits within every current provider's output ceiling
+// (Gemini flash/flash-lite 65536, DeepSeek-v4-flash 384k, etc.). You are only
+// billed for tokens actually generated, so the high cap is free on small plans.
+const PARSE_MAX_TOKENS = 32000
+
 export async function parseStrengthProgram(input: ParseInput): Promise<ParseOutput> {
   const provider = createLLMProvider(input.providerName, input.modelName)
 
@@ -41,7 +50,7 @@ export async function parseStrengthProgram(input: ParseInput): Promise<ParseOutp
   const response = await provider.generateResponse({
     messages: [{ role: 'user', content: userMessage }],
     systemPrompt: STRENGTH_PARSER_SYSTEM_PROMPT,
-    maxTokens: 4000,
+    maxTokens: PARSE_MAX_TOKENS,
     temperature: 0.1,
   })
 
@@ -77,8 +86,14 @@ export async function parseStrengthProgram(input: ParseInput): Promise<ParseOutp
   const result: ParseLLMResult = validated.data
   const enrichedProgram: ParsedProgram = {
     ...result.program,
-    sessions: result.program.sessions.map(session => ({
+    // Re-sequence session_index deterministically (1..N in emit order). The
+    // contract is "1-based, sequential, no gaps" but the LLM occasionally
+    // duplicates or skips an index on long plans — which then collides as a
+    // React key in the review UI and corrupts scheduling (the engine groups
+    // and places sessions by session_index). We own the index, not the LLM.
+    sessions: result.program.sessions.map((session, i) => ({
       ...session,
+      session_index: i + 1,
       exercises: session.exercises.map(ex => resolveExerciseAgainstCatalog(ex, lookup)),
     })),
   }

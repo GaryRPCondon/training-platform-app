@@ -32,12 +32,20 @@ export async function POST(request: Request) {
 
   const catalog = await loadExerciseCatalog(supabase)
 
+  // Parsing is pure extraction — thinking buys nothing and its reasoning
+  // tokens compete with the JSON output budget. When Gemini is selected with
+  // no explicit model, pin Flash Lite (non-thinking, cheaper). Mirrors the
+  // plan-gen / AI-summary pattern.
+  const parseModel = (athlete?.preferred_llm_provider === 'gemini' && !athlete?.preferred_llm_model)
+    ? 'gemini-2.5-flash-lite'
+    : (athlete?.preferred_llm_model ?? undefined)
+
   try {
     const result = await parseStrengthProgram({
       text: parsed.data.text,
       source_format: parsed.data.source_format,
       providerName: athlete?.preferred_llm_provider ?? undefined,
-      modelName: athlete?.preferred_llm_model ?? undefined,
+      modelName: parseModel,
       catalog,
     })
 

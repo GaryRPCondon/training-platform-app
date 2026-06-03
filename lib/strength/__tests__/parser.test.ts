@@ -158,6 +158,25 @@ describe('parseStrengthProgram', () => {
     expect(ex.garmin_unsupported_reason).toBe('Exercise not in catalog')
   })
 
+  it('re-sequences session_index to 1..N even when the LLM duplicates or skips one', async () => {
+    const dupIndices = {
+      ...validParserOutput,
+      program: {
+        ...validParserOutput.program,
+        sessions: [
+          { session_index: 1, title: 'A', exercises: validParserOutput.program.sessions[0].exercises },
+          { session_index: 17, title: 'B', exercises: validParserOutput.program.sessions[0].exercises },
+          { session_index: 17, title: 'C', exercises: validParserOutput.program.sessions[0].exercises },
+        ],
+      },
+    }
+    mockLLM(JSON.stringify(dupIndices))
+    const result = await parseStrengthProgram({ text: 'x', source_format: 'free_text', catalog })
+    expect(result.program.sessions.map(s => s.session_index)).toEqual([1, 2, 3])
+    // Order is preserved (titles stay in emit order).
+    expect(result.program.sessions.map(s => s.title)).toEqual(['A', 'B', 'C'])
+  })
+
   it('throws ParseFailedError on invalid JSON', async () => {
     mockLLM('this is not json {{{')
     await expect(parseStrengthProgram({

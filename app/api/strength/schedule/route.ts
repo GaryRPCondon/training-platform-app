@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { placeSessionsWithLLM, SchedulingFailedError } from '@/lib/strength/scheduler'
+import {
+  placeSessionsWithLLM,
+  placeStrengthSessionsWeekAware,
+  hasWeekStructure,
+  SchedulingFailedError,
+} from '@/lib/strength/scheduler'
 import { scheduleRequestSchema } from '@/lib/strength/schemas'
 
 export async function POST(request: Request) {
@@ -56,6 +61,37 @@ export async function POST(request: Request) {
     .eq('id', user.id)
     .single()
 
+  // Fixed programs whose sessions carry week structure use the deterministic
+  // week- and load-aware engine — no LLM, no drift, policy applied by rule.
+  // Weekly programs and legacy free-form imports (no week_index) still use the
+  // LLM placement path below.
+  if (parsed.data.programType === 'fixed' && hasWeekStructure(parsed.data.parsedProgram.sessions)) {
+    try {
+      const placements = placeStrengthSessionsWeekAware(
+        parsed.data.parsedProgram.sessions,
+        parsed.data.startDate,
+        plannedWorkouts ?? [],
+      )
+      return NextResponse.json({ placements })
+    } catch (err) {
+      if (err instanceof SchedulingFailedError) {
+        return NextResponse.json({ error: err.message, details: err.details }, { status: 422 })
+      }
+      console.error('Strength deterministic scheduling error:', err)
+      return NextResponse.json(
+        { error: err instanceof Error ? err.message : 'Scheduling failed' },
+        { status: 500 },
+      )
+    }
+  }
+
+  // Placement is a structured tool call (thinking already disabled on the
+  // forced-tool path); Flash Lite is the cheaper choice when Gemini is
+  // selected with no explicit model. Mirrors the parse route.
+  const scheduleModel = (athlete?.preferred_llm_provider === 'gemini' && !athlete?.preferred_llm_model)
+    ? 'gemini-2.5-flash-lite'
+    : (athlete?.preferred_llm_model ?? undefined)
+
   try {
     const placements = await placeSessionsWithLLM({
       parsedProgram: parsed.data.parsedProgram,
@@ -64,7 +100,7 @@ export async function POST(request: Request) {
       weeksToRepeat: parsed.data.weeksToRepeat,
       plannedWorkouts: plannedWorkouts ?? [],
       providerName: athlete?.preferred_llm_provider ?? undefined,
-      modelName: athlete?.preferred_llm_model ?? undefined,
+      modelName: scheduleModel,
     })
 
     return NextResponse.json({ placements })

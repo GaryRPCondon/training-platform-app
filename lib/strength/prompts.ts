@@ -39,6 +39,9 @@ Return ONLY a single JSON object — no prose, no markdown fences. The object MU
       {
         "session_index": number,             // 1-based, sequential, no gaps
         "title": string,                     // e.g. "Core & Mobility Day 1"
+        "week_index": number?,               // 1-based week from "Week N" header; omit if no week structure
+        "day_index": number?,                // 1-based day-within-week from "Day M" header; omit if absent
+        "load_category": "loaded" | "mobility_recovery"?,  // see rule 10; omit only if genuinely unclassifiable
         "exercises": [
           {
             "canonical_name": string,        // lower_snake_case, e.g. "pushup", "plank"
@@ -82,6 +85,11 @@ Return ONLY a single JSON object — no prose, no markdown fences. The object MU
 7. If the input has no week/day structure but is a list of exercises, treat it as a single session.
 8. If the input is not a strength or mobility plan (e.g. a running plan, a recipe, random text), set content_type to "other", confidence below 0.5, and add a warning to "warnings" explaining what you saw instead.
 9. The user's exact units matter. "30 seconds" → duration_seconds 30. "30 minute foam roll" → duration_seconds 1800. Convert minutes to seconds; do not round.
+10. Set "week_index" and "day_index" from the structure headers. "Week 3 / Day 2: ..." → week_index 3, day_index 2. If the input has weeks but no day labels, number the days within each week sequentially. If there is no week/day structure at all, omit both fields.
+11. Set "load_category" per session based on the dominant work it contains — this drives how it is scheduled around the athlete's runs:
+    - "loaded": the session is built around meaningful resistance / strength work — pushups, presses, squats, lunges, split squats, hip thrusts, rows, deadlifts, weighted carries, banded resistance, etc. Choose this whenever the session's main intent is to load muscle, even if it also has some core or mobility filler.
+    - "mobility_recovery": the session is predominantly low-load mobility, activation, stretching, foam rolling, or light prehab with no significant resistance load (e.g. foam roll, cat-cow, 90/90 hip rotations, clamshells, thoracic extensions, light calf/plank work).
+    Pick the single best-fitting category by the session's dominant purpose. Omit only when a session genuinely cannot be classified.
 
 # Recommended input format (what users are told to use)
 

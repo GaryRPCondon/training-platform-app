@@ -125,6 +125,195 @@ function addDaysISO(s: string, n: number): string {
 }
 
 // ---------------------------------------------------------------------------
+// Deterministic week- and load-aware placement
+//
+// For a 'fixed' program whose sessions carry week_index, we don't ask the LLM
+// to place sessions at all — the policy is well-defined sports science and the
+// LLM has proven it won't reliably hold it. Each strength week is anchored to
+// its own 7-day window (so the plan never drifts past its intended length),
+// the week's running days are classified hard/easy/rest, and sessions are
+// assigned by load_category:
+//   - mobility_recovery → the rest day (recovery work belongs there)
+//   - loaded            → easy days, preferring slots clear of the next hard
+//                         run, spaced ≥1 day apart
+// Classification of each session (the one genuinely fuzzy judgement) was done
+// by the LLM at parse time; here we only apply rules.
+// ---------------------------------------------------------------------------
+
+const HARD_RUN_TYPES = new Set(['intervals', 'tempo', 'long_run', 'race', 'quality'])
+const EASY_RUN_TYPES = new Set(['easy_run', 'recovery', 'cross_training'])
+
+type DayClass = 'hard' | 'easy' | 'rest'
+
+function classifyDay(workouts: PlannedWorkoutSummary[] | undefined): DayClass {
+  if (!workouts || workouts.length === 0) return 'rest'
+  if (workouts.some(w => HARD_RUN_TYPES.has(w.workout_type))) return 'hard'
+  if (workouts.some(w => EASY_RUN_TYPES.has(w.workout_type))) return 'easy'
+  return 'rest' // only 'rest' rows present
+}
+
+/**
+ * True when every session carries a week_index — the precondition for the
+ * deterministic week-aware engine. Free-form / legacy programs that lack it
+ * fall back to the LLM placement path.
+ */
+export function hasWeekStructure(sessions: ParsedSession[]): boolean {
+  return sessions.length > 0 && sessions.every(s => s.week_index != null)
+}
+
+export function placeStrengthSessionsWeekAware(
+  sessions: ParsedSession[],
+  startDate: string,
+  plannedWorkouts: PlannedWorkoutSummary[],
+): Placement[] {
+  const byDate = new Map<string, PlannedWorkoutSummary[]>()
+  for (const w of plannedWorkouts) {
+    const arr = byDate.get(w.scheduled_date)
+    if (arr) arr.push(w)
+    else byDate.set(w.scheduled_date, [w])
+  }
+
+  // Group by week, preserving encounter order within a week.
+  const weeks = new Map<number, ParsedSession[]>()
+  for (const s of sessions) {
+    const wk = s.week_index ?? 1
+    const arr = weeks.get(wk)
+    if (arr) arr.push(s)
+    else weeks.set(wk, [s])
+  }
+  const weekNumbers = [...weeks.keys()].sort((a, b) => a - b)
+
+  const placements: Placement[] = []
+  // Anchor by sequential position (wi), not week number, so a gap in week
+  // numbering doesn't open an empty calendar week. Week 1 day 1 == startDate.
+  for (let wi = 0; wi < weekNumbers.length; wi++) {
+    const weekSessions = weeks
+      .get(weekNumbers[wi])!
+      .slice()
+      .sort((a, b) => (a.day_index ?? a.session_index) - (b.day_index ?? b.session_index))
+    const windowStart = addDaysISO(startDate, wi * 7)
+    const weekDates = Array.from({ length: 7 }, (_, d) => addDaysISO(windowStart, d))
+    const dayClass = new Map<string, DayClass>(
+      weekDates.map(d => [d, classifyDay(byDate.get(d))]),
+    )
+    placements.push(...placeWeek(weekSessions, weekDates, dayClass, byDate))
+  }
+  return placements
+}
+
+function placeWeek(
+  weekSessions: ParsedSession[],
+  weekDates: string[],
+  dayClass: Map<string, DayClass>,
+  byDate: Map<string, PlannedWorkoutSummary[]>,
+): Placement[] {
+  // No running at all this week (e.g. weeks past the end of the run plan):
+  // there is no rest-day signal to honour, so just spread evenly and keep the
+  // user's day order.
+  const hasRuns = weekDates.some(d => (byDate.get(d)?.length ?? 0) > 0)
+  if (!hasRuns) return evenlySpacedWeek(weekSessions, weekDates)
+
+  const used = new Set<string>()
+  const placed: Array<{ session: ParsedSession; date: string; rationale: string }> = []
+
+  const mobility = weekSessions.filter(s => s.load_category === 'mobility_recovery')
+  const loaded = weekSessions.filter(s => s.load_category !== 'mobility_recovery')
+
+  for (const s of mobility) {
+    const date = pickMobilityDay(weekDates, dayClass, used)
+    used.add(date)
+    placed.push({ session: s, date, rationale: mobilityRationale(dayClass.get(date)) })
+  }
+  for (const s of loaded) {
+    const date = pickLoadedDay(weekDates, dayClass, used)
+    used.add(date)
+    placed.push({ session: s, date, rationale: loadedRationale(date, dayClass) })
+  }
+
+  // Order placements by date (intra-week label order is intentionally relaxed so
+  // mobility can take the rest day wherever it falls). Inter-week order holds
+  // because each week occupies a strictly later 7-day window.
+  return placed
+    .sort((a, b) =>
+      a.date < b.date ? -1 : a.date > b.date ? 1 : a.session.session_index - b.session.session_index,
+    )
+    .map(r => ({
+      session_index: r.session.session_index,
+      scheduled_date: r.date,
+      placement_rationale: r.rationale,
+    }))
+}
+
+function evenlySpacedWeek(weekSessions: ParsedSession[], weekDates: string[]): Placement[] {
+  const n = weekSessions.length
+  const spacing = Math.max(1, Math.floor(7 / n))
+  return weekSessions.map((s, i) => ({
+    session_index: s.session_index,
+    scheduled_date: weekDates[Math.min(6, i * spacing)],
+    placement_rationale: 'Spaced evenly through the week (no runs scheduled)',
+  }))
+}
+
+function adjacentToUsed(date: string, used: Set<string>): boolean {
+  return used.has(addDaysISO(date, 1)) || used.has(addDaysISO(date, -1))
+}
+
+function pickMobilityDay(
+  weekDates: string[],
+  dayClass: Map<string, DayClass>,
+  used: Set<string>,
+): string {
+  const free = weekDates.filter(d => !used.has(d))
+  const rest = free.filter(d => dayClass.get(d) === 'rest')
+  if (rest.length) return rest[0]
+  const easy = free.filter(d => dayClass.get(d) === 'easy')
+  if (easy.length) return easy[0]
+  return free[0] ?? weekDates[0]
+}
+
+function pickLoadedDay(
+  weekDates: string[],
+  dayClass: Map<string, DayClass>,
+  used: Set<string>,
+): string {
+  const isProtectedEasy = (d: string) =>
+    dayClass.get(d) === 'easy' && dayClass.get(addDaysISO(d, 1)) !== 'hard'
+
+  // Tier 1: easy, clear of the next hard run, spaced from other strength days.
+  const spaced = weekDates.filter(d => !used.has(d) && !adjacentToUsed(d, used))
+  let tier = spaced.filter(isProtectedEasy)
+  if (tier.length) return tier[0]
+  // Tier 2: any easy day, still spaced (dense week — every easy day is pre-hard).
+  tier = spaced.filter(d => dayClass.get(d) === 'easy')
+  if (tier.length) return tier[0]
+  // Tier 3: a free rest day, spaced.
+  tier = spaced.filter(d => dayClass.get(d) === 'rest')
+  if (tier.length) return tier[0]
+  // Tier 4: relax spacing — any non-hard unused day.
+  const free = weekDates.filter(d => !used.has(d))
+  tier = free.filter(d => dayClass.get(d) !== 'hard')
+  if (tier.length) return tier[0]
+  // Tier 5: nothing left but a hard day — stack it (do strength after the run).
+  return free[0] ?? weekDates[0]
+}
+
+function mobilityRationale(cls: DayClass | undefined): string {
+  if (cls === 'rest') return 'Mobility & recovery on your rest day'
+  if (cls === 'easy') return 'Mobility on an easy day (no rest day this week)'
+  return 'Mobility & recovery session'
+}
+
+function loadedRationale(date: string, dayClass: Map<string, DayClass>): string {
+  const cls = dayClass.get(date)
+  const next = dayClass.get(addDaysISO(date, 1))
+  if (cls === 'easy' && next !== 'hard') return 'Loaded session on an easy day, clear of your next hard run'
+  if (cls === 'easy') return 'Loaded session on an easy day (back-to-back hard days this week)'
+  if (cls === 'rest') return 'Loaded session on a free day'
+  if (cls === 'hard') return 'Loaded session stacked on a hard run day — lift after your run'
+  return 'Loaded strength session'
+}
+
+// ---------------------------------------------------------------------------
 // LLM placement
 // ---------------------------------------------------------------------------
 

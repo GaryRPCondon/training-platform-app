@@ -40,12 +40,29 @@ export const exerciseSchema = z.object({
 // ---------------------------------------------------------------------------
 // ParsedProgram — what the LLM emits for parsing free-text into structured data.
 // ---------------------------------------------------------------------------
+// load_category drives deterministic scheduling against the running plan:
+//   'loaded'           — meaningful resistance / neuromuscular load (presses,
+//                        squats, hip thrusts, rows, carries). Has an
+//                        interference effect with running; placed on easy days
+//                        clear of quality/long sessions.
+//   'mobility_recovery'— low/no load mobility, activation, foam rolling,
+//                        stretching. Recovery-promoting; placed on the rest day.
+// Optional: omitted for free-form input the parser can't confidently classify
+// (the scheduler then treats it as 'loaded' — the safer default).
+export const loadCategorySchema = z.enum(['loaded', 'mobility_recovery'])
+
 export const parsedSessionSchema = z.object({
   session_index: z.number().int().min(1),
   title: z.string().min(1),
   exercises: z.array(exerciseSchema).min(1),
   estimated_duration_minutes: z.number().int().min(1).optional(),
   coaching_note: z.string().optional(),
+  // Week/day structure parsed from "Week N / Day M" headers. Optional so a
+  // free-form single-session list (no week markers) still validates; the
+  // week-aware scheduler engages only when every session carries week_index.
+  week_index: z.number().int().min(1).optional(),
+  day_index: z.number().int().min(1).optional(),
+  load_category: loadCategorySchema.optional(),
 })
 
 export const parsedProgramSchema = z.object({
@@ -124,6 +141,7 @@ export const updateSessionSchema = z.object({
 // Inferred TS types — use these everywhere instead of re-defining shape.
 export type ExerciseMeasurement = z.infer<typeof exerciseMeasurementSchema>
 export type Exercise = z.infer<typeof exerciseSchema>
+export type LoadCategory = z.infer<typeof loadCategorySchema>
 export type ParsedSession = z.infer<typeof parsedSessionSchema>
 export type ParsedProgram = z.infer<typeof parsedProgramSchema>
 export type ParseLLMResult = z.infer<typeof parseLLMResultSchema>

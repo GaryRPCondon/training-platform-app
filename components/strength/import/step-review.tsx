@@ -148,8 +148,8 @@ export function StepReview({
         )}
 
         <div className="space-y-4">
-          {editedProgram.sessions.map(session => (
-            <div key={session.session_index} className="rounded-md border p-4">
+          {editedProgram.sessions.map((session, idx) => (
+            <div key={idx} className="rounded-md border p-4">
               <div className="mb-2 flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">Session {session.session_index}</span>
                 <span className="font-medium">{session.title}</span>
