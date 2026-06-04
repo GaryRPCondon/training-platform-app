@@ -27,6 +27,7 @@ import { createChatSession, getChatSession, saveMessage } from '@/lib/agent/sess
 import { calculateMaxTokens, estimateTokens } from '@/lib/chat/token-budget'
 import { writeLLMLog } from '@/lib/agent/llm-logger'
 import { generateTitle } from '@/lib/agent/session-title'
+import { formatClock } from '@/lib/utils/units'
 
 // ---------------------------------------------------------------------------
 // Format a structured_workout JSONB into readable text for the system prompt.
@@ -326,12 +327,8 @@ export async function POST(request: Request) {
                     ])
 
                     if (focusActivity) {
-                        const fmtPace = (secPerKm: number | null) => {
-                            if (!secPerKm) return null
-                            const m = Math.floor(secPerKm / 60)
-                            const s = Math.round(secPerKm % 60)
-                            return `${m}:${s.toString().padStart(2, '0')}/km`
-                        }
+                        const fmtPace = (secPerKm: number | null) =>
+                            secPerKm ? `${formatClock(secPerKm)}/km` : null
                         const fmtDist = (m: number | null) => m ? `${(m / 1000).toFixed(1)}km` : null
                         const fmtDur = (s: number | null) => {
                             if (!s) return null
@@ -381,7 +378,7 @@ export async function POST(request: Request) {
                             const sw = mw.structured_workout as Record<string, unknown> | null
                             if (sw) {
                                 if (typeof sw.target_pace_sec_per_km === 'number') {
-                                    const fmtP = (s: number) => `${Math.floor(s / 60)}:${Math.round(s % 60).toString().padStart(2, '0')}/km`
+                                    const fmtP = (s: number) => `${formatClock(s)}/km`
                                     let paceStr = `Target Pace: ${fmtP(sw.target_pace_sec_per_km as number)}`
                                     if (typeof sw.target_pace_upper_sec_per_km === 'number') {
                                         paceStr += ` — ${fmtP(sw.target_pace_upper_sec_per_km as number)}`

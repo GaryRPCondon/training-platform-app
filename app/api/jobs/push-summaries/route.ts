@@ -23,9 +23,10 @@ function createServiceClient() {
 }
 
 function buildDescription(ratingPrefix: string, aiSummary: string, existingDescription: string | null): string {
-  const header = `trAIner Summary: ${ratingPrefix}${aiSummary}`
-  if (!existingDescription) return header
-  return `${header}\n\n---\n\n${existingDescription}`
+  const summaryBlock = `trAIner Summary: ${ratingPrefix}${aiSummary}`
+  if (!existingDescription) return summaryBlock
+  // Preserve the athlete's own comment first, append the AI summary after it.
+  return `${existingDescription}\n\n---\n\n${summaryBlock}`
 }
 
 interface PendingActivity {

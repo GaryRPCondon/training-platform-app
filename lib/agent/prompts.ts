@@ -2,6 +2,8 @@
  * System prompts for the AI training coach
  */
 
+import { formatClock } from '@/lib/utils/units'
+
 const BASE_PROMPT = `You are an expert AI running coach with deep knowledge of training physiology, periodization, and injury prevention. You provide personalized, evidence-based training advice.
 
 Guidelines:
@@ -128,7 +130,7 @@ function formatContext(context: any): string {
                     l.intensity_type === 'ACTIVE' || l.intensity_type === 'INTERVAL' || !l.intensity_type
                 )
                 const formatPace = (secsPerKm: number | null) =>
-                    secsPerKm ? `${Math.floor(secsPerKm / 60)}:${String(Math.round(secsPerKm % 60)).padStart(2, '0')}/km` : 'N/A'
+                    secsPerKm ? `${formatClock(secsPerKm)}/km` : 'N/A'
                 const formatDist = (m: number | null) => m ? `${(m / 1000).toFixed(2)}km` : 'N/A'
 
                 parts.push(`\nMost Recent Activity (${mostRecent.activity_name}):`)

@@ -171,6 +171,22 @@ describe('buildUserMessage — intervals workout', () => {
     expect(msg).toMatch(/\| COOLDOWN \| —/)
   })
 
+  it('renders a Duration column with mm:ss lap times', () => {
+    const msg = buildUserMessage(makeActivity(), makeWorkout(), intervalLaps())
+    expect(msg).toContain('Distance | Duration | Pace')
+    // ACTIVE lap: 235s → 3:55
+    expect(msg).toMatch(/\| 3:55 \| 3:55\/km/)
+    // RECOVERY lap: 60s → 1:00
+    expect(msg).toMatch(/\| 1:00 \|/)
+  })
+
+  it('annotates active laps with signed deviation vs target (faster reads as fast, not a fade)', () => {
+    const msg = buildUserMessage(makeActivity(), makeWorkout(), intervalLaps())
+    // ACTIVE laps run 235s vs 245s target → 10s fast, despite a lower 78% score.
+    expect(msg).toContain('Adherence% (vs target)')
+    expect(msg).toMatch(/\| ACTIVE \| 78% \(10s fast\)/)
+  })
+
   it('falls back to all-lap compliance when no laps are tagged ACTIVE/INTERVAL', () => {
     const untagged = intervalLaps().map(l => ({ ...l, intensity_type: null, compliance_score: 80 }))
     const msg = buildUserMessage(makeActivity(), makeWorkout(), untagged)

@@ -33,6 +33,17 @@ interface ActivityDetailProps {
   onClose?: () => void
 }
 
+// Compact mm:ss (or h:mm:ss for long laps) for the lap time column.
+function formatLapTime(totalSeconds: number | null): string {
+  if (!totalSeconds || totalSeconds <= 0) return '-'
+  const rounded = Math.round(totalSeconds)
+  const h = Math.floor(rounded / 3600)
+  const m = Math.floor((rounded % 3600) / 60)
+  const s = rounded % 60
+  if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+  return `${m}:${s.toString().padStart(2, '0')}`
+}
+
 function intensityBadgeVariant(type: string | null): 'secondary' | 'default' | 'destructive' | null {
   if (!type) return null
   switch (type.toUpperCase()) {
@@ -258,6 +269,7 @@ export function ActivityDetail({ activity, onClose }: ActivityDetailProps) {
                   <TableRow>
                     <TableHead className="w-12">Lap</TableHead>
                     <TableHead className="text-right">Distance</TableHead>
+                    <TableHead className="text-right">Time</TableHead>
                     <TableHead className="text-right">Pace</TableHead>
                     <TableHead className="text-right">Avg HR</TableHead>
                     <TableHead className="text-right">Max HR</TableHead>
@@ -275,6 +287,9 @@ export function ActivityDetail({ activity, onClose }: ActivityDetailProps) {
                         <TableCell className="font-medium">{lap.lap_index + 1}</TableCell>
                         <TableCell className="text-right">
                           {lap.distance_meters ? formatDistance(lap.distance_meters) : '-'}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatLapTime(lap.duration_seconds)}
                         </TableCell>
                         <TableCell className="text-right">
                           {lap.avg_pace ? formatPace(lap.avg_pace) : '-'}

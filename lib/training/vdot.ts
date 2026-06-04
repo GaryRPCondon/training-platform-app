@@ -6,7 +6,7 @@
  * - VDOT = VO2max adjusted for running economy
  */
 
-import { formatPace as formatPaceWithUnits } from '@/lib/utils/units'
+import { formatPace as formatPaceWithUnits, formatHms } from '@/lib/utils/units'
 
 // ============================================================================
 // VDOT Calculation from Race Performance
@@ -292,15 +292,7 @@ export function formatPace(secondsPerKm: number, units: 'metric' | 'imperial' = 
  * Format seconds to time string (HH:MM:SS or MM:SS)
  */
 export function formatTime(totalSeconds: number): string {
-  const hours = Math.floor(totalSeconds / 3600)
-  const minutes = Math.floor((totalSeconds % 3600) / 60)
-  const seconds = Math.round(totalSeconds % 60)
-
-  if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
-  } else {
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`
-  }
+  return formatHms(totalSeconds)
 }
 
 /**

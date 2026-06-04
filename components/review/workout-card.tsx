@@ -23,7 +23,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { estimateDuration, getWorkoutPaceType, calculateTotalWorkoutDistance } from '@/lib/training/vdot'
 import { interpretAccuracyScore } from '@/lib/activities/scoring'
 import { useUnits } from '@/lib/hooks/use-units'
-import { formatDistance as fmtDist, type UnitSystem } from '@/lib/utils/units'
+import { formatDistance as fmtDist, formatClock, paceParts, type UnitSystem } from '@/lib/utils/units'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
 import { SplitDialog } from '@/components/calendar/split-dialog'
@@ -135,9 +135,9 @@ function parsePaceToDisplayInputs(
 ): { fasterM: string; fasterS: string; slowerM: string; slowerS: string } {
   const toDisplay = (secKm: number) => {
     const sec = units === 'imperial' ? secKm * PACE_SCALE_KM_TO_MI : secKm
-    return { m: Math.floor(sec / 60), s: Math.round(sec % 60) }
+    return paceParts(sec)
   }
-  const fmt = (n: { m: number; s: number }) => ({ m: String(n.m), s: String(n.s).padStart(2, '0') })
+  const fmt = (n: { minutes: number; seconds: number }) => ({ m: String(n.minutes), s: String(n.seconds).padStart(2, '0') })
 
   if (targetPace) {
     const dash = targetPace.indexOf('-', 1)
@@ -170,8 +170,7 @@ function serializePaceInputs(
   const fOk = fasterM !== '' && fasterS !== ''
   const sOk = slowerM !== '' && slowerS !== ''
   if (!fOk && !sOk) return undefined
-  const fmtKm = (sec: number) =>
-    `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, '0')}`
+  const fmtKm = (sec: number) => formatClock(sec)
   if (fOk && sOk) {
     return `${fmtKm(toSecKm(fasterM, fasterS))}-${fmtKm(toSecKm(slowerM, slowerS))}`
   }
@@ -212,10 +211,7 @@ function fmtPaceRangeDisplay(
   if (fKm === null || sKm === null) return ''
   const unit = units === 'imperial' ? '/mi' : '/km'
   const scale = units === 'imperial' ? PACE_SCALE_KM_TO_MI : 1
-  const fmt = (sec: number) => {
-    const s = sec * scale
-    return `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`
-  }
+  const fmt = (sec: number) => formatClock(sec * scale)
   return `${fmt(fKm)}–${fmt(sKm)}${unit}`
 }
 
@@ -233,7 +229,7 @@ function intensityToPaceKey(intensity: string): keyof TrainingPaces {
 function fmtCenterPace(secKm: number, units: UnitSystem): string {
   const sec = units === 'imperial' ? secKm * PACE_SCALE_KM_TO_MI : secKm
   const unit = units === 'imperial' ? '/mi' : '/km'
-  return `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, '0')}${unit}`
+  return `${formatClock(sec)}${unit}`
 }
 
 // ============================================================================
@@ -302,7 +298,8 @@ function WarmupCooldownStep({
     const sec = parseSinglePaceSec(data.target_pace)
     if (sec === null) return { m: '', s: '' }
     const display = units === 'imperial' ? sec * PACE_SCALE_KM_TO_MI : sec
-    return { m: String(Math.floor(display / 60)), s: String(Math.round(display % 60)).padStart(2, '0') }
+    const { minutes, seconds } = paceParts(display)
+    return { m: String(minutes), s: String(seconds).padStart(2, '0') }
   })
 
   const handlePaceInput = (field: 'm' | 's', val: string) => {
@@ -311,7 +308,7 @@ function WarmupCooldownStep({
     if (next.m !== '' && next.s !== '') {
       const secDisplay = (parseInt(next.m, 10) || 0) * 60 + (parseInt(next.s, 10) || 0)
       const secKm = units === 'imperial' ? secDisplay / PACE_SCALE_KM_TO_MI : secDisplay
-      const stored = `${Math.floor(secKm / 60)}:${String(Math.round(secKm % 60)).padStart(2, '0')}`
+      const stored = formatClock(secKm)
       onChange({ ...data, target_pace: stored })
     }
   }
@@ -505,7 +502,7 @@ function IntervalStep({
     if (interval.target_pace) return parsePaceToDisplayInputs(interval.target_pace, units)
     // Pre-populate from stamped methodology pace for work intervals
     if (effectiveStampedPace && interval.intensity && !isRecoveryIntensity(interval.intensity)) {
-      const synth = `${Math.floor(effectiveStampedPace / 60)}:${String(Math.round(effectiveStampedPace % 60)).padStart(2, '0')}`
+      const synth = formatClock(effectiveStampedPace)
       return parsePaceToDisplayInputs(synth, units)
     }
     // Fallback: derive from VDOT trainingPaces ± 15 sec/km tolerance
@@ -514,7 +511,8 @@ function IntervalStep({
       if (centerSecKm) {
         const toDisplay = (secKm: number) => {
           const sec = units === 'imperial' ? secKm * PACE_SCALE_KM_TO_MI : secKm
-          return { m: String(Math.floor(sec / 60)), s: String(Math.round(sec % 60)).padStart(2, '0') }
+          const { minutes, seconds } = paceParts(sec)
+          return { m: String(minutes), s: String(seconds).padStart(2, '0') }
         }
         const f = toDisplay(centerSecKm - 15)
         const sl = toDisplay(centerSecKm + 15)
@@ -655,7 +653,8 @@ function IntervalStep({
                   if (centerSecKm) {
                     const toDisplay = (secKm: number) => {
                       const sec = units === 'imperial' ? secKm * PACE_SCALE_KM_TO_MI : secKm
-                      return { m: String(Math.floor(sec / 60)), s: String(Math.round(sec % 60)).padStart(2, '0') }
+                      const { minutes, seconds } = paceParts(sec)
+                      return { m: String(minutes), s: String(seconds).padStart(2, '0') }
                     }
                     const f = toDisplay(centerSecKm - 15)
                     const sl = toDisplay(centerSecKm + 15)
@@ -978,7 +977,7 @@ export function WorkoutCard({
       if (isNaN(m) || isNaN(s) || (m === 0 && s === 0)) return ''
       const secDisplay = m * 60 + s
       const secKm = units === 'imperial' ? secDisplay / PACE_SCALE_KM_TO_MI : secDisplay
-      const stored = `${Math.floor(secKm / 60)}:${String(Math.round(secKm % 60)).padStart(2, '0')}`
+      const stored = formatClock(secKm)
       return fmtPaceRangeDisplay(stored, undefined, undefined, units)
     }
     // Use stamped pace from structured_workout for methodology-specific labels
@@ -1088,8 +1087,9 @@ export function WorkoutCard({
       const sec = parseSinglePaceSec(sw.target_pace)
       if (sec !== null) {
         const display = units === 'imperial' ? sec * PACE_SCALE_KM_TO_MI : sec
-        setEditCustomPaceM(String(Math.floor(display / 60)))
-        setEditCustomPaceS(String(Math.round(display % 60)).padStart(2, '0'))
+        const { minutes, seconds } = paceParts(display)
+        setEditCustomPaceM(String(minutes))
+        setEditCustomPaceS(String(seconds).padStart(2, '0'))
       }
     } else {
       setEditCustomPaceM('')
@@ -1132,7 +1132,7 @@ export function WorkoutCard({
       } else if (editIntensity === 'custom' && editCustomPaceM && editCustomPaceS) {
         const secDisplay = (parseInt(editCustomPaceM, 10) || 0) * 60 + (parseInt(editCustomPaceS, 10) || 0)
         const secKm = units === 'imperial' ? secDisplay / PACE_SCALE_KM_TO_MI : secDisplay
-        const stored = `${Math.floor(secKm / 60)}:${String(Math.round(secKm % 60)).padStart(2, '0')}`
+        const stored = formatClock(secKm)
         const existing = (workout.structured_workout ?? {}) as Record<string, unknown>
         structuredWorkoutValue = { ...existing, target_pace: stored }
       }

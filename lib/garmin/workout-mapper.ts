@@ -23,7 +23,7 @@ import type {
   GarminTargetType,
 } from './types'
 import { getWorkoutPaceType, type AllTrainingPaces } from '@/lib/training/vdot'
-import { resolvePace, type PaceTarget } from '@/lib/plans/pace-resolver'
+import { resolvePace, formatPaceMinKm, type PaceTarget } from '@/lib/plans/pace-resolver'
 
 // ============================================================================
 // Constants
@@ -443,7 +443,7 @@ type StampedPace = {
  */
 function buildStampedPaceString(sw: (WorkoutStructure & StampedPace) | null): string | undefined {
   if (!sw || typeof sw.target_pace_sec_per_km !== 'number') return undefined
-  const fmtP = (s: number) => `${Math.floor(s / 60)}:${Math.round(s % 60).toString().padStart(2, '0')}`
+  const fmtP = (s: number) => formatPaceMinKm(s)
   if (typeof sw.target_pace_upper_sec_per_km === 'number') {
     // Range: faster (lower sec/km) - slower (higher sec/km)
     return `${fmtP(sw.target_pace_sec_per_km)}-${fmtP(sw.target_pace_upper_sec_per_km)}`
