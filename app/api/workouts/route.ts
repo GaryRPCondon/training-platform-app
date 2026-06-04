@@ -10,6 +10,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { calculateTotalWorkoutDistance } from '@/lib/training/vdot'
 import { resolveActivePlanPace } from '@/lib/plans/active-plan-pace'
+import { formatPaceMinKm } from '@/lib/plans/pace-resolver'
 import { z } from 'zod'
 
 const createWorkoutSchema = z.object({
@@ -63,7 +64,7 @@ export async function POST(request: Request) {
     if (hasExplicitPace) {
       const paceTarget = target_pace_sec_per_km ?? target_pace_min_sec_per_km!
       const paceUpper = target_pace_max_sec_per_km ?? null
-      const fmtP = (s: number) => `${Math.floor(s / 60)}:${Math.round(s % 60).toString().padStart(2, '0')}/km`
+      const fmtP = (s: number) => `${formatPaceMinKm(s)}/km`
       const paceDesc = paceUpper
         ? `Athlete-specified: ${fmtP(paceTarget)}-${fmtP(paceUpper)}`
         : `Athlete-specified: ${fmtP(paceTarget)}`

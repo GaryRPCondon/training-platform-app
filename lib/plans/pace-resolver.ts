@@ -8,6 +8,7 @@
 
 import type { AllTrainingPaces } from '@/lib/training/vdot'
 import { paceTargetsSchema, type PaceTarget } from '@/lib/templates/types'
+import { formatClock } from '@/lib/utils/units'
 
 // ============================================================================
 // Types
@@ -131,9 +132,7 @@ export function resolveAllPaces(
  * Format seconds/km as "M:SS" string (e.g. 253 → "4:13")
  */
 export function formatPaceMinKm(secPerKm: number): string {
-  const minutes = Math.floor(secPerKm / 60)
-  const seconds = Math.round(secPerKm % 60)
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`
+  return formatClock(secPerKm)
 }
 
 /**

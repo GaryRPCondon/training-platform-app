@@ -47,7 +47,7 @@ Rules:
 - Adherence weighting by run type — THIS IS BINDING:
   - Easy runs / recovery runs / long runs: judge success on overall average pace and average HR vs intent. If overall pace is within range and average HR sits in the easy zone, the session SUCCEEDED — do NOT downgrade it for lap-to-lap variance. Lap variance on easy runs is normal (terrain, HR drift, natural cadence shifts) and is not an effort-control failure. A 5.0 rating is appropriate when overall pace and HR are on target, even with high lap variance.
   - Intervals / tempo / threshold / VO2max: per-lap pace compliance is the primary success metric. Lap drift, slow first reps, and fade in final reps matter and should be called out specifically.
-  - For intervals/tempo workouts: ONLY active work-rep laps (Role = ACTIVE or INTERVAL) are evaluated against the work-rep target pace. Warmup, cooldown, and recovery laps deliberately run easier than the target and MUST NOT be counted as misses. When the summary mentions pace adherence, name a direction: state whether the work reps were too fast, too slow, or on target. Never say "X% of laps in range" without specifying which laps and which direction.
+  - For intervals/tempo workouts: ONLY active work-rep laps (Role = ACTIVE or INTERVAL) are evaluated against the work-rep target pace. Warmup, cooldown, and recovery laps deliberately run easier than the target and MUST NOT be counted as misses. When the summary mentions pace adherence, name a direction: state whether the work reps were too fast, too slow, or on target. The Adherence% column shows a signed deviation in parentheses (e.g. "95% (3s fast)") — this is the ground truth for direction. A lower adherence % does NOT imply slower; read the parenthetical to know whether a rep was fast or slow. Never assume a "fade" in the final reps unless the deviations actually show the closing reps slowing. Never say "X% of laps in range" without specifying which laps and which direction.
 - Be direct and prescriptive: when something needs correcting, say what to do differently.
 - Where pace, HR, or effort drifted from target, explain the training consequence (e.g. "running easy days this fast erodes recovery", "the fade in final reps suggests the interval target was too aggressive").
 - Use concrete numbers (e.g. "4:15/km", "128 bpm") to support observations, not as the observation itself.
@@ -76,16 +76,30 @@ Output format — respond ONLY with valid JSON, no markdown, no preamble:
 
 function formatPace(secondsPerKm: number | null): string {
   if (!secondsPerKm || secondsPerKm <= 0) return 'N/A'
-  const mins = Math.floor(secondsPerKm / 60)
-  const secs = Math.round(secondsPerKm % 60)
+  // Round to whole seconds first, then split — rounding the remainder
+  // independently produces "4:60/km" when seconds round up to 60.
+  const rounded = Math.round(secondsPerKm)
+  const mins = Math.floor(rounded / 60)
+  const secs = rounded % 60
   return `${mins}:${secs.toString().padStart(2, '0')}/km`
+}
+
+// Compact mm:ss for lap durations (e.g. "1:30"). Laps are short enough that
+// hours never apply — formatDuration's "1m 30s" style is too wide for a table.
+function formatLapDuration(totalSeconds: number | null): string {
+  if (!totalSeconds || totalSeconds <= 0) return 'N/A'
+  const rounded = Math.round(totalSeconds)
+  const mins = Math.floor(rounded / 60)
+  const secs = rounded % 60
+  return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 
 function formatDuration(totalSeconds: number | null): string {
   if (!totalSeconds || totalSeconds <= 0) return 'N/A'
-  const h = Math.floor(totalSeconds / 3600)
-  const m = Math.floor((totalSeconds % 3600) / 60)
-  const s = Math.round(totalSeconds % 60)
+  const rounded = Math.round(totalSeconds)
+  const h = Math.floor(rounded / 3600)
+  const m = Math.floor((rounded % 3600) / 60)
+  const s = rounded % 60
   if (h > 0) return `${h}h ${m}m ${s}s`
   return `${m}m ${s}s`
 }
@@ -108,31 +122,62 @@ function isActiveLap(lap: Lap): boolean {
   return ACTIVE_LAP_ROLES.has(lapRole(lap))
 }
 
-function buildLapTable(laps: Lap[], showAdherence: boolean): string {
+type TargetPaceBand = { lower: number; upper: number | null }
+
+/**
+ * Describe how an active lap's pace sits relative to the work-rep target band,
+ * e.g. "3s fast", "5s slow", "on target". Garmin's compliance_score is a single
+ * direction-agnostic number, so without this the LLM guesses the direction from
+ * the score (and wrongly reads a low score on the final rep as a fade/slowdown).
+ * In sec/km a smaller number is faster.
+ */
+function activeLapDeviation(paceSecsPerKm: number | null, band: TargetPaceBand): string | null {
+  if (!paceSecsPerKm || paceSecsPerKm <= 0) return null
+  const slowBound = band.upper ?? band.lower
+  if (paceSecsPerKm < band.lower) return `${Math.round(band.lower - paceSecsPerKm)}s fast`
+  if (paceSecsPerKm > slowBound) return `${Math.round(paceSecsPerKm - slowBound)}s slow`
+  return 'on target'
+}
+
+function buildLapTable(laps: Lap[], showAdherence: boolean, targetBand: TargetPaceBand | null): string {
   if (laps.length === 0) return ''
 
   const header = showAdherence
-    ? 'Lap | Distance | Pace | Avg HR | Max HR | Elev Gain | Role | Adherence%'
-    : 'Lap | Distance | Pace | Avg HR | Max HR | Elev Gain | Role'
+    ? 'Lap | Distance | Duration | Pace | Avg HR | Max HR | Elev Gain | Role | Adherence% (vs target)'
+    : 'Lap | Distance | Duration | Pace | Avg HR | Max HR | Elev Gain | Role'
   const divider = showAdherence
-    ? '--- | -------- | ---- | ------ | ------ | --------- | ---- | ----------'
-    : '--- | -------- | ---- | ------ | ------ | --------- | ----'
+    ? '--- | -------- | -------- | ---- | ------ | ------ | --------- | ---- | ----------------------'
+    : '--- | -------- | -------- | ---- | ------ | ------ | --------- | ----'
   const rows = laps.map(lap => {
     const dist = lap.distance_meters ? `${(lap.distance_meters / 1000).toFixed(2)} km` : 'N/A'
+    const duration = formatLapDuration(lap.duration_seconds)
     const pace = formatPace(lap.avg_pace)
     const avgHr = lap.avg_hr ? `${lap.avg_hr}` : 'N/A'
     const maxHr = lap.max_hr ? `${lap.max_hr}` : 'N/A'
     const elev = lap.elevation_gain_meters != null ? `${Math.round(lap.elevation_gain_meters)}m` : '-'
     const role = lapRole(lap) || '-'
-    const base = `${lap.lap_index} | ${dist} | ${pace} | ${avgHr} | ${maxHr} | ${elev} | ${role}`
+    const base = `${lap.lap_index} | ${dist} | ${duration} | ${pace} | ${avgHr} | ${maxHr} | ${elev} | ${role}`
     if (!showAdherence) return base
     // Only annotate adherence for active work-rep laps — recovery/warmup/cooldown
     // laps deliberately miss the work-rep pace target and shouldn't be judged on it.
-    const adherence = isActiveLap(lap) && lap.compliance_score != null ? `${lap.compliance_score}%` : '—'
-    return `${base} | ${adherence}`
+    // Append the signed deviation so the LLM reads direction from data, not the score.
+    if (!isActiveLap(lap)) return `${base} | —`
+    const score = lap.compliance_score != null ? `${lap.compliance_score}%` : '—'
+    const deviation = targetBand ? activeLapDeviation(lap.avg_pace, targetBand) : null
+    const cell = deviation ? `${score} (${deviation})` : score
+    return `${base} | ${cell}`
   })
 
   return `\nLap breakdown:\n${header}\n${divider}\n${rows.join('\n')}`
+}
+
+function extractTargetPaceBand(workout: PlannedWorkout): TargetPaceBand | null {
+  const sw = workout.structured_workout as Record<string, unknown> | null
+  if (!sw) return null
+  const lower = sw.target_pace_sec_per_km as number | undefined
+  if (!lower) return null
+  const upper = sw.target_pace_upper_sec_per_km as number | undefined
+  return { lower, upper: upper ?? null }
 }
 
 function extractTargetPace(workout: PlannedWorkout): string {
@@ -280,7 +325,8 @@ Actual activity:
     msg += `\n- ${complianceLabel}: ${paceCompliancePct}%`
   }
 
-  const lapTable = buildLapTable(laps, !lowIntensity)
+  const targetBand = lowIntensity ? null : extractTargetPaceBand(workout)
+  const lapTable = buildLapTable(laps, !lowIntensity, targetBand)
   if (lapTable) {
     msg += `\n${lapTable}`
   }

@@ -27,6 +27,33 @@ export function toDisplayElevation(meters: number, units: UnitSystem): number {
   return units === 'imperial' ? meters * METERS_TO_FEET : meters
 }
 
+// --- Clock / mm:ss helpers ---
+//
+// All of these round to whole seconds BEFORE splitting. Rounding the remainder
+// independently (Math.round(secs % 60)) yields "4:60" when seconds round up to 60.
+
+/** Split a pace/short-clock seconds value into carry-correct minutes + seconds. */
+export function paceParts(totalSeconds: number): { minutes: number; seconds: number } {
+  const rounded = Math.round(totalSeconds)
+  return { minutes: Math.floor(rounded / 60), seconds: rounded % 60 }
+}
+
+/** Format a seconds value as "M:SS" (no hour split, no unit) — for pace and short clocks. */
+export function formatClock(totalSeconds: number): string {
+  const { minutes, seconds } = paceParts(totalSeconds)
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`
+}
+
+/** Format a seconds value as "H:MM:SS" when ≥ 1h, otherwise "M:SS". */
+export function formatHms(totalSeconds: number): string {
+  const rounded = Math.round(totalSeconds)
+  const h = Math.floor(rounded / 3600)
+  const m = Math.floor((rounded % 3600) / 60)
+  const s = rounded % 60
+  if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+  return `${m}:${s.toString().padStart(2, '0')}`
+}
+
 // --- Formatted strings ---
 
 export function formatDistance(meters: number, units: UnitSystem, decimals: number = 2): string {
@@ -41,8 +68,11 @@ export function formatPace(secsPerKm: number, units: UnitSystem): string {
     // seconds-per-km -> seconds-per-mile
     displaySecs = secsPerKm / KM_TO_MILES
   }
-  const minutes = Math.floor(displaySecs / 60)
-  const seconds = Math.round(displaySecs % 60)
+  // Round to whole seconds first, then split — rounding the remainder
+  // independently produces "4:60/km" when seconds round up to 60.
+  const rounded = Math.round(displaySecs)
+  const minutes = Math.floor(rounded / 60)
+  const seconds = rounded % 60
   const label = units === 'imperial' ? '/mi' : '/km'
   return `${minutes}:${seconds.toString().padStart(2, '0')}${label}`
 }

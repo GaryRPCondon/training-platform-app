@@ -317,7 +317,14 @@ function buildRecentActivitiesSection(context: CoachContext): string {
         const dateLabel = format(new Date(a.date + 'T12:00:00'), 'EEE d MMM')
         const name = a.name ?? 'Activity'
         const distStr = a.distance_km ? ` ${a.distance_km.toFixed(1)}km` : ''
-        const durStr = a.duration_minutes ? ` ${Math.floor(a.duration_minutes / 60) > 0 ? `${Math.floor(a.duration_minutes / 60)}h ` : ''}${Math.round(a.duration_minutes % 60)}min` : ''
+        const durStr = (() => {
+            if (!a.duration_minutes) return ''
+            // Round total minutes first so 59.7 doesn't render as "60min".
+            const totalMin = Math.round(a.duration_minutes)
+            const h = Math.floor(totalMin / 60)
+            const m = totalMin % 60
+            return ` ${h > 0 ? `${h}h ` : ''}${m}min`
+        })()
         const paceStr = a.avg_pace_sec_per_km ? ` @ ${formatPace(a.avg_pace_sec_per_km, athlete.preferred_units)}` : ''
         const hrStr = a.avg_hr ? ` HR ${a.avg_hr}${a.max_hr ? `/${a.max_hr}` : ''} avg/max` : ''
         lines.push(`${dateLabel}: ${name}${distStr}${durStr}${paceStr}${hrStr}`)
@@ -495,16 +502,19 @@ glute bridges" — use the \`modify_strength_session\` tool.
 /** Format seconds-per-km into M:SS, adjusted for imperial if needed */
 function formatPace(secPerKm: number, units: string): string {
     const secPerUnit = units === 'imperial' ? secPerKm * 1.60934 : secPerKm
-    const minutes = Math.floor(secPerUnit / 60)
-    const seconds = Math.round(secPerUnit % 60)
+    // Round to whole seconds first — rounding the remainder alone yields "4:60".
+    const rounded = Math.round(secPerUnit)
+    const minutes = Math.floor(rounded / 60)
+    const seconds = rounded % 60
     return `${minutes}:${seconds.toString().padStart(2, '0')}`
 }
 
 /** Format a duration in seconds as H:MM:SS or M:SS */
 function formatDuration(totalSeconds: number): string {
-    const h = Math.floor(totalSeconds / 3600)
-    const m = Math.floor((totalSeconds % 3600) / 60)
-    const s = Math.round(totalSeconds % 60)
+    const rounded = Math.round(totalSeconds)
+    const h = Math.floor(rounded / 3600)
+    const m = Math.floor((rounded % 3600) / 60)
+    const s = rounded % 60
     if (h > 0) {
         return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
     }
