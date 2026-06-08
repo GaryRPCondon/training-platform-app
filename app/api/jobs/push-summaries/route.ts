@@ -26,7 +26,7 @@ function buildDescription(ratingPrefix: string, aiSummary: string, existingDescr
   const summaryBlock = `trAIner Summary: ${ratingPrefix}${aiSummary}`
   if (!existingDescription) return summaryBlock
   // Preserve the athlete's own comment first, append the AI summary after it.
-  return `${existingDescription}\n\n---\n\n${summaryBlock}`
+  return `${existingDescription}\n${summaryBlock}`
 }
 
 interface PendingActivity {
