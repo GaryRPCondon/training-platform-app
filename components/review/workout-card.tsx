@@ -86,6 +86,7 @@ interface EditableInterval {
   duration_seconds?: number
   target_pace?: string
   intensity?: string
+  role?: string
 }
 
 interface EditableSet {
@@ -439,7 +440,7 @@ function WarmupCooldownStep({
 // ============================================================================
 
 function IntervalStep({
-  set, interval, isFirstInSet,
+  set, interval, isFirstInSet, isLastInSet,
   rowKey, expandedKey, onToggle,
   onChange, onChangeSet, onRemove,
   trainingPaces, units, stampedPaceSec, workoutIntensity,
@@ -447,6 +448,7 @@ function IntervalStep({
   set: EditableSet
   interval: EditableInterval
   isFirstInSet: boolean
+  isLastInSet: boolean
   rowKey: string
   expandedKey: string | null
   onToggle: () => void
@@ -462,9 +464,14 @@ function IntervalStep({
   const isIndented = !isFirstInSet
   const hasMultiple = set.intervals.length > 1 || set.repeat > 1
   const showRepeat = isFirstInSet && hasMultiple
-  const hasRecovery = isFirstInSet && set.intervals.some(
-    i => i.intensity?.toLowerCase().includes('recovery') || i.intensity?.toLowerCase().includes('rest')
-  )
+  // "Skip last recovery" lives on the recovery step itself (the final recovery/rest
+  // interval of a repeating set), not on the work interval. Only meaningful when the
+  // set repeats — there's no "last" recovery to skip in a single-pass set.
+  const isRecoveryStep = interval.intensity
+    ? interval.intensity.toLowerCase().includes('recovery') ||
+      interval.intensity.toLowerCase().includes('rest')
+    : interval.role === 'recovery' || interval.role === 'rest'
+  const showSkipLastRecovery = isLastInSet && set.repeat > 1 && isRecoveryStep
 
   // Only inherit the workout's stamped pace when this interval shares the
   // workout's primary intensity. Recovery jogs (e.g. intensity="E" inside a
@@ -668,8 +675,8 @@ function IntervalStep({
             />
           </div>
 
-          {/* Skip last recovery */}
-          {hasRecovery && (
+          {/* Skip last recovery — rendered on the recovery step of a repeating set */}
+          {showSkipLastRecovery && (
             <div className="flex items-center gap-2">
               <Checkbox
                 id={`skip-recovery-${rowKey}`}
@@ -677,7 +684,7 @@ function IntervalStep({
                 onCheckedChange={checked => onChangeSet({ ...set, skip_last_recovery: !!checked })}
               />
               <Label htmlFor={`skip-recovery-${rowKey}`} className="text-xs cursor-pointer">
-                Skip recovery after last rep
+                Skip this recovery after the last rep
               </Label>
             </div>
           )}
@@ -752,6 +759,16 @@ function StructuredWorkoutEditor({
     }
   }
 
+  // Append a step inside an existing repeat group. Defaults to a recovery step —
+  // the common case (adding the recovery jog/rest to a work-only loop), which also
+  // surfaces the "skip last recovery" control. User can change intensity after.
+  const addStepToSet = (setIdx: number) => {
+    const set = structured.main_set[setIdx]
+    const intervals = [...set.intervals, { intensity: 'recovery', role: 'recovery' }]
+    updateSet(setIdx, { ...set, intervals })
+    setExpandedKey(`s${setIdx}i${intervals.length - 1}`)
+  }
+
   const addStep = () => {
     const newIdx = structured.main_set.length
     onChange({ ...structured, main_set: [...structured.main_set, { repeat: 1, intervals: [{ intensity: 'easy' }] }] })
@@ -786,29 +803,48 @@ function StructuredWorkoutEditor({
         />
       )}
 
-      {structured.main_set.map((set, setIdx) =>
-        set.intervals.map((interval, intIdx) => {
-          const rowKey = `s${setIdx}i${intIdx}`
-          return (
-            <IntervalStep
-              key={rowKey}
-              set={set}
-              interval={interval}
-              isFirstInSet={intIdx === 0}
-              rowKey={rowKey}
-              expandedKey={expandedKey}
-              onToggle={() => toggle(rowKey)}
-              onChange={v => updateInterval(setIdx, intIdx, v)}
-              onChangeSet={v => updateSet(setIdx, v)}
-              onRemove={() => removeInterval(setIdx, intIdx)}
-              trainingPaces={trainingPaces}
-              units={units}
-              stampedPaceSec={stampedPaceSec}
-              workoutIntensity={workoutIntensity}
-            />
-          )
-        })
-      )}
+      {structured.main_set.map((set, setIdx) => {
+        // A "loop" is any repeating set or any set with more than one step — these
+        // can accept additional steps (e.g. a recovery jog added to a work-only loop).
+        const isLoop = set.repeat > 1 || set.intervals.length > 1
+        return (
+          <div key={`set-${setIdx}`}>
+            {set.intervals.map((interval, intIdx) => {
+              const rowKey = `s${setIdx}i${intIdx}`
+              return (
+                <IntervalStep
+                  key={rowKey}
+                  set={set}
+                  interval={interval}
+                  isFirstInSet={intIdx === 0}
+                  isLastInSet={intIdx === set.intervals.length - 1}
+                  rowKey={rowKey}
+                  expandedKey={expandedKey}
+                  onToggle={() => toggle(rowKey)}
+                  onChange={v => updateInterval(setIdx, intIdx, v)}
+                  onChangeSet={v => updateSet(setIdx, v)}
+                  onRemove={() => removeInterval(setIdx, intIdx)}
+                  trainingPaces={trainingPaces}
+                  units={units}
+                  stampedPaceSec={stampedPaceSec}
+                  workoutIntensity={workoutIntensity}
+                />
+              )
+            })}
+            {isLoop && (
+              <div className="pl-6">
+                <Button
+                  variant="ghost" size="sm"
+                  className="h-7 text-xs gap-1 text-muted-foreground"
+                  onClick={() => addStepToSet(setIdx)}
+                >
+                  <Plus className="h-3 w-3" />Add step to repeat
+                </Button>
+              </div>
+            )}
+          </div>
+        )
+      })}
 
       {structured.cooldown !== undefined && (
         <WarmupCooldownStep
