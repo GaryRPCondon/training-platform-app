@@ -1,7 +1,7 @@
-# Code Review — Security & Optimization
+# Code Review — Security, Optimization, i18n & Accessibility
 
 **Date:** 2026-06-10
-**Scope:** Full repository — all API routes (~66), middleware (`proxy.ts`), Supabase layer + RLS migrations, Garmin/Strava integrations, AI agent layer, plan operations, analysis modules, and the React frontend.
+**Scope:** Full repository — all API routes (~66), middleware (`proxy.ts`), Supabase layer + RLS migrations, Garmin/Strava integrations, AI agent layer, plan operations, analysis modules, and the React frontend. Part 2 covers internationalization/RTL readiness; Part 3 covers accessibility (WCAG 2.2 AA-oriented).
 
 ---
 
@@ -117,3 +117,113 @@ Every streamed chunk rebuilds the messages array and re-runs `ReactMarkdown` for
 - **LLM safety**: keys server-only; no eval/dynamic execution; all tool actions human-approved; strength proposals re-validated server-side.
 - **OAuth**: Strava CSRF state in httpOnly cookie, verified in callback; relative redirects only; Garmin password not persisted.
 - **Hygiene**: Zod validation with bounded fields across routes; settings update uses an allowlist (no mass-assignment); env validation at startup; nothing sensitive ever committed (verified against git history); `coach-context-loader.ts` and the dashboard-stats RPC are model implementations to copy from.
+
+---
+
+# Part 2 — Internationalization (i18n) & RTL Readiness
+
+**Baseline (verified):** No i18n framework (no next-intl/i18next/react-intl in `package.json`), no locale routing or `Accept-Language` handling, `<html lang="en">` hardcoded with no `dir` attribute (`app/layout.tsx:29`), Geist fonts loaded with `subsets: ["latin"]` only. The app is English-only today; findings are scoped to what blocks or complicates localization.
+
+## I-P1 — Structural blockers (fix before/with any localization effort)
+
+### I1. ~1,000+ hardcoded user-facing strings — High
+~360 inline JSX text nodes, **145 toast calls**, **273 API-route error strings** (which leak directly into the UI, e.g. `app/dashboard/sync/page.tsx:117` does `toast.error(data.error || 'Sync failed')`), 44 placeholders, 40 aria-labels. Worst offenders: `app/dashboard/plans/new/page.tsx` (long instructional copy with embedded arithmetic, lines 217, 426), `activities-view.tsx`, `sync/page.tsx`, `components/review/workout-card.tsx`.
+**Fix:** adopt `next-intl` in no-routing mode (app is fully auth-gated); extract screen-by-screen. For API routes, return stable error **codes** alongside messages and map codes→translated toasts client-side, so the 273 server strings don't need locale plumbing.
+
+### I2. English text persisted to the database — High (silent lock-in)
+- Observation titles written at creation time: `lib/analysis/flag-detector.ts:36` — `` `${n} workout${n>1?'s':''} missed in the last 7 days` ``; adjustment titles/descriptions in `adjustment-proposer.ts:66-67,111-112,152-153`. Once stored, they can't render in another locale.
+- LLM-generated plan/workout descriptions are stored in English; the prompt stack (`lib/agent/prompts.ts`, `coach-prompt.ts`, `lib/plans/llm-prompts.ts`) never instructs an output language — note `prompts.ts:95` already conditions units ("Always respond using miles…"), so the same mechanism can carry "Respond in {language}".
+**Fix:** store message key + params (`{type:'missed_workouts', count:n}`) and localize at display time; add a language line to the coach system prompt.
+
+### I3. Pluralization/concatenation hacks (~20 sites) — High under translation
+`=== 1 ? '' : 's'` and sentence assembly from fragments: `sync/page.tsx:86` (`activit${'y'|'ies'}`), `training-calendar.tsx:520,731,776`, `activities-view.tsx:226,366,599,618`, `plan-chat-interface.tsx:245`, `plan-diff-preview.tsx:111` (plural suffix in a separate JSX node from its word). Break in any language with multiple plural categories (Arabic, Polish, Russian) or different word order. **Fix:** ICU MessageFormat plurals (free with next-intl).
+
+## I-P2 — Date/number formatting (some are live bugs today)
+
+### I4. UTC-midnight date parsing — **live bug for users west of Greenwich** — High
+Some sites guard date-only strings (`+ 'T12:00:00'` in `chat/page.tsx:67`, `coach-prompt.ts:155,430`), but `plans/page.tsx:120,181,240` and `training-calendar.tsx:541-542` call `new Date('YYYY-MM-DD')` directly — parsed as UTC midnight, rendering one day early in UTC-negative timezones. **Fix:** standardize on `parseISO()` (already used correctly in `activity-detail.tsx:98`).
+
+### I5. Week-start handling is split-brained — Medium (correctness)
+`athlete.week_starts_on` is honored in the calendar/weekly-totals/phase-progress, but the **AI context loaders hardcode Monday** (`coach-context-loader.ts:380-381,467,500-502,531-532`, `context-loader.ts:73-74`) while `phase-progress.ts` defaults to Sunday. The AI coach and the UI can disagree about "this week." **Fix:** one `getWeekStart(athlete)` helper.
+
+### I6. Locale-blind date formatting — Medium
+Hardcoded `'en-US'`/`'en-GB'` in `app/dashboard/page.tsx:113`, `lib/chat/operation-prompts.ts:131,157`, `coach/route.ts:340`; ~40 date-fns `format()` display calls with English patterns and no `locale` arg (`'MMM d, yyyy'`, `'PPp'`, `'MMMM yyyy'`); 5 duplicated hardcoded day-name arrays (`lib/plans/operations/helpers.ts:12`, `phase-progress.ts:152`, etc.); `formatDistanceToNow` without locale (`session-list.tsx:72`). The `format(x, 'yyyy-MM-dd')` *data-key* calls are fine and should stay locale-independent. **Fix:** central `formatDate(date, style)` wrapper injecting locale.
+
+### I7. Number/unit formatting — Medium
+`lib/utils/units.ts` + `useUnits()` is the right architecture, but: 103 `toFixed()` call sites (always `12.5`, never `12,5`); unit labels concatenated with hardcoded order/spacing (`units.ts:62,77`); helper **bypasses** with inline `` `${(m/1000).toFixed(1)}km` `` in `chat/page.tsx:74`, `proposal-card.tsx:47,63,318`, `plan-preview/page.tsx:342`, plus `' bpm'`/`' m'` literals. **Fix:** route through `Intl.NumberFormat` (`style:'unit'`) inside the existing helpers; funnel bypasses through `useUnits()`.
+
+## I-P3 — RTL hazards (specifically requested)
+
+### I8. ~240 physical Tailwind direction classes; zero logical ones in app code — High (for RTL)
+`mr-2` ×58, `text-right` ×19, `space-x-*` ×18 (no `rtl:space-x-reverse` anywhere), `border-l` ×10, `left-*` ×16, `pl-*` ×17, `rounded-l/r` ×7… Logical properties (`ms-/me-/ps-/pe-/start-/end-`) appear **only** inside shadcn/ui primitives. **Fix:** mechanical codemod (`ml-→ms-`, `mr-→me-`, `pl-→ps-`, `pr-→pe-`, `left-→start-`, `text-left→text-start`, `space-x-N→gap-N`); Tailwind v4 supports all logical utilities natively, and they're no-ops in LTR so this can land early.
+
+### I9. Navigation drawer hardwired to the left edge — High (for RTL)
+`components/shared/navigation.tsx:137` — `fixed left-0 ... slide-out-to-left slide-in-from-left border-r`. Must mirror under RTL: `start-0`, `border-e`, dir-conditional slide animations.
+
+### I10. Directional icons that must flip — Medium
+`ChevronLeft/Right` prev/next in `custom-toolbar.tsx:42,56`; `ArrowLeft` back buttons in `plans/recommend/page.tsx:139,158,241`, `plans/review/[planId]/page.tsx:121`; `ArrowRight` as before→after indicator in `operations-preview.tsx:98`. **Fix:** `rtl:rotate-180` — `components/ui/calendar.tsx:33-34` already does this correctly and is the in-repo pattern to copy.
+
+### I11. react-big-calendar RTL — Medium
+None of the 4 RBC instances pass the `rtl` prop (supported); momentLocalizer pinned to `'en'` (`training-calendar.tsx:272`, mutated in render). Drag-reschedule is date-cell based so it survives mirroring, but the weekly-totals side column, strength-day-cell overlays, and the CLAUDE.md-flagged fragile grid layout make this a careful-test zone. Switching to `dateFnsLocalizer` (also perf item P3.1) gets locale + drops moment in one move.
+
+### I12. Bidi/mixed-direction text — Medium
+Paces ("5:30/km"), clock times, and workout codes (`W14:D6`) interpolated into sentences will scramble next to Arabic/Hebrew text; user activity names from Garmin/Strava are interpolated raw. Zero `translate=` usage in the codebase — pace notation, "VDOT", workout codes, and brand names should get `translate="no"` to survive Chrome auto-translate **even before real i18n lands**. **Fix:** wrap numeric/pace/code tokens in `<span dir="ltr" translate="no">`.
+
+### I13. Infrastructure gaps — Low/Medium
+No per-user `locale` column (natural home: `athletes`, next to `preferred_units`/`week_starts_on`); text-expansion risk in `w-[240px]` drawer, `h-7 px-3 text-xs` toolbar buttons, 11 `truncate` sites (German runs ~30% longer); add non-Latin font subsets when RTL locales land. `localeCompare` uses compare ISO date keys — fine.
+
+## Already i18n-friendly
+Metric-only storage with display-boundary conversion (`lib/utils/units.ts`); `useUnits()` is a ready-made locale injection point; ISO `yyyy-MM-dd` as data keys (clean data/presentation separation); Zod errors return structured field-level `details`; `ui/calendar.tsx` already RTL-flips its icons; Radix follows document `dir` automatically once set.
+
+## Migration path (pragmatic)
+- **Phase 0 (cheap, do regardless):** fix I4 (parseISO) and I5 (week-start helper) — these are live bugs; remove hardcoded `'en-US'`; add `translate="no"`/`dir="ltr"` spans for paces/codes; route unit-formatting bypasses through `useUnits()`.
+- **Phase 1:** next-intl without locale routing; `locale` column on athletes; `<html lang dir>` from provider; extract strings worst-offenders-first; ICU plurals; error codes from API routes; key+params for persisted observation/adjustment titles; "respond in {language}" in the coach prompt.
+- **Phase 2 (RTL):** Tailwind logical-properties codemod (can land early); icon flips; mirror nav drawer; RBC `rtl` prop + `dateFnsLocalizer`; regression-test the fragile calendar layout.
+
+---
+
+# Part 3 — Accessibility (WCAG 2.2 AA-oriented)
+
+*Note: contrast ratios and screen-reader behavior need runtime verification (axe/Lighthouse + NVDA/VoiceOver pass); findings below are from static review.*
+
+## A-P1 — High (blocks or seriously impedes AT/keyboard users)
+
+### A1. Chat: streamed AI responses are not announced — High (WCAG 4.1.3)
+`components/chat/coach-interface.tsx` — no `aria-live` region anywhere; a screen-reader user gets no notification that the AI coach replied, and the "Analysing your training data…/Thinking…" indicator (lines 363-374) is likewise silent. The send Textarea (line ~381) has only a placeholder — no label/`aria-label` (placeholder is not a reliable accessible name).
+**Fix:** wrap the latest assistant message (or a visually-hidden status node) in `aria-live="polite"`; announce "AI Coach is responding…" on send and completion; add `aria-label="Message your AI Coach"` to the Textarea. Same review for `chat-interface.tsx` and `plan-chat-interface.tsx`.
+
+### A2. Calendar events: keyboard reachability unverified; reschedule likely drag-only via keyboard — High (WCAG 2.1.1)
+`components/calendar/training-calendar.tsx` — react-big-calendar month-view events are not keyboard-focusable by default (known RBC gap), and no `onKeyPressEvent` handler is wired. The good news: the workout dialog renders `WorkoutCard` with a fully keyboard-operable date-picker reschedule (`workout-card.tsx:1304,1420-1434`), so the *capability* exists — the gap is *reaching* an event without a mouse.
+**Fix:** wire RBC's `onKeyPressEvent` and provide a focusable custom event component, or add a list-view alternative ("This week" list with per-workout actions). Verify with a keyboard-only pass.
+
+### A3. Color-only status encoding on calendar events — High (WCAG 1.4.1)
+`training-calendar.tsx:608-660` — workout type is conveyed by background color and completion status (completed/partial/skipped) solely by a 4px left-border color (green/yellow/red) plus opacity. Color-blind users cannot distinguish completed from skipped.
+**Fix:** add a status glyph (✓/½/✗ or lucide icon) to the event title/custom event component; the weekly chart (`weekly-progress-chart.tsx:61-66`) has the same emerald/rose color-only status issue.
+
+## A-P2 — Medium
+
+### A4. Icon-only buttons inconsistently labeled — Medium (WCAG 4.1.2)
+Good examples exist (`custom-toolbar.tsx:40,55` prev/next labeled; `workout-card.tsx:1349,1376`; `header.tsx:62`), but the activities-table **delete** button (`activities-view.tsx:485-492`, Trash2 icon) has no `aria-label` (its labeled "Discuss with AI Coach" sibling shows the intended pattern), and several `size="icon"` buttons in `session-detail-dialog.tsx:383-488`, `exercise-edit-row.tsx:57`, `review/chat-panel.tsx:104`, `workout-card.tsx:338,555,1361,1388,1404` need an audit. **Fix:** sweep all ~23 `size="icon"` sites; every one needs `aria-label`.
+
+### A5. Charts rely on `title` tooltips — Medium (WCAG 1.1.1)
+`weekly-progress-chart.tsx:37-83` — planned/actual bars are divs whose values are exposed only via `title` attributes (mouse-only; invisible to keyboard and most SR users). Actual values render as visible text (good); planned values don't. **Fix:** add an sr-only per-day summary ("Tuesday: planned 8 km, completed 7.5 km") or render the chart with a visually-hidden table; also fixes the 10px text minimum concern.
+
+### A6. No skip link; no `prefers-reduced-motion` handling — Medium (WCAG 2.4.1, 2.3.3)
+Landmarks are good (`<main>` in `dashboard/layout.tsx:17`, `<nav aria-label="Main navigation">`, `<header>`, `aria-current="page"` on nav items) but there's no skip-to-content link, and zero `motion-reduce:` usage — chat smooth-scroll (`coach-interface.tsx:140`), `animate-spin` loaders, and tw-animate-css transitions all ignore the user's motion preference. **Fix:** skip link in `app/layout.tsx`; `motion-reduce:` variants / `scrollIntoView({behavior: matchMedia('(prefers-reduced-motion)').matches ? 'auto' : 'smooth'})`.
+
+### A7. Async/loading states not announced — Medium (WCAG 4.1.3)
+Sync progress (`sync/page.tsx`), auto-match ("Matching…"), and AI summary polling (`ai-summary-panel.tsx`) update visually with no `role="status"`/`aria-live`. Sonner toasts ARE announced (built-in aria-live) — they partially cover this, but in-page progress indicators should carry `role="status"`. Loading states that `return null` (dashboard cards) also give SR users nothing; render labeled skeletons instead.
+
+## A-P3 — Low / verify at runtime
+
+- **A8.** Activities table (`activities-view.tsx:396+`): verify `TableHead` renders `<th scope="col">` (shadcn default is `<th>` without scope — usually acceptable), add a caption or `aria-label` on the table; the duplicated hidden mobile/desktop DOM (perf finding P3.7) also doubles what SRs traverse — fixing one fixes both.
+- **A9.** Contrast audit needed at runtime: heavy use of `text-muted-foreground`, white text on per-workout-type colors (`getWorkoutColor` backgrounds with `color:#fff`, opacity 0.35–0.9 variants), 10px chart labels, `text-xs` toolbar buttons.
+- **A10.** `components/activities/platform-icons.tsx` — verify Garmin/Strava source icons carry sr-only text (the source platform is meaning-bearing in merge review).
+- **A11.** Dialog hygiene is **good**: every `DialogContent` in the app has a `DialogTitle` (several correctly `sr-only`); Radix provides focus trap/restore; mobile nav toggle has `sr-only` text; login form has proper `htmlFor` labels; settings selects are labeled via `id`/`htmlFor`.
+
+## Top 5 a11y fixes by impact
+1. **A1** — aria-live for chat responses + label the chat input (the app's core feature is currently silent to SR users).
+2. **A2** — keyboard path to calendar events (capability exists in the dialog; make events reachable).
+3. **A3** — non-color status indicators on calendar events and weekly chart.
+4. **A4** — label the ~dozen unlabeled icon-only buttons (mechanical, an afternoon).
+5. **A6** — skip link + reduced-motion variants (small, broad benefit).
