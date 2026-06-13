@@ -307,3 +307,66 @@ export async function getWorkoutsForWeek(
     }
   })
 }
+
+export type WeekWorkout = Awaited<ReturnType<typeof getWorkoutsForWeek>>[number]
+
+/**
+ * Batched equivalent of {@link getWorkoutsForWeek}: loads workouts for several
+ * weeks in a single query and returns them grouped by week_number. Lets
+ * multi-week operations avoid one joined query per week (the old N+1).
+ */
+export async function getWorkoutsForWeeks(
+  planId: number,
+  weekNumbers: number[],
+  supabase: SupabaseClient
+): Promise<Map<number, WeekWorkout[]>> {
+  const byWeek = new Map<number, WeekWorkout[]>()
+  if (weekNumbers.length === 0) return byWeek
+
+  const { data, error } = await supabase
+    .from('planned_workouts')
+    .select(`
+      id,
+      day,
+      scheduled_date,
+      workout_type,
+      distance_target_meters,
+      structured_workout,
+      garmin_workout_id,
+      garmin_sync_status,
+      weekly_plans!inner (
+        week_number,
+        training_phases!inner (
+          plan_id
+        )
+      )
+    `)
+    .eq('weekly_plans.training_phases.plan_id', planId)
+    .in('weekly_plans.week_number', weekNumbers)
+
+  if (error || !data) {
+    console.error('Error fetching workouts for weeks:', error)
+    return byWeek
+  }
+
+  for (const workout of data as Array<Record<string, unknown>>) {
+    const wp = workout.weekly_plans as { week_number: number } | { week_number: number }[]
+    const weekNumber = (Array.isArray(wp) ? wp[0]?.week_number : wp?.week_number) as number
+    if (weekNumber == null) continue
+
+    const list = byWeek.get(weekNumber) ?? []
+    list.push({
+      id: workout.id as number,
+      day: workout.day as number,
+      scheduled_date: workout.scheduled_date as string,
+      workout_type: workout.workout_type as string,
+      distance_target_meters: workout.distance_target_meters as number | null,
+      structured_workout: workout.structured_workout as Record<string, unknown> | null,
+      garmin_workout_id: workout.garmin_workout_id as string | null,
+      garmin_sync_status: workout.garmin_sync_status as string | null,
+    })
+    byWeek.set(weekNumber, list)
+  }
+
+  return byWeek
+}

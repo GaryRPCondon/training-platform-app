@@ -1,6 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 import { subHours, addHours } from 'date-fns'
-import { findMergeCandidates, shouldAutoMerge } from '@/lib/activities/merge-detector'
+import { findMergeCandidates, shouldAutoMerge, type Activity } from '@/lib/activities/merge-detector'
 
 interface ActivityData {
   start_time: string
@@ -42,11 +42,32 @@ export async function findExistingMatch(
     .gte('start_time', subHours(searchTime, 12).toISOString())
     .lte('start_time', addHours(searchTime, 12).toISOString())
 
-  if (!potentialMatches || potentialMatches.length === 0) {
-    return null
-  }
+  return findExistingMatchInMemory(potentialMatches ?? [], activityData)
+}
 
-  // Use existing merge detection logic
+/**
+ * In-memory equivalent of {@link findExistingMatch} for batched sync paths that
+ * preload one wide time window of candidates instead of querying per activity.
+ * `candidates` may span a wider range than ±12h; this narrows to the ±12h
+ * window itself, so it returns the same result the per-activity query would.
+ */
+export function findExistingMatchInMemory(
+  candidates: ExistingMatch[],
+  activityData: ActivityData
+): ExistingMatch | null {
+  if (candidates.length === 0) return null
+
+  const searchTime = new Date(activityData.start_time).getTime()
+  const lo = subHours(new Date(searchTime), 12).getTime()
+  const hi = addHours(new Date(searchTime), 12).getTime()
+
+  const inWindow = candidates.filter(c => {
+    const t = new Date(c.start_time).getTime()
+    return t >= lo && t <= hi
+  })
+
+  if (inWindow.length === 0) return null
+
   const newActivityObj = {
     start_time: activityData.start_time,
     duration_seconds: activityData.duration_seconds || 0,
@@ -54,7 +75,7 @@ export async function findExistingMatch(
     source: activityData.source,
   }
 
-  const mergeCandidate = findMergeCandidates(newActivityObj, potentialMatches)
+  const mergeCandidate = findMergeCandidates(newActivityObj, inWindow as unknown as Activity[])
 
   if (mergeCandidate && shouldAutoMerge(mergeCandidate)) {
     return mergeCandidate.activity2 as ExistingMatch

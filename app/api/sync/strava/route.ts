@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { findMergeCandidates, shouldAutoMerge } from '@/lib/activities/merge-detector'
-import { findExistingMatch } from '@/lib/sync/pre-insert-dedup'
+import { findExistingMatchInMemory } from '@/lib/sync/pre-insert-dedup'
 import { acquireSyncLock, releaseSyncLock } from '@/lib/sync/sync-lock'
-import { format, subMinutes, addMinutes, subDays, addDays, subHours, addHours } from 'date-fns'
+import { format, subHours, addHours } from 'date-fns'
 import { z } from 'zod'
 
 const syncSchema = z.object({
@@ -180,14 +180,43 @@ export async function POST(request: Request) {
 
             const activitiesToProcess = stravaActivities
 
-            for (const activity of activitiesToProcess) {
-                const newActivity = {
-                    start_time: activity.start_date,
-                    duration_seconds: activity.elapsed_time,
-                    distance_meters: activity.distance,
-                    source: 'strava'
-                }
+            // --- Batch reads: replace the per-activity existence + dedup + merge
+            // queries (the N+1) with two queries for the whole batch. ---
 
+            // 1) Which of these Strava activities already exist locally.
+            const stravaIdStrs = activitiesToProcess
+                .map(a => a.id?.toString())
+                .filter((s): s is string => !!s)
+            const existingStravaIds = new Set<string>()
+            for (let i = 0; i < stravaIdStrs.length; i += 200) {
+                const chunk = stravaIdStrs.slice(i, i + 200)
+                const { data: existingRows } = await supabase
+                    .from('activities')
+                    .select('strava_id')
+                    .eq('athlete_id', athleteId)
+                    .in('strava_id', chunk)
+                for (const row of existingRows ?? []) {
+                    if (row.strava_id) existingStravaIds.add(row.strava_id)
+                }
+            }
+
+            // 2) One wide candidate window for dedup + merge detection. Held in
+            // memory and mutated as we merge so later activities see the same
+            // state a re-query would have.
+            const startMs = activitiesToProcess
+                .map(a => new Date(a.start_date).getTime())
+                .filter(t => !Number.isNaN(t))
+            const windowStart = subHours(new Date(startMs.length ? Math.min(...startMs) : Date.now()), 12).toISOString()
+            const windowEnd = addHours(new Date(startMs.length ? Math.max(...startMs) : Date.now()), 12).toISOString()
+            const { data: windowRows } = await supabase
+                .from('activities')
+                .select('*')
+                .eq('athlete_id', athleteId)
+                .gte('start_time', windowStart)
+                .lte('start_time', windowEnd)
+            const windowActivities: any[] = windowRows ?? []
+
+            for (const activity of activitiesToProcess) {
                 console.log('Processing Strava activity:', {
                     id: activity.id,
                     name: activity.name,
@@ -196,21 +225,15 @@ export async function POST(request: Request) {
                     distance: activity.distance
                 })
 
-                // Check if this Strava activity already exists
-                const { data: existingStrava } = await supabase
-                    .from('activities')
-                    .select('id, source')
-                    .eq('athlete_id', athleteId)
-                    .eq('strava_id', activity.id?.toString())
-                    .single()
-
-                if (existingStrava) {
-                    console.log(`Strava activity ${activity.id} already exists (ID: ${existingStrava.id}, source: ${existingStrava.source}), skipping`)
+                // Check if this Strava activity already exists (from the batch set)
+                const stravaIdStr = activity.id?.toString()
+                if (stravaIdStr && existingStravaIds.has(stravaIdStr)) {
+                    console.log(`Strava activity ${activity.id} already exists, skipping`)
                     continue
                 }
 
                 // Pre-insert dedup: check if a matching activity from another source already exists
-                const existingMatch = await findExistingMatch(supabase, athleteId, {
+                const existingMatch = findExistingMatchInMemory(windowActivities, {
                     start_time: activity.start_date,
                     distance_meters: activity.distance,
                     duration_seconds: activity.elapsed_time,
@@ -249,6 +272,10 @@ export async function POST(request: Request) {
                     if (!updateError) {
                         console.log(`Pre-insert merged into existing activity ${existingMatch.id}`)
                         mergedCount++
+                        // Reflect the merge in the in-memory window so this row is no
+                        // longer an available merge target for later activities.
+                        existingMatch.strava_id = activity.id?.toString()
+                        existingMatch.source = 'merged'
                     } else {
                         console.error('Pre-insert merge failed:', updateError)
                     }
@@ -299,16 +326,16 @@ export async function POST(request: Request) {
                 console.log('Successfully synced activity:', inserted?.id)
                 syncedCount++
 
-                // Check for merge candidates in the database (fallback)
-                const searchStartTime = new Date(activity.start_date)
-                const { data: potentialMatches } = await supabase
-                    .from('activities')
-                    .select('*')
-                    .eq('athlete_id', athleteId)
-                    .neq('source', 'strava')
-                    .is('strava_id', null)
-                    .gte('start_time', subHours(searchStartTime, 12).toISOString())
-                    .lte('start_time', addHours(searchStartTime, 12).toISOString())
+                // Check for merge candidates (fallback). Filter the in-memory
+                // window instead of re-querying.
+                const searchMs = new Date(activity.start_date).getTime()
+                const lo = subHours(new Date(searchMs), 12).getTime()
+                const hi = addHours(new Date(searchMs), 12).getTime()
+                const potentialMatches = windowActivities.filter(a => {
+                    if (a.source === 'strava' || a.strava_id != null) return false
+                    const t = new Date(a.start_time).getTime()
+                    return t >= lo && t <= hi
+                })
 
                 if (potentialMatches && potentialMatches.length > 0) {
                     console.log(`Found ${potentialMatches.length} potential matches for activity ${inserted.id}`)
@@ -370,6 +397,12 @@ export async function POST(request: Request) {
                                 if (!updateError) {
                                     console.log(`Successfully merged ${inserted.id} into ${mergeCandidate.activity2.id}`)
                                     mergedCount++
+                                    // Reflect the merge in the in-memory window.
+                                    const merged = windowActivities.find(a => a.id === mergeCandidate.activity2.id)
+                                    if (merged) {
+                                        merged.strava_id = activity.id?.toString()
+                                        merged.source = 'merged'
+                                    }
                                 } else {
                                     console.error('Failed to merge update:', updateError)
                                 }
@@ -409,6 +442,13 @@ export async function POST(request: Request) {
                     console.log(`No potential matches found in DB for activity ${inserted.id}`)
                 }
             }
+
+            // Update last synced timestamp (previously never written for Strava)
+            await supabase
+                .from('athlete_integrations')
+                .update({ last_synced_at: new Date().toISOString() })
+                .eq('athlete_id', athleteId)
+                .eq('platform', 'strava')
 
             return NextResponse.json({
                 success: true,

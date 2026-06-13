@@ -15,6 +15,7 @@ import {
   resolveWorkoutIndex,
   ensureWorkoutExists,
   getWorkoutsForWeek,
+  getWorkoutsForWeeks,
   getWorkoutTypeDefaults,
   calculateNewDate,
 } from './helpers'
@@ -235,8 +236,10 @@ async function executeSwapDays(
     ? planContext.weeks
     : planContext.weeks.filter(w => (op.weekNumbers as number[]).includes(w.week_number))
 
+  const workoutsByWeek = await getWorkoutsForWeeks(planId, targetWeeks.map(w => w.week_number), supabase)
+
   for (const week of targetWeeks) {
-    const workoutsForWeek = await getWorkoutsForWeek(planId, week.week_number, supabase)
+    const workoutsForWeek = workoutsByWeek.get(week.week_number) ?? []
     const workoutA = workoutsForWeek.find(w => w.day === op.dayA)
     const workoutB = workoutsForWeek.find(w => w.day === op.dayB)
 
@@ -290,8 +293,10 @@ async function executeMoveWorkoutType(
     ? planContext.weeks
     : planContext.weeks.filter(w => (op.weekNumbers as number[]).includes(w.week_number))
 
+  const workoutsByWeek = await getWorkoutsForWeeks(planId, targetWeeks.map(w => w.week_number), supabase)
+
   for (const week of targetWeeks) {
-    const workoutsForWeek = await getWorkoutsForWeek(planId, week.week_number, supabase)
+    const workoutsForWeek = workoutsByWeek.get(week.week_number) ?? []
 
     const workoutToMove = workoutsForWeek.find(w => w.workout_type === op.workoutType)
     if (!workoutToMove || workoutToMove.day === op.toDay) continue
@@ -705,8 +710,10 @@ async function executeRemoveWorkoutType(
     ? planContext.weeks
     : planContext.weeks.filter(w => (op.weekNumbers as number[]).includes(w.week_number))
 
+  const workoutsByWeek = await getWorkoutsForWeeks(planId, targetWeeks.map(w => w.week_number), supabase)
+
   for (const week of targetWeeks) {
-    const workoutsForWeek = await getWorkoutsForWeek(planId, week.week_number, supabase)
+    const workoutsForWeek = workoutsByWeek.get(week.week_number) ?? []
 
     for (const workout of workoutsForWeek) {
       if (workout.workout_type === op.workoutType) {
