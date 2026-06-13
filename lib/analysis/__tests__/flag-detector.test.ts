@@ -7,10 +7,7 @@ import { format } from 'date-fns'
 // ---------------------------------------------------------------------------
 
 const mockFrom = vi.fn()
-
-vi.mock('@/lib/supabase/client', () => ({
-  createClient: vi.fn(() => ({ from: mockFrom })),
-}))
+const mockSupabase = { from: mockFrom } as any
 
 vi.mock('../observation-manager', () => ({
   createObservation: vi.fn(),
@@ -77,7 +74,7 @@ describe('detectWorkoutFlags', () => {
 
   it('returns empty array when all metrics are normal', async () => {
     setupNoFlags()
-    const result = await detectWorkoutFlags('athlete-1')
+    const result = await detectWorkoutFlags(mockSupabase, 'athlete-1')
     expect(result).toHaveLength(0)
     expect(mockCreateObservation).not.toHaveBeenCalled()
   })
@@ -94,7 +91,7 @@ describe('detectWorkoutFlags', () => {
       .mockReturnValueOnce(makeQueryMock([]))
       .mockReturnValueOnce(makeQueryMock([]))
 
-    const result = await detectWorkoutFlags('athlete-1')
+    const result = await detectWorkoutFlags(mockSupabase, 'athlete-1')
     expect(result).toHaveLength(1)
     const call = mockCreateObservation.mock.calls[0]
     expect(call[1]).toBe('missed_workouts')
@@ -113,14 +110,14 @@ describe('detectWorkoutFlags', () => {
       .mockReturnValueOnce(makeQueryMock([]))
       .mockReturnValueOnce(makeQueryMock([]))
 
-    await detectWorkoutFlags('athlete-1')
+    await detectWorkoutFlags(mockSupabase, 'athlete-1')
     const call = mockCreateObservation.mock.calls[0]
     expect(call[2]).toBe('concern')
   })
 
   it('does not create missed-workout flag when none missed', async () => {
     setupNoFlags()
-    await detectWorkoutFlags('athlete-1')
+    await detectWorkoutFlags(mockSupabase, 'athlete-1')
     expect(mockCreateObservation).not.toHaveBeenCalledWith(
       expect.anything(), 'missed_workouts', expect.anything(), expect.anything(), expect.anything()
     )
@@ -140,7 +137,7 @@ describe('detectWorkoutFlags', () => {
       .mockReturnValueOnce(makeQueryMock([]))
       .mockReturnValueOnce(makeQueryMock([]))
 
-    await detectWorkoutFlags('athlete-1')
+    await detectWorkoutFlags(mockSupabase, 'athlete-1')
     const volumeCall = mockCreateObservation.mock.calls.find(c => c[1] === 'volume_gap')
     expect(volumeCall).toBeDefined()
     expect(volumeCall![2]).toBe('warning')
@@ -156,7 +153,7 @@ describe('detectWorkoutFlags', () => {
       .mockReturnValueOnce(makeQueryMock([]))
       .mockReturnValueOnce(makeQueryMock([]))
 
-    await detectWorkoutFlags('athlete-1')
+    await detectWorkoutFlags(mockSupabase, 'athlete-1')
     const volumeCall = mockCreateObservation.mock.calls.find(c => c[1] === 'volume_gap')
     expect(volumeCall![2]).toBe('concern')
   })
@@ -171,7 +168,7 @@ describe('detectWorkoutFlags', () => {
       .mockReturnValueOnce(makeQueryMock([]))
       .mockReturnValueOnce(makeQueryMock([]))
 
-    await detectWorkoutFlags('athlete-1')
+    await detectWorkoutFlags(mockSupabase, 'athlete-1')
     expect(mockCreateObservation).not.toHaveBeenCalledWith(
       expect.anything(), 'volume_gap', expect.anything(), expect.anything(), expect.anything()
     )
@@ -185,7 +182,7 @@ describe('detectWorkoutFlags', () => {
       .mockReturnValueOnce(makeQueryMock([]))
       .mockReturnValueOnce(makeQueryMock([]))
 
-    await detectWorkoutFlags('athlete-1')
+    await detectWorkoutFlags(mockSupabase, 'athlete-1')
     expect(mockCreateObservation).not.toHaveBeenCalled()
   })
 
@@ -208,7 +205,7 @@ describe('detectWorkoutFlags', () => {
       .mockReturnValueOnce(makeQueryMock([]))
       .mockReturnValueOnce(makeQueryMock([]))
 
-    await detectWorkoutFlags('athlete-1')
+    await detectWorkoutFlags(mockSupabase, 'athlete-1')
     const hrvCall = mockCreateObservation.mock.calls.find(c => c[1] === 'hrv_low')
     expect(hrvCall).toBeDefined()
     expect(hrvCall![2]).toBe('concern')
@@ -229,7 +226,7 @@ describe('detectWorkoutFlags', () => {
       .mockReturnValueOnce(makeQueryMock([]))
       .mockReturnValueOnce(makeQueryMock([]))
 
-    await detectWorkoutFlags('athlete-1')
+    await detectWorkoutFlags(mockSupabase, 'athlete-1')
     expect(mockCreateObservation).not.toHaveBeenCalledWith(
       expect.anything(), 'hrv_low', expect.anything(), expect.anything(), expect.anything()
     )
@@ -250,7 +247,7 @@ describe('detectWorkoutFlags', () => {
       .mockReturnValueOnce(makeQueryMock([]))
       .mockReturnValueOnce(makeQueryMock([]))
 
-    await detectWorkoutFlags('athlete-1')
+    await detectWorkoutFlags(mockSupabase, 'athlete-1')
     const hrCall = mockCreateObservation.mock.calls.find(c => c[1] === 'resting_hr_elevated')
     expect(hrCall).toBeDefined()
     expect(hrCall![2]).toBe('warning')
@@ -269,7 +266,7 @@ describe('detectWorkoutFlags', () => {
       .mockReturnValueOnce(makeQueryMock([]))
       .mockReturnValueOnce(makeQueryMock([]))
 
-    await detectWorkoutFlags('athlete-1')
+    await detectWorkoutFlags(mockSupabase, 'athlete-1')
     expect(mockCreateObservation).not.toHaveBeenCalledWith(
       expect.anything(), 'hrv_low', expect.anything(), expect.anything(), expect.anything()
     )
@@ -292,7 +289,7 @@ describe('detectWorkoutFlags', () => {
       .mockReturnValueOnce(makeQueryMock(dates.map(d => ({ start_time: d }))))
       .mockReturnValueOnce(makeQueryMock([]))
 
-    await detectWorkoutFlags('athlete-1')
+    await detectWorkoutFlags(mockSupabase, 'athlete-1')
     const gapCall = mockCreateObservation.mock.calls.find(c => c[1] === 'training_gap')
     expect(gapCall).toBeDefined()
     expect(gapCall![2]).toBe('warning')
@@ -310,7 +307,7 @@ describe('detectWorkoutFlags', () => {
       .mockReturnValueOnce(makeQueryMock(dates.map(d => ({ start_time: d }))))
       .mockReturnValueOnce(makeQueryMock([]))
 
-    await detectWorkoutFlags('athlete-1')
+    await detectWorkoutFlags(mockSupabase, 'athlete-1')
     const gapCall = mockCreateObservation.mock.calls.find(c => c[1] === 'training_gap')
     expect(gapCall![2]).toBe('concern')
   })
@@ -328,7 +325,7 @@ describe('detectWorkoutFlags', () => {
       .mockReturnValueOnce(makeQueryMock(dates.map(d => ({ start_time: d }))))
       .mockReturnValueOnce(makeQueryMock([]))
 
-    await detectWorkoutFlags('athlete-1')
+    await detectWorkoutFlags(mockSupabase, 'athlete-1')
     expect(mockCreateObservation).not.toHaveBeenCalledWith(
       expect.anything(), 'training_gap', expect.anything(), expect.anything(), expect.anything()
     )
@@ -357,7 +354,7 @@ describe('detectWorkoutFlags', () => {
       .mockReturnValueOnce(makeQueryMock([]))
       .mockReturnValueOnce(makeQueryMock(runs))
 
-    await detectWorkoutFlags('athlete-1')
+    await detectWorkoutFlags(mockSupabase, 'athlete-1')
     const paceCall = mockCreateObservation.mock.calls.find(c => c[1] === 'pace_decline')
     expect(paceCall).toBeDefined()
     expect(paceCall![2]).toBe('info')
@@ -375,7 +372,7 @@ describe('detectWorkoutFlags', () => {
       .mockReturnValueOnce(makeQueryMock([]))
       .mockReturnValueOnce(makeQueryMock(runs))
 
-    await detectWorkoutFlags('athlete-1')
+    await detectWorkoutFlags(mockSupabase, 'athlete-1')
     expect(mockCreateObservation).not.toHaveBeenCalledWith(
       expect.anything(), 'pace_decline', expect.anything(), expect.anything(), expect.anything()
     )

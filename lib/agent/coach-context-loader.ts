@@ -21,6 +21,7 @@ import type { StrengthExercise } from '@/types/database'
 import { loadFullTemplate } from '@/lib/templates/template-loader'
 import { resolveAllPaces, type ResolvedPace } from '@/lib/plans/pace-resolver'
 import { calculateTrainingPaces, calculateRacePaces } from '@/lib/training/vdot'
+import { resolveWeekStartsOn, type WeekStartsOn } from '@/lib/utils/week'
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -219,6 +220,8 @@ export async function loadCoachContext(
         loadActivePlan(supabase, athleteId, today),
     ])
 
+    const weekStartsOn = resolveWeekStartsOn(athlete)
+
     // Round 2: everything that depends on plan.id or just needs athleteId + today
     const [
         currentPhase,
@@ -232,8 +235,8 @@ export async function loadCoachContext(
         strengthSessions,
     ] = await Promise.all([
         plan ? loadCurrentPhase(supabase, plan.id, todayStr) : Promise.resolve(null),
-        loadThisWeek(supabase, athleteId, today),
-        loadUpcomingWeeks(supabase, athleteId, today, 4),
+        loadThisWeek(supabase, athleteId, today, weekStartsOn),
+        loadUpcomingWeeks(supabase, athleteId, today, 4, weekStartsOn),
         loadConstraints(supabase, athleteId),
         loadRecentFeedback(supabase, athleteId),
         loadPersonalRecords(supabase, athleteId),
@@ -245,7 +248,7 @@ export async function loadCoachContext(
     // Round 3: phase execution (needs phase start/end dates) + methodology paces
     const [phaseExecution, methodologyPaces] = await Promise.all([
         currentPhase
-            ? loadPhaseExecution(supabase, athleteId, currentPhase.start_date, currentPhase.end_date, todayStr)
+            ? loadPhaseExecution(supabase, athleteId, currentPhase.start_date, currentPhase.end_date, todayStr, weekStartsOn)
             : Promise.resolve(null),
         loadMethodologyPaces(plan, athlete.vdot),
     ])
@@ -309,7 +312,7 @@ async function loadAthleteProfile(supabase: SupabaseClient, athleteId: string): 
         preferred_units: data?.preferred_units ?? 'metric',
         vdot: data?.vdot ?? null,
         training_paces: data?.training_paces ?? null,
-        week_starts_on: data?.week_starts_on ?? 1,
+        week_starts_on: data?.week_starts_on ?? 0,
     }
 }
 
@@ -375,10 +378,11 @@ async function loadCurrentPhase(
 async function loadThisWeek(
     supabase: SupabaseClient,
     athleteId: string,
-    today: Date
+    today: Date,
+    weekStartsOn: WeekStartsOn
 ): Promise<CoachWeekContext | null> {
-    const weekStart = format(startOfWeek(today, { weekStartsOn: 1 }), 'yyyy-MM-dd')
-    const weekEnd = format(endOfWeek(today, { weekStartsOn: 1 }), 'yyyy-MM-dd')
+    const weekStart = format(startOfWeek(today, { weekStartsOn }), 'yyyy-MM-dd')
+    const weekEnd = format(endOfWeek(today, { weekStartsOn }), 'yyyy-MM-dd')
 
     const [{ data: weeklyPlan }, { data: workouts }] = await Promise.all([
         supabase
@@ -423,7 +427,8 @@ async function loadPhaseExecution(
     athleteId: string,
     phaseStart: string,
     phaseEnd: string,
-    todayStr: string
+    todayStr: string,
+    weekStartsOn: WeekStartsOn
 ): Promise<CoachPhaseExecution> {
     const { data: workouts } = await supabase
         .from('planned_workouts')
@@ -464,7 +469,7 @@ async function loadPhaseExecution(
     const weekMap = new Map<string, { planned: number; actual: number; wPlanned: number; wCompleted: number }>()
     for (const w of workouts) {
         const date = new Date(w.scheduled_date)
-        const weekStart = format(startOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd')
+        const weekStart = format(startOfWeek(date, { weekStartsOn }), 'yyyy-MM-dd')
         if (!weekMap.has(weekStart)) {
             weekMap.set(weekStart, { planned: 0, actual: 0, wPlanned: 0, wCompleted: 0 })
         }
@@ -494,11 +499,12 @@ async function loadUpcomingWeeks(
     supabase: SupabaseClient,
     athleteId: string,
     today: Date,
-    weeksAhead: number
+    weeksAhead: number,
+    weekStartsOn: WeekStartsOn
 ): Promise<CoachUpcomingWeek[]> {
     // Start from the beginning of next week (today's week is covered by thisWeek)
-    const thisWeekEnd = endOfWeek(today, { weekStartsOn: 1 })
-    const rangeStart = format(addWeeks(startOfWeek(today, { weekStartsOn: 1 }), 1), 'yyyy-MM-dd')
+    const thisWeekEnd = endOfWeek(today, { weekStartsOn })
+    const rangeStart = format(addWeeks(startOfWeek(today, { weekStartsOn }), 1), 'yyyy-MM-dd')
     const rangeEnd = format(addWeeks(thisWeekEnd, weeksAhead), 'yyyy-MM-dd')
 
     const [{ data: workouts }, { data: weeklyPlans }] = await Promise.all([
@@ -528,8 +534,8 @@ async function loadUpcomingWeeks(
     const weekMap = new Map<string, CoachUpcomingWeek>()
     for (const w of workouts) {
         const date = new Date(w.scheduled_date)
-        const weekStart = format(startOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd')
-        const weekEnd = format(endOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd')
+        const weekStart = format(startOfWeek(date, { weekStartsOn }), 'yyyy-MM-dd')
+        const weekEnd = format(endOfWeek(date, { weekStartsOn }), 'yyyy-MM-dd')
         if (!weekMap.has(weekStart)) {
             weekMap.set(weekStart, {
                 week_start: weekStart,

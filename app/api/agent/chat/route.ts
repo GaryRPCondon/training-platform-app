@@ -68,7 +68,7 @@ export async function POST(request: Request) {
         await saveMessage(currentSessionId!, 'user', userMessage.content, undefined, supabase)
 
         // Load multi-timescale context
-        const context = await loadAgentContext(athleteId)
+        const context = await loadAgentContext(supabase, athleteId)
 
         // Get athlete's preferred provider
         const { data: athlete } = await supabase

@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client'
 import { differenceInWeeks, format } from 'date-fns'
+import { resolveWeekStartsOn } from '@/lib/utils/week'
 
 // Activity types stored in DB that count as "running"
 // Garmin: 'running' (from mapGarminActivityType). Strava: 'Run' (raw type).
@@ -119,7 +120,7 @@ export async function getWeeklyProgress(athleteId: string): Promise<DailyProgres
         .eq('id', athleteId)
         .single()
 
-    const weekStartsOn = athlete?.week_starts_on ?? 0 // Default to Sunday if not set
+    const weekStartsOn = resolveWeekStartsOn(athlete)
 
     // Calculate week start based on user preference
     const realWeekStart = new Date(today)

@@ -52,7 +52,7 @@ export class GarminClient {
     } catch (error: unknown) {
       // Check if this is an MFA-related error
       if (this.isMFAError(error)) {
-        throw new Error('Multi-factor authentication detected. Unfortunately Garmin MFA is not supported. You can continue to synchronize via Strava, or try authenticating while MFA is temporarily disabled.')
+        throw new Error('Multi-factor authentication detected. Garmin MFA is not currently supported by this integration — please keep MFA enabled on your Garmin account and synchronize via Strava instead.')
       }
       throw error
     }

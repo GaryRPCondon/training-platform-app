@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/client'
+import { SupabaseClient } from '@supabase/supabase-js'
 import { subDays, format, differenceInDays } from 'date-fns'
 import { createObservation } from './observation-manager'
 
@@ -11,8 +11,7 @@ export interface Flag {
     created_at: string
 }
 
-export async function detectWorkoutFlags(athleteId: string): Promise<Flag[]> {
-    const supabase = createClient()
+export async function detectWorkoutFlags(supabase: SupabaseClient, athleteId: string): Promise<Flag[]> {
     const flags: Flag[] = []
     const today = new Date()
     const sevenDaysAgo = format(subDays(today, 7), 'yyyy-MM-dd')
@@ -34,7 +33,8 @@ export async function detectWorkoutFlags(athleteId: string): Promise<Flag[]> {
             'missed_workouts',
             missedWorkouts.length >= 3 ? 'concern' : 'warning',
             `${missedWorkouts.length} workout${missedWorkouts.length > 1 ? 's' : ''} missed in the last 7 days`,
-            { count: missedWorkouts.length, workouts: missedWorkouts.map(w => w.scheduled_date) }
+            { count: missedWorkouts.length, workouts: missedWorkouts.map(w => w.scheduled_date) },
+            supabase
         )
         flags.push(observation)
     }
@@ -65,7 +65,8 @@ export async function detectWorkoutFlags(athleteId: string): Promise<Flag[]> {
                 'volume_gap',
                 gap > plannedVolume * 0.5 ? 'concern' : 'warning',
                 `Running ${Math.round(gap)}km behind this week's target`,
-                { planned: plannedVolume, actual: actualVolume, gap }
+                { planned: plannedVolume, actual: actualVolume, gap },
+                supabase
             )
             flags.push(observation)
         }
@@ -89,7 +90,8 @@ export async function detectWorkoutFlags(athleteId: string): Promise<Flag[]> {
                 'hrv_low',
                 'concern',
                 'HRV is 15% below baseline - consider additional recovery',
-                { current: recentHrv, baseline: avgHrv }
+                { current: recentHrv, baseline: avgHrv },
+                supabase
             )
             flags.push(observation)
         }
@@ -104,7 +106,8 @@ export async function detectWorkoutFlags(athleteId: string): Promise<Flag[]> {
                 'resting_hr_elevated',
                 'warning',
                 'Resting HR is elevated - possible fatigue or illness',
-                { current: recentRestingHr, baseline: avgRestingHr }
+                { current: recentRestingHr, baseline: avgRestingHr },
+                supabase
             )
             flags.push(observation)
         }
@@ -134,7 +137,8 @@ export async function detectWorkoutFlags(athleteId: string): Promise<Flag[]> {
                 'training_gap',
                 maxGap > 14 ? 'concern' : 'warning',
                 `${maxGap}-day gap in training detected`,
-                { maxGap }
+                { maxGap },
+                supabase
             )
             flags.push(observation)
         }
@@ -166,7 +170,8 @@ export async function detectWorkoutFlags(athleteId: string): Promise<Flag[]> {
                 'pace_decline',
                 'info',
                 'Recent pace is slower than usual - check if this is intentional',
-                { recentPace: recentAvg.toFixed(2), previousPace: olderAvg.toFixed(2) }
+                { recentPace: recentAvg.toFixed(2), previousPace: olderAvg.toFixed(2) },
+                supabase
             )
             flags.push(observation)
         }

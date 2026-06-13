@@ -1,15 +1,32 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-/** Paths that never require authentication. */
-const PUBLIC_PATHS = new Set(['/', '/login'])
-
-/** Prefixes that are always public regardless of the full path. */
-const PUBLIC_PREFIXES = ['/api/auth/', '/api/strava/callback', '/api/jobs/', '/api/dev/']
+/**
+ * Exact paths that never require authentication. Listed explicitly (rather than
+ * by open-ended prefix) so a NEW route added under /api/auth, /api/jobs, etc.
+ * is protected by default and must be opted in here deliberately. Each of these
+ * routes additionally self-guards (HMAC token, cron secret, OAuth state, admin
+ * verification).
+ */
+const PUBLIC_PATHS = new Set([
+    '/',
+    '/login',
+    '/api/strava/callback',
+    '/api/auth/approve',
+    '/api/auth/create-athlete',
+    '/api/auth/delete-account',
+    '/api/auth/garmin',
+    '/api/auth/garmin/disconnect',
+    '/api/auth/logout',
+    '/api/jobs/push-summaries',
+])
 
 function isPublic(pathname: string): boolean {
     if (PUBLIC_PATHS.has(pathname)) return true
-    return PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+    // Dev-only endpoints are public solely outside production; they also
+    // self-guard on NODE_ENV === 'development' at the route level.
+    if (process.env.NODE_ENV !== 'production' && pathname.startsWith('/api/dev/')) return true
+    return false
 }
 
 export async function proxy(request: NextRequest) {

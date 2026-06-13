@@ -22,13 +22,13 @@ export async function GET() {
         const athleteId = user.id
 
         // Run flag detection
-        await detectWorkoutFlags(athleteId)
+        await detectWorkoutFlags(supabase, athleteId)
 
         // Get active observations
-        const observations = await getActiveObservations(athleteId)
+        const observations = await getActiveObservations(supabase, athleteId)
 
         // Get adjustment proposals
-        const adjustments = await proposeAdjustments(athleteId)
+        const adjustments = await proposeAdjustments(supabase, athleteId)
 
         return NextResponse.json({ observations, adjustments })
     } catch (error) {

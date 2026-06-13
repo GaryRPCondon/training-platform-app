@@ -11,6 +11,7 @@ import { Loader2 } from 'lucide-react'
 import { ProposalCard } from '@/components/chat/proposal-card'
 import { StrengthProposalCard } from '@/components/chat/strength-proposal-card'
 import type { WorkoutProposal, StrengthSessionProposal } from '@/lib/agent/coach-tools'
+import { scrollBehavior } from '@/lib/utils/motion'
 import type { TrainingPaces } from '@/types/database'
 
 type LoadingStatus = 'loading' | 'thinking' | null
@@ -137,7 +138,7 @@ export function CoachInterface({ sessionId: propSessionId, onSessionChange, work
     // Auto-scroll
     // -----------------------------------------------------------------------
     useEffect(() => {
-        scrollRef.current?.scrollIntoView({ behavior: 'smooth' })
+        scrollRef.current?.scrollIntoView({ behavior: scrollBehavior() })
     }, [messages])
 
     // -----------------------------------------------------------------------
@@ -377,11 +378,23 @@ export function CoachInterface({ sessionId: propSessionId, onSessionChange, work
                 </div>
             </ScrollArea>
 
+            {/* Screen-reader announcements: "responding" while streaming, then the
+                completed reply once. Visually hidden; the visible bubbles above are
+                not in a live region so they are not double-announced during streaming. */}
+            <div aria-live="polite" role="status" className="sr-only">
+                {isSending
+                    ? 'AI Coach is responding…'
+                    : messages.length > 0 && messages[messages.length - 1].role === 'assistant'
+                        ? messages[messages.length - 1].content
+                        : ''}
+            </div>
+
             <div className="p-4 border-t flex gap-2">
                 <Textarea
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     placeholder="Ask about your training..."
+                    aria-label="Message your AI Coach"
                     className="min-h-[60px]"
                     onKeyDown={e => {
                         if (e.key === 'Enter' && !e.shiftKey) {

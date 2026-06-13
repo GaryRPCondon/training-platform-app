@@ -669,9 +669,16 @@ async function executeScaleWeekVolume(
   if (week) {
     const { data: weeklyPlan } = await supabase
       .from('weekly_plans')
-      .select('id, weekly_volume_target')
+      .select(`
+        id,
+        weekly_volume_target,
+        training_phases!inner (
+          plan_id
+        )
+      `)
+      .eq('training_phases.plan_id', planId)
       .eq('week_number', op.weekNumber)
-      .single()
+      .maybeSingle()
 
     if (weeklyPlan) {
       const newVolume = Math.round((weeklyPlan.weekly_volume_target || 0) * op.factor)

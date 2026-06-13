@@ -74,6 +74,9 @@ export function CustomToolbar({ date, onNavigate, onAutoMatch, isAutoMatching, r
                         {isAutoMatching ? 'Matching...' : 'Auto-Match Activities'}
                     </Button>
                 )}
+                <div aria-live="polite" role="status" className="sr-only">
+                    {isAutoMatching ? 'Matching activities to workouts…' : ''}
+                </div>
             </div>
             {onRunningOnlyChange && (
                 <div className="flex items-center gap-2">

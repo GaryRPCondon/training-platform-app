@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Card } from '@/components/ui/card'
 import { Loader2 } from 'lucide-react'
+import { scrollBehavior } from '@/lib/utils/motion'
 
 interface Message {
     role: 'user' | 'assistant'
@@ -50,7 +51,7 @@ export function ChatInterface({ sessionId: propSessionId, onSessionChange }: Cha
 
     useEffect(() => {
         if (scrollRef.current) {
-            scrollRef.current.scrollIntoView({ behavior: 'smooth' })
+            scrollRef.current.scrollIntoView({ behavior: scrollBehavior() })
         }
     }, [messages])
 
@@ -129,11 +130,21 @@ export function ChatInterface({ sessionId: propSessionId, onSessionChange }: Cha
                 </div>
             </ScrollArea>
 
+            {/* Screen-reader announcements: "responding" while pending, then the reply. */}
+            <div aria-live="polite" role="status" className="sr-only">
+                {sendMessage.isPending
+                    ? 'AI Coach is responding…'
+                    : messages.length > 0 && messages[messages.length - 1].role === 'assistant'
+                        ? messages[messages.length - 1].content
+                        : ''}
+            </div>
+
             <div className="p-4 border-t flex gap-2">
                 <Textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     placeholder="Ask about your training..."
+                    aria-label="Message your AI Coach"
                     className="min-h-[60px]"
                     onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {

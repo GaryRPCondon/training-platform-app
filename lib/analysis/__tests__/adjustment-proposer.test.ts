@@ -5,10 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 // ---------------------------------------------------------------------------
 
 const mockFrom = vi.fn()
-
-vi.mock('@/lib/supabase/client', () => ({
-  createClient: vi.fn(() => ({ from: mockFrom })),
-}))
+const mockSupabase = { from: mockFrom } as any
 
 // Mock saveAdjustmentProposal as no-op to isolate decision logic
 vi.mock('../adjustment-persistence', () => ({
@@ -64,7 +61,7 @@ describe('proposeAdjustments', () => {
 
   it('returns empty array when no current week plan found', async () => {
     mockFrom.mockReturnValueOnce(makeQueryMock(null))  // weekly_plans → null
-    const result = await proposeAdjustments('athlete-1')
+    const result = await proposeAdjustments(mockSupabase, 'athlete-1')
     expect(result).toHaveLength(0)
   })
 
@@ -81,7 +78,7 @@ describe('proposeAdjustments', () => {
         { id: 2, distance_meters: 10000 },
       ]))
 
-    const result = await proposeAdjustments('athlete-1')
+    const result = await proposeAdjustments(mockSupabase, 'athlete-1')
     expect(result).toHaveLength(0)
   })
 
@@ -104,7 +101,7 @@ describe('proposeAdjustments', () => {
       .mockReturnValueOnce(makeQueryMock(workouts))
       .mockReturnValueOnce(makeQueryMock([]))
 
-    const result = await proposeAdjustments('athlete-1')
+    const result = await proposeAdjustments(mockSupabase, 'athlete-1')
     expect(result.some(a => a.type === 'reduce_volume')).toBe(true)
   })
 
@@ -128,7 +125,7 @@ describe('proposeAdjustments', () => {
       .mockReturnValueOnce(makeQueryMock(workouts))
       .mockReturnValueOnce(makeQueryMock([]))
 
-    const result = await proposeAdjustments('athlete-1')
+    const result = await proposeAdjustments(mockSupabase, 'athlete-1')
     const volumeAdjustment = result.find(a => a.type === 'reduce_volume')!
     expect(volumeAdjustment).toBeDefined()
     const change = volumeAdjustment.proposedChanges.workouts[0]
@@ -152,7 +149,7 @@ describe('proposeAdjustments', () => {
       .mockReturnValueOnce(makeQueryMock(workouts))
       .mockReturnValueOnce(makeQueryMock([]))  // 0 activities completed → 0%
 
-    const result = await proposeAdjustments('athlete-1')
+    const result = await proposeAdjustments(mockSupabase, 'athlete-1')
     expect(result.some(a => a.type === 'add_recovery')).toBe(true)
   })
 
@@ -170,7 +167,7 @@ describe('proposeAdjustments', () => {
       .mockReturnValueOnce(makeQueryMock(workouts))
       .mockReturnValueOnce(makeQueryMock([]))
 
-    const result = await proposeAdjustments('athlete-1')
+    const result = await proposeAdjustments(mockSupabase, 'athlete-1')
     expect(result.some(a => a.type === 'add_recovery')).toBe(false)
   })
 
@@ -193,7 +190,7 @@ describe('proposeAdjustments', () => {
       .mockReturnValueOnce(makeQueryMock(workouts))
       .mockReturnValueOnce(makeQueryMock([]))
 
-    const result = await proposeAdjustments('athlete-1')
+    const result = await proposeAdjustments(mockSupabase, 'athlete-1')
     expect(result.some(a => a.type === 'reschedule')).toBe(true)
   })
 
@@ -217,7 +214,7 @@ describe('proposeAdjustments', () => {
       .mockReturnValueOnce(makeQueryMock(workouts))
       .mockReturnValueOnce(makeQueryMock([]))
 
-    const result = await proposeAdjustments('athlete-1')
+    const result = await proposeAdjustments(mockSupabase, 'athlete-1')
     const reschedule = result.find(a => a.type === 'reschedule')!
     expect(reschedule.proposedChanges.currentDate).toBe(longRunDate)
     // New date should be 7 days later

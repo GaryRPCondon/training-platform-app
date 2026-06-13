@@ -3,6 +3,7 @@
  */
 
 import { formatClock } from '@/lib/utils/units'
+import { sanitizeUserText } from '@/lib/utils/sanitize'
 
 const BASE_PROMPT = `You are an expert AI running coach with deep knowledge of training physiology, periodization, and injury prevention. You provide personalized, evidence-based training advice.
 
@@ -90,7 +91,7 @@ function formatContext(context: any): string {
     const parts: string[] = []
 
     if (context.athlete) {
-        parts.push(`Athlete Profile: ${context.athlete.name || 'Unknown'}`)
+        parts.push(`Athlete Profile: ${sanitizeUserText(context.athlete.name) || 'Unknown'}`)
         const preferredUnits = context.athlete.preferred_units || 'metric'
         parts.push(`Preferred Units: ${preferredUnits} (IMPORTANT: Always respond using ${preferredUnits === 'imperial' ? 'miles, feet, and min/mi pace' : 'kilometers, meters, and min/km pace'})`)
         if (context.athlete.vo2_max) parts.push(`VO2 Max: ${context.athlete.vo2_max}`)
@@ -133,7 +134,7 @@ function formatContext(context: any): string {
                     secsPerKm ? `${formatClock(secsPerKm)}/km` : 'N/A'
                 const formatDist = (m: number | null) => m ? `${(m / 1000).toFixed(2)}km` : 'N/A'
 
-                parts.push(`\nMost Recent Activity (${mostRecent.activity_name}):`)
+                parts.push(`\nMost Recent Activity (${sanitizeUserText(mostRecent.activity_name) || 'Activity'}):`)
                 if (warmup) {
                     parts.push(`  Warmup: ${formatDist(warmup.distance_meters)} @ ${formatPace(warmup.avg_pace)}, HR ${warmup.avg_hr ?? 'N/A'}`)
                 }

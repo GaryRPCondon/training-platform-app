@@ -538,8 +538,8 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
         const workoutEvents = sortedWorkouts.map(w => ({
             id: `workout-${w.id}`,
             title: formatWorkoutTitle(w, preferredUnits),
-            start: new Date(w.scheduled_date),
-            end: new Date(w.scheduled_date),
+            start: parseISO(w.scheduled_date),
+            end: parseISO(w.scheduled_date),
             allDay: true,
             resource: {
                 type: 'workout',
