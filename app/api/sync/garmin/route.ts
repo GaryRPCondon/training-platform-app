@@ -149,7 +149,9 @@ export async function POST(request: Request) {
           .eq('athlete_id', athleteId)
           .in('garmin_id', chunk)
         for (const row of existingRows ?? []) {
-          if (row.garmin_id) existingByGarminId.set(row.garmin_id, { id: row.id, has_detail_data: row.has_detail_data })
+          // garmin_id is bigint → comes back as a JS number; normalise the map
+          // key to a string so it matches activity.activityId.toString() below.
+          if (row.garmin_id != null) existingByGarminId.set(String(row.garmin_id), { id: row.id, has_detail_data: row.has_detail_data })
         }
       }
 
@@ -261,9 +263,11 @@ export async function POST(request: Request) {
             console.log(`Pre-insert merged into existing activity ${existingMatch.id}`)
             mergedCount++
             // Reflect the merge in the in-memory window so this row is no longer
-            // an available merge target for later activities in the batch.
+            // an available merge target for later activities in the batch, and
+            // mark the garmin_id as present so an intra-batch duplicate skips.
             existingMatch.garmin_id = activityIdStr
             existingMatch.source = 'merged'
+            existingByGarminId.set(activityIdStr, { id: existingMatch.id, has_detail_data: true })
             const { lapsInserted } = await fetchAndStoreLapDetail(
               activity.activityId, existingMatch.id, garminClient, supabase
             )
@@ -288,6 +292,9 @@ export async function POST(request: Request) {
 
         console.log(`Synced Garmin activity ${activityIdStr} -> DB ID ${inserted.id}`)
         syncedCount++
+        // Track within this batch so a duplicate of the same activity later in
+        // the same fetch is skipped (the old per-activity re-query did this).
+        existingByGarminId.set(activityIdStr, { id: inserted.id, has_detail_data: true })
 
         const { lapsInserted: newLaps } = await fetchAndStoreLapDetail(
           activity.activityId, inserted.id, garminClient, supabase
@@ -359,6 +366,7 @@ export async function POST(request: Request) {
                     merged.garmin_id = activityIdStr
                     merged.source = 'merged'
                   }
+                  existingByGarminId.set(activityIdStr, { id: mergeCandidate.activity2.id!, has_detail_data: true })
                   const { lapsInserted: mergeLaps } = await fetchAndStoreLapDetail(
                     activity.activityId, mergeCandidate.activity2.id!, garminClient, supabase
                   )

@@ -196,7 +196,9 @@ export async function POST(request: Request) {
                     .eq('athlete_id', athleteId)
                     .in('strava_id', chunk)
                 for (const row of existingRows ?? []) {
-                    if (row.strava_id) existingStravaIds.add(row.strava_id)
+                    // strava_id is bigint → comes back as a JS number; normalise
+                    // to a string so it matches activity.id?.toString() below.
+                    if (row.strava_id != null) existingStravaIds.add(String(row.strava_id))
                 }
             }
 
@@ -273,16 +275,19 @@ export async function POST(request: Request) {
                         console.log(`Pre-insert merged into existing activity ${existingMatch.id}`)
                         mergedCount++
                         // Reflect the merge in the in-memory window so this row is no
-                        // longer an available merge target for later activities.
+                        // longer an available merge target for later activities, and
+                        // mark the strava_id so an intra-batch duplicate skips.
                         existingMatch.strava_id = activity.id?.toString()
                         existingMatch.source = 'merged'
+                        if (activity.id != null) existingStravaIds.add(String(activity.id))
                     } else {
                         console.error('Pre-insert merge failed:', updateError)
                     }
                     continue
                 }
 
-                // Insert new activity
+                // Insert new activity. HR columns are integer; Strava reports HR
+                // as a float, so round to avoid "invalid input syntax for integer".
                 const activityData: any = {
                     athlete_id: athleteId,
                     strava_id: activity.id?.toString(),
@@ -293,8 +298,8 @@ export async function POST(request: Request) {
                     distance_meters: activity.distance,
                     duration_seconds: activity.elapsed_time,
                     moving_duration_seconds: activity.moving_time,
-                    avg_hr: activity.average_heartrate ?? null,
-                    max_hr: activity.max_heartrate ?? null,
+                    avg_hr: activity.average_heartrate != null ? Math.round(activity.average_heartrate) : null,
+                    max_hr: activity.max_heartrate != null ? Math.round(activity.max_heartrate) : null,
                     elevation_gain_meters: activity.total_elevation_gain ?? null,
                     strava_data: {
                         workout_type: activity.workout_type,
@@ -325,6 +330,9 @@ export async function POST(request: Request) {
 
                 console.log('Successfully synced activity:', inserted?.id)
                 syncedCount++
+                // Track within this batch so a duplicate of the same activity
+                // later in the same fetch is skipped.
+                if (activity.id != null) existingStravaIds.add(String(activity.id))
 
                 // Check for merge candidates (fallback). Filter the in-memory
                 // window instead of re-querying.
@@ -403,6 +411,7 @@ export async function POST(request: Request) {
                                         merged.strava_id = activity.id?.toString()
                                         merged.source = 'merged'
                                     }
+                                    if (activity.id != null) existingStravaIds.add(String(activity.id))
                                 } else {
                                     console.error('Failed to merge update:', updateError)
                                 }
