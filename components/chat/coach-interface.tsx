@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, memo } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Button } from '@/components/ui/button'
@@ -56,7 +56,9 @@ interface CoachInterfaceProps {
 // Markdown renderer for assistant messages
 // ---------------------------------------------------------------------------
 
-function AssistantMessage({ content }: { content: string }) {
+// Memoized so streaming a new message doesn't re-parse the markdown of every
+// prior assistant message (content is the only prop; shallow compare suffices).
+const AssistantMessage = memo(function AssistantMessage({ content }: { content: string }) {
     return (
         <div className="prose prose-sm dark:prose-invert max-w-none
             prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1
@@ -66,7 +68,7 @@ function AssistantMessage({ content }: { content: string }) {
             </ReactMarkdown>
         </div>
     )
-}
+})
 
 // ---------------------------------------------------------------------------
 // Component

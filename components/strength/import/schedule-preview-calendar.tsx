@@ -13,13 +13,13 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Calendar, momentLocalizer, type Event } from 'react-big-calendar'
-import moment from 'moment'
+import { Calendar, type Event } from 'react-big-calendar'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import { format, parseISO, startOfMonth, endOfMonth, subDays, addDays } from 'date-fns'
 import { Dumbbell } from 'lucide-react'
+import { createCalendarLocalizer } from '@/lib/utils/calendar-localizer'
 
-const localizer = momentLocalizer(moment)
+const localizer = createCalendarLocalizer(0)
 
 interface Placement {
   session_index: number
@@ -135,6 +135,7 @@ export function SchedulePreviewCalendar({
       <div className="preview-cal h-full w-full">
         <Calendar
           localizer={localizer}
+          culture="en-US"
           events={events}
           date={currentDate}
           onNavigate={setCurrentDate}

@@ -6,6 +6,7 @@ import { createChatSession, getChatSession, saveMessage } from '@/lib/agent/sess
 import { createClient } from '@/lib/supabase/server'
 import { ensureAthleteExists } from '@/lib/supabase/ensure-athlete'
 import { generateTitle } from '@/lib/agent/session-title'
+import { truncateMessagesToBudget } from '@/lib/chat/token-budget'
 import { z } from 'zod'
 
 const chatSchema = z.object({
@@ -84,8 +85,10 @@ export async function POST(request: Request) {
         // Generate system prompt with context
         const systemPrompt = getSystemPrompt(sessionType, context)
 
-        // Combine session history with new messages
-        const allMessages = [...sessionHistory, ...messages]
+        // Combine session history with new messages. Cap the resent history to
+        // a token budget so long conversations don't grow unbounded per turn.
+        const trimmedHistory = truncateMessagesToBudget(sessionHistory, 8000)
+        const allMessages = [...trimmedHistory, ...messages]
 
         // Generate response
         const response = await provider.generateResponse({
