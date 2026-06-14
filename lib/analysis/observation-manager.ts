@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/client'
+import { SupabaseClient } from '@supabase/supabase-js'
 
 export interface Observation {
     id: string
@@ -19,10 +19,9 @@ export async function createObservation(
     type: string,
     severity: 'info' | 'warning' | 'concern',
     message: string,
-    data?: any
+    data: any,
+    supabase: SupabaseClient
 ): Promise<Observation> {
-    const supabase = createClient()
-
     // Check if similar observation already exists (within last 24 hours)
     const yesterday = new Date()
     yesterday.setDate(yesterday.getDate() - 1)
@@ -82,9 +81,7 @@ export async function createObservation(
 /**
  * Get active observations for an athlete
  */
-export async function getActiveObservations(athleteId: string): Promise<Observation[]> {
-    const supabase = createClient()
-
+export async function getActiveObservations(supabase: SupabaseClient, athleteId: string): Promise<Observation[]> {
     const { data, error } = await supabase
         .from('workout_flags')
         .select('*')
@@ -109,9 +106,7 @@ export async function getActiveObservations(athleteId: string): Promise<Observat
 /**
  * Acknowledge an observation
  */
-export async function acknowledgeObservation(observationId: string): Promise<void> {
-    const supabase = createClient()
-
+export async function acknowledgeObservation(supabase: SupabaseClient, observationId: string): Promise<void> {
     const { error } = await supabase
         .from('workout_flags')
         .update({ acknowledged: true })
@@ -123,6 +118,6 @@ export async function acknowledgeObservation(observationId: string): Promise<voi
 /**
  * Dismiss an observation (same as acknowledge for now)
  */
-export async function dismissObservation(observationId: string): Promise<void> {
-    return acknowledgeObservation(observationId)
+export async function dismissObservation(supabase: SupabaseClient, observationId: string): Promise<void> {
+    return acknowledgeObservation(supabase, observationId)
 }

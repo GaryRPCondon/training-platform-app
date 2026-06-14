@@ -38,10 +38,16 @@ export function WeeklyProgressChart() {
                     {weeklyData.map((day) => {
                         const plannedHeight = (day.plannedDistance / maxDistance) * 100
                         const actualHeight = (day.actualDistance / maxDistance) * 100
+                        const statusGlyph = day.status === 'completed' ? '✓' : day.status === 'missed' ? '✗' : ''
+                        const plannedDisplay = `${Math.round(toDisplayDistance(day.plannedDistance * 1000))}${distanceLabel()}`
+                        const actualDisplay = `${Math.round(toDisplayDistance(day.actualDistance * 1000))}${distanceLabel()}`
 
                         return (
                             <div key={day.date} className="flex flex-col items-center gap-2 flex-1 min-w-0" style={{ height: '100%' }}>
-                                <div className="relative w-full flex justify-center items-end" style={{ height: '110px' }}>
+                                <span className="sr-only">
+                                    {day.dayName}: planned {plannedDisplay}, {day.status === 'missed' ? 'missed' : `completed ${actualDisplay}`}
+                                </span>
+                                <div className="relative w-full flex justify-center items-end" style={{ height: '110px' }} aria-hidden="true">
                                     {/* Planned Bar (Background) - More visible with pattern */}
                                     {day.plannedDistance > 0 && (
                                         <div
@@ -75,7 +81,13 @@ export function WeeklyProgressChart() {
                                         </div>
                                     )}
                                 </div>
-                                <span className="text-xs text-muted-foreground font-medium">
+                                <span className="text-xs text-muted-foreground font-medium" aria-hidden="true">
+                                    {statusGlyph && (
+                                        <span className={cn(
+                                            "mr-0.5",
+                                            day.status === 'completed' ? "text-emerald-500" : "text-rose-500"
+                                        )}>{statusGlyph}</span>
+                                    )}
                                     {day.dayName}
                                 </span>
                             </div>

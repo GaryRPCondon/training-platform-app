@@ -33,7 +33,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Not found' }, { status: 404 })
         }
 
-        await rejectAdjustment(adjustmentId)
+        await rejectAdjustment(supabase, adjustmentId)
 
         return NextResponse.json({ success: true })
     } catch (error) {

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { format, parseISO } from 'date-fns'
 import { toast } from 'sonner'
 
+import { scrollBehavior } from '@/lib/utils/motion'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -117,7 +118,7 @@ export function StepSchedule({
   const handlePlacementClick = useCallback((sessionIndex: number) => {
     const node = rowRefs.current.get(sessionIndex)
     if (node) {
-      node.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      node.scrollIntoView({ behavior: scrollBehavior(), block: 'center' })
       setHighlightedIndex(sessionIndex)
       window.setTimeout(() => setHighlightedIndex(prev => prev === sessionIndex ? null : prev), 1500)
     }

@@ -171,6 +171,11 @@ export default function ActivitySyncPage() {
                 <p className="text-muted-foreground">Sync your activities from Garmin and Strava</p>
             </div>
 
+            <div aria-live="polite" role="status" className="sr-only">
+                {garminLoading ? 'Syncing activities from Garmin…' : ''}
+                {stravaLoading ? 'Syncing activities from Strava…' : ''}
+            </div>
+
             {/* Date Range & Sync */}
             <Card className="w-full md:w-1/2">
                 <CardHeader>

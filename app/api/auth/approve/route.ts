@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { verifyApprovalToken, notifyUserOfApproval } from '@/lib/email/notify-admin'
+import { escapeHtml } from '@/lib/utils/security'
 
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (athlete.account_status === 'approved') {
-        return new NextResponse(htmlPage('Already Approved', `The account for <strong>${athlete.email}</strong> has already been approved.`), {
+        return new NextResponse(htmlPage('Already Approved', `The account for <strong>${escapeHtml(athlete.email)}</strong> has already been approved.`), {
             status: 200,
             headers: { 'Content-Type': 'text/html' },
         })
@@ -73,7 +74,7 @@ export async function GET(request: NextRequest) {
     })
 
     return new NextResponse(
-        htmlPage('Account Approved', `The account for <strong>${athlete.email}</strong> has been approved. They can now log in and use TrAIner.`),
+        htmlPage('Account Approved', `The account for <strong>${escapeHtml(athlete.email)}</strong> has been approved. They can now log in and use TrAIner.`),
         { status: 200, headers: { 'Content-Type': 'text/html' } }
     )
 }

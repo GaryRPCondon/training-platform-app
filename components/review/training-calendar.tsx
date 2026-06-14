@@ -1,8 +1,8 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Calendar, momentLocalizer, View } from 'react-big-calendar'
-import moment from 'moment'
+import { Calendar, View } from 'react-big-calendar'
+import { createCalendarLocalizer } from '@/lib/utils/calendar-localizer'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import type { WorkoutEvent, WorkoutWithDetails } from '@/types/review'
 import type { TrainingPaces } from '@/types/database'
@@ -47,8 +47,6 @@ const calendarStyles = `
   }
 `
 
-const localizer = momentLocalizer(moment)
-
 interface TrainingCalendarProps {
   workouts: WorkoutWithDetails[]
   trainingPaces?: TrainingPaces | null
@@ -92,12 +90,8 @@ export function TrainingCalendar({ workouts, trainingPaces, vdot, onWorkoutSelec
   const weekStartsOn = (athlete?.week_starts_on ?? 0) as 0 | 1 | 2 | 3 | 4 | 5 | 6 // Default to Sunday if not set
   const preferredUnits: UnitSystem = athlete?.preferred_units ?? 'metric'
 
-  // Update moment locale to use the preferred week start day
-  moment.updateLocale('en', {
-    week: {
-      dow: weekStartsOn, // 0 = Sunday, 1 = Monday, etc.
-    }
-  })
+  // date-fns localizer carrying the athlete's week-start preference.
+  const localizer = useMemo(() => createCalendarLocalizer(weekStartsOn), [weekStartsOn])
 
   const events: WorkoutEvent[] = useMemo(() => {
     return workouts.map(workout => ({
@@ -171,6 +165,7 @@ export function TrainingCalendar({ workouts, trainingPaces, vdot, onWorkoutSelec
             <style>{calendarStyles}</style>
             <Calendar
               localizer={localizer}
+              culture="en-US"
               events={events}
               startAccessor="start"
               endAccessor="end"

@@ -63,7 +63,9 @@ export function TodaysWorkoutCard() {
     const hasWorkout = !!workout
 
     const handleClick = () => {
-        if (hasWorkout) {
+        if (workout?.completed_activity_id) {
+            router.push(`/dashboard/activities/${workout.completed_activity_id}`)
+        } else if (hasWorkout) {
             router.push(`/dashboard/calendar?workoutId=${workout.id}`)
         } else {
             router.push('/dashboard/calendar')

@@ -1,14 +1,14 @@
 'use client'
 
 import { useMemo, useState, useEffect } from 'react'
-import { Calendar, momentLocalizer, View } from 'react-big-calendar'
-import moment from 'moment'
+import { Calendar, View } from 'react-big-calendar'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import { parseISO } from 'date-fns'
 import { getWorkoutColor } from '@/lib/constants/workout-colors'
 import type { CalEvent, PlanWorkout } from './types'
+import { createCalendarLocalizer } from '@/lib/utils/calendar-localizer'
 
-const localizer = momentLocalizer(moment)
+const localizer = createCalendarLocalizer(0)
 
 const styles = `
   .preview-cal .rbc-event { padding: 1px 4px !important; font-size: 11px !important; line-height: 1.3 !important; }
@@ -50,6 +50,7 @@ export function ReadOnlyCalendar({
       <div className="preview-cal h-full w-full">
         <Calendar<CalEvent>
           localizer={localizer}
+          culture="en-US"
           events={events}
           startAccessor="start"
           endAccessor="end"

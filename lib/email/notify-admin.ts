@@ -1,4 +1,5 @@
 import crypto from 'crypto'
+import { timingSafeEqualStr, escapeHtml } from '@/lib/utils/security'
 
 /**
  * Generate an HMAC-based approval token for a given athlete ID.
@@ -14,7 +15,7 @@ export function generateApprovalToken(athleteId: string): string {
  */
 export function verifyApprovalToken(athleteId: string, token: string): boolean {
     const expected = generateApprovalToken(athleteId)
-    return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(token))
+    return timingSafeEqualStr(expected, token)
 }
 
 /**
@@ -51,7 +52,7 @@ export async function notifyAdminOfSignup(athleteId: string, email: string): Pro
             subject: `New TrAIner signup: ${email}`,
             html: `
                 <h2>New Account Signup</h2>
-                <p><strong>${email}</strong> has signed up for TrAIner and is awaiting approval.</p>
+                <p><strong>${escapeHtml(email)}</strong> has signed up for TrAIner and is awaiting approval.</p>
                 <p>
                     <a href="${approvalUrl}" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">
                         Approve Account

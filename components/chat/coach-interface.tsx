@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, memo } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Button } from '@/components/ui/button'
@@ -11,6 +11,7 @@ import { Loader2 } from 'lucide-react'
 import { ProposalCard } from '@/components/chat/proposal-card'
 import { StrengthProposalCard } from '@/components/chat/strength-proposal-card'
 import type { WorkoutProposal, StrengthSessionProposal } from '@/lib/agent/coach-tools'
+import { scrollBehavior } from '@/lib/utils/motion'
 import type { TrainingPaces } from '@/types/database'
 
 type LoadingStatus = 'loading' | 'thinking' | null
@@ -55,7 +56,9 @@ interface CoachInterfaceProps {
 // Markdown renderer for assistant messages
 // ---------------------------------------------------------------------------
 
-function AssistantMessage({ content }: { content: string }) {
+// Memoized so streaming a new message doesn't re-parse the markdown of every
+// prior assistant message (content is the only prop; shallow compare suffices).
+const AssistantMessage = memo(function AssistantMessage({ content }: { content: string }) {
     return (
         <div className="prose prose-sm dark:prose-invert max-w-none
             prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1
@@ -65,7 +68,7 @@ function AssistantMessage({ content }: { content: string }) {
             </ReactMarkdown>
         </div>
     )
-}
+})
 
 // ---------------------------------------------------------------------------
 // Component
@@ -137,7 +140,7 @@ export function CoachInterface({ sessionId: propSessionId, onSessionChange, work
     // Auto-scroll
     // -----------------------------------------------------------------------
     useEffect(() => {
-        scrollRef.current?.scrollIntoView({ behavior: 'smooth' })
+        scrollRef.current?.scrollIntoView({ behavior: scrollBehavior() })
     }, [messages])
 
     // -----------------------------------------------------------------------
@@ -377,11 +380,23 @@ export function CoachInterface({ sessionId: propSessionId, onSessionChange, work
                 </div>
             </ScrollArea>
 
+            {/* Screen-reader announcements: "responding" while streaming, then the
+                completed reply once. Visually hidden; the visible bubbles above are
+                not in a live region so they are not double-announced during streaming. */}
+            <div aria-live="polite" role="status" className="sr-only">
+                {isSending
+                    ? 'AI Coach is responding…'
+                    : messages.length > 0 && messages[messages.length - 1].role === 'assistant'
+                        ? messages[messages.length - 1].content
+                        : ''}
+            </div>
+
             <div className="p-4 border-t flex gap-2">
                 <Textarea
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     placeholder="Ask about your training..."
+                    aria-label="Message your AI Coach"
                     className="min-h-[60px]"
                     onKeyDown={e => {
                         if (e.key === 'Enter' && !e.shiftKey) {

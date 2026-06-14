@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/client'
+import { SupabaseClient } from '@supabase/supabase-js'
 
 /**
  * Save adjustment proposals to database
@@ -10,10 +10,9 @@ export async function saveAdjustmentProposal(
     description: string,
     rationale: string,
     impact: string,
-    affectedWorkoutIds: number[]
+    affectedWorkoutIds: number[],
+    supabase: SupabaseClient
 ): Promise<void> {
-    const supabase = createClient()
-
     const { error } = await supabase
         .from('plan_adjustments')
         .insert({
@@ -35,9 +34,7 @@ export async function saveAdjustmentProposal(
 /**
  * Apply an approved adjustment
  */
-export async function applyAdjustment(adjustmentId: number): Promise<void> {
-    const supabase = createClient()
-
+export async function applyAdjustment(supabase: SupabaseClient, adjustmentId: number): Promise<void> {
     // Get the adjustment details
     const { data: adjustment, error: fetchError } = await supabase
         .from('plan_adjustments')
@@ -103,9 +100,7 @@ export async function applyAdjustment(adjustmentId: number): Promise<void> {
 /**
  * Reject an adjustment proposal
  */
-export async function rejectAdjustment(adjustmentId: number): Promise<void> {
-    const supabase = createClient()
-
+export async function rejectAdjustment(supabase: SupabaseClient, adjustmentId: number): Promise<void> {
     const { error } = await supabase
         .from('plan_adjustments')
         .update({

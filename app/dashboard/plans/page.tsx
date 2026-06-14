@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react'
 import { TrainingPlan } from '@/types/database'
 import { activatePlan } from '@/lib/supabase/plan-activation'
 import { getCurrentAthleteId } from '@/lib/supabase/client'
-import { format } from 'date-fns'
+import { format, parseISO } from 'date-fns'
 import { Trash2, Download, Trophy } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -117,7 +117,7 @@ export default function PlansPage() {
                                                 <div>
                                                     <CardTitle className="text-lg">{plan.name}</CardTitle>
                                                     <CardDescription>
-                                                        {format(new Date(plan.start_date), 'MMM d, yyyy')} - {format(new Date(plan.end_date), 'MMM d, yyyy')}
+                                                        {format(parseISO(plan.start_date), 'MMM d, yyyy')} - {format(parseISO(plan.end_date), 'MMM d, yyyy')}
                                                     </CardDescription>
                                                 </div>
                                                 <Badge variant="default">Active</Badge>
@@ -127,7 +127,7 @@ export default function PlansPage() {
                                             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                                                 <div className="text-sm text-muted-foreground">
                                                     <div>Type: {plan.plan_type}</div>
-                                                    <div>Created: {format(new Date(plan.created_at), 'MMM d, yyyy')}</div>
+                                                    <div>Created: {format(parseISO(plan.created_at), 'MMM d, yyyy')}</div>
                                                 </div>
                                                 <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2">
                                                     <Button
@@ -178,7 +178,7 @@ export default function PlansPage() {
                                                 <div>
                                                     <CardTitle className="text-lg">{plan.name}</CardTitle>
                                                     <CardDescription>
-                                                        {format(new Date(plan.start_date), 'MMM d, yyyy')} - {format(new Date(plan.end_date), 'MMM d, yyyy')}
+                                                        {format(parseISO(plan.start_date), 'MMM d, yyyy')} - {format(parseISO(plan.end_date), 'MMM d, yyyy')}
                                                     </CardDescription>
                                                 </div>
                                                 <Badge variant="secondary">Draft</Badge>
@@ -188,7 +188,7 @@ export default function PlansPage() {
                                             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                                                 <div className="text-sm text-muted-foreground">
                                                     <div>Type: {plan.plan_type}</div>
-                                                    <div>Created: {format(new Date(plan.created_at), 'MMM d, yyyy')}</div>
+                                                    <div>Created: {format(parseISO(plan.created_at), 'MMM d, yyyy')}</div>
                                                 </div>
                                                 <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2">
                                                     <Button asChild>
@@ -237,7 +237,7 @@ export default function PlansPage() {
                                                 <div>
                                                     <CardTitle className="text-lg">{plan.name}</CardTitle>
                                                     <CardDescription>
-                                                        {format(new Date(plan.start_date), 'MMM d, yyyy')} – {format(new Date(plan.end_date), 'MMM d, yyyy')}
+                                                        {format(parseISO(plan.start_date), 'MMM d, yyyy')} – {format(parseISO(plan.end_date), 'MMM d, yyyy')}
                                                     </CardDescription>
                                                 </div>
                                                 <Badge variant="outline" className="border-amber-400 text-amber-700 dark:text-amber-400">
@@ -251,7 +251,7 @@ export default function PlansPage() {
                                                 <div className="text-sm text-muted-foreground">
                                                     <div>Type: {plan.plan_type}</div>
                                                     {plan.completed_at && (
-                                                        <div>Completed: {format(new Date(plan.completed_at), 'MMM d, yyyy')}</div>
+                                                        <div>Completed: {format(parseISO(plan.completed_at), 'MMM d, yyyy')}</div>
                                                     )}
                                                 </div>
                                                 <Button

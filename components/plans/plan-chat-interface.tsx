@@ -307,10 +307,15 @@ export function PlanChatInterface({
               value={message}
               onChange={e => setMessage(e.target.value)}
               placeholder="E.g., Move all rest days to Fridays, or Make week 5 easier, or Change W4:D2 to 12km tempo..."
+              aria-label="Describe how to modify this plan"
               rows={3}
               disabled={loading || !!preview}
               className="resize-none"
             />
+
+            <div aria-live="polite" role="status" className="sr-only">
+              {loading ? 'Generating plan preview…' : ''}
+            </div>
 
             {/* Example Prompts */}
             {!preview && !loading && (

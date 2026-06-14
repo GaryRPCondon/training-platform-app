@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useUnits } from '@/lib/hooks/use-units'
 import { getActivityLinks } from '@/lib/utils/activity-links'
+import { scrollBehavior } from '@/lib/utils/motion'
 import { getComplianceColorClass } from '@/lib/activities/scoring'
 import { GarminIcon, StravaIcon } from './platform-icons'
 
@@ -138,7 +139,7 @@ export function ActivityDetail({ activity, onClose }: ActivityDetailProps) {
                       className="h-7 px-2 text-amber-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950 gap-1"
                       aria-label="AI Summary"
                       onClick={() => {
-                        document.getElementById('ai-summary-panel')?.scrollIntoView({ behavior: 'smooth' })
+                        document.getElementById('ai-summary-panel')?.scrollIntoView({ behavior: scrollBehavior() })
                       }}
                     >
                       <span className="relative">

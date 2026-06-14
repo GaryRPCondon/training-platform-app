@@ -104,6 +104,26 @@ export function estimateTokens(text: string): number {
 }
 
 /**
+ * Keep only the most recent messages that fit within a token budget, so chat
+ * history resent to the LLM each turn cannot grow without bound. Always keeps
+ * at least the single most recent message.
+ */
+export function truncateMessagesToBudget<T extends { content: string }>(
+  messages: T[],
+  maxTokens: number
+): T[] {
+  const kept: T[] = []
+  let total = 0
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const t = estimateTokens(messages[i].content)
+    if (kept.length > 0 && total + t > maxTokens) break
+    kept.push(messages[i])
+    total += t
+  }
+  return kept.reverse()
+}
+
+/**
  * Validate that an operation fits within token budget
  *
  * @param inputTokens - Estimated input tokens

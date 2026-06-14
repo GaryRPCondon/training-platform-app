@@ -234,7 +234,19 @@ export async function calculateComplianceScore(
     .eq('activity_id', activityId)
     .not('compliance_score', 'is', null)
 
-  if (!laps || laps.length === 0) {
+  return computeComplianceScore(laps ?? [])
+}
+
+/**
+ * Pure core of {@link calculateComplianceScore}, operating on already-loaded
+ * laps. Lets batch callers fetch all laps in one query and score in memory.
+ */
+export function computeComplianceScore(
+  laps: { intensity_type: string | null; compliance_score: number | null }[]
+): ComplianceResult {
+  const scored = laps.filter(l => l.compliance_score != null)
+
+  if (scored.length === 0) {
     return { score: 0, lapCount: 0, hasData: false, activeLapAvg: null }
   }
 
@@ -243,7 +255,7 @@ export async function calculateComplianceScore(
   let activeSum = 0
   let activeCount = 0
 
-  for (const lap of laps) {
+  for (const lap of scored) {
     const score = lap.compliance_score as number
     const type = (lap.intensity_type || '').toUpperCase()
 
@@ -265,7 +277,7 @@ export async function calculateComplianceScore(
   const weightedAvg = totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 0
   const activeLapAvg = activeCount > 0 ? Math.round(activeSum / activeCount) : null
 
-  return { score: weightedAvg, lapCount: laps.length, hasData: true, activeLapAvg }
+  return { score: weightedAvg, lapCount: scored.length, hasData: true, activeLapAvg }
 }
 
 /**
@@ -273,17 +285,33 @@ export async function calculateComplianceScore(
  * accuracy from Garmin lap compliance. Returns everything needed to populate
  * the planned_workouts row.
  */
+type ScorableActivity = { id: number; distance_meters: number | null; duration_seconds: number | null }
+type ScorableWorkout = {
+  id: number
+  workout_type: string
+  distance_target_meters: number | null
+  duration_target_seconds: number | null
+  structured_workout?: Record<string, unknown> | unknown | null
+}
+
 export async function scoreWorkoutCompletion(
   supabase: SupabaseClient,
-  activity: { id: number; distance_meters: number | null; duration_seconds: number | null },
-  workout: {
-    id: number
-    workout_type: string
-    distance_target_meters: number | null
-    duration_target_seconds: number | null
-    structured_workout?: Record<string, unknown> | unknown | null
-  }
+  activity: ScorableActivity,
+  workout: ScorableWorkout
 ): Promise<ScoringResult> {
+  const compliance = await calculateComplianceScore(supabase, activity.id)
+  return buildScoringResult(activity, workout, compliance)
+}
+
+/**
+ * Pure core of {@link scoreWorkoutCompletion}, taking a precomputed compliance
+ * result so batch callers can score many workouts without per-workout queries.
+ */
+export function buildScoringResult(
+  activity: ScorableActivity,
+  workout: ScorableWorkout,
+  compliance: ComplianceResult
+): ScoringResult {
   const effectiveDistance = getEffectiveDistance(workout)
 
   const distanceVariance = calculateDistanceDiff(activity.distance_meters, effectiveDistance)
@@ -295,8 +323,6 @@ export async function scoreWorkoutCompletion(
     Math.abs(durationVariance),
     !!workout.duration_target_seconds
   )
-
-  const compliance = await calculateComplianceScore(supabase, activity.id)
 
   return {
     completionStatus,

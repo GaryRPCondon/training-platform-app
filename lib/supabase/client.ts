@@ -9,9 +9,12 @@ export function createClient() {
 
 export const supabase = createClient()
 
-// Get current athlete ID from authenticated session
+// Get current athlete ID from authenticated session.
+// Uses getSession() (reads the locally-stored JWT) rather than getUser() (a
+// network round trip to Supabase auth) — this runs inside nearly every
+// dashboard queryFn, and RLS still enforces ownership server-side.
 export async function getCurrentAthleteId() {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Not authenticated')
-  return user.id
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.user) throw new Error('Not authenticated')
+  return session.user.id
 }

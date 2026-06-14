@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { GarminClient } from '@/lib/garmin/client'
 import { mapGarminLapToRow } from '@/lib/garmin/lap-mapper'
 import { findMergeCandidates, shouldAutoMerge } from '@/lib/activities/merge-detector'
-import { findExistingMatch } from '@/lib/sync/pre-insert-dedup'
+import { findExistingMatchInMemory } from '@/lib/sync/pre-insert-dedup'
 import { acquireSyncLock, releaseSyncLock } from '@/lib/sync/sync-lock'
 import { format, subHours, addHours } from 'date-fns'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -135,17 +135,46 @@ export async function POST(request: Request) {
         })
       }
 
+      // --- Batch reads: replace the per-activity existence + dedup + merge
+      // queries (the N+1) with two queries for the whole batch. ---
+
+      // 1) Which of these Garmin activities already exist locally.
+      const garminIdStrs = garminActivities.map(a => a.activityId.toString())
+      const existingByGarminId = new Map<string, { id: number; has_detail_data: boolean | null }>()
+      for (let i = 0; i < garminIdStrs.length; i += 200) {
+        const chunk = garminIdStrs.slice(i, i + 200)
+        const { data: existingRows } = await supabase
+          .from('activities')
+          .select('id, garmin_id, has_detail_data')
+          .eq('athlete_id', athleteId)
+          .in('garmin_id', chunk)
+        for (const row of existingRows ?? []) {
+          // garmin_id is bigint → comes back as a JS number; normalise the map
+          // key to a string so it matches activity.activityId.toString() below.
+          if (row.garmin_id != null) existingByGarminId.set(String(row.garmin_id), { id: row.id, has_detail_data: row.has_detail_data })
+        }
+      }
+
+      // 2) One wide candidate window for dedup + merge detection. Held in memory
+      // and mutated as we merge (set garmin_id / drop deleted rows) so later
+      // activities see the same state a re-query would have.
+      const startMs = garminActivities.map(a => new Date(a.startTimeLocal).getTime())
+      const windowStart = subHours(new Date(Math.min(...startMs)), 12).toISOString()
+      const windowEnd = addHours(new Date(Math.max(...startMs)), 12).toISOString()
+      const { data: windowRows } = await supabase
+        .from('activities')
+        .select('*')
+        .eq('athlete_id', athleteId)
+        .gte('start_time', windowStart)
+        .lte('start_time', windowEnd)
+      const windowActivities: any[] = windowRows ?? []
+
       // Process activities
       for (const activity of garminActivities) {
         const activityIdStr = activity.activityId.toString()
 
-        // Check if already exists
-        const { data: existing } = await supabase
-          .from('activities')
-          .select('id, source, has_detail_data')
-          .eq('athlete_id', athleteId)
-          .eq('garmin_id', activityIdStr)
-          .single()
+        // Check if already exists (from the batch existence map)
+        const existing = existingByGarminId.get(activityIdStr)
 
         if (existing) {
           // Backfill lap detail for existing activities that were synced before this feature existed
@@ -199,7 +228,7 @@ export async function POST(request: Request) {
         }
 
         // Pre-insert dedup: check if a matching activity from another source already exists
-        const existingMatch = await findExistingMatch(supabase, athleteId, {
+        const existingMatch = findExistingMatchInMemory(windowActivities, {
           start_time: activity.startTimeLocal,
           distance_meters: activity.distance,
           duration_seconds: activity.elapsedDuration || activity.duration,
@@ -233,6 +262,12 @@ export async function POST(request: Request) {
           if (!updateError) {
             console.log(`Pre-insert merged into existing activity ${existingMatch.id}`)
             mergedCount++
+            // Reflect the merge in the in-memory window so this row is no longer
+            // an available merge target for later activities in the batch, and
+            // mark the garmin_id as present so an intra-batch duplicate skips.
+            existingMatch.garmin_id = activityIdStr
+            existingMatch.source = 'merged'
+            existingByGarminId.set(activityIdStr, { id: existingMatch.id, has_detail_data: true })
             const { lapsInserted } = await fetchAndStoreLapDetail(
               activity.activityId, existingMatch.id, garminClient, supabase
             )
@@ -257,23 +292,25 @@ export async function POST(request: Request) {
 
         console.log(`Synced Garmin activity ${activityIdStr} -> DB ID ${inserted.id}`)
         syncedCount++
+        // Track within this batch so a duplicate of the same activity later in
+        // the same fetch is skipped (the old per-activity re-query did this).
+        existingByGarminId.set(activityIdStr, { id: inserted.id, has_detail_data: true })
 
         const { lapsInserted: newLaps } = await fetchAndStoreLapDetail(
           activity.activityId, inserted.id, garminClient, supabase
         )
         totalLapsInserted += newLaps
 
-        // Check for merge candidates (fallback for edge cases not caught by pre-insert dedup)
-        const searchStartTime = new Date(activity.startTimeLocal)
-
-        const { data: potentialMatches } = await supabase
-          .from('activities')
-          .select('*')
-          .eq('athlete_id', athleteId)
-          .neq('source', 'garmin')
-          .is('garmin_id', null)
-          .gte('start_time', subHours(searchStartTime, 12).toISOString())
-          .lte('start_time', addHours(searchStartTime, 12).toISOString())
+        // Check for merge candidates (fallback for edge cases not caught by pre-insert dedup).
+        // Filter the in-memory window instead of re-querying.
+        const searchMs = new Date(activity.startTimeLocal).getTime()
+        const lo = subHours(new Date(searchMs), 12).getTime()
+        const hi = addHours(new Date(searchMs), 12).getTime()
+        const potentialMatches = windowActivities.filter(a => {
+          if (a.source === 'garmin' || a.garmin_id != null) return false
+          const t = new Date(a.start_time).getTime()
+          return t >= lo && t <= hi
+        })
 
         if (potentialMatches && potentialMatches.length > 0) {
           console.log(`Found ${potentialMatches.length} potential merge matches`)
@@ -322,6 +359,14 @@ export async function POST(request: Request) {
                   console.log(`Merged into existing activity ${mergeCandidate.activity2.id}`)
                   mergedCount++
                   syncedCount-- // Adjust count since we deleted
+                  // Reflect the merge in the in-memory window so the row is no
+                  // longer an available merge target for later activities.
+                  const merged = windowActivities.find(a => a.id === mergeCandidate.activity2.id)
+                  if (merged) {
+                    merged.garmin_id = activityIdStr
+                    merged.source = 'merged'
+                  }
+                  existingByGarminId.set(activityIdStr, { id: mergeCandidate.activity2.id!, has_detail_data: true })
                   const { lapsInserted: mergeLaps } = await fetchAndStoreLapDetail(
                     activity.activityId, mergeCandidate.activity2.id!, garminClient, supabase
                   )

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/client'
+import { SupabaseClient } from '@supabase/supabase-js'
 import { format, addDays } from 'date-fns'
 import { saveAdjustmentProposal } from './adjustment-persistence'
 
@@ -13,8 +13,7 @@ export interface Adjustment {
     proposedChanges: any
 }
 
-export async function proposeAdjustments(athleteId: string): Promise<Adjustment[]> {
-    const supabase = createClient()
+export async function proposeAdjustments(supabase: SupabaseClient, athleteId: string): Promise<Adjustment[]> {
     const adjustments: Adjustment[] = []
     const today = new Date()
 
@@ -86,7 +85,8 @@ export async function proposeAdjustments(athleteId: string): Promise<Adjustment[
                     adjustment.description,
                     adjustment.rationale,
                     adjustment.impact,
-                    upcomingWorkouts.map(w => w.id)
+                    upcomingWorkouts.map(w => w.id),
+                    supabase
                 )
             } catch (error) {
                 console.error('Failed to save adjustment proposal:', error)
@@ -130,7 +130,8 @@ export async function proposeAdjustments(athleteId: string): Promise<Adjustment[
                     adjustment.description,
                     adjustment.rationale,
                     adjustment.impact,
-                    [upcomingHardWorkouts[0].id]
+                    [upcomingHardWorkouts[0].id],
+                    supabase
                 )
             } catch (error) {
                 console.error('Failed to save adjustment proposal:', error)
@@ -170,7 +171,8 @@ export async function proposeAdjustments(athleteId: string): Promise<Adjustment[
                 adjustment.description,
                 adjustment.rationale,
                 adjustment.impact,
-                [upcomingLongRun.id]
+                [upcomingLongRun.id],
+                supabase
             )
         } catch (error) {
             console.error('Failed to save adjustment proposal:', error)

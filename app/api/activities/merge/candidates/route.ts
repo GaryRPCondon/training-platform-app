@@ -30,18 +30,29 @@ export async function GET() {
             .in('activity_id', activityIds)
             .eq('flag_type', 'merge_candidate')
 
+        // Batch-load all match activities in one query instead of one per pair.
+        const matchIds = [...new Set(
+            (flags ?? [])
+                .map(f => f.flag_data?.potential_match_id)
+                .filter((id): id is number => id != null)
+        )]
+
+        const matchById = new Map<number, Record<string, unknown>>()
+        if (matchIds.length > 0) {
+            const { data: matchActivities } = await supabase
+                .from('activities')
+                .select('*')
+                .in('id', matchIds)
+            for (const m of matchActivities ?? []) matchById.set(m.id, m)
+        }
+
         const pairs = []
 
         for (const activity of pendingActivities) {
             const flag = flags?.find(f => f.activity_id === activity.id)
             if (!flag || !flag.flag_data?.potential_match_id) continue
 
-            const { data: matchActivity } = await supabase
-                .from('activities')
-                .select('*')
-                .eq('id', flag.flag_data.potential_match_id)
-                .single()
-
+            const matchActivity = matchById.get(flag.flag_data.potential_match_id)
             if (matchActivity) {
                 pairs.push({
                     activity,

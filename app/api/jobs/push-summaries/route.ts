@@ -14,6 +14,7 @@ import { NextResponse } from 'next/server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { StravaClient } from '@/lib/strava/client'
 import { GarminClient } from '@/lib/garmin/client'
+import { timingSafeEqualStr } from '@/lib/utils/security'
 
 function createServiceClient() {
   return createSupabaseClient(
@@ -41,9 +42,10 @@ interface PendingActivity {
 }
 
 export async function POST(request: Request) {
-  // Verify cron secret
+  // Verify cron secret (constant-time compare; fail closed if unconfigured)
   const cronSecret = request.headers.get('x-cron-secret')
-  if (!cronSecret || cronSecret !== process.env.CRON_SECRET) {
+  const expectedCronSecret = process.env.CRON_SECRET
+  if (!cronSecret || !expectedCronSecret || !timingSafeEqualStr(cronSecret, expectedCronSecret)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

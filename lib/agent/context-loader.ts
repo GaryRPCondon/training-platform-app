@@ -1,16 +1,23 @@
-import { createClient } from '@/lib/supabase/client'
+import { SupabaseClient } from '@supabase/supabase-js'
 import { subDays, subMonths, format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, differenceInWeeks } from 'date-fns'
+import { resolveWeekStartsOn, type WeekStartsOn } from '@/lib/utils/week'
 
-export async function loadAgentContext(athleteId: string) {
-    const daily = await loadDailyContext(athleteId)
-    const weekly = await loadWeeklyContext(athleteId)
-    const monthly = await loadMonthlyContext(athleteId)
-    const phase = await loadPhaseContext(athleteId)
-    const plan = await loadPlanContext(athleteId)
-    const athlete = await loadAthleteProfile(athleteId)
-    const personalRecords = await loadPersonalRecords(athleteId)
-    const constraints = await loadActiveConstraints(athleteId)
-    const recentFeedback = await loadRecentFeedback(athleteId)
+export async function loadAgentContext(supabase: SupabaseClient, athleteId: string) {
+    // Athlete profile first (week-start preference feeds the weekly loader),
+    // then run the independent loaders in parallel instead of sequentially.
+    const athlete = await loadAthleteProfile(supabase, athleteId)
+    const weekStartsOn = resolveWeekStartsOn(athlete)
+
+    const [daily, weekly, monthly, phase, plan, personalRecords, constraints, recentFeedback] = await Promise.all([
+        loadDailyContext(supabase, athleteId),
+        loadWeeklyContext(supabase, athleteId, weekStartsOn),
+        loadMonthlyContext(supabase, athleteId),
+        loadPhaseContext(supabase, athleteId),
+        loadPlanContext(supabase, athleteId),
+        loadPersonalRecords(supabase, athleteId),
+        loadActiveConstraints(supabase, athleteId),
+        loadRecentFeedback(supabase, athleteId),
+    ])
 
     return {
         athlete,
@@ -25,8 +32,7 @@ export async function loadAgentContext(athleteId: string) {
     }
 }
 
-async function loadAthleteProfile(athleteId: string) {
-    const supabase = createClient()
+async function loadAthleteProfile(supabase: SupabaseClient, athleteId: string) {
 
     const { data } = await supabase
         .from('athletes')
@@ -37,8 +43,7 @@ async function loadAthleteProfile(athleteId: string) {
     return data
 }
 
-async function loadDailyContext(athleteId: string) {
-    const supabase = createClient()
+async function loadDailyContext(supabase: SupabaseClient, athleteId: string) {
     const today = format(new Date(), 'yyyy-MM-dd')
     const yesterday = format(subDays(new Date(), 1), 'yyyy-MM-dd')
 
@@ -67,11 +72,10 @@ async function loadDailyContext(athleteId: string) {
     }
 }
 
-async function loadWeeklyContext(athleteId: string) {
-    const supabase = createClient()
+async function loadWeeklyContext(supabase: SupabaseClient, athleteId: string, weekStartsOn: WeekStartsOn) {
     const today = new Date()
-    const weekStart = format(startOfWeek(today, { weekStartsOn: 1 }), 'yyyy-MM-dd')
-    const weekEnd = format(endOfWeek(today, { weekStartsOn: 1 }), 'yyyy-MM-dd')
+    const weekStart = format(startOfWeek(today, { weekStartsOn }), 'yyyy-MM-dd')
+    const weekEnd = format(endOfWeek(today, { weekStartsOn }), 'yyyy-MM-dd')
 
     // Current week's plan
     const { data: weeklyPlan } = await supabase
@@ -121,8 +125,7 @@ async function loadWeeklyContext(athleteId: string) {
     }
 }
 
-async function loadMonthlyContext(athleteId: string) {
-    const supabase = createClient()
+async function loadMonthlyContext(supabase: SupabaseClient, athleteId: string) {
     const monthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd')
     const monthEnd = format(endOfMonth(new Date()), 'yyyy-MM-dd')
     const lastMonthStart = format(startOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd')
@@ -157,8 +160,7 @@ async function loadMonthlyContext(athleteId: string) {
     }
 }
 
-async function loadPhaseContext(athleteId: string) {
-    const supabase = createClient()
+async function loadPhaseContext(supabase: SupabaseClient, athleteId: string) {
     const today = format(new Date(), 'yyyy-MM-dd')
 
     // Get active plan
@@ -196,9 +198,7 @@ async function loadPhaseContext(athleteId: string) {
     }
 }
 
-async function loadPlanContext(athleteId: string) {
-    const supabase = createClient()
-
+async function loadPlanContext(supabase: SupabaseClient, athleteId: string) {
     const { data: activePlan } = await supabase
         .from('training_plans')
         .select('*')
@@ -220,15 +220,13 @@ async function loadPlanContext(athleteId: string) {
     }
 }
 
-async function loadPersonalRecords(athleteId: string) {
-    const supabase = createClient()
-
-    // Get fastest times at common distances
+async function loadPersonalRecords(supabase: SupabaseClient, athleteId: string) {
+    // Get fastest times at common distances — one query each, run in parallel.
     const distances = [5000, 10000, 21097, 42195] // 5k, 10k, half, full
     const records: Record<string, any> = {}
 
-    for (const distance of distances) {
-        const { data } = await supabase
+    const results = await Promise.all(distances.map(distance =>
+        supabase
             .from('activities')
             .select('distance_meters, duration_seconds, start_time')
             .eq('athlete_id', athleteId)
@@ -237,7 +235,10 @@ async function loadPersonalRecords(athleteId: string) {
             .order('duration_seconds', { ascending: true })
             .limit(1)
             .single()
+            .then(({ data }) => ({ distance, data }))
+    ))
 
+    for (const { distance, data } of results) {
         if (data) {
             const distanceLabel = distance === 5000 ? '5k' :
                 distance === 10000 ? '10k' :
@@ -253,9 +254,7 @@ async function loadPersonalRecords(athleteId: string) {
     return records
 }
 
-async function loadActiveConstraints(athleteId: string) {
-    const supabase = createClient()
-
+async function loadActiveConstraints(supabase: SupabaseClient, athleteId: string) {
     const { data } = await supabase
         .from('athlete_constraints')
         .select('*')
@@ -266,8 +265,7 @@ async function loadActiveConstraints(athleteId: string) {
     return data || []
 }
 
-async function loadRecentFeedback(athleteId: string) {
-    const supabase = createClient()
+async function loadRecentFeedback(supabase: SupabaseClient, athleteId: string) {
     const sevenDaysAgo = format(subDays(new Date(), 7), 'yyyy-MM-dd')
 
     const { data } = await supabase

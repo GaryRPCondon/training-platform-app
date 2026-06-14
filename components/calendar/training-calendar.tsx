@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
-import { Calendar, momentLocalizer } from 'react-big-calendar'
+import { Calendar } from 'react-big-calendar'
 import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop'
-import moment from 'moment'
+import { createCalendarLocalizer } from '@/lib/utils/calendar-localizer'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -86,8 +86,11 @@ const calendarStyles = `
 
 const QUALITY_WORKOUT_TYPES = new Set(['tempo', 'intervals', 'race_pace', 'race', 'long_run'])
 
-const localizer = momentLocalizer(moment)
 const DnDCalendar = withDragAndDrop(Calendar)
+
+// Stable accessor identities so RBC isn't handed new functions every render.
+const eventStartAccessor = (event: any) => event.start
+const eventEndAccessor = (event: any) => event.end
 
 function formatWorkoutTitle(workout: any, units: UnitSystem = 'metric'): string {
     const description = workout.description || 'Workout'
@@ -226,6 +229,10 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
     const weekStartsOn = (athlete?.week_starts_on ?? 0) as 0 | 1 | 2 | 3 | 4 | 5 | 6 // Default to Sunday if not set
     const preferredUnits: UnitSystem = athlete?.preferred_units ?? 'metric'
 
+    // date-fns localizer carrying the athlete's week-start preference (replaces
+    // the old moment.updateLocale mutation in the render body).
+    const localizer = useMemo(() => createCalendarLocalizer(weekStartsOn), [weekStartsOn])
+
     // Get active plan's VDOT and training paces
     const { data: activePlan } = useQuery({
         queryKey: ['active-plan'],
@@ -266,13 +273,6 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
             return data ?? []
         },
         enabled: !!athlete?.id,
-    })
-
-    // Update moment locale to use the preferred week start day
-    moment.updateLocale('en', {
-        week: {
-            dow: weekStartsOn, // 0 = Sunday, 1 = Monday, etc.
-        }
     })
 
     // Calendar is month-only — always query a month's worth of data with a week buffer
@@ -538,8 +538,8 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
         const workoutEvents = sortedWorkouts.map(w => ({
             id: `workout-${w.id}`,
             title: formatWorkoutTitle(w, preferredUnits),
-            start: new Date(w.scheduled_date),
-            end: new Date(w.scheduled_date),
+            start: parseISO(w.scheduled_date),
+            end: parseISO(w.scheduled_date),
             allDay: true,
             resource: {
                 type: 'workout',
@@ -605,13 +605,20 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
         }
     }, [rescheduleMutation])
 
-    const eventStyleGetter = (event: any) => {
+    // Index workouts by id once so the per-event style getter is an O(1) lookup
+    // instead of a linear find() per event (which defeated RBC memoization).
+    const workoutsById = useMemo(
+        () => new Map((workouts ?? []).map(w => [w.id, w])),
+        [workouts]
+    )
+
+    const eventStyleGetter = useCallback((event: any) => {
         // Phase 6: Different styling for activities vs workouts
         if (event.resource.type === 'activity') {
             const activity = event.resource.data
             // Matched activities use the linked workout's color; unmatched use normalized activity type
             const matchedWorkout = activity.planned_workout_id
-                ? workouts.find(w => w.id === activity.planned_workout_id)
+                ? workoutsById.get(activity.planned_workout_id)
                 : null
             const workoutType = matchedWorkout
                 ? matchedWorkout.workout_type
@@ -673,7 +680,7 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
                 ...(isHistorical && { filter: 'saturate(0.5)' }),
             }
         }
-    }
+    }, [workoutsById])
 
     const handleNavigate = (action: 'PREV' | 'NEXT' | 'TODAY') => {
         const newDate = new Date(currentDate)
@@ -865,9 +872,10 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
                     <StrengthCellContext.Provider value={strengthCellValue}>
                         <DnDCalendar
                             localizer={localizer}
+                            culture="en-US"
                             events={events}
-                            startAccessor={(event: any) => event.start}
-                            endAccessor={(event: any) => event.end}
+                            startAccessor={eventStartAccessor}
+                            endAccessor={eventEndAccessor}
                             onSelectEvent={handleSelectEvent}
                             onSelectSlot={(slot: any) => {
                                 if (strengthClickRef.current) return

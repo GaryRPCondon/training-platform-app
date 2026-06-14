@@ -214,7 +214,7 @@ export function AISummaryPanel({
 
         {/* Pending / generating */}
         {status === 'pending' && (
-          <div className="flex items-center gap-3 py-4 justify-center">
+          <div className="flex items-center gap-3 py-4 justify-center" role="status" aria-live="polite">
             <Loader2 className="h-4 w-4 animate-spin text-amber-500" />
             <span className="text-sm text-muted-foreground">Generating summary...</span>
           </div>
