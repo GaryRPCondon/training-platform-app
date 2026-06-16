@@ -45,7 +45,7 @@ export function StepSchedule({
 
   const templateLen = program.sessions.length
 
-  async function generateSchedule() {
+  const generateSchedule = useCallback(async () => {
     setGenerating(true)
     try {
       const body: Record<string, unknown> = {
@@ -68,7 +68,21 @@ export function StepSchedule({
     } finally {
       setGenerating(false)
     }
-  }
+  // startDate / programType / weeksToRepeat / program are stable for the life of
+  // this step (set on step 1), so an empty dep list keeps the callback identity
+  // stable for the auto-run effect below.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Auto-generate placement on entry so the user doesn't have to click a second
+  // "Generate schedule" button after already confirming the review. The ref
+  // guard stops React's dev-mode double-invoke from firing two requests.
+  const didAutoGenerate = useRef(false)
+  useEffect(() => {
+    if (didAutoGenerate.current) return
+    didAutoGenerate.current = true
+    generateSchedule()
+  }, [generateSchedule])
 
   // Load planned workouts in the schedule window so we can show conflicts.
   useEffect(() => {
@@ -135,10 +149,13 @@ export function StepSchedule({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div>
-          <Button onClick={generateSchedule} disabled={generating}>
-            {generating ? 'Generating...' : placements.length === 0 ? 'Generate schedule' : 'Regenerate'}
+        <div className="flex items-center gap-3">
+          <Button variant="outline" onClick={generateSchedule} disabled={generating}>
+            {generating ? 'Generating...' : 'Regenerate'}
           </Button>
+          {generating && placements.length === 0 && (
+            <span className="text-sm text-muted-foreground">Placing sessions around your runs…</span>
+          )}
         </div>
 
         {placements.length > 0 && (
@@ -155,7 +172,7 @@ export function StepSchedule({
         {placements.length > 0 && (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              {placements.length} session{placements.length === 1 ? '' : 's'} scheduled.
+              {placements.length} {placements.length === 1 ? 'session' : 'sessions'} scheduled.{' '}
               Edit a date below to override the AI&apos;s choice, or click a session on the calendar above to jump to it.
             </p>
             {placements.map(placement => {
@@ -225,7 +242,7 @@ export function StepSchedule({
           disabled={placements.length === 0 || submitting}
           onClick={() => onConfirm(placements)}
         >
-          {submitting ? 'Importing...' : 'Looks good — schedule it'}
+          {submitting ? 'Importing...' : 'Import to calendar'}
         </Button>
       </CardFooter>
     </Card>

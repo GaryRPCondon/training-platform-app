@@ -395,6 +395,12 @@ export interface StrengthExercise {
     // lets the catalog stay curated while still supporting one-off exercises.
     garmin_exercise_category?: string
     garmin_exercise_name?: string
+    // How confident the stamped enum is. 'exact' = catalog hit or a verbatim,
+    // high-confidence LLM match. 'approximate' = matched a close Garmin enum
+    // (partial-confidence suggestion, or a fuzzy/spelling-corrected name) — still
+    // a valid pair to send, but surfaced to the user so they can verify it.
+    // Absent when garmin_supported is false.
+    garmin_match_quality?: 'exact' | 'approximate'
     // Raw LLM-suggested enum mapping. Only consumed by `resolveExerciseAgainstCatalog`
     // — it strips these and (if verified) promotes them to garmin_exercise_*. Should
     // never appear on a persisted exercise.

@@ -35,6 +35,9 @@ export const exerciseSchema = z.object({
   // Verified-and-stamped enum (persisted on strength_sessions.exercises).
   garmin_exercise_category: z.string().optional(),
   garmin_exercise_name: z.string().optional(),
+  // 'exact' = catalog/verbatim match; 'approximate' = partial-confidence or
+  // fuzzy/spelling-corrected match. Absent when garmin_supported is false.
+  garmin_match_quality: z.enum(['exact', 'approximate']).optional(),
 })
 
 // ---------------------------------------------------------------------------

@@ -13,13 +13,13 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Calendar, type Event } from 'react-big-calendar'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import { format, parseISO, startOfMonth, endOfMonth, subDays, addDays } from 'date-fns'
 import { Dumbbell } from 'lucide-react'
 import { createCalendarLocalizer } from '@/lib/utils/calendar-localizer'
-
-const localizer = createCalendarLocalizer(0)
+import { getAthleteProfile } from '@/lib/supabase/queries'
 
 interface Placement {
   session_index: number
@@ -52,6 +52,12 @@ export function SchedulePreviewCalendar({
   /** Fires when the user clicks one of the strength events. */
   onPlacementClick?: (sessionIndex: number) => void
 }) {
+  // Honour the athlete's week-start preference (same source the main calendar
+  // uses) instead of hardcoding Sunday. Requires culture="en-US" on <Calendar>.
+  const { data: athlete } = useQuery({ queryKey: ['athlete'], queryFn: getAthleteProfile })
+  const weekStartsOn = (athlete?.week_starts_on ?? 0) as 0 | 1 | 2 | 3 | 4 | 5 | 6
+  const localizer = useMemo(() => createCalendarLocalizer(weekStartsOn), [weekStartsOn])
+
   const initial = useMemo(() => parseISO(startDate), [startDate])
   const [currentDate, setCurrentDate] = useState<Date>(initial)
   useEffect(() => { setCurrentDate(initial) }, [initial])

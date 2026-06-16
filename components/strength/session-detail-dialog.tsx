@@ -539,6 +539,17 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
                       </TooltipContent>
                     </Tooltip>
                   )}
+                  {ex.garmin_supported && ex.garmin_match_quality === 'approximate' && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Badge variant="outline" className="cursor-help border-amber-500/40 text-[10px] text-amber-600">Approx</Badge>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs text-xs">
+                        <div>Matched to the closest Garmin exercise:</div>
+                        <div className="mt-0.5 font-mono text-muted-foreground">{ex.garmin_exercise_category} / {ex.garmin_exercise_name}</div>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
                 </div>
               </li>
             ))}

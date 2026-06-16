@@ -97,9 +97,10 @@ describe('resolveExerciseAgainstCatalog', () => {
     )
     expect(result.garmin_exercise_category).toBe('CHEST')
     expect(result.garmin_exercise_name).toBe('PUSH_UP')
+    expect(result.garmin_match_quality).toBe('exact')
   })
 
-  it('stamps LLM-suggested enum when no catalog hit but suggestion is exact + known', () => {
+  it('stamps LLM-suggested enum as exact when suggestion is confident + verbatim-known', () => {
     const result = resolveExerciseAgainstCatalog(
       baseExercise({
         canonical_name: 'nordic_curl',
@@ -114,12 +115,13 @@ describe('resolveExerciseAgainstCatalog', () => {
     expect(result.garmin_supported).toBe(true)
     expect(result.garmin_exercise_category).toBe('PLANK')
     expect(result.garmin_exercise_name).toBe('SIDE_PLANK')
+    expect(result.garmin_match_quality).toBe('exact')
     expect(result.garmin_suggested_category).toBeUndefined()
     expect(result.garmin_suggested_name).toBeUndefined()
     expect(result.garmin_suggested_confidence).toBeUndefined()
   })
 
-  it('ignores LLM suggestion when confidence is partial', () => {
+  it('accepts a partial-confidence suggestion and flags it approximate', () => {
     const result = resolveExerciseAgainstCatalog(
       baseExercise({
         canonical_name: 'nordic_curl',
@@ -129,17 +131,84 @@ describe('resolveExerciseAgainstCatalog', () => {
       }),
       lookup,
     )
-    expect(result.garmin_supported).toBe(false)
-    expect(result.garmin_exercise_category).toBeUndefined()
-    expect(result.garmin_exercise_name).toBeUndefined()
+    expect(result.garmin_supported).toBe(true)
+    expect(result.garmin_exercise_category).toBe('PLANK')
+    expect(result.garmin_exercise_name).toBe('SIDE_PLANK')
+    expect(result.garmin_match_quality).toBe('approximate')
   })
 
-  it('ignores LLM suggestion when pair is not in the enum table', () => {
+  it('fuzzily resolves a mis-spelled exact suggestion and flags it approximate', () => {
+    // Garmin spells this 'BENT_OVER_ROW_WITH_DUMBELL' (one B); the model emits
+    // the correct double-B spelling. We should still resolve to the real string.
+    const result = resolveExerciseAgainstCatalog(
+      baseExercise({
+        canonical_name: 'dumbbell_bent_over_row',
+        display_name: 'Dumbbell Bent-Over Row',
+        user_text: 'dumbbell bent-over rows',
+        garmin_suggested_category: 'ROW',
+        garmin_suggested_name: 'BENT_OVER_ROW_WITH_DUMBBELL',
+        garmin_suggested_confidence: 'exact',
+      }),
+      lookup,
+    )
+    expect(result.garmin_supported).toBe(true)
+    expect(result.garmin_exercise_category).toBe('ROW')
+    expect(result.garmin_exercise_name).toBe('BENT_OVER_ROW_WITH_DUMBELL')
+    expect(result.garmin_match_quality).toBe('approximate')
+  })
+
+  it('ignores LLM suggestion when the category is not in the enum table', () => {
     const result = resolveExerciseAgainstCatalog(
       baseExercise({
         canonical_name: 'made_up_exercise',
         garmin_suggested_category: 'NOT_A_CATEGORY',
         garmin_suggested_name: 'FAKE_NAME',
+        garmin_suggested_confidence: 'exact',
+      }),
+      lookup,
+    )
+    expect(result.garmin_supported).toBe(false)
+    expect(result.garmin_unsupported_reason).toBe('Exercise not in catalog')
+    expect(result.garmin_match_quality).toBeUndefined()
+  })
+
+  it('deterministically resolves by display name when the LLM gave no suggestion', () => {
+    // Not in the test catalog, no LLM suggestion — the name search should still
+    // find the verbatim Garmin entry and flag it approximate.
+    const result = resolveExerciseAgainstCatalog(
+      baseExercise({
+        canonical_name: 'dumbbell_floor_press',
+        display_name: 'Dumbbell Floor Press',
+        user_text: 'dumbbell floor press x 3',
+      }),
+      lookup,
+    )
+    expect(result.garmin_supported).toBe(true)
+    expect(result.garmin_exercise_category).toBe('BENCH_PRESS')
+    expect(result.garmin_exercise_name).toBe('DUMBBELL_FLOOR_PRESS')
+    expect(result.garmin_match_quality).toBe('approximate')
+  })
+
+  it('leaves a genuinely-absent exercise unsupported even via name search', () => {
+    const result = resolveExerciseAgainstCatalog(
+      baseExercise({
+        canonical_name: 'banded_pallof_press',
+        display_name: 'Banded Pallof Press',
+        user_text: 'banded pallof press each side',
+      }),
+      lookup,
+    )
+    expect(result.garmin_supported).toBe(false)
+    expect(result.garmin_unsupported_reason).toBe('Exercise not in catalog')
+    expect(result.garmin_match_quality).toBeUndefined()
+  })
+
+  it('ignores a suggestion whose name has no close match in the category', () => {
+    const result = resolveExerciseAgainstCatalog(
+      baseExercise({
+        canonical_name: 'made_up_exercise',
+        garmin_suggested_category: 'PLANK',
+        garmin_suggested_name: 'COMPLETELY_UNRELATED_NONSENSE_TOKEN',
         garmin_suggested_confidence: 'exact',
       }),
       lookup,

@@ -174,18 +174,21 @@ export function StepReview({
           <Button variant="outline" onClick={onBack}>Back</Button>
           <Button variant="ghost" onClick={onStartOver}>Start over</Button>
         </div>
-        <Button onClick={() => onConfirm(editedProgram)}>Looks good — schedule it</Button>
+        <Button onClick={() => onConfirm(editedProgram)}>Schedule workouts</Button>
       </CardFooter>
     </Card>
   )
 }
 
 function ExerciseLine({ exercise }: { exercise: Exercise }) {
+  const isApproximate = exercise.garmin_supported && exercise.garmin_match_quality === 'approximate'
   return (
     <li className="flex items-start gap-2 text-sm">
       <span className="mt-0.5">
         {exercise.garmin_supported
-          ? <Check className="h-4 w-4 text-green-600" aria-label="Supported by Garmin" />
+          ? isApproximate
+            ? <Check className="h-4 w-4 text-amber-500" aria-label="Approximate Garmin match" />
+            : <Check className="h-4 w-4 text-green-600" aria-label="Supported by Garmin" />
           : <X className="h-4 w-4 text-muted-foreground" aria-label="Not supported by Garmin" />}
       </span>
       <span className="flex-1">
@@ -195,9 +198,27 @@ function ExerciseLine({ exercise }: { exercise: Exercise }) {
         {exercise.notes && (
           <span className="ml-2 text-xs italic text-muted-foreground">({exercise.notes})</span>
         )}
+        {isApproximate && (
+          <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs">
+            <Badge variant="outline" className="border-amber-500/40 text-[10px] text-amber-600">Approx match</Badge>
+            <span className="text-muted-foreground">
+              <span className="italic">“{stripLeadingBullet(exercise.user_text)}”</span>
+              {' → '}
+              <span className="font-mono">{exercise.garmin_exercise_category} / {exercise.garmin_exercise_name}</span>
+            </span>
+          </span>
+        )}
       </span>
     </li>
   )
+}
+
+// Strip a leading list marker ("- ", "• ", "* ") the user pasted in, so the
+// source line reads cleanly. No regex (project rule: none in runtime code).
+function stripLeadingBullet(text: string): string {
+  let i = 0
+  while (i < text.length && (text[i] === '-' || text[i] === '•' || text[i] === '*' || text[i] === ' ')) i++
+  return text.slice(i)
 }
 
 function describeMeasurement(ex: Exercise): string {
