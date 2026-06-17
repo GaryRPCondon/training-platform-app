@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 interface ProviderAvailability {
     name: string
@@ -27,13 +28,14 @@ interface ProviderAvailability {
 
 type FeedbackTone = 'critical' | 'balanced' | 'positive'
 const TONE_VALUES: FeedbackTone[] = ['critical', 'balanced', 'positive']
-const TONE_LABELS: Record<FeedbackTone, string> = {
-    critical: 'Value critical feedback',
-    balanced: 'Tell it like it is',
-    positive: 'Positive Reinforcement',
+const TONE_KEYS: Record<FeedbackTone, string> = {
+    critical: 'toneCritical',
+    balanced: 'toneBalanced',
+    positive: 'tonePositive',
 }
 
 export function AISettingsCard() {
+    const t = useTranslations('aiSettings')
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [provider, setProvider] = useState('deepseek')
@@ -97,7 +99,7 @@ export function AISettingsCard() {
             }
         } catch (error) {
             console.error('Failed to fetch settings:', error)
-            toast.error('Failed to load settings')
+            toast.error(t('loadError'))
         } finally {
             setLoading(false)
         }
@@ -127,10 +129,10 @@ export function AISettingsCard() {
             if (!response.ok) throw new Error('Failed to update settings')
 
             savedValues.current = { provider, model, useFastModel, aiSummariesEnabled, feedbackTone }
-            toast.success('AI settings saved successfully')
+            toast.success(t('saved'))
         } catch (error) {
             console.error('Failed to save settings:', error)
-            toast.error('Failed to save settings')
+            toast.error(t('saveError'))
         } finally {
             setSaving(false)
         }
@@ -140,7 +142,7 @@ export function AISettingsCard() {
         return (
             <Card>
                 <CardHeader>
-                    <CardTitle>AI Configuration</CardTitle>
+                    <CardTitle>{t('title')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <div className="flex items-center justify-center h-40">
@@ -154,32 +156,32 @@ export function AISettingsCard() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>AI Configuration</CardTitle>
+                <CardTitle>{t('title')}</CardTitle>
                 <CardDescription>
-                    Select which AI model you want to use for the training assistant.
+                    {t('description')}
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="space-y-2">
-                    <Label htmlFor="provider">LLM Provider</Label>
+                    <Label htmlFor="provider">{t('llmProvider')}</Label>
                     <Select value={provider} onValueChange={setProvider}>
                         <SelectTrigger id="provider">
-                            <SelectValue placeholder="Select a provider" />
+                            <SelectValue placeholder={t('providerPlaceholder')} />
                         </SelectTrigger>
                         <SelectContent>
                             {[
-                                { value: 'deepseek', label: 'DeepSeek (Recommended)' },
-                                { value: 'gemini', label: 'Google Gemini' },
-                                { value: 'anthropic', label: 'Anthropic Claude' },
-                                { value: 'openai', label: 'OpenAI GPT-4' },
-                                { value: 'grok', label: 'xAI Grok' },
+                                { value: 'deepseek', label: t('providerDeepseek') },
+                                { value: 'gemini', label: t('providerGemini') },
+                                { value: 'anthropic', label: t('providerAnthropic') },
+                                { value: 'openai', label: t('providerOpenai') },
+                                { value: 'grok', label: t('providerGrok') },
                             ].map(p => (
                                 <SelectItem
                                     key={p.value}
                                     value={p.value}
                                     disabled={!isProviderAvailable(p.value)}
                                 >
-                                    {p.label}{!isProviderAvailable(p.value) ? ' (Not available)' : ''}
+                                    {p.label}{!isProviderAvailable(p.value) ? t('notAvailableSuffix') : ''}
                                 </SelectItem>
                             ))}
                         </SelectContent>
@@ -188,34 +190,34 @@ export function AISettingsCard() {
 
                 {availableProviders.length > 0 && !isProviderAvailable(provider) && (
                     <div className="p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md text-sm text-amber-800 dark:text-amber-200">
-                        The selected provider is no longer available. Please choose a different one.
+                        {t('providerUnavailable')}
                     </div>
                 )}
 
                 <div className="space-y-2">
-                    <Label htmlFor="model">Model Name (Optional)</Label>
+                    <Label htmlFor="model">{t('modelName')}</Label>
                     <div className="flex gap-2">
                         <input
                             id="model"
                             type="text"
                             value={model}
                             onChange={(e) => setModel(e.target.value)}
-                            placeholder="e.g., claude-3-5-sonnet-20240620"
+                            placeholder={t('modelPlaceholder')}
                             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                         />
                     </div>
                     <p className="text-sm text-muted-foreground">
-                        Override the default model. Leave empty to use default.
+                        {t('modelHelp')}
                     </p>
                 </div>
 
                 <div className="flex items-center justify-between p-3 sm:p-4 border rounded-lg">
                     <div>
                         <Label htmlFor="useFastModel" className="cursor-pointer">
-                            Use non-reasoning model for operations
+                            {t('fastModelLabel')}
                         </Label>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                            Faster models for quick plan modifications. Recommended.
+                            {t('fastModelHelp')}
                         </p>
                     </div>
                     <Switch
@@ -228,10 +230,10 @@ export function AISettingsCard() {
                 <div className="flex items-center justify-between p-3 sm:p-4 border rounded-lg">
                     <div>
                         <Label htmlFor="aiSummaries" className="cursor-pointer">
-                            AI Summaries on activity sync
+                            {t('aiSummariesLabel')}
                         </Label>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                            Auto-generate coaching summaries when activities match planned workouts.
+                            {t('aiSummariesHelp')}
                         </p>
                     </div>
                     <Switch
@@ -249,9 +251,9 @@ export function AISettingsCard() {
 
                 <div className="p-3 sm:p-4 border rounded-lg space-y-3">
                     <div>
-                        <Label htmlFor="feedbackTone">Feedback tone</Label>
+                        <Label htmlFor="feedbackTone">{t('feedbackToneLabel')}</Label>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                            How the AI Coach frames summaries. The verdict still lands honestly — only the emphasis shifts.
+                            {t('feedbackToneHelp')}
                         </p>
                     </div>
                     <Slider
@@ -265,12 +267,12 @@ export function AISettingsCard() {
                         aria-label="Feedback tone"
                     />
                     <div className="flex justify-between text-xs text-muted-foreground">
-                        {TONE_VALUES.map((t) => (
+                        {TONE_VALUES.map((tone) => (
                             <span
-                                key={t}
-                                className={feedbackTone === t ? 'font-medium text-foreground' : ''}
+                                key={tone}
+                                className={feedbackTone === tone ? 'font-medium text-foreground' : ''}
                             >
-                                {TONE_LABELS[t]}
+                                {t(TONE_KEYS[tone])}
                             </span>
                         ))}
                     </div>
@@ -279,23 +281,23 @@ export function AISettingsCard() {
                 <AlertDialog open={showCostWarning} onOpenChange={setShowCostWarning}>
                     <AlertDialogContent>
                         <AlertDialogHeader>
-                            <AlertDialogTitle>Enable AI Summaries</AlertDialogTitle>
+                            <AlertDialogTitle>{t('costDialogTitle')}</AlertDialogTitle>
                             <AlertDialogDescription>
-                                AI summaries use your configured LLM provider to analyse each matched activity. This will consume API tokens and may incur additional costs depending on your provider and usage volume.
+                                {t('costDialogDescription')}
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
                             <AlertDialogAction onClick={() => setAiSummariesEnabled(true)}>
-                                Enable
+                                {t('enable')}
                             </AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
 
                 <Button onClick={handleSave} disabled={saving || !hasChanges} className="w-full">
-                    {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {saving ? 'Saving...' : 'Save AI Settings'}
+                    {saving && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
+                    {saving ? t('saving') : t('save')}
                 </Button>
             </CardContent>
         </Card>

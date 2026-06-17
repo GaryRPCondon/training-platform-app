@@ -8,6 +8,7 @@ import { getCurrentAthleteId } from '@/lib/supabase/client'
 import { createClient } from '@/lib/supabase/client'
 import { useUnits } from '@/lib/hooks/use-units'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { format } from 'date-fns'
 
 function extractPaceSummary(sw: Record<string, unknown> | null): string | null {
@@ -32,6 +33,7 @@ function formatWorkoutType(type: string): string {
 }
 
 export function TodaysWorkoutCard() {
+    const t = useTranslations('todaysWorkout')
     const { toDisplayDistance, distanceLabel } = useUnits()
     const router = useRouter()
     const supabase = createClient()
@@ -84,7 +86,7 @@ export function TodaysWorkoutCard() {
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                     <CalendarCheck className="h-5 w-5" />
-                    Today&apos;s Planned Workout
+                    {t('title')}
                 </CardTitle>
                 {isCompleted && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
                 {isPartial && <AlertCircle className="h-4 w-4 text-yellow-500" />}
@@ -103,12 +105,12 @@ export function TodaysWorkoutCard() {
                             )}
                             {isCompleted && (
                                 <Badge variant="default" className="text-xs bg-emerald-500">
-                                    Completed
+                                    {t('completed')}
                                 </Badge>
                             )}
                             {isPartial && (
                                 <Badge variant="secondary" className="text-xs bg-yellow-500 text-white">
-                                    Partial
+                                    {t('partial')}
                                 </Badge>
                             )}
                         </div>
@@ -130,9 +132,9 @@ export function TodaysWorkoutCard() {
                     </div>
                 ) : (
                     <div>
-                        <p className="text-sm font-medium">Rest Day</p>
+                        <p className="text-sm font-medium">{t('restDay')}</p>
                         <p className="text-xs text-muted-foreground mt-1">
-                            No workout scheduled
+                            {t('noWorkout')}
                         </p>
                     </div>
                 )}

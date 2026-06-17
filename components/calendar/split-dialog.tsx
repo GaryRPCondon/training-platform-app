@@ -9,6 +9,7 @@ import { useUnits } from '@/lib/hooks/use-units'
 import { fromDisplayDistance } from '@/lib/utils/units'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 interface SplitDialogProps {
   workoutId: number
@@ -21,6 +22,7 @@ interface SplitDialogProps {
 const TOLERANCE_FRACTION = 0.05
 
 export function SplitDialog({ workoutId, totalMeters, open, onOpenChange, onSplit }: SplitDialogProps) {
+  const t = useTranslations('splitDialog')
   const { units, toDisplayDistance, distanceLabel } = useUnits()
   const totalDisplay = toDisplayDistance(totalMeters)
   const halfDisplay = +(totalDisplay / 2).toFixed(1)
@@ -38,13 +40,18 @@ export function SplitDialog({ workoutId, totalMeters, open, onOpenChange, onSpli
   const valid = Number.isFinite(run1Num) && Number.isFinite(run2Num) && run1Num > 0 && run2Num > 0 && drift <= tolerance
 
   const validationMessage = useMemo(() => {
-    if (!Number.isFinite(run1Num) || !Number.isFinite(run2Num)) return 'Enter both distances'
-    if (run1Num <= 0 || run2Num <= 0) return 'Distances must be positive'
+    if (!Number.isFinite(run1Num) || !Number.isFinite(run2Num)) return t('enterBothDistances')
+    if (run1Num <= 0 || run2Num <= 0) return t('distancesPositive')
     if (drift > tolerance) {
-      return `Sum (${sum.toFixed(1)} ${label}) must be within ${(TOLERANCE_FRACTION * 100).toFixed(0)}% of original (${totalDisplay.toFixed(1)} ${label})`
+      return t('sumWithinTolerance', {
+        sum: sum.toFixed(1),
+        unit: label,
+        pct: (TOLERANCE_FRACTION * 100).toFixed(0),
+        total: totalDisplay.toFixed(1),
+      })
     }
     return null
-  }, [run1Num, run2Num, sum, totalDisplay, drift, tolerance, label])
+  }, [run1Num, run2Num, sum, totalDisplay, drift, tolerance, label, t])
 
   async function handleSubmit() {
     if (!valid) return
@@ -59,14 +66,14 @@ export function SplitDialog({ workoutId, totalMeters, open, onOpenChange, onSpli
       })
       const json = await res.json()
       if (!res.ok) {
-        toast.error(json.error || 'Failed to split workout')
+        toast.error(json.error || t('splitFailed'))
         return
       }
-      toast.success('Workout split into two runs')
+      toast.success(t('splitSuccess'))
       onSplit()
       onOpenChange(false)
     } catch {
-      toast.error('Failed to split workout')
+      toast.error(t('splitFailed'))
     } finally {
       setSubmitting(false)
     }
@@ -75,13 +82,13 @@ export function SplitDialog({ workoutId, totalMeters, open, onOpenChange, onSpli
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
-        <DialogTitle>Split workout into two runs</DialogTitle>
+        <DialogTitle>{t('title')}</DialogTitle>
         <DialogDescription>
-          Original distance: {totalDisplay.toFixed(1)} {label}. Both runs will be on the same day.
+          {t('description', { total: totalDisplay.toFixed(1), unit: label })}
         </DialogDescription>
         <div className="grid grid-cols-2 gap-4 py-2">
           <div className="space-y-2">
-            <Label htmlFor="run1">Run 1 ({label})</Label>
+            <Label htmlFor="run1">{t('run1', { unit: label })}</Label>
             <Input
               id="run1"
               type="number"
@@ -93,7 +100,7 @@ export function SplitDialog({ workoutId, totalMeters, open, onOpenChange, onSpli
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="run2">Run 2 ({label})</Label>
+            <Label htmlFor="run2">{t('run2', { unit: label })}</Label>
             <Input
               id="run2"
               type="number"
@@ -110,11 +117,11 @@ export function SplitDialog({ workoutId, totalMeters, open, onOpenChange, onSpli
         )}
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
-            Cancel
+            {t('cancel')}
           </Button>
           <Button onClick={handleSubmit} disabled={!valid || submitting}>
-            {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Split
+            {submitting && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
+            {t('split')}
           </Button>
         </div>
       </DialogContent>

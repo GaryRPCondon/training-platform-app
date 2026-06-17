@@ -13,6 +13,7 @@ import type { WorkoutWithDetails } from '@/types/review'
 import type { TrainingPaces } from '@/types/database'
 import { calculateTotalWorkoutDistance } from '@/lib/training/vdot'
 import { useQueryClient } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
 
 // ---------------------------------------------------------------------------
 // Structured workout types (mirrors the JSONB schema from coach-tools.ts)
@@ -69,6 +70,7 @@ function formatWarmupCooldown(part: StructuredWarmupCooldown): string {
 }
 
 function StructuredWorkoutSummary({ structured }: { structured: StructuredWorkout }) {
+    const t = useTranslations('proposal')
     const mainSet = structured.main_set ?? []
     const hasContent = structured.warmup || mainSet.length > 0 || structured.cooldown
     if (!hasContent) return null
@@ -77,14 +79,14 @@ function StructuredWorkoutSummary({ structured }: { structured: StructuredWorkou
         <div className="rounded-md border bg-muted/40 px-3 py-2 space-y-1.5 text-xs">
             {structured.warmup && (
                 <div className="flex gap-2">
-                    <span className="text-muted-foreground w-16 shrink-0">Warmup</span>
+                    <span className="text-muted-foreground w-16 shrink-0">{t('warmup')}</span>
                     <span className="capitalize">{formatWarmupCooldown(structured.warmup)}</span>
                 </div>
             )}
             {mainSet.map((set, i) => (
                 <div key={i} className="flex gap-2">
                     <span className="text-muted-foreground w-16 shrink-0">
-                        {set.repeat > 1 ? `${set.repeat}×` : 'Main'}
+                        {set.repeat > 1 ? `${set.repeat}×` : t('main')}
                     </span>
                     <span className="space-x-1">
                         {set.intervals.map((iv, j) => (
@@ -94,26 +96,26 @@ function StructuredWorkoutSummary({ structured }: { structured: StructuredWorkou
                             </span>
                         ))}
                         {set.skip_last_recovery && (
-                            <span className="text-muted-foreground italic ml-1">(skip last recovery)</span>
+                            <span className="text-muted-foreground italic ms-1">{t('skipLastRecovery')}</span>
                         )}
                     </span>
                 </div>
             ))}
             {structured.cooldown && (
                 <div className="flex gap-2">
-                    <span className="text-muted-foreground w-16 shrink-0">Cooldown</span>
+                    <span className="text-muted-foreground w-16 shrink-0">{t('cooldown')}</span>
                     <span className="capitalize">{formatWarmupCooldown(structured.cooldown)}</span>
                 </div>
             )}
             {structured.pace_guidance && (
                 <div className="flex gap-2 pt-0.5 border-t border-border/50">
-                    <span className="text-muted-foreground w-16 shrink-0">Pace</span>
+                    <span className="text-muted-foreground w-16 shrink-0">{t('pace')}</span>
                     <span>{structured.pace_guidance}</span>
                 </div>
             )}
             {structured.notes && (
                 <div className="flex gap-2">
-                    <span className="text-muted-foreground w-16 shrink-0">Notes</span>
+                    <span className="text-muted-foreground w-16 shrink-0">{t('notes')}</span>
                     <span className="italic">{structured.notes}</span>
                 </div>
             )}
@@ -199,6 +201,7 @@ export function ProposalCard({
     replaceTarget,
     onStatusChange,
 }: ProposalCardProps) {
+    const t = useTranslations('proposal')
     const queryClient = useQueryClient()
     const [status, setStatus] = useState(proposal.proposal_status ?? 'pending')
     const [isApplying, setIsApplying] = useState(false)
@@ -254,7 +257,7 @@ export function ProposalCard({
                 target_pace_max_sec_per_km: proposal.target_pace_max_sec_per_km,
             }),
         })
-        if (!res.ok) throw new Error('Failed to create workout')
+        if (!res.ok) throw new Error(t('createFailed'))
     }
 
     async function handleAdd() {
@@ -279,7 +282,7 @@ export function ProposalCard({
         setIsReplacing(true)
         try {
             const delRes = await fetch(`/api/workouts?id=${replaceTargetId}`, { method: 'DELETE' })
-            if (!delRes.ok) throw new Error('Failed to delete existing workout')
+            if (!delRes.ok) throw new Error(t('deleteFailed'))
             await createProposedWorkout()
             applyStatus('applied')
             queryClient.invalidateQueries({ queryKey: ['workouts'] })
@@ -335,7 +338,7 @@ export function ProposalCard({
                 <CardContent className="py-3 px-4">
                     <span className="text-sm text-muted-foreground flex items-center gap-2">
                         <X className="h-3 w-3" />
-                        Dismissed: {workoutTypeLabel} on {dateLabel}
+                        {t('dismissedLabel', { type: workoutTypeLabel, date: dateLabel })}
                     </span>
                 </CardContent>
             </Card>
@@ -352,7 +355,7 @@ export function ProposalCard({
                 <CardContent className="py-3 px-4">
                     <span className="text-sm text-green-700 dark:text-green-400 flex items-center gap-2">
                         <CheckCircle className="h-4 w-4" />
-                        Applied: {workoutTypeLabel} on {dateLabel}
+                        {t('appliedLabel', { type: workoutTypeLabel, date: dateLabel })}
                     </span>
                 </CardContent>
             </Card>
@@ -374,7 +377,7 @@ export function ProposalCard({
                                 {proposal.is_preferred && (
                                     <Badge variant="default" className="gap-1 text-xs">
                                         <Star className="h-3 w-3" />
-                                        Recommended
+                                        {t('recommended')}
                                     </Badge>
                                 )}
                                 <span className="font-medium">{workoutTypeLabel}</span>
@@ -396,7 +399,7 @@ export function ProposalCard({
                     {/* Intensity */}
                     {proposal.intensity_target && !proposal.structured_workout && (
                         <p className="text-xs text-muted-foreground capitalize">
-                            Intensity: {proposal.intensity_target}
+                            {t('intensity', { value: proposal.intensity_target })}
                         </p>
                     )}
 
@@ -424,7 +427,7 @@ export function ProposalCard({
                             ? <Loader2 className="h-3 w-3 animate-spin" />
                             : <Plus className="h-3 w-3" />
                         }
-                        Add to Plan
+                        {t('addToPlan')}
                     </Button>
                     {replaceTargetId && (
                         <Button
@@ -438,7 +441,7 @@ export function ProposalCard({
                                 ? <Loader2 className="h-3 w-3 animate-spin" />
                                 : <ReplaceIcon className="h-3 w-3" />
                             }
-                            Replace
+                            {t('replace')}
                         </Button>
                     )}
                     <Button
@@ -449,7 +452,7 @@ export function ProposalCard({
                         className="gap-1"
                     >
                         <Pencil className="h-3 w-3" />
-                        Edit First
+                        {t('editFirst')}
                     </Button>
                     <Button
                         size="sm"
@@ -459,7 +462,7 @@ export function ProposalCard({
                         className="gap-1 text-muted-foreground"
                     >
                         <X className="h-3 w-3" />
-                        Dismiss
+                        {t('dismiss')}
                     </Button>
                 </CardFooter>
             </Card>
@@ -468,7 +471,7 @@ export function ProposalCard({
             <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle>Edit Proposed Workout</DialogTitle>
+                        <DialogTitle>{t('editDialogTitle')}</DialogTitle>
                     </DialogHeader>
                     <WorkoutCard
                         workout={proposalToWorkoutWithDetails(proposal, athleteId)}

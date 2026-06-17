@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { Loader2, TrendingUp } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useTranslations } from 'next-intl'
 import { useUnits } from '@/lib/hooks/use-units'
 import {
   calculateVDOTFromRaceTime,
@@ -31,6 +32,7 @@ interface PerformanceMetricsCardProps {
 }
 
 export function PerformanceMetricsCard({ initialData }: PerformanceMetricsCardProps = {}) {
+  const t = useTranslations('performanceMetrics')
   const { units } = useUnits()
   const provided = initialData !== undefined
 
@@ -185,10 +187,10 @@ export function PerformanceMetricsCard({ initialData }: PerformanceMetricsCardPr
       setCurrentPaces(data.training_paces)
       setNewVDOT(null)
       setNewPaces(null)
-      toast.success('Training paces updated successfully')
+      toast.success(t('saved'))
     } catch (error: any) {
       console.error('Failed to update VDOT:', error)
-      toast.error(error.message || 'Failed to update training paces')
+      toast.error(error.message || t('saveError'))
     } finally {
       setSaving(false)
     }
@@ -204,9 +206,9 @@ export function PerformanceMetricsCard({ initialData }: PerformanceMetricsCardPr
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5" />
-            Performance Metrics
+            {t('title')}
           </CardTitle>
-          <CardDescription>Update your VDOT to calibrate training paces.</CardDescription>
+          <CardDescription>{t('description')}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col flex-1 space-y-4">
           <div className="flex items-center space-x-6">
@@ -250,7 +252,7 @@ export function PerformanceMetricsCard({ initialData }: PerformanceMetricsCardPr
           Performance Metrics
         </CardTitle>
         <CardDescription>
-          Update your VDOT to calibrate training paces.
+          {t('description')}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col flex-1 space-y-4">
@@ -262,15 +264,15 @@ export function PerformanceMetricsCard({ initialData }: PerformanceMetricsCardPr
             setNewVDOT(null)
             setNewPaces(null)
           }}
-          className="flex items-center space-x-6"
+          className="flex items-center gap-6"
         >
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-2">
             <RadioGroupItem value="race" id="perf-race" />
-            <Label htmlFor="perf-race" className="font-normal cursor-pointer">Recent Race Time</Label>
+            <Label htmlFor="perf-race" className="font-normal cursor-pointer">{t('recentRaceTime')}</Label>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-2">
             <RadioGroupItem value="vdot" id="perf-vdot" />
-            <Label htmlFor="perf-vdot" className="font-normal cursor-pointer">VDOT Score</Label>
+            <Label htmlFor="perf-vdot" className="font-normal cursor-pointer">{t('vdotScore')}</Label>
           </div>
         </RadioGroup>
 
@@ -280,7 +282,7 @@ export function PerformanceMetricsCard({ initialData }: PerformanceMetricsCardPr
           {inputMethod === 'race' && (
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Race Distance</Label>
+                <Label>{t('raceDistance')}</Label>
                 <Select value={raceDistance} onValueChange={handleRaceDistanceChange}>
                   <SelectTrigger className="w-full">
                     <SelectValue />
@@ -293,10 +295,10 @@ export function PerformanceMetricsCard({ initialData }: PerformanceMetricsCardPr
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Race Time</Label>
+                <Label>{t('raceTime')}</Label>
                 <Input
                   type="text"
-                  placeholder="HH:MM:SS or MM:SS"
+                  placeholder={t('raceTimePlaceholder')}
                   value={raceTime}
                   onChange={(e) => handleRaceTimeChange(e.target.value)}
                   className="w-full"
@@ -308,13 +310,13 @@ export function PerformanceMetricsCard({ initialData }: PerformanceMetricsCardPr
           {/* Direct VDOT Input */}
           {inputMethod === 'vdot' && (
             <div className="space-y-2">
-              <Label>VDOT Value</Label>
+              <Label>{t('vdotValue')}</Label>
               <Input
                 type="number"
                 min="20"
                 max="100"
                 step="0.1"
-                placeholder="e.g., 50.5"
+                placeholder={t('vdotPlaceholder')}
                 value={vdotDirect}
                 onChange={(e) => handleVDOTChange(e.target.value)}
                 className="max-w-xs"
@@ -328,29 +330,29 @@ export function PerformanceMetricsCard({ initialData }: PerformanceMetricsCardPr
           {displayVDOT && displayPaces ? (
             <>
               <p className="text-sm font-medium">
-                VDOT: <span className="font-mono">{displayVDOT}</span>
+                {t('vdotLabel')} <span className="font-mono">{displayVDOT}</span>
               </p>
               <div>
-                <p className="text-sm font-medium mb-2">Training Paces:</p>
+                <p className="text-sm font-medium mb-2">{t('trainingPaces')}</p>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                   <div>
-                    <span className="text-muted-foreground">Easy:</span>{' '}
+                    <span className="text-muted-foreground">{t('paceEasy')}</span>{' '}
                     <span className="font-mono">{formatPace(displayPaces.easy, units)}</span>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Marathon:</span>{' '}
+                    <span className="text-muted-foreground">{t('paceMarathon')}</span>{' '}
                     <span className="font-mono">{formatPace(displayPaces.marathon, units)}</span>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Tempo:</span>{' '}
+                    <span className="text-muted-foreground">{t('paceTempo')}</span>{' '}
                     <span className="font-mono">{formatPace(displayPaces.tempo, units)}</span>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Interval:</span>{' '}
+                    <span className="text-muted-foreground">{t('paceInterval')}</span>{' '}
                     <span className="font-mono">{formatPace(displayPaces.interval, units)}</span>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Repetition:</span>{' '}
+                    <span className="text-muted-foreground">{t('paceRepetition')}</span>{' '}
                     <span className="font-mono">{formatPace(displayPaces.repetition, units)}</span>
                   </div>
                 </div>
@@ -358,7 +360,7 @@ export function PerformanceMetricsCard({ initialData }: PerformanceMetricsCardPr
             </>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Enter a race time or VDOT score to see your training paces.
+              {t('enterToSee')}
             </p>
           )}
         </div>
@@ -369,8 +371,8 @@ export function PerformanceMetricsCard({ initialData }: PerformanceMetricsCardPr
           disabled={saving || !hasChanges}
           className="w-full"
         >
-          {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {saving ? 'Saving...' : 'Save Training Paces'}
+          {saving && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
+          {saving ? t('saving') : t('save')}
         </Button>
       </CardContent>
     </Card>

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Dumbbell } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import type { StrengthSession } from '@/types/database'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
@@ -32,6 +33,7 @@ function statusClasses(status: StrengthSession['completion_status']): string {
 const MAX_ICONS = 3
 
 export function StrengthIconStrip({ sessions, onOpen, onDragStart, onDragEnd, setSuppression }: StrengthIconStripProps) {
+  const t = useTranslations('strengthStrip')
   const [draggingId, setDraggingId] = useState<number | null>(null)
 
   if (sessions.length === 0) return null
@@ -85,7 +87,7 @@ export function StrengthIconStrip({ sessions, onOpen, onDragStart, onDragEnd, se
                   onDragEnd()
                 }}
                 className={`pointer-events-auto inline-flex h-6 w-6 items-center justify-center rounded-md shadow-sm transition-all hover:scale-110 cursor-grab active:cursor-grabbing ${isDragging ? 'opacity-40' : ''} ${statusClasses(session.completion_status)}`}
-                aria-label={`Strength session: ${session.title}`}
+                aria-label={t('ariaSession', { title: session.title })}
               >
                 <Dumbbell className="h-4 w-4" />
               </button>
@@ -93,14 +95,14 @@ export function StrengthIconStrip({ sessions, onOpen, onDragStart, onDragEnd, se
             <TooltipContent side="top" className="max-w-xs text-xs">
               <div className="font-medium">{session.title}</div>
               {session.program_name && (
-                <div className="text-muted-foreground">from {session.program_name}</div>
+                <div className="text-muted-foreground">{t('fromProgram', { program: session.program_name })}</div>
               )}
               {session.estimated_duration_minutes && (
-                <div className="text-muted-foreground">~{session.estimated_duration_minutes} min</div>
+                <div className="text-muted-foreground">{t('durationMin', { min: session.estimated_duration_minutes })}</div>
               )}
               {exerciseNames.length > 0 && (
                 <div className="mt-1 text-muted-foreground">
-                  {exerciseNames.join(' · ')}{extraCount > 0 && ` +${extraCount} more`}
+                  {exerciseNames.join(' · ')}{extraCount > 0 && ` ${t('plusMore', { count: extraCount })}`}
                 </div>
               )}
             </TooltipContent>
@@ -126,14 +128,14 @@ export function StrengthIconStrip({ sessions, onOpen, onDragStart, onDragEnd, se
                 // see which others are hidden.
                 onOpen(overflow[0].id)
               }}
-              className="pointer-events-auto ml-0.5 inline-flex h-6 items-center rounded-md bg-slate-500/15 px-1.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-500/30 hover:bg-slate-500/25 dark:bg-slate-400/20 dark:text-slate-100 dark:ring-slate-300/30"
-              aria-label={`Show ${overflowCount} more strength session${overflowCount === 1 ? '' : 's'}`}
+              className="pointer-events-auto ms-0.5 inline-flex h-6 items-center rounded-md bg-slate-500/15 px-1.5 text-[10px] font-medium text-slate-700 ring-1 ring-slate-500/30 hover:bg-slate-500/25 dark:bg-slate-400/20 dark:text-slate-100 dark:ring-slate-300/30"
+              aria-label={t('ariaShowMore', { count: overflowCount })}
             >
               +{overflowCount}
             </button>
           </TooltipTrigger>
           <TooltipContent side="top" className="max-w-xs text-xs">
-            <div className="font-medium">{overflowCount} more session{overflowCount === 1 ? '' : 's'}</div>
+            <div className="font-medium">{t('moreSessions', { count: overflowCount })}</div>
             <ul className="mt-1 space-y-0.5 text-muted-foreground">
               {overflow.map(s => <li key={s.id}>{s.title}</li>)}
             </ul>

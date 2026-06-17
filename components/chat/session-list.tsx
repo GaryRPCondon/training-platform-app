@@ -1,6 +1,7 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
 import { formatDistanceToNow } from 'date-fns'
 import { MessageSquare, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -21,6 +22,7 @@ interface SessionListProps {
 }
 
 export function SessionList({ currentSessionId, onSelectSession }: SessionListProps) {
+    const t = useTranslations('chat')
     const { data, isLoading } = useQuery({
         queryKey: ['chat-sessions'],
         queryFn: async () => {
@@ -31,13 +33,13 @@ export function SessionList({ currentSessionId, onSelectSession }: SessionListPr
     })
 
     if (isLoading) {
-        return <div className="p-4 text-sm text-muted-foreground">Loading history...</div>
+        return <div className="p-4 text-sm text-muted-foreground">{t('loadingHistory')}</div>
     }
 
     const sessions = data?.sessions || []
 
     if (sessions.length === 0) {
-        return <div className="p-4 text-sm text-muted-foreground">No recent conversations</div>
+        return <div className="p-4 text-sm text-muted-foreground">{t('noConversations')}</div>
     }
 
     return (

@@ -3,6 +3,7 @@
 import { Suspense } from 'react'
 import dynamic from 'next/dynamic'
 import { useSearchParams } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { Skeleton } from '@/components/ui/skeleton'
 
 const TrainingCalendar = dynamic(
@@ -14,6 +15,7 @@ const TrainingCalendar = dynamic(
 )
 
 function CalendarContent() {
+    const t = useTranslations('calendar')
     const searchParams = useSearchParams()
     const openWorkoutId = searchParams.get('workoutId')
         ? Number(searchParams.get('workoutId'))
@@ -24,7 +26,7 @@ function CalendarContent() {
 
     return (
         <div className="flex flex-col h-full md:overflow-hidden min-h-screen md:min-h-0">
-            <h1 className="text-3xl font-bold tracking-tight mb-6">Training Calendar</h1>
+            <h1 className="text-3xl font-bold tracking-tight mb-6">{t('title')}</h1>
 
             {/* CRITICAL: React Big Calendar requires Grid layout with min-w-0 for proper width constraints.
                 Flexbox alone causes the calendar to expand beyond viewport bounds (~1652px locked width).

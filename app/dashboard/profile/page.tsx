@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/dialog'
 import { LogOut, Trash2, AlertTriangle, PartyPopper } from 'lucide-react'
 import { toast } from 'sonner'
+import { useTranslations } from 'next-intl'
 
 export default function ProfilePage() {
     return (
@@ -33,6 +34,7 @@ export default function ProfilePage() {
 }
 
 function ProfileContent() {
+    const t = useTranslations('profile')
     const router = useRouter()
     const searchParams = useSearchParams()
     const isOnboarding = searchParams.get('onboarding') === 'true'
@@ -60,13 +62,13 @@ function ProfileContent() {
             const res = await fetch('/api/auth/delete-account', { method: 'DELETE' })
             if (!res.ok) {
                 const data = await res.json()
-                throw new Error(data.error || 'Failed to delete account')
+                throw new Error(data.error || t('deleteFailed'))
             }
-            toast.success('Account deleted successfully')
+            toast.success(t('accountDeleted'))
             router.push('/login')
             router.refresh()
         } catch (err: any) {
-            toast.error(err.message || 'Failed to delete account')
+            toast.error(err.message || t('deleteFailed'))
         } finally {
             setDeleteLoading(false)
         }
@@ -80,11 +82,11 @@ function ProfileContent() {
                 body: JSON.stringify({ profile_completed: true }),
             })
             if (!res.ok) throw new Error()
-            toast.success('Profile setup complete!')
+            toast.success(t('profileComplete'))
             router.replace('/dashboard/profile')
             router.refresh()
         } catch {
-            toast.error('Failed to save profile')
+            toast.error(t('profileSaveFailed'))
         }
     }
 
@@ -99,12 +101,12 @@ function ProfileContent() {
             }
 
             sessionStorage.removeItem('auto_sync_done')
-            toast.success('Logged out successfully')
+            toast.success(t('loggedOut'))
             router.push('/login')
             router.refresh()
         } catch (error) {
             console.error('Error logging out:', error)
-            toast.error('Failed to log out')
+            toast.error(t('logoutFailed'))
         }
     }
 
@@ -113,20 +115,20 @@ function ProfileContent() {
     }
 
     if (error) {
-        return <div>Error loading profile</div>
+        return <div>{t('errorLoading')}</div>
     }
 
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
-                <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
+                <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
                 <Button
                     variant="outline"
                     onClick={handleLogout}
                     className="gap-2"
                 >
                     <LogOut className="h-4 w-4" />
-                    Logout
+                    {t('logout')}
                 </Button>
             </div>
 
@@ -134,7 +136,7 @@ function ProfileContent() {
                 <Alert className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950">
                     <PartyPopper className="h-4 w-4" />
                     <AlertDescription>
-                        <strong>Welcome to TrAIner!</strong> Please complete your profile below — set your preferences, connect your fitness accounts, and choose an AI provider. When you&apos;re ready, click &quot;Complete Setup&quot; to get started.
+                        {t.rich('onboardingWelcome', { b: (chunks) => <strong>{chunks}</strong> })}
                     </AlertDescription>
                 </Alert>
             )}
@@ -152,7 +154,7 @@ function ProfileContent() {
             {isOnboarding && (
                 <div className="flex justify-center">
                     <Button size="lg" onClick={handleCompleteOnboarding}>
-                        Complete Setup
+                        {t('completeSetup')}
                     </Button>
                 </div>
             )}
@@ -162,10 +164,10 @@ function ProfileContent() {
                 <CardHeader className="text-center">
                     <div className="flex items-center justify-center gap-2">
                         <AlertTriangle className="h-5 w-5 text-destructive" />
-                        <CardTitle>Delete Account</CardTitle>
+                        <CardTitle>{t('deleteAccount')}</CardTitle>
                     </div>
                     <CardDescription>
-                        Permanently delete your account and all associated data. This action cannot be undone.
+                        {t('deleteAccountDescription')}
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="flex justify-center">
@@ -175,27 +177,27 @@ function ProfileContent() {
                     }}>
                         <DialogTrigger asChild>
                             <Button variant="destructive">
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete My Account
+                                <Trash2 className="me-2 h-4 w-4" />
+                                {t('deleteMyAccount')}
                             </Button>
                         </DialogTrigger>
                         <DialogContent>
                             <DialogHeader>
-                                <DialogTitle>Are you absolutely sure?</DialogTitle>
+                                <DialogTitle>{t('deleteDialogTitle')}</DialogTitle>
                                 <DialogDescription>
-                                    This will permanently delete your account, all training plans, activities, chat history, and integrations. This cannot be undone.
+                                    {t('deleteDialogDescription')}
                                 </DialogDescription>
                             </DialogHeader>
                             <div className="space-y-4">
                                 <div className="space-y-2">
                                     <p className="text-sm text-muted-foreground">
-                                        Type <strong>DELETE</strong> to confirm:
+                                        {t.rich('deleteConfirmHint', { keyword: 'DELETE', b: (chunks) => <strong>{chunks}</strong> })}
                                     </p>
                                     <Input
-                                        aria-label="Type DELETE to confirm account deletion"
+                                        aria-label={t('deleteConfirmAriaLabel')}
                                         value={deleteConfirm}
                                         onChange={(e) => setDeleteConfirm(e.target.value)}
-                                        placeholder="Type DELETE to confirm"
+                                        placeholder={t('deleteConfirmPlaceholder')}
                                     />
                                 </div>
                                 <Button
@@ -204,7 +206,7 @@ function ProfileContent() {
                                     disabled={deleteConfirm !== 'DELETE' || deleteLoading}
                                     onClick={handleDeleteAccount}
                                 >
-                                    {deleteLoading ? 'Deleting...' : 'Permanently Delete Account'}
+                                    {deleteLoading ? t('deleting') : t('deleteButton')}
                                 </Button>
                             </div>
                         </DialogContent>

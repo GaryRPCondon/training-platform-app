@@ -8,6 +8,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { useTranslations } from 'next-intl'
 import { CheckCircle2, XCircle, Loader2, Wifi } from 'lucide-react'
 import {
     AlertDialog,
@@ -34,6 +35,7 @@ interface TestResult {
 }
 
 export function ConnectionsCard({ stravaConnected, garminConnected, onRefresh }: ConnectionsCardProps) {
+    const t = useTranslations('connections')
     const router = useRouter()
     const queryClient = useQueryClient()
     const [loading, setLoading] = useState<string | null>(null)
@@ -46,12 +48,12 @@ export function ConnectionsCard({ stravaConnected, garminConnected, onRefresh }:
             const res = await fetch('/api/connections/test/strava')
             const data = await res.json()
             if (data.connected) {
-                setStravaTest({ status: 'success', message: data.displayName ? `Connected as ${data.displayName}` : 'Connected' })
+                setStravaTest({ status: 'success', message: data.displayName ? t('connectedAs', { name: data.displayName }) : t('connected') })
             } else {
-                setStravaTest({ status: 'error', message: data.error || 'Connection failed' })
+                setStravaTest({ status: 'error', message: data.error || t('connectionFailed') })
             }
         } catch {
-            setStravaTest({ status: 'error', message: 'Connection test failed' })
+            setStravaTest({ status: 'error', message: t('connectionTestFailed') })
         }
     }
 
@@ -77,7 +79,7 @@ export function ConnectionsCard({ stravaConnected, garminConnected, onRefresh }:
             await refetch()
         },
         onError: () => {
-            toast.error('Failed to update preference')
+            toast.error(t('updatePreferenceFailed'))
         }
     })
 
@@ -97,7 +99,7 @@ export function ConnectionsCard({ stravaConnected, garminConnected, onRefresh }:
             await refetch()
         },
         onError: () => {
-            toast.error('Failed to update preference')
+            toast.error(t('updatePreferenceFailed'))
         }
     })
 
@@ -117,7 +119,7 @@ export function ConnectionsCard({ stravaConnected, garminConnected, onRefresh }:
             await refetch()
         },
         onError: () => {
-            toast.error('Failed to update preference')
+            toast.error(t('updatePreferenceFailed'))
         }
     })
 
@@ -125,7 +127,7 @@ export function ConnectionsCard({ stravaConnected, garminConnected, onRefresh }:
     const handleStravaPreferenceChange = (checked: boolean) => {
         if (checked) {
             updatePreferenceMutation.mutate('strava')
-            toast.success('Strava data will be prioritized')
+            toast.success(t('stravaPrioritized'))
         } else {
             updatePreferenceMutation.mutate('most_recent')
         }
@@ -135,7 +137,7 @@ export function ConnectionsCard({ stravaConnected, garminConnected, onRefresh }:
     const handleGarminPreferenceChange = (checked: boolean) => {
         if (checked) {
             updatePreferenceMutation.mutate('garmin')
-            toast.success('Garmin data will be prioritized')
+            toast.success(t('garminPrioritized'))
         } else {
             updatePreferenceMutation.mutate('most_recent')
         }
@@ -163,30 +165,30 @@ export function ConnectionsCard({ stravaConnected, garminConnected, onRefresh }:
     }
 
     const handleDisconnectStrava = async () => {
-        if (!confirm('Are you sure you want to disconnect Strava? You will need to re-authorize to reconnect.')) return
+        if (!confirm(t('stravaDisconnectConfirm'))) return
 
         try {
             const response = await fetch('/api/strava/disconnect', { method: 'POST' })
             if (!response.ok) throw new Error('Failed to disconnect')
-            toast.success('Strava disconnected')
+            toast.success(t('stravaDisconnected'))
             await queryClient.invalidateQueries({ queryKey: ['athlete'] })
             await queryClient.invalidateQueries({ queryKey: ['settings'] })
         } catch (error) {
             console.error('Failed to disconnect Strava:', error)
-            toast.error('Failed to disconnect Strava')
+            toast.error(t('stravaDisconnectFailed'))
         }
     }
 
     const handleSyncOnLoginChange = (checked: boolean) => {
         updateSyncOnLoginMutation.mutate(checked)
-        toast.success(checked ? 'Activities will sync on login' : 'Auto-sync disabled')
+        toast.success(checked ? t('syncOnLoginEnabled') : t('syncOnLoginDisabled'))
     }
 
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Integrations</CardTitle>
-                <CardDescription>Connect your fitness accounts</CardDescription>
+                <CardTitle>{t('title')}</CardTitle>
+                <CardDescription>{t('description')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                 {/* Sync on login toggle - only show when at least one integration connected */}
@@ -194,10 +196,10 @@ export function ConnectionsCard({ stravaConnected, garminConnected, onRefresh }:
                     <div className="flex items-center justify-between p-3 sm:p-4 border rounded-lg">
                         <div>
                             <Label htmlFor="sync-on-login" className="cursor-pointer">
-                                Sync activities on login
+                                {t('syncOnLoginLabel')}
                             </Label>
                             <p className="text-xs text-muted-foreground mt-0.5">
-                                Automatically sync the last 7 days when you open the dashboard
+                                {t('syncOnLoginHelp')}
                             </p>
                         </div>
                         <Switch
@@ -220,7 +222,7 @@ export function ConnectionsCard({ stravaConnected, garminConnected, onRefresh }:
                     pushSummaryToGarmin={athlete?.push_summary_to_garmin ?? false}
                     onPushSummaryChange={(checked) => {
                         updatePushSummaryMutation.mutate({ push_summary_to_garmin: checked })
-                        toast.success(checked ? 'Garmin summary push enabled' : 'Garmin summary push disabled')
+                        toast.success(checked ? t('garminPushEnabled') : t('garminPushDisabled'))
                     }}
                 />
 
@@ -232,9 +234,9 @@ export function ConnectionsCard({ stravaConnected, garminConnected, onRefresh }:
                                 <span className="font-bold">S</span>
                             </div>
                             <div className="min-w-0">
-                                <div className="font-medium">Strava</div>
+                                <div className="font-medium">{t('strava')}</div>
                                 <div className="text-sm text-muted-foreground">
-                                    {stravaConnected ? 'Connected' : 'Not connected'}
+                                    {stravaConnected ? t('connected') : t('notConnected')}
                                 </div>
                             </div>
                         </div>
@@ -243,7 +245,7 @@ export function ConnectionsCard({ stravaConnected, garminConnected, onRefresh }:
                                 <>
                                     {stravaTest.status === 'success' ? (
                                         <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
-                                            <CheckCircle2 className="h-3 w-3" /> Connected
+                                            <CheckCircle2 className="h-3 w-3" /> {t('connected')}
                                         </span>
                                     ) : stravaTest.status === 'error' ? (
                                         <span className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
@@ -258,15 +260,15 @@ export function ConnectionsCard({ stravaConnected, garminConnected, onRefresh }:
                                             disabled={stravaTest.status === 'loading'}
                                         >
                                             {stravaTest.status === 'loading' ? (
-                                                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                                                <Loader2 className="me-1 h-3 w-3 animate-spin" />
                                             ) : (
-                                                <Wifi className="mr-1 h-3 w-3" />
+                                                <Wifi className="me-1 h-3 w-3" />
                                             )}
-                                            Test
+                                            {t('test')}
                                         </Button>
                                     )}
                                     <Button variant="outline" size="sm" onClick={handleDisconnectStrava}>
-                                        Disconnect
+                                        {t('disconnect')}
                                     </Button>
                                 </>
                             ) : (
@@ -276,7 +278,7 @@ export function ConnectionsCard({ stravaConnected, garminConnected, onRefresh }:
                                     disabled={loading === 'strava'}
                                     className="bg-[#FC4C02] hover:bg-[#E34402] text-white"
                                 >
-                                    {loading === 'strava' ? 'Connecting...' : 'Connect'}
+                                    {loading === 'strava' ? t('connecting') : t('connect')}
                                 </Button>
                             )}
                         </div>
@@ -286,7 +288,7 @@ export function ConnectionsCard({ stravaConnected, garminConnected, onRefresh }:
                     {(stravaConnected || garminConnected) && (
                         <div className="flex items-center justify-between pt-2 border-t">
                             <Label htmlFor="strava-prefer" className="text-sm text-muted-foreground cursor-pointer">
-                                Prefer data from this source
+                                {t('preferSource')}
                             </Label>
                             <Switch
                                 id="strava-prefer"
@@ -301,7 +303,7 @@ export function ConnectionsCard({ stravaConnected, garminConnected, onRefresh }:
                     {stravaConnected && (
                         <div className="flex items-center justify-between pt-2 border-t">
                             <Label htmlFor="strava-push-summary" className="text-sm text-muted-foreground cursor-pointer">
-                                Write AI summaries to Strava
+                                {t('writeSummariesStrava')}
                             </Label>
                             <Switch
                                 id="strava-push-summary"
@@ -311,7 +313,7 @@ export function ConnectionsCard({ stravaConnected, garminConnected, onRefresh }:
                                         setShowStravaPushWarning(true)
                                     } else {
                                         updatePushSummaryMutation.mutate({ push_summary_to_strava: false })
-                                        toast.success('Strava summary push disabled')
+                                        toast.success(t('stravaPushDisabled'))
                                     }
                                 }}
                                 disabled={updatePushSummaryMutation.isPending}
@@ -323,18 +325,18 @@ export function ConnectionsCard({ stravaConnected, garminConnected, onRefresh }:
                 <AlertDialog open={showStravaPushWarning} onOpenChange={setShowStravaPushWarning}>
                     <AlertDialogContent>
                         <AlertDialogHeader>
-                            <AlertDialogTitle>Write AI Summaries to Strava</AlertDialogTitle>
+                            <AlertDialogTitle>{t('stravaPushDialogTitle')}</AlertDialogTitle>
                             <AlertDialogDescription>
-                                The AI summary will be prepended to your existing Strava activity description. If other third-party apps also write to your activity description, one may overwrite the other.
+                                {t('stravaPushDialogDescription')}
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
                             <AlertDialogAction onClick={() => {
                                 updatePushSummaryMutation.mutate({ push_summary_to_strava: true })
-                                toast.success('Strava summary push enabled')
+                                toast.success(t('stravaPushEnabled'))
                             }}>
-                                Enable
+                                {t('enable')}
                             </AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>

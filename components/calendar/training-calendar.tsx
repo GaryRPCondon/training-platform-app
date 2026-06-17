@@ -24,6 +24,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { TrainingPaces, StrengthSession } from '@/types/database'
 import type { WorkoutWithDetails } from '@/types/review'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { getSessionsForDateRange } from '@/lib/supabase/strength-queries'
 import { queryKeys } from '@/lib/query-keys'
 import { StrengthCellContext, StrengthDayCellWrapper } from './strength-day-cell-wrapper'
@@ -195,6 +196,7 @@ async function postGarminBatch(url: string, body: Record<string, unknown>): Prom
 }
 
 export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: TrainingCalendarProps = {}) {
+    const t = useTranslations('calendar')
     const [currentDate, setCurrentDate] = useState(new Date())
     const [selectedWorkout, setSelectedWorkout] = useState<WorkoutWithDetails | null>(null)
     const [selectedActivity, setSelectedActivity] = useState<any | null>(null)
@@ -364,10 +366,10 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['workouts'] })
-            toast.success('Workout rescheduled')
+            toast.success(t('workoutRescheduled'))
         },
         onError: () => {
-            toast.error('Failed to reschedule workout')
+            toast.error(t('rescheduleFailed'))
         }
     })
 
@@ -391,15 +393,15 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
             queryClient.invalidateQueries({ queryKey: ['strength-sessions'] })
             const dateLabel = format(parseISO(newDate), 'EEE, MMM d')
             if (wasSyncedOnGarmin && garminMoved) {
-                toast.success(`Moved to ${dateLabel} (Garmin updated)`)
+                toast.success(t('movedGarminUpdated', { date: dateLabel }))
             } else if (wasSyncedOnGarmin && !garminMoved) {
-                toast.warning(`Moved to ${dateLabel}. Couldn't update Garmin — resend manually.`)
+                toast.warning(t('movedGarminFailed', { date: dateLabel }))
             } else {
-                toast.success('Strength session rescheduled')
+                toast.success(t('strengthRescheduled'))
             }
         },
         onError: (err: unknown) => {
-            toast.error(err instanceof Error ? err.message : 'Failed to reschedule strength session')
+            toast.error(err instanceof Error ? err.message : t('strengthRescheduleFailed'))
         },
     })
 
@@ -517,10 +519,10 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
             queryClient.invalidateQueries({ queryKey: ['workouts'] })
             queryClient.invalidateQueries({ queryKey: ['activities'] })
 
-            toast.success(`Matched ${result.matchCount} ${result.matchCount === 1 ? 'activity' : 'activities'}`)
+            toast.success(t('matched', { count: result.matchCount }))
         } catch (error) {
             console.error('Auto-match error:', error)
-            toast.error('Failed to auto-match activities')
+            toast.error(t('autoMatchFailed'))
         } finally {
             setIsAutoMatching(false)
         }
@@ -711,7 +713,7 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
             .map(s => s.id)
 
         if (weekWorkoutIds.length === 0 && weekStrengthIds.length === 0) {
-            toast.error('No workouts to send this week')
+            toast.error(t('noWorkoutsToSend'))
             return
         }
 
@@ -732,19 +734,21 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
             if (sent === 0) {
                 const reason = results.find(r => !r.ok)?.error
                     ?? results.find(r => r.firstError)?.firstError
-                toast.error(reason ?? 'Nothing was sent to Garmin')
+                toast.error(reason ?? t('nothingSent'))
                 return
             }
-            let msg = `Sent ${sent} workout${sent !== 1 ? 's' : ''} to Garmin`
+            let msg = t('sentSummary', { count: sent })
             if (skipped > 0) {
                 const detail = results.find(r => r.firstError)?.firstError
-                msg += ` · ${skipped} skipped${detail ? ` (${detail})` : ''}`
+                msg += detail
+                    ? t('skippedSuffixDetail', { count: skipped, detail })
+                    : t('skippedSuffix', { count: skipped })
             }
             toast.success(msg)
         } catch (err: unknown) {
-            toast.error(err instanceof Error ? err.message : 'Failed to send to Garmin')
+            toast.error(err instanceof Error ? err.message : t('sendFailed'))
         }
-    }, [workouts, strengthSessions, queryClient])
+    }, [workouts, strengthSessions, queryClient, t])
 
     const handleRemoveWeekFromGarmin = useCallback(async (weekStart: Date, weekEnd: Date) => {
         const inWeek = (raw: string) => {
@@ -759,7 +763,7 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
             .map(s => s.id)
 
         if (weekWorkoutIds.length === 0 && weekStrengthIds.length === 0) {
-            toast.error('No synced workouts to remove this week')
+            toast.error(t('noSyncedToRemove'))
             return
         }
 
@@ -777,14 +781,14 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
 
             const deleted = results.reduce((n, r) => n + r.deleted, 0)
             if (deleted === 0) {
-                toast.error(results.find(r => !r.ok)?.error ?? 'Nothing was removed from Garmin')
+                toast.error(results.find(r => !r.ok)?.error ?? t('nothingRemoved'))
                 return
             }
-            toast.success(`Removed ${deleted} workout${deleted !== 1 ? 's' : ''} from Garmin`)
+            toast.success(t('removedSummary', { count: deleted }))
         } catch (err: unknown) {
-            toast.error(err instanceof Error ? err.message : 'Failed to remove from Garmin')
+            toast.error(err instanceof Error ? err.message : t('removeFailed'))
         }
-    }, [workouts, strengthSessions, queryClient])
+    }, [workouts, strengthSessions, queryClient, t])
 
     const handleRemoveFromGarmin = useCallback(async (workoutId: number) => {
         try {
@@ -796,11 +800,11 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
             const result = await response.json()
             if (!response.ok) throw new Error(result.error || 'Failed to remove')
             queryClient.invalidateQueries({ queryKey: ['workouts'] })
-            toast.success('Removed from Garmin')
+            toast.success(t('removedFromGarmin'))
         } catch (err: unknown) {
-            toast.error(err instanceof Error ? err.message : 'Failed to remove from Garmin')
+            toast.error(err instanceof Error ? err.message : t('removeFailed'))
         }
-    }, [queryClient])
+    }, [queryClient, t])
 
     return (
         <div className="h-full w-full flex flex-col overflow-hidden">
@@ -824,19 +828,19 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
                     {strengthConflict && (
                         <div
                             role="alertdialog"
-                            aria-label="Quality session conflict"
+                            aria-label={t('qualityConflict')}
                             className="absolute left-1/2 top-4 z-50 -translate-x-1/2 w-[min(420px,calc(100%-2rem))] rounded-lg border bg-popover p-4 text-popover-foreground shadow-lg"
                         >
                             <div className="flex items-start gap-3">
                                 <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
                                 <div className="min-w-0 flex-1">
-                                    <div className="text-sm font-semibold">Quality session conflict</div>
+                                    <div className="text-sm font-semibold">{t('qualityConflict')}</div>
                                     <p className="mt-1 text-sm text-muted-foreground">
-                                        {strengthConflict.conflictLabel} is scheduled here. Strength training the same day may compromise it.
+                                        {t('qualityConflictBody', { label: strengthConflict.conflictLabel })}
                                     </p>
                                     <div className="mt-3 flex justify-end gap-2">
                                         <Button variant="ghost" size="sm" onClick={() => setStrengthConflict(null)}>
-                                            Cancel
+                                            {t('cancel')}
                                         </Button>
                                         <Button
                                             size="sm"
@@ -853,14 +857,14 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
                                                 setStrengthConflict(null)
                                             }}
                                         >
-                                            Move anyway
+                                            {t('moveAnyway')}
                                         </Button>
                                     </div>
                                 </div>
                                 <button
                                     type="button"
                                     onClick={() => setStrengthConflict(null)}
-                                    aria-label="Dismiss"
+                                    aria-label={t('dismiss')}
                                     className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                                 >
                                     <XIcon className="h-4 w-4" />
@@ -917,7 +921,7 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
             {/* Workout Dialog */}
             <Dialog open={isWorkoutDialogOpen} onOpenChange={setIsWorkoutDialogOpen}>
                 <DialogContent className="max-w-2xl">
-                    <DialogTitle className="sr-only">Workout Details</DialogTitle>
+                    <DialogTitle className="sr-only">{t('workoutDetails')}</DialogTitle>
                     {selectedWorkout && (
                         <WorkoutCard
                             workout={selectedWorkout}
@@ -944,9 +948,9 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
                                     body: JSON.stringify({ workoutIds: [workoutId], action: 'send' }),
                                 })
                                 const result = await response.json()
-                                if (!response.ok) throw new Error(result.error || 'Failed to send')
+                                if (!response.ok) throw new Error(result.error || t('sendFailedShort'))
                                 queryClient.invalidateQueries({ queryKey: ['workouts'] })
-                                toast.success('Sent to Garmin')
+                                toast.success(t('sentToGarmin'))
                             }}
                             onRemoveFromGarmin={handleRemoveFromGarmin}
                             onDiscuss={(workout) => {
@@ -965,7 +969,7 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
             {/* Create Workout Dialog */}
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                 <DialogContent className="max-w-2xl">
-                    <DialogTitle className="sr-only">Create Workout</DialogTitle>
+                    <DialogTitle className="sr-only">{t('createWorkout')}</DialogTitle>
                     {createDate && (
                         <WorkoutCard
                             workout={makeNewWorkout(createDate)}
@@ -983,7 +987,7 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
             {/* Strength Session Dialog */}
             <Dialog open={isStrengthDialogOpen} onOpenChange={setIsStrengthDialogOpen}>
                 <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
-                    <DialogTitle className="sr-only">Strength Session Details</DialogTitle>
+                    <DialogTitle className="sr-only">{t('strengthSessionDetails')}</DialogTitle>
                     {selectedStrengthSession && (
                         <SessionDetailDialog
                             session={selectedStrengthSession}
@@ -1005,7 +1009,7 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
             {/* Activity Dialog */}
             <Dialog open={isActivityDialogOpen} onOpenChange={setIsActivityDialogOpen}>
                 <DialogContent className="sm:max-w-[595px] max-h-[90vh] overflow-y-auto">
-                    <DialogTitle className="sr-only">Activity Details</DialogTitle>
+                    <DialogTitle className="sr-only">{t('activityDetails')}</DialogTitle>
                     {selectedActivity && (
                         <>
                             <ActivityDetail
@@ -1021,7 +1025,7 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
                                         router.push(`/dashboard/activities/${selectedActivity.id}`)
                                     }}
                                 >
-                                    View Full Details
+                                    {t('viewFullDetails')}
                                 </Button>
                             </div>
                         </>

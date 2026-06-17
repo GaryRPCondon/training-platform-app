@@ -11,8 +11,10 @@ import { getCurrentAthleteId } from '@/lib/supabase/client'
 import { format, parseISO } from 'date-fns'
 import { Trash2, Download, Trophy } from 'lucide-react'
 import { toast } from 'sonner'
+import { useTranslations } from 'next-intl'
 
 export default function PlansPage() {
+    const t = useTranslations('plansList')
     const [plans, setPlans] = useState<TrainingPlan[]>([])
     const [loading, setLoading] = useState(true)
     const [athleteId, setAthleteId] = useState<string | null>(null)
@@ -44,20 +46,20 @@ export default function PlansPage() {
             await fetchPlans() // Refresh the list
         } catch (error) {
             console.error('Error activating plan:', error)
-            alert('Failed to activate plan')
+            alert(t('activateFailed'))
         }
     }
 
     async function handleDelete(planId: number, type: 'active' | 'draft' | 'completed') {
         const base =
             type === 'completed'
-                ? 'This will permanently delete your training history for this plan, including all its workouts from the calendar. Your logged activities will not be affected, but the planned workout records will be gone.\n\nThis cannot be undone.'
+                ? t('confirmDeleteCompleted')
                 : type === 'active'
-                ? 'Are you sure you want to delete this active plan? All scheduled workouts and progress will be lost. This cannot be undone.'
-                : 'Are you sure you want to delete this draft plan? This cannot be undone.'
+                ? t('confirmDeleteActive')
+                : t('confirmDeleteDraft')
         const message = type === 'completed'
             ? base
-            : base + '\n\nNote: any workouts already sent to Garmin Connect will NOT be removed automatically. Use "Remove all from Garmin Connect" in your Profile before deleting if you want them cleared.'
+            : base + t('garminDeleteNote')
 
         if (!confirm(message)) {
             return
@@ -70,19 +72,19 @@ export default function PlansPage() {
 
             if (!response.ok) {
                 const data = await response.json()
-                throw new Error(data.error || 'Failed to delete plan')
+                throw new Error(data.error || t('deleteFailed'))
             }
 
-            toast.success('Plan deleted successfully')
+            toast.success(t('deleteSuccess'))
             await fetchPlans() // Refresh the list
         } catch (error) {
             console.error('Error deleting plan:', error)
-            toast.error('Failed to delete plan')
+            toast.error(t('deleteFailed'))
         }
     }
 
     if (loading) {
-        return <div>Loading plans...</div>
+        return <div>{t('loading')}</div>
     }
 
     const activePlans = plans.filter(p => p.status === 'active')
@@ -92,9 +94,9 @@ export default function PlansPage() {
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
-                <h1 className="text-3xl font-bold tracking-tight">Running Plans</h1>
+                <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
                 <Button asChild>
-                    <Link href="/dashboard/plans/new">Create New Plan</Link>
+                    <Link href="/dashboard/plans/new">{t('createNew')}</Link>
                 </Button>
             </div>
 
@@ -102,12 +104,12 @@ export default function PlansPage() {
             <div className="grid gap-4">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Active Plans</CardTitle>
-                        <CardDescription>Currently active training plans</CardDescription>
+                        <CardTitle>{t('activePlans')}</CardTitle>
+                        <CardDescription>{t('activePlansDesc')}</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {activePlans.length === 0 ? (
-                            <p className="text-muted-foreground">No active plans found.</p>
+                            <p className="text-muted-foreground">{t('noActivePlans')}</p>
                         ) : (
                             <div className="space-y-4">
                                 {activePlans.map(plan => (
@@ -120,14 +122,14 @@ export default function PlansPage() {
                                                         {format(parseISO(plan.start_date), 'MMM d, yyyy')} - {format(parseISO(plan.end_date), 'MMM d, yyyy')}
                                                     </CardDescription>
                                                 </div>
-                                                <Badge variant="default">Active</Badge>
+                                                <Badge variant="default">{t('active')}</Badge>
                                             </div>
                                         </CardHeader>
                                         <CardContent>
                                             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                                                 <div className="text-sm text-muted-foreground">
-                                                    <div>Type: {plan.plan_type}</div>
-                                                    <div>Created: {format(parseISO(plan.created_at), 'MMM d, yyyy')}</div>
+                                                    <div>{t('typeLabel', { type: plan.plan_type ?? '' })}</div>
+                                                    <div>{t('createdLabel', { date: format(parseISO(plan.created_at), 'MMM d, yyyy') })}</div>
                                                 </div>
                                                 <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2">
                                                     <Button
@@ -135,20 +137,20 @@ export default function PlansPage() {
                                                         onClick={() => {
                                                             window.open(`/api/plans/${plan.id}/export-ics`)
                                                             toast.info(
-                                                                'Tip: Import into a separate calendar (e.g. "Training Plan") so you can delete that calendar later to remove all workouts.',
+                                                                t('exportTip'),
                                                                 { duration: 8000 }
                                                             )
                                                         }}
                                                     >
-                                                        <Download className="mr-2 h-4 w-4" />
-                                                        Export to Calendar
+                                                        <Download className="me-2 h-4 w-4" />
+                                                        {t('exportToCalendar')}
                                                     </Button>
                                                     <Button
                                                         variant="destructive"
                                                         onClick={() => handleDelete(plan.id, 'active')}
                                                     >
-                                                        <Trash2 className="mr-2 h-4 w-4" />
-                                                        Delete Active Plan
+                                                        <Trash2 className="me-2 h-4 w-4" />
+                                                        {t('deleteActiveBtn')}
                                                     </Button>
                                                 </div>
                                             </div>
@@ -166,8 +168,8 @@ export default function PlansPage() {
                 <div className="grid gap-4">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Draft Plans</CardTitle>
-                            <CardDescription>Plans ready to be activated</CardDescription>
+                            <CardTitle>{t('draftPlans')}</CardTitle>
+                            <CardDescription>{t('draftPlansDesc')}</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-4">
@@ -181,30 +183,30 @@ export default function PlansPage() {
                                                         {format(parseISO(plan.start_date), 'MMM d, yyyy')} - {format(parseISO(plan.end_date), 'MMM d, yyyy')}
                                                     </CardDescription>
                                                 </div>
-                                                <Badge variant="secondary">Draft</Badge>
+                                                <Badge variant="secondary">{t('draft')}</Badge>
                                             </div>
                                         </CardHeader>
                                         <CardContent>
                                             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                                                 <div className="text-sm text-muted-foreground">
-                                                    <div>Type: {plan.plan_type}</div>
-                                                    <div>Created: {format(parseISO(plan.created_at), 'MMM d, yyyy')}</div>
+                                                    <div>{t('typeLabel', { type: plan.plan_type ?? '' })}</div>
+                                                    <div>{t('createdLabel', { date: format(parseISO(plan.created_at), 'MMM d, yyyy') })}</div>
                                                 </div>
                                                 <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2">
                                                     <Button asChild>
                                                         <Link href={`/dashboard/plans/review/${plan.id}`}>
-                                                            Review Plan
+                                                            {t('reviewPlan')}
                                                         </Link>
                                                     </Button>
                                                     <Button onClick={() => handleActivate(plan.id)}>
-                                                        Activate Plan
+                                                        {t('activatePlan')}
                                                     </Button>
                                                     <Button
                                                         variant="destructive"
                                                         onClick={() => handleDelete(plan.id, 'draft')}
                                                     >
-                                                        <Trash2 className="mr-2 h-4 w-4" />
-                                                        Delete Draft
+                                                        <Trash2 className="me-2 h-4 w-4" />
+                                                        {t('deleteDraftBtn')}
                                                     </Button>
                                                 </div>
                                             </div>
@@ -224,9 +226,9 @@ export default function PlansPage() {
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <Trophy className="h-5 w-5 text-amber-500" />
-                                Completed Plans
+                                {t('completedPlans')}
                             </CardTitle>
-                            <CardDescription>Training cycles you have finished — preserved as historical records</CardDescription>
+                            <CardDescription>{t('completedPlansDesc')}</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-4">
@@ -241,8 +243,8 @@ export default function PlansPage() {
                                                     </CardDescription>
                                                 </div>
                                                 <Badge variant="outline" className="border-amber-400 text-amber-700 dark:text-amber-400">
-                                                    <Trophy className="mr-1 h-3 w-3" />
-                                                    Completed
+                                                    <Trophy className="me-1 h-3 w-3" />
+                                                    {t('completed')}
                                                 </Badge>
                                             </div>
                                         </CardHeader>
@@ -251,15 +253,15 @@ export default function PlansPage() {
                                                 <div className="text-sm text-muted-foreground">
                                                     <div>Type: {plan.plan_type}</div>
                                                     {plan.completed_at && (
-                                                        <div>Completed: {format(parseISO(plan.completed_at), 'MMM d, yyyy')}</div>
+                                                        <div>{t('completedLabel', { date: format(parseISO(plan.completed_at), 'MMM d, yyyy') })}</div>
                                                     )}
                                                 </div>
                                                 <Button
                                                     variant="destructive"
                                                     onClick={() => handleDelete(plan.id, 'completed')}
                                                 >
-                                                    <Trash2 className="mr-2 h-4 w-4" />
-                                                    Delete Plan History
+                                                    <Trash2 className="me-2 h-4 w-4" />
+                                                    {t('deleteHistoryBtn')}
                                                 </Button>
                                             </div>
                                         </CardContent>

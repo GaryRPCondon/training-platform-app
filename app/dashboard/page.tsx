@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/server'
 import { PhaseProgressCard } from '@/components/progress/phase-progress-card'
@@ -7,6 +8,7 @@ import { PlanCompletionBanner } from '@/components/progress/plan-completion-bann
 import { toDisplayDistance, distanceLabel, type UnitSystem } from '@/lib/utils/units'
 
 export default async function DashboardPage() {
+    const t = await getTranslations('dashboard')
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
@@ -63,7 +65,7 @@ export default async function DashboardPage() {
 
     return (
         <div className="space-y-6">
-            <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
             {planIsOverdue && (
                 <PlanCompletionBanner planId={activePlan.id} planName={activePlan.name} />
             )}
@@ -71,29 +73,29 @@ export default async function DashboardPage() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium text-muted-foreground">
-                            Total Distance
+                            {t('totalDistance')}
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div>
                             <div className="text-4xl font-bold tracking-tight">{totalDistanceDisplay} <span className="text-2xl text-muted-foreground">{distUnit}</span></div>
                             <p className="text-sm text-muted-foreground mt-1">
-                                {totalActivities} activities tracked
+                                {t('activitiesTracked', { count: totalActivities })}
                             </p>
                         </div>
                         <div className="space-y-2 text-sm">
                             {activePlan && (
                                 <div>
-                                    <p className="text-muted-foreground text-xs">Plan Distance</p>
+                                    <p className="text-muted-foreground text-xs">{t('planDistance')}</p>
                                     <p className="font-semibold">{toDisplayDistance(planDistanceMeters, units).toFixed(1)} {distUnit}</p>
                                 </div>
                             )}
                             <div>
-                                <p className="text-muted-foreground text-xs">This Year</p>
+                                <p className="text-muted-foreground text-xs">{t('thisYear')}</p>
                                 <p className="font-semibold">{toDisplayDistance(distanceThisYearMeters, units).toFixed(1)} {distUnit}</p>
                             </div>
                             <div>
-                                <p className="text-muted-foreground text-xs">Climb This Year</p>
+                                <p className="text-muted-foreground text-xs">{t('climbThisYear')}</p>
                                 <p className="font-semibold">{Math.round(climbThisYearMeters).toLocaleString()} m</p>
                             </div>
                         </div>
@@ -103,15 +105,15 @@ export default async function DashboardPage() {
                     <Card className="flex flex-col justify-center">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium text-muted-foreground">
-                                Active Plan
+                                {t('activePlan')}
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl sm:text-3xl font-bold tracking-tight truncate">{activePlan?.name || 'None'}</div>
+                            <div className="text-2xl sm:text-3xl font-bold tracking-tight truncate">{activePlan?.name || t('noPlan')}</div>
                             <p className="text-sm text-muted-foreground mt-1">
                                 {activePlan
                                     ? `${new Date(activePlan.start_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${new Date(activePlan.end_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
-                                    : 'Create a plan to get started'}
+                                    : t('createPlanPrompt')}
                             </p>
                         </CardContent>
                     </Card>

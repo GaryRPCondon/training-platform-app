@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { startOfWeek, endOfWeek, format, eachWeekOfInterval, startOfMonth, endOfMonth } from 'date-fns'
 import { useUnits } from '@/lib/hooks/use-units'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { calculateTotalWorkoutDistance } from '@/lib/training/vdot'
 import { isRunningActivityType } from '@/lib/constants/workout-colors'
@@ -43,6 +44,7 @@ interface WeeklyTotalsProps {
 }
 
 export function WeeklyTotals({ workouts, activities = [], currentDate, weekStartsOn, showActual = false, garminConnected, onSendToGarmin, onRemoveFromGarmin, strengthSessions = [], runningOnly, weeklyIntents }: WeeklyTotalsProps) {
+    const t = useTranslations('calendar')
     const [sendingWeek, setSendingWeek] = useState<string | null>(null)
     const [removingWeek, setRemovingWeek] = useState<string | null>(null)
     const { toDisplayDistance, distanceLabel } = useUnits()
@@ -134,7 +136,7 @@ export function WeeklyTotals({ workouts, activities = [], currentDate, weekStart
         <div className="hidden landscape:flex md:flex flex-col h-full bg-muted/20 border-l-0 landscape:border-l md:border-l">
             {/* Header - fixed height to match calendar header row */}
             <div className="bg-muted/30 border-b px-3 text-sm font-semibold text-center h-[40px] flex items-center justify-center box-border selection:bg-none">
-                Weekly Totals
+                {t('weeklyTotals')}
             </div>
 
             {/* Weeks - flex to distribute evenly and align with calendar rows */}
@@ -150,16 +152,16 @@ export function WeeklyTotals({ workouts, activities = [], currentDate, weekStart
                         <div className="space-y-0.5">
                             {week.intentMeters !== undefined && (
                                 <div className="flex justify-between items-baseline">
-                                    <span className="text-xs text-muted-foreground">Intent:</span>
+                                    <span className="text-xs text-muted-foreground">{t('intent')}</span>
                                     <span className="text-xs text-muted-foreground">{toDisplayDistance(week.intentMeters).toFixed(1)} {distanceLabel()}</span>
                                 </div>
                             )}
                             <div className="flex justify-between items-baseline">
-                                <span className="text-xs text-muted-foreground">Planned:</span>
+                                <span className="text-xs text-muted-foreground">{t('planned')}</span>
                                 <span className="text-sm font-semibold">
                                     {toDisplayDistance(week.plannedMeters).toFixed(1)} {distanceLabel()}
                                     {week.intentMeters !== undefined && week.intentMeters > 0 && (
-                                        <span className={`ml-1 text-xs font-normal ${
+                                        <span className={`ms-1 text-xs font-normal ${
                                             Math.abs(week.plannedMeters - week.intentMeters) / week.intentMeters > 0.1
                                                 ? 'text-amber-600 dark:text-amber-400'
                                                 : 'text-muted-foreground'
@@ -171,7 +173,7 @@ export function WeeklyTotals({ workouts, activities = [], currentDate, weekStart
                             </div>
                             {showActual && (
                                 <div className="flex justify-between items-baseline">
-                                    <span className="text-xs text-muted-foreground">Actual:</span>
+                                    <span className="text-xs text-muted-foreground">{t('actual')}</span>
                                     <span className="text-sm font-semibold text-primary">
                                         {week.actualMeters > 0 ? `${toDisplayDistance(week.actualMeters).toFixed(1)} ${distanceLabel()}` : '-'}
                                     </span>
@@ -193,7 +195,7 @@ export function WeeklyTotals({ workouts, activities = [], currentDate, weekStart
                                     }
                                 }}
                             >
-                                {sendingWeek === week.weekLabel ? 'Sending...' : 'Send to Garmin'}
+                                {sendingWeek === week.weekLabel ? t('sending') : t('sendToGarmin')}
                             </Button>
                         )}
                         {garminConnected && onRemoveFromGarmin && (week.hasSyncedWorkouts || week.hasSyncedStrength) && (
@@ -211,7 +213,7 @@ export function WeeklyTotals({ workouts, activities = [], currentDate, weekStart
                                     }
                                 }}
                             >
-                                {removingWeek === week.weekLabel ? 'Removing...' : 'Remove from Garmin'}
+                                {removingWeek === week.weekLabel ? t('removing') : t('removeFromGarmin')}
                             </Button>
                         )}
                     </div>

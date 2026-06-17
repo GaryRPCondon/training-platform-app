@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Card } from '@/components/ui/card'
 import { Loader2 } from 'lucide-react'
 import { scrollBehavior } from '@/lib/utils/motion'
+import { useTranslations } from 'next-intl'
 
 interface Message {
     role: 'user' | 'assistant'
@@ -20,6 +21,7 @@ interface ChatInterfaceProps {
 }
 
 export function ChatInterface({ sessionId: propSessionId, onSessionChange }: ChatInterfaceProps = {}) {
+    const t = useTranslations('coach')
     const [messages, setMessages] = useState<Message[]>([])
     const [input, setInput] = useState('')
     const [internalSessionId, setInternalSessionId] = useState<number | null>(null)
@@ -67,7 +69,7 @@ export function ChatInterface({ sessionId: propSessionId, onSessionChange }: Cha
                 }),
             })
 
-            if (!response.ok) throw new Error('Failed to send message')
+            if (!response.ok) throw new Error(t('sendMessageFailed'))
             return response.json()
         },
         onSuccess: (data) => {
@@ -82,7 +84,7 @@ export function ChatInterface({ sessionId: propSessionId, onSessionChange }: Cha
         onError: (error) => {
             console.error('Chat error:', error)
             setMessages(prev => [...prev,
-            { role: 'assistant', content: 'Sorry, I encountered an error. Please try again.' }
+            { role: 'assistant', content: t('encounteredError') }
             ])
         }
     })
@@ -102,8 +104,8 @@ export function ChatInterface({ sessionId: propSessionId, onSessionChange }: Cha
                 <div className="space-y-4">
                     {messages.length === 0 && (
                         <div className="text-center text-muted-foreground py-10">
-                            <p>👋 Hi! I'm your AI Coach.</p>
-                            <p>Ask me about your training plan, recent activities, or for advice.</p>
+                            <p>{t('greeting')}</p>
+                            <p>{t('askAdvice')}</p>
                         </div>
                     )}
 
@@ -122,7 +124,7 @@ export function ChatInterface({ sessionId: propSessionId, onSessionChange }: Cha
                         <div className="flex justify-start">
                             <div className="bg-muted p-3 rounded-lg flex items-center gap-2">
                                 <Loader2 className="h-4 w-4 animate-spin" />
-                                <span className="text-sm text-muted-foreground">Thinking...</span>
+                                <span className="text-sm text-muted-foreground">{t('thinking')}</span>
                             </div>
                         </div>
                     )}
@@ -133,7 +135,7 @@ export function ChatInterface({ sessionId: propSessionId, onSessionChange }: Cha
             {/* Screen-reader announcements: "responding" while pending, then the reply. */}
             <div aria-live="polite" role="status" className="sr-only">
                 {sendMessage.isPending
-                    ? 'AI Coach is responding…'
+                    ? t('responding')
                     : messages.length > 0 && messages[messages.length - 1].role === 'assistant'
                         ? messages[messages.length - 1].content
                         : ''}
@@ -143,8 +145,8 @@ export function ChatInterface({ sessionId: propSessionId, onSessionChange }: Cha
                 <Textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    placeholder="Ask about your training..."
-                    aria-label="Message your AI Coach"
+                    placeholder={t('inputPlaceholder')}
+                    aria-label={t('inputAria')}
                     className="min-h-[60px]"
                     onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
@@ -154,7 +156,7 @@ export function ChatInterface({ sessionId: propSessionId, onSessionChange }: Cha
                     }}
                 />
                 <Button onClick={handleSend} disabled={!input.trim() || sendMessage.isPending}>
-                    Send
+                    {t('send')}
                 </Button>
             </div>
         </Card>

@@ -12,16 +12,12 @@ import { ProposalCard } from '@/components/chat/proposal-card'
 import { StrengthProposalCard } from '@/components/chat/strength-proposal-card'
 import type { WorkoutProposal, StrengthSessionProposal } from '@/lib/agent/coach-tools'
 import { scrollBehavior } from '@/lib/utils/motion'
+import { useTranslations } from 'next-intl'
 import type { TrainingPaces } from '@/types/database'
 
 type LoadingStatus = 'loading' | 'thinking' | null
 
-const CONVERSATION_STARTERS = [
-    'How is my training tracking against the plan so far?',
-    'Have I done enough quality work this phase?',
-    'What should I focus on in the next two weeks?',
-    'Can you suggest a workout for tomorrow?',
-]
+const CONVERSATION_STARTER_KEYS = ['starter1', 'starter2', 'starter3', 'starter4'] as const
 
 // ---------------------------------------------------------------------------
 // Types
@@ -75,6 +71,7 @@ const AssistantMessage = memo(function AssistantMessage({ content }: { content: 
 // ---------------------------------------------------------------------------
 
 export function CoachInterface({ sessionId: propSessionId, onSessionChange, workoutId, activityId, strengthSessionId, workoutContext }: CoachInterfaceProps = {}) {
+    const t = useTranslations('coach')
     const [messages, setMessages] = useState<CoachMessage[]>([])
     const [input, setInput] = useState('')
     const [internalSessionId, setInternalSessionId] = useState<number | null>(null)
@@ -265,7 +262,7 @@ export function CoachInterface({ sessionId: propSessionId, onSessionChange, work
         } catch {
             setMessages(prev => [
                 ...prev,
-                { role: 'assistant', content: 'Something went wrong. Please try again.' },
+                { role: 'assistant', content: t('somethingWrong') },
             ])
         } finally {
             setIsSending(false)
@@ -283,15 +280,17 @@ export function CoachInterface({ sessionId: propSessionId, onSessionChange, work
                     {messages.length === 0 && (
                         <div className="py-8 space-y-6">
                             <div className="text-center space-y-1">
-                                <p className="font-medium">AI Coach</p>
+                                <p className="font-medium">{t('heading')}</p>
                                 <p className="text-sm text-muted-foreground">
-                                    Ask about your training, recent performance, or get a workout suggestion.
+                                    {t('emptyPrompt')}
                                 </p>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                {CONVERSATION_STARTERS.map((starter) => (
+                                {CONVERSATION_STARTER_KEYS.map((key) => {
+                                    const starter = t(key)
+                                    return (
                                     <button
-                                        key={starter}
+                                        key={key}
                                         onClick={() => {
                                             setInput(starter)
                                         }}
@@ -301,7 +300,8 @@ export function CoachInterface({ sessionId: propSessionId, onSessionChange, work
                                     >
                                         {starter}
                                     </button>
-                                ))}
+                                    )
+                                })}
                             </div>
                         </div>
                     )}
@@ -326,7 +326,7 @@ export function CoachInterface({ sessionId: propSessionId, onSessionChange, work
 
                             {/* Proposal cards — rendered after the assistant bubble */}
                             {msg.role === 'assistant' && msg.proposals && msg.proposals.length > 0 && (
-                                <div className="ml-2 space-y-2 max-w-[85%] min-w-0">
+                                <div className="ms-2 space-y-2 max-w-[85%] min-w-0">
                                     {msg.proposals.map((proposal, propIdx) => (
                                         <ProposalCard
                                             key={propIdx}
@@ -346,7 +346,7 @@ export function CoachInterface({ sessionId: propSessionId, onSessionChange, work
                             )}
 
                             {msg.role === 'assistant' && msg.strengthProposals && msg.strengthProposals.length > 0 && (
-                                <div className="ml-2 space-y-2 max-w-[85%] min-w-0">
+                                <div className="ms-2 space-y-2 max-w-[85%] min-w-0">
                                     {msg.strengthProposals.map((proposal, propIdx) => (
                                         <StrengthProposalCard
                                             key={propIdx}
@@ -369,8 +369,8 @@ export function CoachInterface({ sessionId: propSessionId, onSessionChange, work
                                 <Loader2 className="h-4 w-4 animate-spin" />
                                 <span className="text-sm text-muted-foreground">
                                     {loadingStatus === 'loading'
-                                        ? 'Analysing your training data...'
-                                        : 'Thinking...'}
+                                        ? t('analysing')
+                                        : t('thinking')}
                                 </span>
                             </div>
                         </div>
@@ -385,7 +385,7 @@ export function CoachInterface({ sessionId: propSessionId, onSessionChange, work
                 not in a live region so they are not double-announced during streaming. */}
             <div aria-live="polite" role="status" className="sr-only">
                 {isSending
-                    ? 'AI Coach is responding…'
+                    ? t('responding')
                     : messages.length > 0 && messages[messages.length - 1].role === 'assistant'
                         ? messages[messages.length - 1].content
                         : ''}
@@ -395,8 +395,8 @@ export function CoachInterface({ sessionId: propSessionId, onSessionChange, work
                 <Textarea
                     value={input}
                     onChange={e => setInput(e.target.value)}
-                    placeholder="Ask about your training..."
-                    aria-label="Message your AI Coach"
+                    placeholder={t('inputPlaceholder')}
+                    aria-label={t('inputAria')}
                     className="min-h-[60px]"
                     onKeyDown={e => {
                         if (e.key === 'Enter' && !e.shiftKey) {
@@ -409,7 +409,7 @@ export function CoachInterface({ sessionId: propSessionId, onSessionChange, work
                     onClick={() => void handleSend()}
                     disabled={!input.trim() || isSending}
                 >
-                    Send
+                    {t('send')}
                 </Button>
             </div>
         </Card>

@@ -5,6 +5,7 @@ import { Trophy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 
 interface PlanCompletionBannerProps {
     planId: number
@@ -12,6 +13,7 @@ interface PlanCompletionBannerProps {
 }
 
 export function PlanCompletionBanner({ planId, planName }: PlanCompletionBannerProps) {
+    const t = useTranslations('planCompletion')
     const [loading, setLoading] = useState(false)
     const [dismissed, setDismissed] = useState(false)
     const router = useRouter()
@@ -24,12 +26,12 @@ export function PlanCompletionBanner({ planId, planName }: PlanCompletionBannerP
             const res = await fetch(`/api/plans/${planId}/complete`, { method: 'POST' })
             if (!res.ok) {
                 const data = await res.json()
-                throw new Error(data.error || 'Failed to complete plan')
+                throw new Error(data.error || t('completeFailed'))
             }
-            toast.success(`${planName} marked as complete — well done!`)
+            toast.success(t('markedComplete', { name: planName }))
             router.refresh()
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : 'Failed to complete plan')
+            toast.error(err instanceof Error ? err.message : t('completeFailed'))
             setLoading(false)
         }
     }
@@ -39,10 +41,10 @@ export function PlanCompletionBanner({ planId, planName }: PlanCompletionBannerP
             <Trophy className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
             <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
-                    You&apos;ve completed <span className="font-semibold">{planName}</span> — great work!
+                    {t.rich('completedMessage', { name: planName, b: (chunks) => <span className="font-semibold">{chunks}</span> })}
                 </p>
                 <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
-                    Mark it as complete to preserve it as a historical record.
+                    {t('preserveHint')}
                 </p>
             </div>
             <div className="flex gap-2 shrink-0">
@@ -52,7 +54,7 @@ export function PlanCompletionBanner({ planId, planName }: PlanCompletionBannerP
                     className="border-amber-300 text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-200 dark:hover:bg-amber-900"
                     onClick={() => setDismissed(true)}
                 >
-                    Later
+                    {t('later')}
                 </Button>
                 <Button
                     size="sm"
@@ -60,7 +62,7 @@ export function PlanCompletionBanner({ planId, planName }: PlanCompletionBannerP
                     onClick={handleComplete}
                     disabled={loading}
                 >
-                    {loading ? 'Saving…' : 'Mark Complete'}
+                    {loading ? t('saving') : t('markComplete')}
                 </Button>
             </div>
         </div>

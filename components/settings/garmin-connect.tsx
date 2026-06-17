@@ -26,6 +26,7 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { CheckCircle2, Loader2, Trash2, Wifi, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
+import { useTranslations } from 'next-intl'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface GarminConnectProps {
@@ -49,6 +50,7 @@ export function GarminConnect({
   pushSummaryToGarmin,
   onPushSummaryChange,
 }: GarminConnectProps) {
+  const t = useTranslations('garminConnect')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -67,19 +69,19 @@ export function GarminConnect({
       const data = await res.json()
       if (data.connected) {
         setTestStatus('success')
-        setTestMessage(data.displayName ? `Connected as ${data.displayName}` : 'Connected')
+        setTestMessage(data.displayName ? t('connectedAs', { name: data.displayName }) : t('connected'))
       } else {
         setTestStatus('error')
-        setTestMessage(data.error || 'Connection failed')
+        setTestMessage(data.error || t('connectionFailed'))
       }
     } catch {
       setTestStatus('error')
-      setTestMessage('Connection test failed')
+      setTestMessage(t('connectionTestFailed'))
     }
   }
 
   const handleRemoveAllWorkouts = async () => {
-    if (!confirm('Remove all plan workouts from Garmin Connect? This cannot be undone.')) return
+    if (!confirm(t('removeWorkoutsConfirm'))) return
     setRemoving(true)
     try {
       const response = await fetch('/api/garmin/workouts', {
@@ -88,10 +90,10 @@ export function GarminConnect({
         body: JSON.stringify({ action: 'delete-all' }),
       })
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'Failed to remove workouts')
-      toast.success(`Removed ${data.deleted} workout${data.deleted !== 1 ? 's' : ''} from Garmin Connect`)
+      if (!response.ok) throw new Error(data.error || t('removeWorkoutsFailed'))
+      toast.success(t('removedWorkouts', { count: data.deleted }))
     } catch (err: any) {
-      toast.error(err.message || 'Failed to remove workouts')
+      toast.error(err.message || t('removeWorkoutsFailed'))
     } finally {
       setRemoving(false)
     }
@@ -99,7 +101,7 @@ export function GarminConnect({
 
   const handleConnect = async () => {
     if (!username || !password) {
-      setError('Please enter your Garmin Connect email and password')
+      setError(t('enterCredentials'))
       return
     }
 
@@ -117,10 +119,10 @@ export function GarminConnect({
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to connect')
+        throw new Error(data.error || t('failedToConnect'))
       }
 
-      setSuccess(`Connected as ${data.profile?.displayName || 'Garmin user'}`)
+      setSuccess(t('connectedAs', { name: data.profile?.displayName || t('garminUser') }))
       setUsername('')
       setPassword('')
       setTimeout(() => {
@@ -136,7 +138,7 @@ export function GarminConnect({
   }
 
   const handleDisconnect = async () => {
-    if (!confirm('Are you sure you want to disconnect Garmin?')) return
+    if (!confirm(t('disconnectConfirm'))) return
 
     setLoading(true)
 
@@ -154,7 +156,7 @@ export function GarminConnect({
 
     } catch (err: any) {
       console.error('Disconnect error:', err)
-      alert('Failed to disconnect Garmin')
+      alert(t('disconnectFailed'))
     } finally {
       setLoading(false)
     }
@@ -168,9 +170,9 @@ export function GarminConnect({
             <span className="font-bold">G</span>
           </div>
           <div className="min-w-0">
-            <div className="font-medium">Garmin Connect</div>
+            <div className="font-medium">{t('name')}</div>
             <div className="text-sm text-muted-foreground">
-              {isConnected ? 'Connected' : 'Not connected'}
+              {isConnected ? t('connected') : t('notConnected')}
             </div>
           </div>
         </div>
@@ -180,7 +182,7 @@ export function GarminConnect({
           <div className="flex items-center gap-2">
             {testStatus === 'success' ? (
               <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
-                <CheckCircle2 className="h-3 w-3" /> Connected
+                <CheckCircle2 className="h-3 w-3" /> {t('connected')}
               </span>
             ) : testStatus === 'error' ? (
               <span className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
@@ -195,11 +197,11 @@ export function GarminConnect({
                 disabled={testStatus === 'loading'}
               >
                 {testStatus === 'loading' ? (
-                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                  <Loader2 className="me-1 h-3 w-3 animate-spin" />
                 ) : (
-                  <Wifi className="mr-1 h-3 w-3" />
+                  <Wifi className="me-1 h-3 w-3" />
                 )}
-                Test
+                {t('test')}
               </Button>
             )}
             <Button
@@ -208,8 +210,8 @@ export function GarminConnect({
               onClick={handleDisconnect}
               disabled={loading}
             >
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Disconnect
+              {loading && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
+              {t('disconnect')}
             </Button>
           </div>
         ) : (
@@ -219,14 +221,14 @@ export function GarminConnect({
               size="sm"
               className="bg-[#000000] hover:bg-[#333333] text-white"
             >
-              Connect
+              {t('connect')}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Connect Garmin</DialogTitle>
+              <DialogTitle>{t('dialogTitle')}</DialogTitle>
               <DialogDescription>
-                Enter your Garmin Connect credentials to sync activities
+                {t('dialogDescription')}
               </DialogDescription>
             </DialogHeader>
 
@@ -245,25 +247,25 @@ export function GarminConnect({
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="garmin-email">Garmin Connect Email</Label>
+                <Label htmlFor="garmin-email">{t('email')}</Label>
                 <Input
                   id="garmin-email"
                   type="email"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="your.email@example.com"
+                  placeholder={t('emailPlaceholder')}
                   disabled={loading}
                   autoComplete="email"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="garmin-password">Password</Label>
+                <Label htmlFor="garmin-password">{t('password')}</Label>
                 <Input
                   id="garmin-password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder={t('passwordPlaceholder')}
                   disabled={loading}
                   autoComplete="current-password"
                   onKeyDown={(e) => {
@@ -278,11 +280,11 @@ export function GarminConnect({
                 disabled={loading || !username || !password}
                 className="w-full"
               >
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Connect Garmin
+                {loading && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
+                {t('connectButton')}
               </Button>
               <p className="text-xs text-muted-foreground">
-                Your credentials are used to obtain authentication tokens and are not stored.
+                {t('credentialsNote')}
               </p>
             </div>
           </DialogContent>
@@ -294,7 +296,7 @@ export function GarminConnect({
       {(isConnected || stravaConnected) && onPreferenceChange && (
         <div className="flex items-center justify-between pt-2 border-t">
           <Label htmlFor="garmin-prefer" className="text-sm text-muted-foreground cursor-pointer">
-            Prefer data from this source
+            {t('preferSource')}
           </Label>
           <Switch
             id="garmin-prefer"
@@ -309,7 +311,7 @@ export function GarminConnect({
       {isConnected && onPushSummaryChange && (
         <div className="flex items-center justify-between pt-2 border-t">
           <Label htmlFor="garmin-push-summary" className="text-sm text-muted-foreground cursor-pointer">
-            Write AI summaries to Garmin Connect
+            {t('writeSummariesGarmin')}
           </Label>
           <Switch
             id="garmin-push-summary"
@@ -328,15 +330,15 @@ export function GarminConnect({
       <AlertDialog open={showPushWarning} onOpenChange={setShowPushWarning}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Write AI Summaries to Garmin Connect</AlertDialogTitle>
+            <AlertDialogTitle>{t('pushDialogTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              The AI summary will be prepended to your existing Garmin Connect activity description. If other third-party apps also write to your activity description, one may overwrite the other.
+              {t('pushDialogDescription')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={() => onPushSummaryChange?.(true)}>
-              Enable
+              {t('enable')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -355,14 +357,14 @@ export function GarminConnect({
                 onClick={handleRemoveAllWorkouts}
               >
                 {removing ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="me-2 h-4 w-4 animate-spin" />
                 ) : (
-                  <Trash2 className="mr-2 h-4 w-4" />
+                  <Trash2 className="me-2 h-4 w-4" />
                 )}
-                {removing ? 'Removing...' : 'Remove workouts from Garmin'}
+                {removing ? t('removing') : t('removeWorkouts')}
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Remove all TrAIner App workouts from Garmin Connect</TooltipContent>
+            <TooltipContent>{t('removeWorkoutsTooltip')}</TooltipContent>
           </Tooltip>
         </div>
       )}

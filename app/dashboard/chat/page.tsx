@@ -3,6 +3,7 @@
 import { Suspense, useState, useMemo, useEffect, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
 import { CoachInterface } from '@/components/chat/coach-interface'
 import { SessionList } from '@/components/chat/session-list'
 import { Button } from '@/components/ui/button'
@@ -82,6 +83,7 @@ function formatDuration(seconds: number) {
 }
 
 function ChatPageInner() {
+    const t = useTranslations('chat')
     const searchParams = useSearchParams()
     const router = useRouter()
     const queryClient = useQueryClient()
@@ -189,10 +191,10 @@ function ChatPageInner() {
     return (
         <div className="space-y-4 h-full flex flex-col">
             <div className="flex items-center justify-between">
-                <h1 className="text-3xl font-bold tracking-tight">AI Coach</h1>
+                <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
                 <Button onClick={handleNewChat} variant="outline" size="sm" className="gap-2">
                     <PlusCircle className="h-4 w-4" />
-                    New Chat
+                    {t('newChat')}
                 </Button>
             </div>
 
@@ -201,7 +203,7 @@ function ChatPageInner() {
                     <div className="flex-1 min-w-0 space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                                Workout context
+                                {t('workoutContext')}
                             </span>
                             <Badge variant="outline" className={`text-xs ${typeColor}`}>
                                 {typeLabel}
@@ -235,7 +237,7 @@ function ChatPageInner() {
                     <button
                         onClick={dismissWorkoutContext}
                         className="text-muted-foreground hover:text-foreground transition-colors mt-0.5 shrink-0"
-                        aria-label="Dismiss workout context"
+                        aria-label={t('dismissWorkout')}
                     >
                         <X className="h-4 w-4" />
                     </button>
@@ -247,11 +249,11 @@ function ChatPageInner() {
                     <div className="flex-1 min-w-0 space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                                Strength session context
+                                {t('strengthContext')}
                             </span>
                             <Badge variant="outline" className="text-xs bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-900 dark:text-slate-200 dark:border-slate-700">
-                                <Dumbbell className="h-3 w-3 mr-1" />
-                                Strength
+                                <Dumbbell className="h-3 w-3 me-1" />
+                                {t('strength')}
                             </Badge>
                         </div>
                         <p className="text-sm font-medium truncate">{strengthSessionContext.title}</p>
@@ -263,13 +265,13 @@ function ChatPageInner() {
                             {strengthSessionContext.estimated_duration_minutes != null && (
                                 <span className="flex items-center gap-1">
                                     <Clock className="h-3 w-3" />
-                                    ~{strengthSessionContext.estimated_duration_minutes} min
+                                    {t('durationMin', { min: strengthSessionContext.estimated_duration_minutes })}
                                 </span>
                             )}
                             <span className="capitalize">{strengthSessionContext.completion_status}</span>
                             {strengthSessionContext.exercises.length > 0 && (
                                 <span className="truncate">
-                                    {strengthSessionContext.exercises.length} exercise{strengthSessionContext.exercises.length === 1 ? '' : 's'}
+                                    {t('exerciseCount', { count: strengthSessionContext.exercises.length })}
                                 </span>
                             )}
                         </div>
@@ -277,7 +279,7 @@ function ChatPageInner() {
                     <button
                         onClick={dismissStrengthSessionContext}
                         className="text-muted-foreground hover:text-foreground transition-colors mt-0.5 shrink-0"
-                        aria-label="Dismiss strength session context"
+                        aria-label={t('dismissStrength')}
                     >
                         <X className="h-4 w-4" />
                     </button>
@@ -289,14 +291,14 @@ function ChatPageInner() {
                     <div className="flex-1 min-w-0 space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                                Activity context
+                                {t('activityContext')}
                             </span>
                             <Badge variant="secondary" className="text-xs capitalize">
                                 {activityContext.source}
                             </Badge>
                         </div>
                         <p className="text-sm font-medium truncate">
-                            {activityContext.activity_name || 'Activity'}
+                            {activityContext.activity_name || t('activityFallback')}
                         </p>
                         <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
                             <span className="flex items-center gap-1">
@@ -328,7 +330,7 @@ function ChatPageInner() {
                     <button
                         onClick={dismissActivityContext}
                         className="text-muted-foreground hover:text-foreground transition-colors mt-0.5 shrink-0"
-                        aria-label="Dismiss activity context"
+                        aria-label={t('dismissActivity')}
                     >
                         <X className="h-4 w-4" />
                     </button>
@@ -339,7 +341,7 @@ function ChatPageInner() {
                 {/* Sidebar */}
                 <div className="hidden md:block border rounded-lg p-2 bg-card">
                     <div className="mb-2 px-2 py-1 text-sm font-semibold text-muted-foreground">
-                        Recent Chats
+                        {t('recentChats')}
                     </div>
                     <SessionList
                         currentSessionId={selectedSessionId}
