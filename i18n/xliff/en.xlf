@@ -1,0 +1,171 @@
+<xliff xmlns="urn:oasis:names:tc:xliff:document:2.0" version="2.0" srcLang="en" trgLang="en">
+  <file id="nav">
+    <unit id="mainLabel">
+      <segment>
+        <source>Main navigation</source>
+      </segment>
+    </unit>
+    <unit id="toggleMenu">
+      <segment>
+        <source>Toggle menu</source>
+      </segment>
+    </unit>
+    <unit id="dashboard">
+      <segment>
+        <source>Dashboard</source>
+      </segment>
+    </unit>
+    <unit id="calendar">
+      <segment>
+        <source>Calendar</source>
+      </segment>
+    </unit>
+    <unit id="running">
+      <segment>
+        <source>Running</source>
+      </segment>
+    </unit>
+    <unit id="strength">
+      <segment>
+        <source>Strength</source>
+      </segment>
+    </unit>
+    <unit id="activities">
+      <segment>
+        <source>Activities</source>
+      </segment>
+    </unit>
+    <unit id="sync">
+      <segment>
+        <source>Activity Sync</source>
+      </segment>
+    </unit>
+    <unit id="chat">
+      <segment>
+        <source>AI Coach</source>
+      </segment>
+    </unit>
+    <unit id="profile">
+      <segment>
+        <source>Profile</source>
+      </segment>
+    </unit>
+  </file>
+  <file id="settings">
+    <unit id="title">
+      <segment>
+        <source>Personal Preferences</source>
+      </segment>
+    </unit>
+    <unit id="description">
+      <segment>
+        <source>Manage your profile and application settings</source>
+      </segment>
+    </unit>
+    <unit id="firstName">
+      <segment>
+        <source>First Name</source>
+      </segment>
+    </unit>
+    <unit id="firstNamePlaceholder">
+      <segment>
+        <source>First name</source>
+      </segment>
+    </unit>
+    <unit id="lastName">
+      <segment>
+        <source>Last Name</source>
+      </segment>
+    </unit>
+    <unit id="lastNamePlaceholder">
+      <segment>
+        <source>Last name</source>
+      </segment>
+    </unit>
+    <unit id="email">
+      <segment>
+        <source>Email</source>
+      </segment>
+    </unit>
+    <unit id="preferredUnits">
+      <segment>
+        <source>Preferred Units</source>
+      </segment>
+    </unit>
+    <unit id="unitsMetric">
+      <segment>
+        <source>Metric (km, kg)</source>
+      </segment>
+    </unit>
+    <unit id="unitsImperial">
+      <segment>
+        <source>Imperial (miles, lbs)</source>
+      </segment>
+    </unit>
+    <unit id="weekStartsOn">
+      <segment>
+        <source>Week Starts On</source>
+      </segment>
+    </unit>
+    <unit id="sunday">
+      <segment>
+        <source>Sunday</source>
+      </segment>
+    </unit>
+    <unit id="monday">
+      <segment>
+        <source>Monday</source>
+      </segment>
+    </unit>
+    <unit id="saturday">
+      <segment>
+        <source>Saturday</source>
+      </segment>
+    </unit>
+    <unit id="appearance">
+      <segment>
+        <source>Appearance</source>
+      </segment>
+    </unit>
+    <unit id="themeLight">
+      <segment>
+        <source>Light</source>
+      </segment>
+    </unit>
+    <unit id="themeDark">
+      <segment>
+        <source>Dark</source>
+      </segment>
+    </unit>
+    <unit id="themeSystem">
+      <segment>
+        <source>System</source>
+      </segment>
+    </unit>
+    <unit id="language">
+      <segment>
+        <source>Language</source>
+      </segment>
+    </unit>
+    <unit id="save">
+      <segment>
+        <source>Save Preferences</source>
+      </segment>
+    </unit>
+    <unit id="saving">
+      <segment>
+        <source>Saving...</source>
+      </segment>
+    </unit>
+    <unit id="saved">
+      <segment>
+        <source>Preferences updated successfully</source>
+      </segment>
+    </unit>
+    <unit id="saveError">
+      <segment>
+        <source>Failed to update preferences</source>
+      </segment>
+    </unit>
+  </file>
+</xliff>

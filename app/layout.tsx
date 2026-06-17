@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages } from "next-intl/server";
 import "./globals.css";
 import QueryProvider from "@/lib/providers/query-provider";
 import { ThemeProvider } from "@/lib/providers/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { getLocaleDir } from "@/i18n/config";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -20,21 +23,26 @@ export const metadata: Metadata = {
   description: "AI-powered training platform for endurance athletes",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale} dir={getLocaleDir(locale)} suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <QueryProvider>
-            {children}
-            <Toaster />
-          </QueryProvider>
+          <NextIntlClientProvider messages={messages}>
+            <QueryProvider>
+              {children}
+              <Toaster />
+            </QueryProvider>
+          </NextIntlClientProvider>
         </ThemeProvider>
       </body>
     </html>

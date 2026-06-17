@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { ensureAthleteExists } from '@/lib/supabase/ensure-athlete'
+import { isLocale } from '@/i18n/config'
 import { z } from 'zod'
 
 const PROVIDER_ENV_MAP: Record<string, string> = {
@@ -26,6 +27,7 @@ const settingsSchema = z.object({
     push_summary_to_garmin: z.boolean().optional(),
     push_summary_to_strava: z.boolean().optional(),
     feedback_tone: z.enum(['critical', 'balanced', 'positive']).optional(),
+    locale: z.string().refine(isLocale, 'Unsupported locale').optional(),
 })
 
 export async function POST(request: Request) {
@@ -35,7 +37,7 @@ export async function POST(request: Request) {
         if (!parsed.success) {
             return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
         }
-        const { provider, model, preferred_units, week_starts_on, useFastModelForOperations, preferred_activity_data_source, first_name, last_name, profile_completed, sync_on_login, ai_summaries_enabled, push_summary_to_garmin, push_summary_to_strava, feedback_tone } = parsed.data
+        const { provider, model, preferred_units, week_starts_on, useFastModelForOperations, preferred_activity_data_source, first_name, last_name, profile_completed, sync_on_login, ai_summaries_enabled, push_summary_to_garmin, push_summary_to_strava, feedback_tone, locale } = parsed.data
 
         const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()
@@ -77,6 +79,7 @@ export async function POST(request: Request) {
         if (push_summary_to_garmin !== undefined) updates.push_summary_to_garmin = push_summary_to_garmin
         if (push_summary_to_strava !== undefined) updates.push_summary_to_strava = push_summary_to_strava
         if (feedback_tone !== undefined) updates.feedback_tone = feedback_tone
+        if (locale !== undefined) updates.locale = locale
 
         const { error } = await supabase
             .from('athletes')

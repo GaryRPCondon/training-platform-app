@@ -108,9 +108,20 @@ export async function proxy(request: NextRequest) {
     if (pathname.startsWith('/dashboard')) {
         const { data: athlete } = await supabase
             .from('athletes')
-            .select('account_status, profile_completed')
+            .select('account_status, profile_completed, locale')
             .eq('id', user.id)
             .single()
+
+        // Hydrate the NEXT_LOCALE cookie from the athlete's stored locale so the
+        // preference follows them across devices. The DB value is canonical; the
+        // cookie is just the transport next-intl reads on each request.
+        if (athlete?.locale && request.cookies.get('NEXT_LOCALE')?.value !== athlete.locale) {
+            supabaseResponse.cookies.set('NEXT_LOCALE', athlete.locale, {
+                path: '/',
+                maxAge: 60 * 60 * 24 * 365,
+                sameSite: 'lax',
+            })
+        }
 
         if (athlete) {
             // Pending approval — redirect to pending page

@@ -1,0 +1,39 @@
+{
+  "nav": {
+    "mainLabel": "Main navigation",
+    "toggleMenu": "Toggle menu",
+    "dashboard": "Dashboard",
+    "calendar": "Calendar",
+    "running": "Running",
+    "strength": "Strength",
+    "activities": "Activities",
+    "sync": "Activity Sync",
+    "chat": "AI Coach",
+    "profile": "Profile"
+  },
+  "settings": {
+    "title": "Personal Preferences",
+    "description": "Manage your profile and application settings",
+    "firstName": "First Name",
+    "firstNamePlaceholder": "First name",
+    "lastName": "Last Name",
+    "lastNamePlaceholder": "Last name",
+    "email": "Email",
+    "preferredUnits": "Preferred Units",
+    "unitsMetric": "Metric (km, kg)",
+    "unitsImperial": "Imperial (miles, lbs)",
+    "weekStartsOn": "Week Starts On",
+    "sunday": "Sunday",
+    "monday": "Monday",
+    "saturday": "Saturday",
+    "appearance": "Appearance",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeSystem": "System",
+    "language": "Language",
+    "save": "Save Preferences",
+    "saving": "Saving...",
+    "saved": "Preferences updated successfully",
+    "saveError": "Failed to update preferences"
+  }
+}

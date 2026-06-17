@@ -67,10 +67,30 @@ Work through by area; each item is **action → expected**. Tick the box once ve
 
 ## Outstanding / future work (not yet delivered)
 
-### i18n / localisation (Part 2 of the review — needs a go/no-go)
-- [ ] **Pseudo-translation pass.** Generate a pseudo-locale for **all** UI strings by swapping vowels for accented equivalents (a→á, e→é, i→í, o→ó, u→ú, and capitals), plus optional padding to surface truncation. Purpose: prove every user-facing string is externalised and reveal hard-coded/concatenated text and clipping before any real translation work. Depends on first extracting strings (next-intl in no-routing mode is the review's recommended path).
-- [ ] **Language switcher.** Add a locale selector (Settings/Preferences, next to units / theme) backed by a `locale` column on `athletes`; wire `<html lang/dir>` from the chosen locale. Ship together with the pseudo-locale so the switch is testable.
-- [ ] **Right-to-left (RTL) support — exploration.** Assess effort to support RTL: Tailwind logical-property codemod (`ml-→ms-`, `pl-→ps-`, `left-→start-`, `text-left→text-start`, `space-x-→gap-`), mirror the nav drawer (`start-0`, `border-e`, dir-aware slide animations), flip directional icons (`rtl:rotate-180` — pattern already in `components/ui/calendar.tsx`), pass `rtl` to react-big-calendar, and wrap pace/clock/workout-code tokens in `<span dir="ltr" translate="no">`. Deliverable: a sized plan + a spike on one screen (e.g. dashboard) under a forced RTL locale. (See review §I8–I13.)
+### i18n / localisation (Part 2 of the review)
+
+**Foundation + pilot DELIVERED (2026-06-16, branch `i18n-review-and-sweep`).** Toolchain:
+next-intl (no-i18n-routing, cookie-driven) runtime; **XLIFF 2.0** interchange (`xliff` pkg) as the
+translator/TMS handoff format; pseudo via the ICU MessageFormat parser (placeholder-safe, no regex).
+Scripts: `npm run i18n:build` (export XLIFF + regenerate pseudo), `i18n:xliff:import <locale>`.
+Pilot screen = Profile/Settings (`PreferencesCard`) + shared `Navigation`. Locales: `en`,
+`en-XA` (accented LTR), `en-XB` (bidi RTL).
+- [x] **Pseudo-translation pass** — `scripts/i18n/generate-pseudo.ts` → `messages/en-XA.json` /
+  `en-XB.json`. Accented + bracketed + padded; un-extracted strings show as plain ASCII.
+- [x] **Language switcher** — `components/settings/language-selector.tsx` in the Preferences card;
+  `locale` column on `athletes` (migration `20260616000000`); `<html lang/dir>` wired in
+  `app/layout.tsx`; cookie hydrated from DB in `proxy.ts`.
+- [x] **RTL spike** — pilot + nav use logical properties (`me-`, `start-`, `border-e`), nav drawer
+  mirrors under `dir="rtl"` (`rtl:slide-*`); validated against `en-XB`.
+
+**Remaining (the grind, not yet done):**
+- [ ] **Full extraction** — apply the pilot pattern to the other ~95 `.tsx` screens (~1,000 strings):
+  literal → `t()` key, append to `messages/en.json`, re-run `i18n:build`, walk under `en-XA`/`en-XB`.
+- [ ] **RTL rollout** — extend the logical-property codemod app-wide; pass `rtl` to react-big-calendar
+  in `lib/utils/calendar-localizer.ts` consumers; wrap pace/clock/workout-code tokens in
+  `<span dir="ltr" translate="no">`. (Pattern proven on the pilot; see review §I8–I13.)
+- [ ] **Real translation** — when a real locale is needed, hand `i18n/xliff/en.xlf` to the vendor/TMS
+  and import the returned `<locale>.xlf` via `npm run i18n:xliff:import <locale>`.
 
 ### Deferred during implementation (reasons noted)
 - [ ] **P3.2 — column-scoped selects.** Narrow the `select('*')` activity queries to drop the `raw_data` / `garmin_data` / `strava_data` blobs. Deferred: PostgREST has no "select all except", so it means enumerating ~30 columns that consumers read across calendar/activities/detail — brittle (new columns silently dropped) and easy to under-select. Needs a careful consumer audit.
