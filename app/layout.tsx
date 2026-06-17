@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
+import { AppDirectionProvider } from "@/lib/providers/direction-provider";
 import "./globals.css";
 import QueryProvider from "@/lib/providers/query-provider";
 import { ThemeProvider } from "@/lib/providers/theme-provider";
@@ -30,18 +31,23 @@ export default async function RootLayout({
 }>) {
   const locale = await getLocale();
   const messages = await getMessages();
+  const dir = getLocaleDir(locale);
 
   return (
-    <html lang={locale} dir={getLocaleDir(locale)} suppressHydrationWarning>
+    <html lang={locale} dir={dir} suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <NextIntlClientProvider messages={messages}>
-            <QueryProvider>
-              {children}
-              <Toaster />
-            </QueryProvider>
+            {/* Feeds direction to all Radix primitives (Select, Slider, Switch,
+                RadioGroup, Dialog…) so they flip under RTL without per-component props. */}
+            <AppDirectionProvider dir={dir}>
+              <QueryProvider>
+                {children}
+                <Toaster dir={dir} position={dir === "rtl" ? "bottom-left" : "bottom-right"} />
+              </QueryProvider>
+            </AppDirectionProvider>
           </NextIntlClientProvider>
         </ThemeProvider>
       </body>

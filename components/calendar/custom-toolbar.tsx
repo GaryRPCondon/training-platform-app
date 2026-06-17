@@ -39,7 +39,7 @@ export function CustomToolbar({ date, onNavigate, onAutoMatch, isAutoMatching, r
                                 className="h-7 w-7"
                                 aria-label="Previous month"
                             >
-                                <ChevronLeft className="h-4 w-4" />
+                                <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
                             </Button>
                         </TooltipTrigger>
                         <TooltipContent>Previous month</TooltipContent>
@@ -53,13 +53,13 @@ export function CustomToolbar({ date, onNavigate, onAutoMatch, isAutoMatching, r
                                 className="h-7 w-7"
                                 aria-label="Next month"
                             >
-                                <ChevronRight className="h-4 w-4" />
+                                <ChevronRight className="h-4 w-4 rtl:rotate-180" />
                             </Button>
                         </TooltipTrigger>
                         <TooltipContent>Next month</TooltipContent>
                     </Tooltip>
                 </div>
-                <h2 className="text-xl font-semibold ml-2">
+                <h2 className="text-xl font-semibold ms-2">
                     {format(date, 'MMMM yyyy')}
                 </h2>
                 {onAutoMatch && (
@@ -68,9 +68,9 @@ export function CustomToolbar({ date, onNavigate, onAutoMatch, isAutoMatching, r
                         size="sm"
                         onClick={onAutoMatch}
                         disabled={isAutoMatching}
-                        className="h-7 px-3 text-xs ml-4"
+                        className="h-7 px-3 text-xs ms-4"
                     >
-                        <Link2 className="h-3 w-3 mr-1.5" />
+                        <Link2 className="h-3 w-3 me-1.5" />
                         {isAutoMatching ? 'Matching...' : 'Auto-Match Activities'}
                     </Button>
                 )}

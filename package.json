@@ -13,6 +13,7 @@
     "i18n:xliff:import": "tsx scripts/i18n/import-xliff.ts",
     "i18n:pseudo": "tsx scripts/i18n/generate-pseudo.ts",
     "i18n:build": "npm run i18n:xliff:export && npm run i18n:pseudo",
+    "postinstall": "node scripts/restore-native-bindings.mjs",
     "prepare": "husky"
   },
   "dependencies": {
