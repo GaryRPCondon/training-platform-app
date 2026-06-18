@@ -46,6 +46,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
+import { useTranslations } from 'next-intl'
+import { useEnumLabels } from '@/lib/i18n/enum-labels'
 import { ExerciseEditRow, makeBlankExercise } from '@/components/strength/exercise-edit-row'
 import type { StrengthSession, StrengthExercise } from '@/types/database'
 
@@ -56,20 +58,20 @@ interface SessionDetailDialogProps {
   onClose?: () => void
 }
 
-const GARMIN_STATUS_LABELS: Record<NonNullable<StrengthSession['garmin_sync_status']>, { label: string; tone: string }> = {
-  synced:      { label: 'Synced to Garmin',    tone: 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-200 dark:border-emerald-900' },
-  stale:       { label: 'Garmin sync out of date', tone: 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950 dark:text-amber-200 dark:border-amber-900' },
-  failed:      { label: 'Garmin sync failed',  tone: 'bg-red-100 text-red-800 border-red-200 dark:bg-red-950 dark:text-red-200 dark:border-red-900' },
-  unsupported: { label: 'Garmin: unsupported', tone: 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800' },
+const GARMIN_STATUS_LABELS: Record<NonNullable<StrengthSession['garmin_sync_status']>, { labelKey: string; tone: string }> = {
+  synced:      { labelKey: 'garminStatusSynced',      tone: 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-200 dark:border-emerald-900' },
+  stale:       { labelKey: 'garminStatusStale',       tone: 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950 dark:text-amber-200 dark:border-amber-900' },
+  failed:      { labelKey: 'garminStatusFailed',      tone: 'bg-red-100 text-red-800 border-red-200 dark:bg-red-950 dark:text-red-200 dark:border-red-900' },
+  unsupported: { labelKey: 'garminStatusUnsupported', tone: 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800' },
 }
 
 type CompletionStatus = StrengthSession['completion_status']
 
-const STATUS_OPTIONS: Array<{ value: CompletionStatus; label: string; icon: typeof Circle }> = [
-  { value: 'pending', label: 'Pending', icon: Circle },
-  { value: 'completed', label: 'Completed', icon: CheckCircle2 },
-  { value: 'partial', label: 'Partial', icon: AlertCircle },
-  { value: 'skipped', label: 'Skipped', icon: XCircle },
+const STATUS_OPTIONS: Array<{ value: CompletionStatus; icon: typeof Circle }> = [
+  { value: 'pending', icon: Circle },
+  { value: 'completed', icon: CheckCircle2 },
+  { value: 'partial', icon: AlertCircle },
+  { value: 'skipped', icon: XCircle },
 ]
 
 function formatMeasurement(ex: StrengthExercise): string {
@@ -89,6 +91,9 @@ function formatMeasurement(ex: StrengthExercise): string {
 
 export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: SessionDetailDialogProps) {
   const router = useRouter()
+  const t = useTranslations('strengthSession')
+  const tEx = useTranslations('strengthExercise')
+  const { completionStatus } = useEnumLabels()
   const [status, setStatus] = useState<CompletionStatus>(session.completion_status)
   const [durationMin, setDurationMin] = useState<string>(
     session.actual_duration_minutes != null ? String(session.actual_duration_minutes) : '',
@@ -131,7 +136,7 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
     setIsSaving(true)
     const parsedDuration = durationMin === '' ? null : Number(durationMin)
     if (durationMin !== '' && (!Number.isFinite(parsedDuration) || (parsedDuration as number) < 0)) {
-      toast.error('Duration must be a non-negative number')
+      toast.error(t('durationInvalid'))
       setIsSaving(false)
       return
     }
@@ -146,11 +151,11 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
         }),
       })
       const result = await res.json()
-      if (!res.ok) throw new Error(result.error || 'Failed to update session')
-      toast.success('Session updated')
+      if (!res.ok) throw new Error(result.error || t('updateError'))
+      toast.success(t('updated'))
       onSaved?.(result.session as StrengthSession)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to update session')
+      toast.error(err instanceof Error ? err.message : t('updateError'))
     } finally {
       setIsSaving(false)
     }
@@ -161,12 +166,12 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
     try {
       const res = await fetch(`/api/strength/sessions/${session.id}`, { method: 'DELETE' })
       const result = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(result.error || 'Failed to delete session')
-      toast.success('Session deleted')
+      if (!res.ok) throw new Error(result.error || t('deleteError'))
+      toast.success(t('deleted'))
       setIsDeleteOpen(false)
       onDeleted?.()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete session')
+      toast.error(err instanceof Error ? err.message : t('deleteError'))
     } finally {
       setIsDeleting(false)
     }
@@ -190,20 +195,20 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
         body: JSON.stringify({ sessionId: session.id, newDate: draftDate }),
       })
       const result = await res.json()
-      if (!res.ok) throw new Error(result.error || 'Failed to reschedule')
+      if (!res.ok) throw new Error(result.error || t('rescheduleError'))
       const dateLabel = format(parseISO(draftDate), 'EEE, MMM d')
       const wasOnGarmin = !!session.garmin_workout_id && session.garmin_sync_status === 'synced'
       if (wasOnGarmin && result.garminMoved) {
-        toast.success(`Moved to ${dateLabel} (Garmin updated)`)
+        toast.success(t('movedGarminUpdated', { date: dateLabel }))
       } else if (wasOnGarmin && !result.garminMoved) {
-        toast.warning(`Moved to ${dateLabel}. Couldn't update Garmin — resend manually.`)
+        toast.warning(t('movedGarminFailed', { date: dateLabel }))
       } else {
-        toast.success(`Moved to ${dateLabel}`)
+        toast.success(t('moved', { date: dateLabel }))
       }
       setIsEditingDate(false)
       onSaved?.(result.session as StrengthSession)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to reschedule')
+      toast.error(err instanceof Error ? err.message : t('rescheduleError'))
     } finally {
       setIsRescheduling(false)
     }
@@ -218,19 +223,19 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
         body: JSON.stringify({ sessionIds: [session.id], action: 'send' }),
       })
       const result = await res.json()
-      if (!res.ok) throw new Error(result.error || 'Failed to send')
+      if (!res.ok) throw new Error(result.error || t('sendError'))
       if (result.sent > 0) {
-        toast.success('Sent to Garmin')
+        toast.success(t('sentToGarmin'))
         onSaved?.({ ...session, garmin_sync_status: 'synced' })
       } else if (result.skipped > 0) {
-        toast.error(result.errors?.[0]?.error || 'Session contains unsupported exercises')
+        toast.error(result.errors?.[0]?.error || t('unsupportedExercises'))
       } else if (result.failed > 0) {
-        toast.error(result.errors?.[0]?.error || 'Failed to send to Garmin')
+        toast.error(result.errors?.[0]?.error || t('sendToGarminError'))
       } else {
-        toast.error('No sessions were sent')
+        toast.error(t('noneSent'))
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to send to Garmin')
+      toast.error(err instanceof Error ? err.message : t('sendToGarminError'))
     } finally {
       setIsSendingGarmin(false)
     }
@@ -245,9 +250,9 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
         body: JSON.stringify({ sessionIds: [session.id], action: 'delete' }),
       })
       const result = await res.json()
-      if (!res.ok) throw new Error(result.error || 'Failed to remove')
+      if (!res.ok) throw new Error(result.error || t('removeError'))
       if (result.deleted > 0) {
-        toast.success('Removed from Garmin')
+        toast.success(t('removedFromGarmin'))
         onSaved?.({
           ...session,
           garmin_workout_id: null,
@@ -255,10 +260,10 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
           garmin_scheduled_at: null,
         })
       } else {
-        toast.error(result.errors?.[0]?.error || 'Nothing to remove')
+        toast.error(result.errors?.[0]?.error || t('nothingToRemove'))
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to remove from Garmin')
+      toast.error(err instanceof Error ? err.message : t('removeFromGarminError'))
     } finally {
       setIsRemovingGarmin(false)
     }
@@ -300,12 +305,12 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
   }
 
   const addDraftExercise = () => {
-    setDraftExercises(prev => [...prev, makeBlankExercise()])
+    setDraftExercises(prev => [...prev, makeBlankExercise(tEx('newExercise'))])
   }
 
   const saveExercises = async () => {
     if (draftExercises.length === 0) {
-      toast.error('At least one exercise is required')
+      toast.error(t('exerciseRequired'))
       return
     }
     setIsSavingExercises(true)
@@ -324,12 +329,12 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
         body: JSON.stringify({ exercises: payload }),
       })
       const result = await res.json()
-      if (!res.ok) throw new Error(result.error || 'Failed to update exercises')
-      toast.success('Exercises updated')
+      if (!res.ok) throw new Error(result.error || t('updateExercisesError'))
+      toast.success(t('exercisesUpdated'))
       setIsEditingExercises(false)
       onSaved?.(result.session as StrengthSession)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to update exercises')
+      toast.error(err instanceof Error ? err.message : t('updateExercisesError'))
     } finally {
       setIsSavingExercises(false)
     }
@@ -345,7 +350,7 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
               <h3 className="text-xl font-semibold">{session.title}</h3>
               {session.program_name && (
                 <div className="text-xs text-muted-foreground">
-                  from <span className="font-medium">{session.program_name}</span>
+                  {t.rich('fromProgram', { name: session.program_name, strong: (chunks) => <span className="font-medium">{chunks}</span> })}
                 </div>
               )}
               {isEditingDate ? (
@@ -357,7 +362,7 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
                     className="h-8 w-auto"
                     disabled={isRescheduling}
                   />
-                  <Button size="sm" variant="ghost" onClick={handleReschedule} disabled={isRescheduling} aria-label="Save date">
+                  <Button size="sm" variant="ghost" onClick={handleReschedule} disabled={isRescheduling} aria-label={t('saveDate')}>
                     {isRescheduling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                   </Button>
                   <Button
@@ -365,7 +370,7 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
                     variant="ghost"
                     onClick={() => { setDraftDate(session.scheduled_date); setIsEditingDate(false) }}
                     disabled={isRescheduling}
-                    aria-label="Cancel"
+                    aria-label={t('cancel')}
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -374,7 +379,7 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
                 <div className="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                   <span>{format(parseISO(session.scheduled_date), 'EEEE, MMM d')}</span>
                   {session.estimated_duration_minutes != null && (
-                    <span>· ~{session.estimated_duration_minutes} min planned</span>
+                    <span>{t('durationPlanned', { min: session.estimated_duration_minutes })}</span>
                   )}
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -383,12 +388,12 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
                         size="icon"
                         className="h-6 w-6 text-muted-foreground hover:text-foreground"
                         onClick={() => { setDraftDate(session.scheduled_date); setIsEditingDate(true) }}
-                        aria-label="Reschedule"
+                        aria-label={t('reschedule')}
                       >
                         <CalendarDays className="h-3.5 w-3.5" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>Reschedule</TooltipContent>
+                    <TooltipContent>{t('reschedule')}</TooltipContent>
                   </Tooltip>
                 </div>
               )}
@@ -402,12 +407,12 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
                   size="icon"
                   className="h-8 w-8 text-violet-500 hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-950"
                   onClick={handleDiscuss}
-                  aria-label="Discuss with AI Coach"
+                  aria-label={t('discussWithAI')}
                 >
                   <Sparkles className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Discuss with AI Coach</TooltipContent>
+              <TooltipContent>{t('discussWithAI')}</TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -417,12 +422,12 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
                   className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
                   onClick={() => setIsDeleteOpen(true)}
                   disabled={isDeleting}
-                  aria-label="Delete session"
+                  aria-label={t('deleteSession')}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Delete session</TooltipContent>
+              <TooltipContent>{t('deleteSession')}</TooltipContent>
             </Tooltip>
           </div>
         </div>
@@ -433,7 +438,7 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
         <div className="space-y-2">
           {session.placement_rationale && (
             <div className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">Why this day: </span>
+              <span className="font-medium text-foreground">{t('whyThisDay')}</span>
               {session.placement_rationale}
             </div>
           )}
@@ -448,7 +453,7 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
       <div>
         <div className="mb-2 flex items-center justify-between gap-2">
           <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Exercises
+            {t('exercises')}
           </h4>
           <div className="flex items-center gap-2">
             {!isEditingExercises && session.exercises.length > 0 && (
@@ -457,15 +462,15 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
                   <Badge variant={allGarminSupported ? 'default' : 'secondary'} className="cursor-help text-xs">
                     <Watch className="mr-1 h-3 w-3" />
                     {allGarminSupported
-                      ? 'All Garmin-ready'
-                      : `${unsupportedNames.length} as fallback`}
+                      ? t('allGarminReady')
+                      : t('asFallback', { count: unsupportedNames.length })}
                   </Badge>
                 </TooltipTrigger>
                 {hasUnsupported && (
                   <TooltipContent className="max-w-xs text-xs">
-                    <div className="font-medium">Sent as fallback to Garmin:</div>
+                    <div className="font-medium">{t('sentAsFallback')}</div>
                     <div className="mt-0.5 text-muted-foreground">{unsupportedNames.join(', ')}</div>
-                    <div className="mt-1 text-muted-foreground">These will appear on the watch using a close-enough Garmin exercise label, or as a generic step with the exercise name in the description.</div>
+                    <div className="mt-1 text-muted-foreground">{t('fallbackExplain')}</div>
                   </TooltipContent>
                 )}
               </Tooltip>
@@ -473,11 +478,11 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
             {isEditingExercises ? (
               <>
                 <Button size="sm" variant="ghost" onClick={cancelEditExercises} disabled={isSavingExercises}>
-                  Cancel
+                  {t('cancel')}
                 </Button>
                 <Button size="sm" onClick={saveExercises} disabled={isSavingExercises}>
                   {isSavingExercises && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Save exercises
+                  {t('saveExercises')}
                 </Button>
               </>
             ) : (
@@ -488,12 +493,12 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
                     size="icon"
                     className="h-7 w-7 text-muted-foreground hover:text-foreground"
                     onClick={enterEditExercises}
-                    aria-label="Edit exercises"
+                    aria-label={t('editExercises')}
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Edit exercises</TooltipContent>
+                <TooltipContent>{t('editExercises')}</TooltipContent>
               </Tooltip>
             )}
           </div>
@@ -513,7 +518,7 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
             ))}
             <Button variant="outline" size="sm" onClick={addDraftExercise} className="w-full">
               <Plus className="mr-2 h-4 w-4" />
-              Add exercise
+              {t('addExercise')}
             </Button>
           </div>
         ) : (
@@ -529,10 +534,10 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
                   {!ex.garmin_supported && (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Badge variant="outline" className="cursor-help text-[10px]">Fallback</Badge>
+                        <Badge variant="outline" className="cursor-help text-[10px]">{t('fallback')}</Badge>
                       </TooltipTrigger>
                       <TooltipContent className="max-w-xs text-xs">
-                        No exact Garmin match. Will send as a close-enough Garmin exercise, or as a generic step with the exercise name shown in the description.
+                        {t('fallbackTooltip')}
                         {ex.garmin_unsupported_reason && (
                           <div className="mt-1 text-muted-foreground">{ex.garmin_unsupported_reason}</div>
                         )}
@@ -542,10 +547,10 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
                   {ex.garmin_supported && ex.garmin_match_quality === 'approximate' && (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Badge variant="outline" className="cursor-help border-amber-500/40 text-[10px] text-amber-600">Approx</Badge>
+                        <Badge variant="outline" className="cursor-help border-amber-500/40 text-[10px] text-amber-600">{t('approx')}</Badge>
                       </TooltipTrigger>
                       <TooltipContent className="max-w-xs text-xs">
-                        <div>Matched to the closest Garmin exercise:</div>
+                        <div>{t('matchedClosest')}</div>
                         <div className="mt-0.5 font-mono text-muted-foreground">{ex.garmin_exercise_category} / {ex.garmin_exercise_name}</div>
                       </TooltipContent>
                     </Tooltip>
@@ -562,7 +567,7 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
       <div className="space-y-3">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label htmlFor="strength-status" className="text-xs">Status</Label>
+            <Label htmlFor="strength-status" className="text-xs">{t('statusLabel')}</Label>
             <Select value={status} onValueChange={(v) => setStatus(v as CompletionStatus)}>
               <SelectTrigger id="strength-status" className="mt-1">
                 <SelectValue />
@@ -574,7 +579,7 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
                     <SelectItem key={opt.value} value={opt.value}>
                       <span className="flex items-center gap-2">
                         <Icon className="h-3.5 w-3.5" />
-                        {opt.label}
+                        {completionStatus(opt.value)}
                       </span>
                     </SelectItem>
                   )
@@ -583,7 +588,7 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
             </Select>
           </div>
           <div>
-            <Label htmlFor="strength-duration" className="text-xs">Actual duration (min)</Label>
+            <Label htmlFor="strength-duration" className="text-xs">{t('durationLabel')}</Label>
             <Input
               id="strength-duration"
               type="number"
@@ -594,20 +599,20 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
               placeholder={
                 session.estimated_duration_minutes != null
                   ? String(session.estimated_duration_minutes)
-                  : 'e.g. 35'
+                  : t('durationPlaceholder')
               }
               className="mt-1"
             />
           </div>
         </div>
         <div>
-          <Label htmlFor="strength-notes" className="text-xs">Notes</Label>
+          <Label htmlFor="strength-notes" className="text-xs">{t('notesLabel')}</Label>
           <Textarea
             id="strength-notes"
             rows={3}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="How did it go? Anything to remember next time?"
+            placeholder={t('notesPlaceholder')}
             className="mt-1 resize-none"
           />
         </div>
@@ -620,7 +625,7 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
         <div className="flex flex-wrap items-center gap-2">
           {garminStatus && GARMIN_STATUS_LABELS[garminStatus] && (
             <Badge variant="outline" className={`text-[10px] ${GARMIN_STATUS_LABELS[garminStatus].tone}`}>
-              {GARMIN_STATUS_LABELS[garminStatus].label}
+              {t(GARMIN_STATUS_LABELS[garminStatus].labelKey)}
             </Badge>
           )}
           {garminConnected ? (
@@ -633,20 +638,20 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
                       size="sm"
                       disabled={session.exercises.length === 0 || isSendingGarmin}
                       onClick={handleSendToGarmin}
-                      aria-label={isSynced ? 'Resend to Garmin' : 'Send to Garmin'}
+                      aria-label={isSynced ? t('resendToGarmin') : t('sendToGarmin')}
                     >
                       {isSendingGarmin
                         ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         : <Watch className="mr-2 h-4 w-4" />}
-                      {isSynced ? 'Resend to Garmin' : 'Send to Garmin'}
+                      {isSynced ? t('resendToGarmin') : t('sendToGarmin')}
                     </Button>
                   </span>
                 </TooltipTrigger>
                 {hasUnsupported && (
                   <TooltipContent className="max-w-xs text-xs">
-                    <div className="font-medium">Will send all {session.exercises.length} exercise{session.exercises.length === 1 ? '' : 's'}.</div>
+                    <div className="font-medium">{t('willSendAll', { count: session.exercises.length })}</div>
                     <div className="mt-0.5 text-muted-foreground">
-                      {unsupportedNames.length} as fallback or label-only: {unsupportedNames.join(', ')}
+                      {t('fallbackList', { count: unsupportedNames.length, names: unsupportedNames.join(', ') })}
                     </div>
                   </TooltipContent>
                 )}
@@ -659,7 +664,7 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
                   disabled={isRemovingGarmin}
                 >
                   {isRemovingGarmin && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Remove from Garmin
+                  {t('removeFromGarmin')}
                 </Button>
               )}
             </>
@@ -667,14 +672,14 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
             <Tooltip>
               <TooltipTrigger asChild>
                 <span tabIndex={0}>
-                  <Button variant="outline" size="sm" disabled aria-label="Garmin not connected">
+                  <Button variant="outline" size="sm" disabled aria-label={t('garminNotConnected')}>
                     <Watch className="mr-2 h-4 w-4" />
-                    Send to Garmin
+                    {t('sendToGarmin')}
                   </Button>
                 </span>
               </TooltipTrigger>
               <TooltipContent className="max-w-xs text-xs">
-                Connect Garmin in Settings to enable strength workout sync.
+                {t('connectGarminHint')}
               </TooltipContent>
             </Tooltip>
           )}
@@ -682,12 +687,12 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
         <div className="flex items-center gap-2">
           {onClose && (
             <Button variant="ghost" size="sm" onClick={onClose}>
-              Close
+              {t('close')}
             </Button>
           )}
           <Button size="sm" onClick={handleSave} disabled={!hasChanges || isSaving}>
             {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Save
+            {t('save')}
           </Button>
         </div>
       </div>
@@ -695,14 +700,13 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
       <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this strength session?</AlertDialogTitle>
+            <AlertDialogTitle>{t('deleteConfirmTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove the session from the calendar. The parent program stays intact.
-              This cannot be undone.
+              {t('deleteConfirmBody')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>{t('cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault()
@@ -712,7 +716,7 @@ export function SessionDetailDialog({ session, onSaved, onDeleted, onClose }: Se
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Delete
+              {t('delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

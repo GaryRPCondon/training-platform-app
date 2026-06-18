@@ -7,11 +7,13 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Loader2, CheckCircle, AlertCircle } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 function GeneratePageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const queryClient = useQueryClient()
+  const t = useTranslations('planGenerate')
   const [status, setStatus] = useState<'loading' | 'generating' | 'success' | 'error'>('loading')
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
@@ -30,7 +32,7 @@ function GeneratePageContent() {
       try {
         const templateId = searchParams.get('template')
         if (!templateId) {
-          setError('No template selected')
+          setError(t('errorNoTemplate'))
           setStatus('error')
           return
         }
@@ -50,7 +52,7 @@ function GeneratePageContent() {
         const preferredRestDaysRaw = searchParams.get('preferredRestDays')
 
         if (!goalDate || !goalType || !startDate) {
-          setError('Missing required criteria')
+          setError(t('errorMissingCriteria'))
           setStatus('error')
           return
         }
@@ -131,10 +133,10 @@ function GeneratePageContent() {
           if (response.status === 409 && errorData.error === 'active_plan_exists') {
             const name = errorData.active_plan?.name
             throw new Error(
-              `You already have an active plan${name ? ` "${name}"` : ''}. Go back to the Plans page and start a new plan from there to replace it.`
+              name ? t('errorActivePlanNamed', { name }) : t('errorActivePlan')
             )
           }
-          throw new Error(errorData.details || 'Generation failed')
+          throw new Error(errorData.details || t('errorGenerationFailed'))
         }
 
         const data = await response.json()
@@ -153,7 +155,7 @@ function GeneratePageContent() {
 
       } catch (err) {
         console.error('Generation error:', err)
-        setError(err instanceof Error ? err.message : 'Unknown error')
+        setError(err instanceof Error ? err.message : t('errorUnknown'))
         setStatus('error')
       }
     }
@@ -169,25 +171,25 @@ function GeneratePageContent() {
             {status === 'loading' && (
               <>
                 <Loader2 className="h-5 w-5 animate-spin" />
-                Preparing...
+                {t('titlePreparing')}
               </>
             )}
             {status === 'generating' && (
               <>
                 <Loader2 className="h-5 w-5 animate-spin" />
-                Generating Your Plan
+                {t('titleGenerating')}
               </>
             )}
             {status === 'success' && (
               <>
                 <CheckCircle className="h-5 w-5 text-green-500" />
-                Plan Generated!
+                {t('titleSuccess')}
               </>
             )}
             {status === 'error' && (
               <>
                 <AlertCircle className="h-5 w-5 text-destructive" />
-                Generation Failed
+                {t('titleError')}
               </>
             )}
           </CardTitle>
@@ -198,12 +200,12 @@ function GeneratePageContent() {
             <>
               <Progress value={progress} />
               <div className="text-sm text-muted-foreground text-center space-y-1">
-                <p>Working with your AI Coach to generate your plan. This can take between 2 and 10 minutes, depending on the selected AI Coach model used.</p>
+                <p>{t('workingNote')}</p>
                 <p className="text-xs">
-                  {progress < 30 && 'Loading template...'}
-                  {progress >= 30 && progress < 60 && 'Adapting to your constraints...'}
-                  {progress >= 60 && progress < 90 && 'Building week-by-week schedule...'}
-                  {progress >= 90 && 'Finalizing plan...'}
+                  {progress < 30 && t('progressLoadingTemplate')}
+                  {progress >= 30 && progress < 60 && t('progressAdapting')}
+                  {progress >= 60 && progress < 90 && t('progressBuilding')}
+                  {progress >= 90 && t('progressFinalizing')}
                 </p>
               </div>
             </>
@@ -213,11 +215,11 @@ function GeneratePageContent() {
             <div className="space-y-4">
               <div className="text-center space-y-2">
                 <p className="text-sm text-muted-foreground">
-                  Your personalized training plan is ready!
+                  {t('successReady')}
                 </p>
                 {warnings.length === 0 && (
                   <p className="text-xs text-muted-foreground">
-                    Redirecting to review page...
+                    {t('redirecting')}
                   </p>
                 )}
               </div>
@@ -228,25 +230,31 @@ function GeneratePageContent() {
                     <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
                     <div className="flex-1 space-y-2">
                       <p className="text-sm font-medium text-amber-900">
-                        ⚠️ Potential LLM Hallucinations Detected
+                        {t('hallucinationTitle')}
                       </p>
                       <p className="text-xs text-amber-800">
-                        The following workouts have distances that seem unusual. This may be due to LLM calculation errors:
+                        {t('hallucinationIntro')}
                       </p>
                       <ul className="text-xs text-amber-800 space-y-1 list-disc list-inside">
                         {warnings.map((w, i) => (
                           <li key={i}>
-                            <span className="font-mono">{w.workoutIndex}</span>: "{w.description}" -
-                            Distance is {(w.actualDistance / 1000).toFixed(1)}km
-                            (expected {(w.expectedRange.min / 1000).toFixed(1)}-{(w.expectedRange.max / 1000).toFixed(1)}km for {w.workoutType})
+                            {t.rich('hallucinationItem', {
+                              mono: (chunks) => <span className="font-mono">{chunks}</span>,
+                              index: w.workoutIndex,
+                              description: w.description,
+                              actual: (w.actualDistance / 1000).toFixed(1),
+                              min: (w.expectedRange.min / 1000).toFixed(1),
+                              max: (w.expectedRange.max / 1000).toFixed(1),
+                              type: w.workoutType
+                            })}
                           </li>
                         ))}
                       </ul>
                       <p className="text-xs text-amber-800 font-medium">
-                        Consider regenerating the plan or manually adjusting these workouts.
+                        {t('hallucinationAdvice')}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Redirecting to review page in 5 seconds...
+                        {t('redirectingDelayed')}
                       </p>
                     </div>
                   </div>
@@ -263,7 +271,7 @@ function GeneratePageContent() {
                 variant="outline"
                 className="w-full"
               >
-                Go Back
+                {t('goBack')}
               </Button>
             </div>
           )}

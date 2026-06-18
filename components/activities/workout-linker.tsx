@@ -14,6 +14,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useUnits } from '@/lib/hooks/use-units'
 import { calculateTotalWorkoutDistance } from '@/lib/training/vdot'
 import { interpretAccuracyScore } from '@/lib/activities/scoring'
+import { useTranslations } from 'next-intl'
+import { useEnumLabels } from '@/lib/i18n/enum-labels'
 
 interface WorkoutLinkerProps {
   activity: Activity
@@ -27,6 +29,8 @@ export function WorkoutLinker({ activity, currentWorkout, onClose }: WorkoutLink
   const router = useRouter()
   const queryClient = useQueryClient()
   const { formatDistance } = useUnits()
+  const t = useTranslations('workoutLinker')
+  const { workoutType } = useEnumLabels()
 
   // Load nearby workouts for manual linking
   useEffect(() => {
@@ -77,7 +81,7 @@ export function WorkoutLinker({ activity, currentWorkout, onClose }: WorkoutLink
       queryClient.invalidateQueries({ queryKey: ['workouts'] })
       queryClient.invalidateQueries({ queryKey: ['activities'] })
 
-      toast.success('Activity linked to workout')
+      toast.success(t('linkedToast'))
 
       // Close modal after short delay to allow user to see success message
       setTimeout(() => {
@@ -85,7 +89,7 @@ export function WorkoutLinker({ activity, currentWorkout, onClose }: WorkoutLink
         router.refresh()
       }, 800)
     } catch (error) {
-      toast.error('Failed to link activity')
+      toast.error(t('linkError'))
       console.error('Link error:', error)
     } finally {
       setIsLoading(false)
@@ -107,7 +111,7 @@ export function WorkoutLinker({ activity, currentWorkout, onClose }: WorkoutLink
       queryClient.invalidateQueries({ queryKey: ['workouts'] })
       queryClient.invalidateQueries({ queryKey: ['activities'] })
 
-      toast.success('Activity unlinked from workout')
+      toast.success(t('unlinkedToast'))
 
       // Close modal after short delay to allow user to see success message
       setTimeout(() => {
@@ -115,7 +119,7 @@ export function WorkoutLinker({ activity, currentWorkout, onClose }: WorkoutLink
         router.refresh()
       }, 800)
     } catch (error) {
-      toast.error('Failed to unlink activity')
+      toast.error(t('unlinkError'))
       console.error('Unlink error:', error)
     } finally {
       setIsLoading(false)
@@ -130,7 +134,7 @@ export function WorkoutLinker({ activity, currentWorkout, onClose }: WorkoutLink
 
     return (
       <Badge variant={variant}>
-        {percentage}% confidence
+        {t('confidenceBadge', { percentage })}
       </Badge>
     )
   }
@@ -142,11 +146,11 @@ export function WorkoutLinker({ activity, currentWorkout, onClose }: WorkoutLink
           <div>
             <CardTitle className="flex items-center gap-2">
               <Link2 className="h-5 w-5" />
-              Workout Linking
+              {t('title')}
             </CardTitle>
             {!currentWorkout && (
               <CardDescription>
-                Link this activity to a planned workout
+                {t('description')}
               </CardDescription>
             )}
           </div>
@@ -162,21 +166,18 @@ export function WorkoutLinker({ activity, currentWorkout, onClose }: WorkoutLink
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="font-medium">
-                      Linked to {currentWorkout.workout_type
-                        .split('_')
-                        .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-                        .join(' ')}
+                      {t('linkedTo', { type: workoutType(currentWorkout.workout_type) })}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      Scheduled: {format(parseISO(currentWorkout.scheduled_date), 'PPP')}
+                      {t('scheduled', { date: format(parseISO(currentWorkout.scheduled_date), 'PPP') })}
                     </div>
                     <div className="flex items-center gap-2 mt-1">
                       {activity.match_confidence && getConfidenceBadge(activity.match_confidence)}
                       {activity.match_method && (
                         <Badge variant="outline" className="text-xs">
-                          {activity.match_method === 'auto_time' ? 'Auto (Time)' :
-                           activity.match_method === 'auto_distance' ? 'Auto (Distance)' :
-                           'Manual'}
+                          {activity.match_method === 'auto_time' ? t('methodAutoTime') :
+                           activity.match_method === 'auto_distance' ? t('methodAutoDistance') :
+                           t('methodManual')}
                         </Badge>
                       )}
                     </div>
@@ -188,7 +189,7 @@ export function WorkoutLinker({ activity, currentWorkout, onClose }: WorkoutLink
                     disabled={isLoading}
                   >
                     <Unlink className="h-4 w-4 mr-2" />
-                    Unlink
+                    {t('unlink')}
                   </Button>
                 </div>
 
@@ -210,20 +211,20 @@ export function WorkoutLinker({ activity, currentWorkout, onClose }: WorkoutLink
                     {effectiveDistance && activity.distance_meters && (
                       <>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Target Distance:</span>
+                          <span className="text-muted-foreground">{t('targetDistance')}</span>
                           <span className="font-medium">
                             {formatDistance(effectiveDistance, 1)}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Actual Distance:</span>
+                          <span className="text-muted-foreground">{t('actualDistance')}</span>
                           <span className="font-medium">
                             {formatDistance(activity.distance_meters, 1)}
                           </span>
                         </div>
                         {variancePercent !== null && (
                           <div className="flex justify-between">
-                            <span className="text-muted-foreground">Variance:</span>
+                            <span className="text-muted-foreground">{t('variance')}</span>
                             <span className={`font-medium ${
                               Math.abs(variancePercent) > 20
                                 ? 'text-red-600'
@@ -241,15 +242,15 @@ export function WorkoutLinker({ activity, currentWorkout, onClose }: WorkoutLink
                     {currentWorkout.duration_target_seconds && activity.duration_seconds && (
                       <>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Target Duration:</span>
+                          <span className="text-muted-foreground">{t('targetDuration')}</span>
                           <span className="font-medium">
-                            {Math.round(currentWorkout.duration_target_seconds / 60)} min
+                            {t('minValue', { min: Math.round(currentWorkout.duration_target_seconds / 60) })}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Actual Duration:</span>
+                          <span className="text-muted-foreground">{t('actualDuration')}</span>
                           <span className="font-medium">
-                            {Math.round(activity.duration_seconds / 60)} min
+                            {t('minValue', { min: Math.round(activity.duration_seconds / 60) })}
                           </span>
                         </div>
                       </>
@@ -278,7 +279,7 @@ export function WorkoutLinker({ activity, currentWorkout, onClose }: WorkoutLink
         ) : (
           <Alert>
             <AlertDescription>
-              This activity is not linked to any workout
+              {t('notLinked')}
             </AlertDescription>
           </Alert>
         )}
@@ -286,7 +287,7 @@ export function WorkoutLinker({ activity, currentWorkout, onClose }: WorkoutLink
         {/* Nearby Workouts for Manual Linking */}
         {!currentWorkout && nearbyWorkouts.length > 0 && (
           <div className="space-y-2">
-            <h4 className="text-sm font-medium">Nearby Workouts</h4>
+            <h4 className="text-sm font-medium">{t('nearbyWorkouts')}</h4>
             <div className="space-y-2">
               {nearbyWorkouts.map((workout) => (
                 <div
@@ -295,10 +296,7 @@ export function WorkoutLinker({ activity, currentWorkout, onClose }: WorkoutLink
                 >
                   <div className="space-y-1">
                     <div className="font-medium">
-                      {workout.workout_type
-                        .split('_')
-                        .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-                        .join(' ')}
+                      {workoutType(workout.workout_type)}
                     </div>
                     <div className="text-sm text-muted-foreground flex items-center gap-2">
                       <Calendar className="h-3 w-3" />
@@ -318,7 +316,7 @@ export function WorkoutLinker({ activity, currentWorkout, onClose }: WorkoutLink
                     disabled={isLoading}
                   >
                     <Link2 className="h-4 w-4 mr-2" />
-                    Link
+                    {t('link')}
                   </Button>
                 </div>
               ))}

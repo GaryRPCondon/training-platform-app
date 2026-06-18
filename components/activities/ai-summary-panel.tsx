@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Star, Loader2, FileText, Sparkles, RefreshCw } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { useTranslations } from 'next-intl'
 
 interface AISummaryPanelProps {
   activityId: number
@@ -21,6 +22,7 @@ interface AISummaryPanelProps {
 // ---------------------------------------------------------------------------
 
 function StarRating({ rating }: { rating: number }) {
+  const t = useTranslations('aiSummary')
   const stars = []
   for (let i = 1; i <= 5; i++) {
     if (rating >= i) {
@@ -48,7 +50,7 @@ function StarRating({ rating }: { rating: number }) {
   return (
     <div className="flex items-center gap-1">
       <div className="flex">{stars}</div>
-      <span className="ml-2 text-sm text-muted-foreground font-medium">{rating.toFixed(1)} / 5</span>
+      <span className="ml-2 text-sm text-muted-foreground font-medium">{t('ratingOutOf', { rating: rating.toFixed(1) })}</span>
     </div>
   )
 }
@@ -66,6 +68,7 @@ export function AISummaryPanel({
   stravaPushedAt,
   garminPushedAt,
 }: AISummaryPanelProps) {
+  const t = useTranslations('aiSummary')
   const [status, setStatus] = useState(initialStatus)
   const [summary, setSummary] = useState(initialSummary)
   const [starRating, setStarRating] = useState(initialStarRating)
@@ -195,7 +198,7 @@ export function AISummaryPanel({
             <FileText className="h-4 w-4 text-amber-500" />
             <Sparkles className="h-2.5 w-2.5 text-amber-400 absolute -top-1 -right-1" />
           </span>
-          AI Summary
+          {t('title')}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -203,11 +206,11 @@ export function AISummaryPanel({
         {status === 'none' && (
           <div className="text-center py-2">
             <p className="text-sm text-muted-foreground mb-3">
-              Generate an AI coaching summary for this activity.
+              {t('generatePrompt')}
             </p>
             <Button onClick={() => handleGenerate()} size="sm" variant="outline" className="gap-2">
               <Sparkles className="h-3.5 w-3.5" />
-              Generate Summary
+              {t('generateButton')}
             </Button>
           </div>
         )}
@@ -216,7 +219,7 @@ export function AISummaryPanel({
         {status === 'pending' && (
           <div className="flex items-center gap-3 py-4 justify-center" role="status" aria-live="polite">
             <Loader2 className="h-4 w-4 animate-spin text-amber-500" />
-            <span className="text-sm text-muted-foreground">Generating summary...</span>
+            <span className="text-sm text-muted-foreground">{t('generating')}</span>
           </div>
         )}
 
@@ -233,18 +236,18 @@ export function AISummaryPanel({
                     <TooltipTrigger asChild>
                       <Button onClick={() => handleGenerate(true)} size="sm" variant="ghost" className="gap-1.5 h-7 text-xs">
                         <RefreshCw className="h-3 w-3" />
-                        Regenerate
+                        {t('regenerate')}
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="top" className="max-w-xs text-center">
-                      <p>Already pushed to {pushedPlatforms.join(' and ')}. Regenerating will only update the summary here.</p>
+                      <p>{t('pushedTooltip', { platforms: pushedPlatforms.join(' and ') })}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               ) : (
                 <Button onClick={() => handleGenerate(true)} size="sm" variant="ghost" className="gap-1.5 h-7 text-xs">
                   <RefreshCw className="h-3 w-3" />
-                  Regenerate
+                  {t('regenerate')}
                 </Button>
               )}
             </div>
@@ -254,10 +257,10 @@ export function AISummaryPanel({
         {/* Failed */}
         {status === 'failed' && (
           <div className="text-center py-2">
-            <p className="text-sm text-destructive mb-3">Summary generation failed.</p>
+            <p className="text-sm text-destructive mb-3">{t('failed')}</p>
             <Button onClick={() => handleGenerate()} size="sm" variant="outline" className="gap-2">
               <RefreshCw className="h-3.5 w-3.5" />
-              Try Again
+              {t('tryAgain')}
             </Button>
           </div>
         )}

@@ -1945,4 +1945,2189 @@ Note: any workouts already sent to Garmin Connect will NOT be removed automatica
       </segment>
     </unit>
   </file>
+  <file id="planNew">
+    <unit id="defaultGoalName">
+      <segment>
+        <source>My Training Plan</source>
+      </segment>
+    </unit>
+    <unit id="title">
+      <segment>
+        <source>Create New Plan</source>
+      </segment>
+    </unit>
+    <unit id="cardTitle">
+      <segment>
+        <source>Plan Details</source>
+      </segment>
+    </unit>
+    <unit id="cardDescription">
+      <segment>
+        <source>Tell us about your goals and we'll recommend personalized training templates</source>
+      </segment>
+    </unit>
+    <unit id="goalNameLabel">
+      <segment>
+        <source>Goal Name</source>
+      </segment>
+    </unit>
+    <unit id="goalNamePlaceholder">
+      <segment>
+        <source>e.g., Boston Marathon 2026</source>
+      </segment>
+    </unit>
+    <unit id="goalTypeLabel">
+      <segment>
+        <source>Goal Type</source>
+      </segment>
+    </unit>
+    <unit id="goalTypePlaceholder">
+      <segment>
+        <source>Select goal type</source>
+      </segment>
+    </unit>
+    <unit id="goalTypeMarathon">
+      <segment>
+        <source>Marathon</source>
+      </segment>
+    </unit>
+    <unit id="goalType5k">
+      <segment>
+        <source>5K</source>
+      </segment>
+    </unit>
+    <unit id="goalTypeHalfMarathon">
+      <segment>
+        <source>Half Marathon</source>
+      </segment>
+    </unit>
+    <unit id="goalType10k">
+      <segment>
+        <source>10K</source>
+      </segment>
+    </unit>
+    <unit id="goalDateLabel">
+      <segment>
+        <source>Goal Date</source>
+      </segment>
+    </unit>
+    <unit id="goalDateHint">
+      <segment>
+        <source>Actual race date</source>
+      </segment>
+    </unit>
+    <unit id="startDateLabel">
+      <segment>
+        <source>Start Date</source>
+      </segment>
+    </unit>
+    <unit id="startDateHint">
+      <segment>
+        <source>Defaults to upcoming week start</source>
+      </segment>
+    </unit>
+    <unit id="currentVolumeLabel">
+      <segment>
+        <source>Current Weekly Volume ({unit})</source>
+      </segment>
+    </unit>
+    <unit id="currentVolumePlaceholder">
+      <segment>
+        <source>e.g. {value}</source>
+      </segment>
+    </unit>
+    <unit id="peakVolumeLabel">
+      <segment>
+        <source>Comfortable Peak Volume ({unit}) &lt;optional&gt;(optional)&lt;/optional&gt;</source>
+      </segment>
+    </unit>
+    <unit id="peakVolumePlaceholder">
+      <segment>
+        <source>e.g. {value} (leave blank if unsure)</source>
+      </segment>
+    </unit>
+    <unit id="experienceLabel">
+      <segment>
+        <source>Experience Level</source>
+      </segment>
+    </unit>
+    <unit id="experienceCompleteBeginner">
+      <segment>
+        <source>Complete Beginner</source>
+      </segment>
+    </unit>
+    <unit id="experienceCompleteBeginnerDesc">
+      <segment>
+        <source>New to running, or returning after a long break</source>
+      </segment>
+    </unit>
+    <unit id="experienceBeginner">
+      <segment>
+        <source>Beginner</source>
+      </segment>
+    </unit>
+    <unit id="experienceBeginnerDesc">
+      <segment>
+        <source>Can run 30 minutes continuously, some race experience</source>
+      </segment>
+    </unit>
+    <unit id="experienceIntermediate">
+      <segment>
+        <source>Intermediate</source>
+      </segment>
+    </unit>
+    <unit id="experienceIntermediateDesc">
+      <segment>
+        <source>Regular runner, comfortable with structured training and speedwork</source>
+      </segment>
+    </unit>
+    <unit id="experienceAdvanced">
+      <segment>
+        <source>Advanced</source>
+      </segment>
+    </unit>
+    <unit id="experienceAdvancedDesc">
+      <segment>
+        <source>Competitive runner, experienced with high-volume and intense training</source>
+      </segment>
+    </unit>
+    <unit id="daysPerWeekLabel">
+      <segment>
+        <source>Training Days Per Week</source>
+      </segment>
+    </unit>
+    <unit id="daysPerWeekPlaceholder">
+      <segment>
+        <source>Select days per week</source>
+      </segment>
+    </unit>
+    <unit id="daysPerWeek34">
+      <segment>
+        <source>3-4 days</source>
+      </segment>
+    </unit>
+    <unit id="daysPerWeek5">
+      <segment>
+        <source>5 days</source>
+      </segment>
+    </unit>
+    <unit id="daysPerWeek6">
+      <segment>
+        <source>6 days</source>
+      </segment>
+    </unit>
+    <unit id="daysPerWeek7">
+      <segment>
+        <source>7 days</source>
+      </segment>
+    </unit>
+    <unit id="restDaysLabel">
+      <segment>
+        <source>Required Non-Training Days (Optional)</source>
+      </segment>
+    </unit>
+    <unit id="restDaysHint">
+      <segment>
+        <source>Select up to {count, plural, one {# day} other {# days}}. If specified, these will be your required rest days.</source>
+      </segment>
+    </unit>
+    <unit id="pacesLabel">
+      <segment>
+        <source>Training Paces (Optional)</source>
+      </segment>
+    </unit>
+    <unit id="pacesDescription">
+      <segment>
+        <source>Provide race time or &lt;link&gt;VDOT&lt;/link&gt; to calculate target paces - will be captured in your user profile</source>
+      </segment>
+    </unit>
+    <unit id="submitIdle">
+      <segment>
+        <source>Find Recommended Templates</source>
+      </segment>
+    </unit>
+    <unit id="submitLoading">
+      <segment>
+        <source>Finding Templates...</source>
+      </segment>
+    </unit>
+    <unit id="errorGoalDateRequired">
+      <segment>
+        <source>Please select a goal date</source>
+      </segment>
+    </unit>
+    <unit id="errorStartDateRequired">
+      <segment>
+        <source>Please select a start date</source>
+      </segment>
+    </unit>
+    <unit id="errorCurrentVolume">
+      <segment>
+        <source>Please enter your current weekly volume in {unit}</source>
+      </segment>
+    </unit>
+    <unit id="errorGoalDateFuture">
+      <segment>
+        <source>Goal date must be in the future</source>
+      </segment>
+    </unit>
+    <unit id="errorStartBeforeGoal">
+      <segment>
+        <source>Start date must be before goal date</source>
+      </segment>
+    </unit>
+    <unit id="errorProcessForm">
+      <segment>
+        <source>Failed to process form</source>
+      </segment>
+    </unit>
+    <unit id="days.mon">
+      <segment>
+        <source>Mon</source>
+      </segment>
+    </unit>
+    <unit id="days.tue">
+      <segment>
+        <source>Tue</source>
+      </segment>
+    </unit>
+    <unit id="days.wed">
+      <segment>
+        <source>Wed</source>
+      </segment>
+    </unit>
+    <unit id="days.thu">
+      <segment>
+        <source>Thu</source>
+      </segment>
+    </unit>
+    <unit id="days.fri">
+      <segment>
+        <source>Fri</source>
+      </segment>
+    </unit>
+    <unit id="days.sat">
+      <segment>
+        <source>Sat</source>
+      </segment>
+    </unit>
+    <unit id="days.sun">
+      <segment>
+        <source>Sun</source>
+      </segment>
+    </unit>
+  </file>
+  <file id="planGenerate">
+    <unit id="errorNoTemplate">
+      <segment>
+        <source>No template selected</source>
+      </segment>
+    </unit>
+    <unit id="errorMissingCriteria">
+      <segment>
+        <source>Missing required criteria</source>
+      </segment>
+    </unit>
+    <unit id="errorActivePlanNamed">
+      <segment>
+        <source>You already have an active plan "{name}". Go back to the Plans page and start a new plan from there to replace it.</source>
+      </segment>
+    </unit>
+    <unit id="errorActivePlan">
+      <segment>
+        <source>You already have an active plan. Go back to the Plans page and start a new plan from there to replace it.</source>
+      </segment>
+    </unit>
+    <unit id="errorGenerationFailed">
+      <segment>
+        <source>Generation failed</source>
+      </segment>
+    </unit>
+    <unit id="errorUnknown">
+      <segment>
+        <source>Unknown error</source>
+      </segment>
+    </unit>
+    <unit id="titlePreparing">
+      <segment>
+        <source>Preparing...</source>
+      </segment>
+    </unit>
+    <unit id="titleGenerating">
+      <segment>
+        <source>Generating Your Plan</source>
+      </segment>
+    </unit>
+    <unit id="titleSuccess">
+      <segment>
+        <source>Plan Generated!</source>
+      </segment>
+    </unit>
+    <unit id="titleError">
+      <segment>
+        <source>Generation Failed</source>
+      </segment>
+    </unit>
+    <unit id="workingNote">
+      <segment>
+        <source>Working with your AI Coach to generate your plan. This can take between 2 and 10 minutes, depending on the selected AI Coach model used.</source>
+      </segment>
+    </unit>
+    <unit id="progressLoadingTemplate">
+      <segment>
+        <source>Loading template...</source>
+      </segment>
+    </unit>
+    <unit id="progressAdapting">
+      <segment>
+        <source>Adapting to your constraints...</source>
+      </segment>
+    </unit>
+    <unit id="progressBuilding">
+      <segment>
+        <source>Building week-by-week schedule...</source>
+      </segment>
+    </unit>
+    <unit id="progressFinalizing">
+      <segment>
+        <source>Finalizing plan...</source>
+      </segment>
+    </unit>
+    <unit id="successReady">
+      <segment>
+        <source>Your personalized training plan is ready!</source>
+      </segment>
+    </unit>
+    <unit id="redirecting">
+      <segment>
+        <source>Redirecting to review page...</source>
+      </segment>
+    </unit>
+    <unit id="hallucinationTitle">
+      <segment>
+        <source>⚠️ Potential LLM Hallucinations Detected</source>
+      </segment>
+    </unit>
+    <unit id="hallucinationIntro">
+      <segment>
+        <source>The following workouts have distances that seem unusual. This may be due to LLM calculation errors:</source>
+      </segment>
+    </unit>
+    <unit id="hallucinationItem">
+      <segment>
+        <source>&lt;mono&gt;{index}&lt;/mono&gt;: "{description}" - Distance is {actual}km (expected {min}-{max}km for {type})</source>
+      </segment>
+    </unit>
+    <unit id="hallucinationAdvice">
+      <segment>
+        <source>Consider regenerating the plan or manually adjusting these workouts.</source>
+      </segment>
+    </unit>
+    <unit id="redirectingDelayed">
+      <segment>
+        <source>Redirecting to review page in 5 seconds...</source>
+      </segment>
+    </unit>
+    <unit id="goBack">
+      <segment>
+        <source>Go Back</source>
+      </segment>
+    </unit>
+  </file>
+  <file id="planRecommend">
+    <unit id="errorMissingCriteria">
+      <segment>
+        <source>Missing required criteria. Please go back and fill the form.</source>
+      </segment>
+    </unit>
+    <unit id="errorLoad">
+      <segment>
+        <source>Failed to load recommendations. Please try again.</source>
+      </segment>
+    </unit>
+    <unit id="back">
+      <segment>
+        <source>Back</source>
+      </segment>
+    </unit>
+    <unit id="noTemplatesTitle">
+      <segment>
+        <source>No matching templates found</source>
+      </segment>
+    </unit>
+    <unit id="noTemplatesHint">
+      <segment>
+        <source>Try adjusting your criteria (more weeks, higher mileage tolerance, or fewer training days)</source>
+      </segment>
+    </unit>
+    <unit id="replaceTitle">
+      <segment>
+        <source>Replace your active plan?</source>
+      </segment>
+    </unit>
+    <unit id="replaceBodyNamed">
+      <segment>
+        <source>You already have an active plan “&lt;strong&gt;{name}&lt;/strong&gt;”. Creating a new one will archive it. Completed workouts from the old plan will stay in your activity history.</source>
+      </segment>
+    </unit>
+    <unit id="replaceBodyUnnamed">
+      <segment>
+        <source>You already have an active plan. Creating a new one will archive it. Completed workouts from the old plan will stay in your activity history.</source>
+      </segment>
+    </unit>
+    <unit id="cancel">
+      <segment>
+        <source>Cancel</source>
+      </segment>
+    </unit>
+    <unit id="replaceAction">
+      <segment>
+        <source>Replace plan</source>
+      </segment>
+    </unit>
+    <unit id="title">
+      <segment>
+        <source>Recommended Training Plans</source>
+      </segment>
+    </unit>
+    <unit id="foundCount">
+      <segment>
+        <source>Found {count, plural, one {# plan} other {# plans}} matching your criteria</source>
+      </segment>
+    </unit>
+    <unit id="shortTimelineTitle">
+      <segment>
+        <source>Short Timeline Warning</source>
+      </segment>
+    </unit>
+    <unit id="timelineMarathon">
+      <segment>
+        <source>Marathon training typically requires 12+ weeks. You have {weeks, plural, one {# week} other {# weeks}} available.</source>
+      </segment>
+    </unit>
+    <unit id="timelineHalf">
+      <segment>
+        <source>Half marathon training typically requires 8+ weeks. You have {weeks, plural, one {# week} other {# weeks}} available.</source>
+      </segment>
+    </unit>
+    <unit id="timeline5k">
+      <segment>
+        <source>5K training typically requires 6+ weeks. You have {weeks, plural, one {# week} other {# weeks}} available.</source>
+      </segment>
+    </unit>
+    <unit id="timeline10k">
+      <segment>
+        <source>10K training typically requires 6+ weeks. You have {weeks, plural, one {# week} other {# weeks}} available.</source>
+      </segment>
+    </unit>
+    <unit id="timelineGeneric">
+      <segment>
+        <source>Your timeline of {weeks, plural, one {# week} other {# weeks}} is shorter than typical for {goalType} training.</source>
+      </segment>
+    </unit>
+    <unit id="timelineSuffix">
+      <segment>
+        <source>The AI coach will adapt the selected plan to fit your schedule, but consider that compressed training increases injury risk.</source>
+      </segment>
+    </unit>
+    <unit id="disclaimer">
+      <segment>
+        <source>These plans are &lt;strong&gt;based on&lt;/strong&gt; established training methodologies and personalized to your needs. They are inspired by proven approaches but customized for you.</source>
+      </segment>
+    </unit>
+  </file>
+  <file id="planReview">
+    <unit id="activatedSuccess">
+      <segment>
+        <source>Plan activated successfully!</source>
+      </segment>
+    </unit>
+    <unit id="activateError">
+      <segment>
+        <source>Failed to activate plan</source>
+      </segment>
+    </unit>
+    <unit id="deletedSuccess">
+      <segment>
+        <source>Plan deleted successfully</source>
+      </segment>
+    </unit>
+    <unit id="deleteError">
+      <segment>
+        <source>Failed to delete plan</source>
+      </segment>
+    </unit>
+    <unit id="metaLine">
+      <segment>
+        <source>{weeks, plural, one {# week} other {# weeks}} • {goalType} • Goal: {goalDate}</source>
+      </segment>
+    </unit>
+    <unit id="confirmDeleteActive">
+      <segment>
+        <source>Are you sure you want to delete this active plan? All workouts and progress will be lost. This cannot be undone.</source>
+      </segment>
+    </unit>
+    <unit id="confirmDeleteDraft">
+      <segment>
+        <source>Are you sure you want to delete this draft plan? This cannot be undone.</source>
+      </segment>
+    </unit>
+    <unit id="deleting">
+      <segment>
+        <source>Deleting...</source>
+      </segment>
+    </unit>
+    <unit id="deletePlan">
+      <segment>
+        <source>Delete Plan</source>
+      </segment>
+    </unit>
+    <unit id="accepting">
+      <segment>
+        <source>Accepting...</source>
+      </segment>
+    </unit>
+    <unit id="acceptPlan">
+      <segment>
+        <source>Accept Plan</source>
+      </segment>
+    </unit>
+    <unit id="modifyWithAI">
+      <segment>
+        <source>Modify with AI</source>
+      </segment>
+    </unit>
+    <unit id="openModifyPanel">
+      <segment>
+        <source>Open modify panel</source>
+      </segment>
+    </unit>
+    <unit id="closeModifyPanel">
+      <segment>
+        <source>Close modify panel</source>
+      </segment>
+    </unit>
+  </file>
+  <file id="activities">
+    <unit id="title">
+      <segment>
+        <source>Activities</source>
+      </segment>
+    </unit>
+    <unit id="loadError">
+      <segment>
+        <source>Failed to load activities. Please try again later.</source>
+      </segment>
+    </unit>
+    <unit id="unknownType">
+      <segment>
+        <source>Unknown</source>
+      </segment>
+    </unit>
+    <unit id="untitled">
+      <segment>
+        <source>Untitled</source>
+      </segment>
+    </unit>
+    <unit id="activityFallback">
+      <segment>
+        <source>activity</source>
+      </segment>
+    </unit>
+    <unit id="statActivities">
+      <segment>
+        <source>Activities</source>
+      </segment>
+    </unit>
+    <unit id="statDistance">
+      <segment>
+        <source>Distance</source>
+      </segment>
+    </unit>
+    <unit id="statDuration">
+      <segment>
+        <source>Duration</source>
+      </segment>
+    </unit>
+    <unit id="statThisWeek">
+      <segment>
+        <source>This Week</source>
+      </segment>
+    </unit>
+    <unit id="hrsUnit">
+      <segment>
+        <source>hrs</source>
+      </segment>
+    </unit>
+    <unit id="filters">
+      <segment>
+        <source>Filters</source>
+      </segment>
+    </unit>
+    <unit id="year">
+      <segment>
+        <source>Year</source>
+      </segment>
+    </unit>
+    <unit id="searchName">
+      <segment>
+        <source>Search Name</source>
+      </segment>
+    </unit>
+    <unit id="searchNamePlaceholder">
+      <segment>
+        <source>Filter by name...</source>
+      </segment>
+    </unit>
+    <unit id="dateRange">
+      <segment>
+        <source>Date Range</source>
+      </segment>
+    </unit>
+    <unit id="activityType">
+      <segment>
+        <source>Activity Type</source>
+      </segment>
+    </unit>
+    <unit id="source">
+      <segment>
+        <source>Source</source>
+      </segment>
+    </unit>
+    <unit id="dateAll">
+      <segment>
+        <source>Full Year</source>
+      </segment>
+    </unit>
+    <unit id="date7days">
+      <segment>
+        <source>Last 7 Days</source>
+      </segment>
+    </unit>
+    <unit id="date30days">
+      <segment>
+        <source>Last 30 Days</source>
+      </segment>
+    </unit>
+    <unit id="date90days">
+      <segment>
+        <source>Last 90 Days</source>
+      </segment>
+    </unit>
+    <unit id="allTypes">
+      <segment>
+        <source>All Types</source>
+      </segment>
+    </unit>
+    <unit id="allSources">
+      <segment>
+        <source>All Sources</source>
+      </segment>
+    </unit>
+    <unit id="sourceGarmin">
+      <segment>
+        <source>Garmin</source>
+      </segment>
+    </unit>
+    <unit id="sourceStrava">
+      <segment>
+        <source>Strava</source>
+      </segment>
+    </unit>
+    <unit id="sourceMerged">
+      <segment>
+        <source>Merged</source>
+      </segment>
+    </unit>
+    <unit id="selectedCount">
+      <segment>
+        <source>{count, plural, one {# activity} other {# activities}} selected</source>
+      </segment>
+    </unit>
+    <unit id="clear">
+      <segment>
+        <source>Clear</source>
+      </segment>
+    </unit>
+    <unit id="deleteSelected">
+      <segment>
+        <source>Delete Selected</source>
+      </segment>
+    </unit>
+    <unit id="tableTitle">
+      <segment>
+        <source>Activities ({count})</source>
+      </segment>
+    </unit>
+    <unit id="noActivities">
+      <segment>
+        <source>No activities found. Try adjusting your filters or sync your activities.</source>
+      </segment>
+    </unit>
+    <unit id="colDate">
+      <segment>
+        <source>Date</source>
+      </segment>
+    </unit>
+    <unit id="colName">
+      <segment>
+        <source>Name</source>
+      </segment>
+    </unit>
+    <unit id="colType">
+      <segment>
+        <source>Type</source>
+      </segment>
+    </unit>
+    <unit id="colDistance">
+      <segment>
+        <source>Distance</source>
+      </segment>
+    </unit>
+    <unit id="colDuration">
+      <segment>
+        <source>Duration</source>
+      </segment>
+    </unit>
+    <unit id="colSource">
+      <segment>
+        <source>Source</source>
+      </segment>
+    </unit>
+    <unit id="colLinks">
+      <segment>
+        <source>Links</source>
+      </segment>
+    </unit>
+    <unit id="selectAll">
+      <segment>
+        <source>Select all</source>
+      </segment>
+    </unit>
+    <unit id="selectActivity">
+      <segment>
+        <source>Select {name}</source>
+      </segment>
+    </unit>
+    <unit id="discussWithAI">
+      <segment>
+        <source>Discuss with AI Coach</source>
+      </segment>
+    </unit>
+    <unit id="deleteActivity">
+      <segment>
+        <source>Delete activity</source>
+      </segment>
+    </unit>
+    <unit id="aiCoach">
+      <segment>
+        <source>AI Coach</source>
+      </segment>
+    </unit>
+    <unit id="garminConnect">
+      <segment>
+        <source>Garmin Connect</source>
+      </segment>
+    </unit>
+    <unit id="strava">
+      <segment>
+        <source>Strava</source>
+      </segment>
+    </unit>
+    <unit id="delete">
+      <segment>
+        <source>Delete</source>
+      </segment>
+    </unit>
+    <unit id="labelType">
+      <segment>
+        <source>Type: </source>
+      </segment>
+    </unit>
+    <unit id="labelDistance">
+      <segment>
+        <source>Distance: </source>
+      </segment>
+    </unit>
+    <unit id="labelDuration">
+      <segment>
+        <source>Duration: </source>
+      </segment>
+    </unit>
+    <unit id="deleteDialogTitle">
+      <segment>
+        <source>Delete Activities</source>
+      </segment>
+    </unit>
+    <unit id="deleteDialogBody">
+      <segment>
+        <source>Are you sure you want to delete {count, plural, one {# activity} other {# activities}}? This action cannot be undone. Linked workout references will be cleared automatically.</source>
+      </segment>
+    </unit>
+    <unit id="cancel">
+      <segment>
+        <source>Cancel</source>
+      </segment>
+    </unit>
+    <unit id="deleting">
+      <segment>
+        <source>Deleting...</source>
+      </segment>
+    </unit>
+    <unit id="deleteConfirm">
+      <segment>
+        <source>{count, plural, one {Delete # Activity} other {Delete # Activities}}</source>
+      </segment>
+    </unit>
+    <unit id="deletedToast">
+      <segment>
+        <source>{count, plural, one {Deleted # activity} other {Deleted # activities}}</source>
+      </segment>
+    </unit>
+    <unit id="deleteError">
+      <segment>
+        <source>Failed to delete activities</source>
+      </segment>
+    </unit>
+  </file>
+  <file id="merge">
+    <unit id="mergedSuccess">
+      <segment>
+        <source>Activities merged successfully</source>
+      </segment>
+    </unit>
+    <unit id="mergeError">
+      <segment>
+        <source>Failed to merge activities</source>
+      </segment>
+    </unit>
+    <unit id="keptSeparate">
+      <segment>
+        <source>Kept activities separate</source>
+      </segment>
+    </unit>
+    <unit id="keptSeparateAlt">
+      <segment>
+        <source>Activities kept separate</source>
+      </segment>
+    </unit>
+    <unit id="updateError">
+      <segment>
+        <source>Failed to update</source>
+      </segment>
+    </unit>
+    <unit id="loading">
+      <segment>
+        <source>Loading...</source>
+      </segment>
+    </unit>
+    <unit id="candidatesTitle">
+      <segment>
+        <source>Activity Merge Review</source>
+      </segment>
+    </unit>
+    <unit id="candidatesSubtitle">
+      <segment>
+        <source>Review and approve potential duplicate activities</source>
+      </segment>
+    </unit>
+    <unit id="noCandidates">
+      <segment>
+        <source>No pending merge candidates</source>
+      </segment>
+    </unit>
+    <unit id="potentialDuplicate">
+      <segment>
+        <source>Potential Duplicate</source>
+      </segment>
+    </unit>
+    <unit id="confidenceBadge">
+      <segment>
+        <source>{confidence, select, high {high} medium {medium} low {low} other {{confidence}}} confidence ({score}%)</source>
+      </segment>
+    </unit>
+    <unit id="distance">
+      <segment>
+        <source>Distance</source>
+      </segment>
+    </unit>
+    <unit id="duration">
+      <segment>
+        <source>Duration</source>
+      </segment>
+    </unit>
+    <unit id="approveMerge">
+      <segment>
+        <source>Approve Merge</source>
+      </segment>
+    </unit>
+    <unit id="keepSeparate">
+      <segment>
+        <source>Keep Separate</source>
+      </segment>
+    </unit>
+    <unit id="reviewTitle">
+      <segment>
+        <source>Review Merges</source>
+      </segment>
+    </unit>
+    <unit id="noConflicts">
+      <segment>
+        <source>No pending merge conflicts.</source>
+      </segment>
+    </unit>
+    <unit id="potentialMatch">
+      <segment>
+        <source>Potential Match Found</source>
+      </segment>
+    </unit>
+    <unit id="confidencePercent">
+      <segment>
+        <source>{score}% Confidence</source>
+      </segment>
+    </unit>
+    <unit id="duplicateDesc">
+      <segment>
+        <source>We found a similar activity that might be a duplicate.</source>
+      </segment>
+    </unit>
+    <unit id="sourceNew">
+      <segment>
+        <source>{source} (New)</source>
+      </segment>
+    </unit>
+    <unit id="sourceExisting">
+      <segment>
+        <source>{source} (Existing)</source>
+      </segment>
+    </unit>
+    <unit id="activityFallback">
+      <segment>
+        <source>Activity</source>
+      </segment>
+    </unit>
+    <unit id="na">
+      <segment>
+        <source>N/A</source>
+      </segment>
+    </unit>
+    <unit id="minutesValue">
+      <segment>
+        <source>{min} min</source>
+      </segment>
+    </unit>
+    <unit id="mergeActivities">
+      <segment>
+        <source>Merge Activities</source>
+      </segment>
+    </unit>
+  </file>
+  <file id="enums">
+    <unit id="workoutType.easy_run">
+      <segment>
+        <source>Easy Run</source>
+      </segment>
+    </unit>
+    <unit id="workoutType.long_run">
+      <segment>
+        <source>Long Run</source>
+      </segment>
+    </unit>
+    <unit id="workoutType.intervals">
+      <segment>
+        <source>Intervals</source>
+      </segment>
+    </unit>
+    <unit id="workoutType.tempo">
+      <segment>
+        <source>Tempo</source>
+      </segment>
+    </unit>
+    <unit id="workoutType.rest">
+      <segment>
+        <source>Rest</source>
+      </segment>
+    </unit>
+    <unit id="workoutType.cross_training">
+      <segment>
+        <source>Cross Training</source>
+      </segment>
+    </unit>
+    <unit id="workoutType.recovery">
+      <segment>
+        <source>Recovery</source>
+      </segment>
+    </unit>
+    <unit id="workoutType.race">
+      <segment>
+        <source>Race</source>
+      </segment>
+    </unit>
+    <unit id="completionStatus.pending">
+      <segment>
+        <source>Pending</source>
+      </segment>
+    </unit>
+    <unit id="completionStatus.completed">
+      <segment>
+        <source>Completed</source>
+      </segment>
+    </unit>
+    <unit id="completionStatus.partial">
+      <segment>
+        <source>Partial</source>
+      </segment>
+    </unit>
+    <unit id="completionStatus.skipped">
+      <segment>
+        <source>Skipped</source>
+      </segment>
+    </unit>
+  </file>
+  <file id="activityDetail">
+    <unit id="activityFallback">
+      <segment>
+        <source>Activity</source>
+      </segment>
+    </unit>
+    <unit id="garminConnect">
+      <segment>
+        <source>Garmin Connect</source>
+      </segment>
+    </unit>
+    <unit id="strava">
+      <segment>
+        <source>Strava</source>
+      </segment>
+    </unit>
+    <unit id="discussWithAI">
+      <segment>
+        <source>Discuss with AI Coach</source>
+      </segment>
+    </unit>
+    <unit id="aiCoach">
+      <segment>
+        <source>AI Coach</source>
+      </segment>
+    </unit>
+    <unit id="aiSummary">
+      <segment>
+        <source>AI Summary</source>
+      </segment>
+    </unit>
+    <unit id="viewAISummary">
+      <segment>
+        <source>View AI coaching summary</source>
+      </segment>
+    </unit>
+    <unit id="distance">
+      <segment>
+        <source>Distance</source>
+      </segment>
+    </unit>
+    <unit id="movingTime">
+      <segment>
+        <source>Moving Time</source>
+      </segment>
+    </unit>
+    <unit id="duration">
+      <segment>
+        <source>Duration</source>
+      </segment>
+    </unit>
+    <unit id="elapsedLabel">
+      <segment>
+        <source>Elapsed: {value}</source>
+      </segment>
+    </unit>
+    <unit id="averagePace">
+      <segment>
+        <source>Average Pace</source>
+      </segment>
+    </unit>
+    <unit id="averageHR">
+      <segment>
+        <source>Average HR</source>
+      </segment>
+    </unit>
+    <unit id="maxHR">
+      <segment>
+        <source>Max HR</source>
+      </segment>
+    </unit>
+    <unit id="elevationGain">
+      <segment>
+        <source>Elevation Gain</source>
+      </segment>
+    </unit>
+    <unit id="bpm">
+      <segment>
+        <source>bpm</source>
+      </segment>
+    </unit>
+    <unit id="lapBreakdown">
+      <segment>
+        <source>Lap Breakdown</source>
+      </segment>
+    </unit>
+    <unit id="colLap">
+      <segment>
+        <source>Lap</source>
+      </segment>
+    </unit>
+    <unit id="colDistance">
+      <segment>
+        <source>Distance</source>
+      </segment>
+    </unit>
+    <unit id="colTime">
+      <segment>
+        <source>Time</source>
+      </segment>
+    </unit>
+    <unit id="colPace">
+      <segment>
+        <source>Pace</source>
+      </segment>
+    </unit>
+    <unit id="colAvgHR">
+      <segment>
+        <source>Avg HR</source>
+      </segment>
+    </unit>
+    <unit id="colMaxHR">
+      <segment>
+        <source>Max HR</source>
+      </segment>
+    </unit>
+    <unit id="colClimb">
+      <segment>
+        <source>Climb</source>
+      </segment>
+    </unit>
+    <unit id="colType">
+      <segment>
+        <source>Type</source>
+      </segment>
+    </unit>
+    <unit id="colAdherence">
+      <segment>
+        <source>Adherence</source>
+      </segment>
+    </unit>
+  </file>
+  <file id="aiSummary">
+    <unit id="ratingOutOf">
+      <segment>
+        <source>{rating} / 5</source>
+      </segment>
+    </unit>
+    <unit id="title">
+      <segment>
+        <source>AI Summary</source>
+      </segment>
+    </unit>
+    <unit id="generatePrompt">
+      <segment>
+        <source>Generate an AI coaching summary for this activity.</source>
+      </segment>
+    </unit>
+    <unit id="generateButton">
+      <segment>
+        <source>Generate Summary</source>
+      </segment>
+    </unit>
+    <unit id="generating">
+      <segment>
+        <source>Generating summary...</source>
+      </segment>
+    </unit>
+    <unit id="regenerate">
+      <segment>
+        <source>Regenerate</source>
+      </segment>
+    </unit>
+    <unit id="pushedTooltip">
+      <segment>
+        <source>Already pushed to {platforms}. Regenerating will only update the summary here.</source>
+      </segment>
+    </unit>
+    <unit id="failed">
+      <segment>
+        <source>Summary generation failed.</source>
+      </segment>
+    </unit>
+    <unit id="tryAgain">
+      <segment>
+        <source>Try Again</source>
+      </segment>
+    </unit>
+  </file>
+  <file id="workoutLinker">
+    <unit id="linkedToast">
+      <segment>
+        <source>Activity linked to workout</source>
+      </segment>
+    </unit>
+    <unit id="linkError">
+      <segment>
+        <source>Failed to link activity</source>
+      </segment>
+    </unit>
+    <unit id="unlinkedToast">
+      <segment>
+        <source>Activity unlinked from workout</source>
+      </segment>
+    </unit>
+    <unit id="unlinkError">
+      <segment>
+        <source>Failed to unlink activity</source>
+      </segment>
+    </unit>
+    <unit id="confidenceBadge">
+      <segment>
+        <source>{percentage}% confidence</source>
+      </segment>
+    </unit>
+    <unit id="title">
+      <segment>
+        <source>Workout Linking</source>
+      </segment>
+    </unit>
+    <unit id="description">
+      <segment>
+        <source>Link this activity to a planned workout</source>
+      </segment>
+    </unit>
+    <unit id="linkedTo">
+      <segment>
+        <source>Linked to {type}</source>
+      </segment>
+    </unit>
+    <unit id="scheduled">
+      <segment>
+        <source>Scheduled: {date}</source>
+      </segment>
+    </unit>
+    <unit id="methodAutoTime">
+      <segment>
+        <source>Auto (Time)</source>
+      </segment>
+    </unit>
+    <unit id="methodAutoDistance">
+      <segment>
+        <source>Auto (Distance)</source>
+      </segment>
+    </unit>
+    <unit id="methodManual">
+      <segment>
+        <source>Manual</source>
+      </segment>
+    </unit>
+    <unit id="unlink">
+      <segment>
+        <source>Unlink</source>
+      </segment>
+    </unit>
+    <unit id="targetDistance">
+      <segment>
+        <source>Target Distance:</source>
+      </segment>
+    </unit>
+    <unit id="actualDistance">
+      <segment>
+        <source>Actual Distance:</source>
+      </segment>
+    </unit>
+    <unit id="variance">
+      <segment>
+        <source>Variance:</source>
+      </segment>
+    </unit>
+    <unit id="targetDuration">
+      <segment>
+        <source>Target Duration:</source>
+      </segment>
+    </unit>
+    <unit id="actualDuration">
+      <segment>
+        <source>Actual Duration:</source>
+      </segment>
+    </unit>
+    <unit id="minValue">
+      <segment>
+        <source>{min} min</source>
+      </segment>
+    </unit>
+    <unit id="notLinked">
+      <segment>
+        <source>This activity is not linked to any workout</source>
+      </segment>
+    </unit>
+    <unit id="nearbyWorkouts">
+      <segment>
+        <source>Nearby Workouts</source>
+      </segment>
+    </unit>
+    <unit id="link">
+      <segment>
+        <source>Link</source>
+      </segment>
+    </unit>
+  </file>
+  <file id="strength">
+    <unit id="loadError">
+      <segment>
+        <source>Failed to load programs</source>
+      </segment>
+    </unit>
+    <unit id="deleteConfirm">
+      <segment>
+        <source>Delete "{name}"? Sessions you have already completed will be kept so your training history is preserved. Pending and skipped sessions will be removed from your calendar.
+
+This cannot be undone.</source>
+      </segment>
+    </unit>
+    <unit id="archived">
+      <segment>
+        <source>Program archived</source>
+      </segment>
+    </unit>
+    <unit id="deleteFailed">
+      <segment>
+        <source>Delete failed</source>
+      </segment>
+    </unit>
+    <unit id="deleteProgramError">
+      <segment>
+        <source>Failed to delete program</source>
+      </segment>
+    </unit>
+    <unit id="loading">
+      <segment>
+        <source>Loading programs...</source>
+      </segment>
+    </unit>
+    <unit id="title">
+      <segment>
+        <source>Strength and Mobility Plans</source>
+      </segment>
+    </unit>
+    <unit id="importNew">
+      <segment>
+        <source>Import new program</source>
+      </segment>
+    </unit>
+    <unit id="emptyTitle">
+      <segment>
+        <source>No strength programs yet</source>
+      </segment>
+    </unit>
+    <unit id="emptyDesc">
+      <segment>
+        <source>Paste a strength or mobility plan and the AI will parse it, schedule sessions around your running, and let you sync them to Garmin.</source>
+      </segment>
+    </unit>
+    <unit id="importFirst">
+      <segment>
+        <source>Import your first program</source>
+      </segment>
+    </unit>
+    <unit id="sectionActiveTitle">
+      <segment>
+        <source>Active</source>
+      </segment>
+    </unit>
+    <unit id="sectionActiveDesc">
+      <segment>
+        <source>Programs scheduled on your calendar</source>
+      </segment>
+    </unit>
+    <unit id="sectionCompletedTitle">
+      <segment>
+        <source>Completed</source>
+      </segment>
+    </unit>
+    <unit id="sectionCompletedDesc">
+      <segment>
+        <source>Finished programs</source>
+      </segment>
+    </unit>
+    <unit id="contentTypeStrength">
+      <segment>
+        <source>strength</source>
+      </segment>
+    </unit>
+    <unit id="contentTypeMobility">
+      <segment>
+        <source>mobility</source>
+      </segment>
+    </unit>
+    <unit id="sessionCount">
+      <segment>
+        <source>{count, plural, one {# session} other {# sessions}}</source>
+      </segment>
+    </unit>
+    <unit id="programWeekly">
+      <segment>
+        <source>weekly routine × {weeks} weeks</source>
+      </segment>
+    </unit>
+    <unit id="programFull">
+      <segment>
+        <source>full plan</source>
+      </segment>
+    </unit>
+    <unit id="startsOn">
+      <segment>
+        <source>starts {date}</source>
+      </segment>
+    </unit>
+    <unit id="delete">
+      <segment>
+        <source>Delete</source>
+      </segment>
+    </unit>
+    <unit id="importPageTitle">
+      <segment>
+        <source>Import strength program</source>
+      </segment>
+    </unit>
+  </file>
+  <file id="strengthImport">
+    <unit id="parseError">
+      <segment>
+        <source>Failed to parse plan</source>
+      </segment>
+    </unit>
+    <unit id="parseFailed">
+      <segment>
+        <source>Parse failed</source>
+      </segment>
+    </unit>
+    <unit id="importError">
+      <segment>
+        <source>Failed to import program</source>
+      </segment>
+    </unit>
+    <unit id="imported">
+      <segment>
+        <source>Program imported</source>
+      </segment>
+    </unit>
+    <unit id="importFailed">
+      <segment>
+        <source>Import failed</source>
+      </segment>
+    </unit>
+    <unit id="inputTitle">
+      <segment>
+        <source>Paste your program</source>
+      </segment>
+    </unit>
+    <unit id="inputDescription">
+      <segment>
+        <source>Insert your strength workout details and timing requirements and they will be interpreted and presented for scheduling.</source>
+      </segment>
+    </unit>
+    <unit id="showRecommendedFormat">
+      <segment>
+        <source>Show recommended format</source>
+      </segment>
+    </unit>
+    <unit id="recommendedFormat">
+      <segment>
+        <source>Recommended format</source>
+      </segment>
+    </unit>
+    <unit id="formatNote">
+      <segment>
+        <source>Variation is fine — the AI tolerates non-standard formatting and will flag anything ambiguous.</source>
+      </segment>
+    </unit>
+    <unit id="programTypeLabel">
+      <segment>
+        <source>Program type</source>
+      </segment>
+    </unit>
+    <unit id="weeklyTitle">
+      <segment>
+        <source>Weekly routine</source>
+      </segment>
+    </unit>
+    <unit id="weeklyDesc">
+      <segment>
+        <source>Fixed number of sessions, repeats for the number of weeks selected below.</source>
+      </segment>
+    </unit>
+    <unit id="fullPlanTitle">
+      <segment>
+        <source>Full plan</source>
+      </segment>
+    </unit>
+    <unit id="fullPlanDesc">
+      <segment>
+        <source>The complete schedule, written out session by session. Sessions are placed on the calendar once.</source>
+      </segment>
+    </unit>
+    <unit id="planNameLabel">
+      <segment>
+        <source>Plan name &lt;optional&gt;(optional)&lt;/optional&gt;</source>
+      </segment>
+    </unit>
+    <unit id="planNamePlaceholder">
+      <segment>
+        <source>e.g. Glute &amp; Core Block — Spring 2026</source>
+      </segment>
+    </unit>
+    <unit id="planNameHelp">
+      <segment>
+        <source>Helps you to uniquely identify your plans.</source>
+      </segment>
+    </unit>
+    <unit id="schedulingLabel">
+      <segment>
+        <source>Scheduling</source>
+      </segment>
+    </unit>
+    <unit id="schedulingHelp">
+      <segment>
+        <source>Select your start date and if applicable, number of repeat weeks.</source>
+      </segment>
+    </unit>
+    <unit id="startDateLabel">
+      <segment>
+        <source>Start date</source>
+      </segment>
+    </unit>
+    <unit id="repeatWeeksLabel">
+      <segment>
+        <source>Repeat for (weeks)</source>
+      </segment>
+    </unit>
+    <unit id="tabPasteText">
+      <segment>
+        <source>Paste text</source>
+      </segment>
+    </unit>
+    <unit id="tabUploadFile">
+      <segment>
+        <source>Upload file</source>
+      </segment>
+    </unit>
+    <unit id="tabPasteJson">
+      <segment>
+        <source>Paste JSON</source>
+      </segment>
+    </unit>
+    <unit id="pastePlaceholder">
+      <segment>
+        <source>Paste your strength or mobility program here...</source>
+      </segment>
+    </unit>
+    <unit id="cancel">
+      <segment>
+        <source>Cancel</source>
+      </segment>
+    </unit>
+    <unit id="parsing">
+      <segment>
+        <source>Parsing...</source>
+      </segment>
+    </unit>
+    <unit id="parse">
+      <segment>
+        <source>Parse</source>
+      </segment>
+    </unit>
+    <unit id="invalidJson">
+      <segment>
+        <source>Invalid JSON</source>
+      </segment>
+    </unit>
+    <unit id="revalidationFailed">
+      <segment>
+        <source>Re-validation failed</source>
+      </segment>
+    </unit>
+    <unit id="revalidatedChanges">
+      <segment>
+        <source>Re-validated against catalog. {count, plural, one {# exercise} other {# exercises}} updated: {flipped}</source>
+      </segment>
+    </unit>
+    <unit id="revalidatedNoChanges">
+      <segment>
+        <source>Re-validated against catalog. No changes.</source>
+      </segment>
+    </unit>
+    <unit id="supported">
+      <segment>
+        <source>supported</source>
+      </segment>
+    </unit>
+    <unit id="unsupported">
+      <segment>
+        <source>unsupported</source>
+      </segment>
+    </unit>
+    <unit id="reviewMeta">
+      <segment>
+        <source>{count, plural, one {# session} other {# sessions}} · content type: {contentType} · parse confidence: {confidence}%</source>
+      </segment>
+    </unit>
+    <unit id="notStrengthPlan">
+      <segment>
+        <source>This does not look like a strength or mobility plan.</source>
+      </segment>
+    </unit>
+    <unit id="lowConfidence">
+      <segment>
+        <source>Low parsing confidence.</source>
+      </segment>
+    </unit>
+    <unit id="reviewWarning">
+      <segment>
+        <source>Review carefully before importing, or go back and adjust your input.</source>
+      </segment>
+    </unit>
+    <unit id="closeJsonEditor">
+      <segment>
+        <source>Close JSON editor</source>
+      </segment>
+    </unit>
+    <unit id="editJson">
+      <segment>
+        <source>Edit JSON</source>
+      </segment>
+    </unit>
+    <unit id="validateRecheck">
+      <segment>
+        <source>Validate and re-check Garmin support</source>
+      </segment>
+    </unit>
+    <unit id="sessionLabel">
+      <segment>
+        <source>Session {index}</source>
+      </segment>
+    </unit>
+    <unit id="minBadge">
+      <segment>
+        <source>{min} min</source>
+      </segment>
+    </unit>
+    <unit id="approxMatchAria">
+      <segment>
+        <source>Approximate Garmin match</source>
+      </segment>
+    </unit>
+    <unit id="supportedAria">
+      <segment>
+        <source>Supported by Garmin</source>
+      </segment>
+    </unit>
+    <unit id="notSupportedAria">
+      <segment>
+        <source>Not supported by Garmin</source>
+      </segment>
+    </unit>
+    <unit id="approxMatch">
+      <segment>
+        <source>Approx match</source>
+      </segment>
+    </unit>
+    <unit id="back">
+      <segment>
+        <source>Back</source>
+      </segment>
+    </unit>
+    <unit id="startOver">
+      <segment>
+        <source>Start over</source>
+      </segment>
+    </unit>
+    <unit id="scheduleWorkouts">
+      <segment>
+        <source>Schedule workouts</source>
+      </segment>
+    </unit>
+    <unit id="scheduleError">
+      <segment>
+        <source>Failed to generate schedule</source>
+      </segment>
+    </unit>
+    <unit id="scheduleFailed">
+      <segment>
+        <source>Schedule generation failed</source>
+      </segment>
+    </unit>
+    <unit id="previewTitle">
+      <segment>
+        <source>Preview placement</source>
+      </segment>
+    </unit>
+    <unit id="descWeekly">
+      <segment>
+        <source>Starting {date}, {sessions, plural, one {# session} other {# sessions}} per week × {weeks} weeks = {total} sessions. The AI distributes them around your running plan; adjust individual dates below before importing.</source>
+      </segment>
+    </unit>
+    <unit id="descFixed">
+      <segment>
+        <source>Starting {date}. The AI distributes sessions around your running plan; adjust individual dates below before importing.</source>
+      </segment>
+    </unit>
+    <unit id="generating">
+      <segment>
+        <source>Generating...</source>
+      </segment>
+    </unit>
+    <unit id="regenerate">
+      <segment>
+        <source>Regenerate</source>
+      </segment>
+    </unit>
+    <unit id="placingSessions">
+      <segment>
+        <source>Placing sessions around your runs…</source>
+      </segment>
+    </unit>
+    <unit id="sessionsScheduled">
+      <segment>
+        <source>{count, plural, one {# session} other {# sessions}} scheduled. Edit a date below to override the AI's choice, or click a session on the calendar above to jump to it.</source>
+      </segment>
+    </unit>
+    <unit id="weekLabel">
+      <segment>
+        <source>Week {week}</source>
+      </segment>
+    </unit>
+    <unit id="sessionIndexLabel">
+      <segment>
+        <source>Session {index}</source>
+      </segment>
+    </unit>
+    <unit id="untitled">
+      <segment>
+        <source>Untitled</source>
+      </segment>
+    </unit>
+    <unit id="weekPrefix">
+      <segment>
+        <source>W{week}: {title}</source>
+      </segment>
+    </unit>
+    <unit id="moreCount">
+      <segment>
+        <source>+{count} more</source>
+      </segment>
+    </unit>
+    <unit id="importing">
+      <segment>
+        <source>Importing...</source>
+      </segment>
+    </unit>
+    <unit id="importToCalendar">
+      <segment>
+        <source>Import to calendar</source>
+      </segment>
+    </unit>
+  </file>
+  <file id="strengthSession">
+    <unit id="durationInvalid">
+      <segment>
+        <source>Duration must be a non-negative number</source>
+      </segment>
+    </unit>
+    <unit id="updateError">
+      <segment>
+        <source>Failed to update session</source>
+      </segment>
+    </unit>
+    <unit id="updated">
+      <segment>
+        <source>Session updated</source>
+      </segment>
+    </unit>
+    <unit id="deleteError">
+      <segment>
+        <source>Failed to delete session</source>
+      </segment>
+    </unit>
+    <unit id="deleted">
+      <segment>
+        <source>Session deleted</source>
+      </segment>
+    </unit>
+    <unit id="movedGarminUpdated">
+      <segment>
+        <source>Moved to {date} (Garmin updated)</source>
+      </segment>
+    </unit>
+    <unit id="movedGarminFailed">
+      <segment>
+        <source>Moved to {date}. Couldn't update Garmin — resend manually.</source>
+      </segment>
+    </unit>
+    <unit id="moved">
+      <segment>
+        <source>Moved to {date}</source>
+      </segment>
+    </unit>
+    <unit id="rescheduleError">
+      <segment>
+        <source>Failed to reschedule</source>
+      </segment>
+    </unit>
+    <unit id="sendError">
+      <segment>
+        <source>Failed to send</source>
+      </segment>
+    </unit>
+    <unit id="sentToGarmin">
+      <segment>
+        <source>Sent to Garmin</source>
+      </segment>
+    </unit>
+    <unit id="unsupportedExercises">
+      <segment>
+        <source>Session contains unsupported exercises</source>
+      </segment>
+    </unit>
+    <unit id="sendToGarminError">
+      <segment>
+        <source>Failed to send to Garmin</source>
+      </segment>
+    </unit>
+    <unit id="noneSent">
+      <segment>
+        <source>No sessions were sent</source>
+      </segment>
+    </unit>
+    <unit id="removeError">
+      <segment>
+        <source>Failed to remove</source>
+      </segment>
+    </unit>
+    <unit id="removedFromGarmin">
+      <segment>
+        <source>Removed from Garmin</source>
+      </segment>
+    </unit>
+    <unit id="nothingToRemove">
+      <segment>
+        <source>Nothing to remove</source>
+      </segment>
+    </unit>
+    <unit id="removeFromGarminError">
+      <segment>
+        <source>Failed to remove from Garmin</source>
+      </segment>
+    </unit>
+    <unit id="exerciseRequired">
+      <segment>
+        <source>At least one exercise is required</source>
+      </segment>
+    </unit>
+    <unit id="updateExercisesError">
+      <segment>
+        <source>Failed to update exercises</source>
+      </segment>
+    </unit>
+    <unit id="exercisesUpdated">
+      <segment>
+        <source>Exercises updated</source>
+      </segment>
+    </unit>
+    <unit id="fromProgram">
+      <segment>
+        <source>from &lt;strong&gt;{name}&lt;/strong&gt;</source>
+      </segment>
+    </unit>
+    <unit id="saveDate">
+      <segment>
+        <source>Save date</source>
+      </segment>
+    </unit>
+    <unit id="cancel">
+      <segment>
+        <source>Cancel</source>
+      </segment>
+    </unit>
+    <unit id="reschedule">
+      <segment>
+        <source>Reschedule</source>
+      </segment>
+    </unit>
+    <unit id="durationPlanned">
+      <segment>
+        <source>· ~{min} min planned</source>
+      </segment>
+    </unit>
+    <unit id="discussWithAI">
+      <segment>
+        <source>Discuss with AI Coach</source>
+      </segment>
+    </unit>
+    <unit id="deleteSession">
+      <segment>
+        <source>Delete session</source>
+      </segment>
+    </unit>
+    <unit id="whyThisDay">
+      <segment>
+        <source>Why this day: </source>
+      </segment>
+    </unit>
+    <unit id="exercises">
+      <segment>
+        <source>Exercises</source>
+      </segment>
+    </unit>
+    <unit id="allGarminReady">
+      <segment>
+        <source>All Garmin-ready</source>
+      </segment>
+    </unit>
+    <unit id="asFallback">
+      <segment>
+        <source>{count} as fallback</source>
+      </segment>
+    </unit>
+    <unit id="sentAsFallback">
+      <segment>
+        <source>Sent as fallback to Garmin:</source>
+      </segment>
+    </unit>
+    <unit id="fallbackExplain">
+      <segment>
+        <source>These will appear on the watch using a close-enough Garmin exercise label, or as a generic step with the exercise name in the description.</source>
+      </segment>
+    </unit>
+    <unit id="saveExercises">
+      <segment>
+        <source>Save exercises</source>
+      </segment>
+    </unit>
+    <unit id="editExercises">
+      <segment>
+        <source>Edit exercises</source>
+      </segment>
+    </unit>
+    <unit id="addExercise">
+      <segment>
+        <source>Add exercise</source>
+      </segment>
+    </unit>
+    <unit id="fallback">
+      <segment>
+        <source>Fallback</source>
+      </segment>
+    </unit>
+    <unit id="fallbackTooltip">
+      <segment>
+        <source>No exact Garmin match. Will send as a close-enough Garmin exercise, or as a generic step with the exercise name shown in the description.</source>
+      </segment>
+    </unit>
+    <unit id="approx">
+      <segment>
+        <source>Approx</source>
+      </segment>
+    </unit>
+    <unit id="matchedClosest">
+      <segment>
+        <source>Matched to the closest Garmin exercise:</source>
+      </segment>
+    </unit>
+    <unit id="statusLabel">
+      <segment>
+        <source>Status</source>
+      </segment>
+    </unit>
+    <unit id="durationLabel">
+      <segment>
+        <source>Actual duration (min)</source>
+      </segment>
+    </unit>
+    <unit id="durationPlaceholder">
+      <segment>
+        <source>e.g. 35</source>
+      </segment>
+    </unit>
+    <unit id="notesLabel">
+      <segment>
+        <source>Notes</source>
+      </segment>
+    </unit>
+    <unit id="notesPlaceholder">
+      <segment>
+        <source>How did it go? Anything to remember next time?</source>
+      </segment>
+    </unit>
+    <unit id="resendToGarmin">
+      <segment>
+        <source>Resend to Garmin</source>
+      </segment>
+    </unit>
+    <unit id="sendToGarmin">
+      <segment>
+        <source>Send to Garmin</source>
+      </segment>
+    </unit>
+    <unit id="willSendAll">
+      <segment>
+        <source>Will send all {count, plural, one {# exercise} other {# exercises}}.</source>
+      </segment>
+    </unit>
+    <unit id="fallbackList">
+      <segment>
+        <source>{count} as fallback or label-only: {names}</source>
+      </segment>
+    </unit>
+    <unit id="removeFromGarmin">
+      <segment>
+        <source>Remove from Garmin</source>
+      </segment>
+    </unit>
+    <unit id="garminNotConnected">
+      <segment>
+        <source>Garmin not connected</source>
+      </segment>
+    </unit>
+    <unit id="connectGarminHint">
+      <segment>
+        <source>Connect Garmin in Settings to enable strength workout sync.</source>
+      </segment>
+    </unit>
+    <unit id="close">
+      <segment>
+        <source>Close</source>
+      </segment>
+    </unit>
+    <unit id="save">
+      <segment>
+        <source>Save</source>
+      </segment>
+    </unit>
+    <unit id="deleteConfirmTitle">
+      <segment>
+        <source>Delete this strength session?</source>
+      </segment>
+    </unit>
+    <unit id="deleteConfirmBody">
+      <segment>
+        <source>This will remove the session from the calendar. The parent program stays intact. This cannot be undone.</source>
+      </segment>
+    </unit>
+    <unit id="delete">
+      <segment>
+        <source>Delete</source>
+      </segment>
+    </unit>
+    <unit id="garminStatusSynced">
+      <segment>
+        <source>Synced to Garmin</source>
+      </segment>
+    </unit>
+    <unit id="garminStatusStale">
+      <segment>
+        <source>Garmin sync out of date</source>
+      </segment>
+    </unit>
+    <unit id="garminStatusFailed">
+      <segment>
+        <source>Garmin sync failed</source>
+      </segment>
+    </unit>
+    <unit id="garminStatusUnsupported">
+      <segment>
+        <source>Garmin: unsupported</source>
+      </segment>
+    </unit>
+  </file>
+  <file id="strengthExercise">
+    <unit id="newExercise">
+      <segment>
+        <source>New exercise</source>
+      </segment>
+    </unit>
+    <unit id="exerciseNamePlaceholder">
+      <segment>
+        <source>Exercise name</source>
+      </segment>
+    </unit>
+    <unit id="removeExercise">
+      <segment>
+        <source>Remove exercise</source>
+      </segment>
+    </unit>
+    <unit id="remove">
+      <segment>
+        <source>Remove</source>
+      </segment>
+    </unit>
+    <unit id="atLeastOne">
+      <segment>
+        <source>At least one exercise is required</source>
+      </segment>
+    </unit>
+    <unit id="typeLabel">
+      <segment>
+        <source>Type</source>
+      </segment>
+    </unit>
+    <unit id="typeReps">
+      <segment>
+        <source>Reps</source>
+      </segment>
+    </unit>
+    <unit id="typeDuration">
+      <segment>
+        <source>Duration</source>
+      </segment>
+    </unit>
+    <unit id="typeDistance">
+      <segment>
+        <source>Distance</source>
+      </segment>
+    </unit>
+    <unit id="setsLabel">
+      <segment>
+        <source>Sets</source>
+      </segment>
+    </unit>
+    <unit id="repsLabel">
+      <segment>
+        <source>Reps</source>
+      </segment>
+    </unit>
+    <unit id="secondsLabel">
+      <segment>
+        <source>Seconds</source>
+      </segment>
+    </unit>
+    <unit id="metresLabel">
+      <segment>
+        <source>Metres</source>
+      </segment>
+    </unit>
+    <unit id="weightLabel">
+      <segment>
+        <source>Weight (kg)</source>
+      </segment>
+    </unit>
+    <unit id="restLabel">
+      <segment>
+        <source>Rest (s)</source>
+      </segment>
+    </unit>
+    <unit id="notesLabel">
+      <segment>
+        <source>Notes</source>
+      </segment>
+    </unit>
+    <unit id="notesPlaceholder">
+      <segment>
+        <source>Optional cue or coaching note</source>
+      </segment>
+    </unit>
+  </file>
 </xliff>

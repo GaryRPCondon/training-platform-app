@@ -13,6 +13,7 @@ import { Loader2 } from 'lucide-react'
 import { VDOTInput, type VDOTInputValue } from '@/components/plans/vdot-input'
 import { useUnits } from '@/lib/hooks/use-units'
 import { computeWeeksAvailable } from '@/lib/utils/plan-dates'
+import { useTranslations } from 'next-intl'
 
 const KM_PER_MILE = 1.60934
 
@@ -30,6 +31,7 @@ function NewPlanPageContent() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const { units, distanceLabel } = useUnits()
+    const t = useTranslations('planNew')
 
     // Calculate default date based on distance
     const getDefaultDate = (distance = 'marathon') => {
@@ -52,7 +54,7 @@ function NewPlanPageContent() {
         return nextWeekStart.toISOString().split('T')[0]
     }
 
-    const [goalName, setGoalName] = useState('My Training Plan')
+    const [goalName, setGoalName] = useState(t('defaultGoalName'))
     const [goalDate, setGoalDate] = useState(getDefaultDate())
     const [startDate, setStartDate] = useState(getDefaultStartDate())
     const [goalType, setGoalType] = useState('marathon')
@@ -73,13 +75,13 @@ function NewPlanPageContent() {
     }, [goalType])
 
     const DAYS_OF_WEEK = [
-        { value: 1, label: 'Mon' },
-        { value: 2, label: 'Tue' },
-        { value: 3, label: 'Wed' },
-        { value: 4, label: 'Thu' },
-        { value: 5, label: 'Fri' },
-        { value: 6, label: 'Sat' },
-        { value: 0, label: 'Sun' }
+        { value: 1, label: t('days.mon') },
+        { value: 2, label: t('days.tue') },
+        { value: 3, label: t('days.wed') },
+        { value: 4, label: t('days.thu') },
+        { value: 5, label: t('days.fri') },
+        { value: 6, label: t('days.sat') },
+        { value: 0, label: t('days.sun') }
     ]
 
     // Restore form values from URL params if user came back from recommendations
@@ -118,13 +120,13 @@ function NewPlanPageContent() {
         try {
             // Validate form
             if (!goalDate) {
-                toast.error('Please select a goal date')
+                toast.error(t('errorGoalDateRequired'))
                 setIsSubmitting(false)
                 return
             }
 
             if (!startDate) {
-                toast.error('Please select a start date')
+                toast.error(t('errorStartDateRequired'))
                 setIsSubmitting(false)
                 return
             }
@@ -132,7 +134,7 @@ function NewPlanPageContent() {
             // Validate volume fields
             const errors: { current?: string; peak?: string } = {}
             if (currentVolume === '' || currentVolume < 0) {
-                errors.current = `Please enter your current weekly volume in ${distanceLabel()}`
+                errors.current = t('errorCurrentVolume', { unit: distanceLabel() })
             }
             // Peak volume is optional — 0 means "not sure" and skips the peak mileage filter
             if (Object.keys(errors).length > 0) {
@@ -147,13 +149,13 @@ function NewPlanPageContent() {
             const today = new Date()
 
             if (goalDateObj <= today) {
-                toast.error('Goal date must be in the future')
+                toast.error(t('errorGoalDateFuture'))
                 setIsSubmitting(false)
                 return
             }
 
             if (startDateObj >= goalDateObj) {
-                toast.error('Start date must be before goal date')
+                toast.error(t('errorStartBeforeGoal'))
                 setIsSubmitting(false)
                 return
             }
@@ -201,31 +203,31 @@ function NewPlanPageContent() {
             router.push(`/dashboard/plans/recommend?${params.toString()}`)
         } catch (error) {
             console.error('Error submitting form:', error)
-            toast.error('Failed to process form')
+            toast.error(t('errorProcessForm'))
             setIsSubmitting(false)
         }
     }
 
     return (
         <div className="max-w-2xl mx-auto space-y-6">
-            <h1 className="text-3xl font-bold tracking-tight">Create New Plan</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Plan Details</CardTitle>
+                    <CardTitle>{t('cardTitle')}</CardTitle>
                     <CardDescription>
-                        Tell us about your goals and we'll recommend personalized training templates
+                        {t('cardDescription')}
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="goalName">Goal Name</Label>
+                                <Label htmlFor="goalName">{t('goalNameLabel')}</Label>
                                 <Input
                                     id="goalName"
                                     type="text"
-                                    placeholder="e.g., Boston Marathon 2026"
+                                    placeholder={t('goalNamePlaceholder')}
                                     value={goalName}
                                     onChange={(e) => setGoalName(e.target.value)}
                                     required
@@ -234,16 +236,16 @@ function NewPlanPageContent() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="goalType">Goal Type</Label>
+                                <Label htmlFor="goalType">{t('goalTypeLabel')}</Label>
                                 <Select value={goalType} onValueChange={setGoalType}>
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Select goal type" />
+                                        <SelectValue placeholder={t('goalTypePlaceholder')} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="marathon">Marathon</SelectItem>
-                                        <SelectItem value="5k">5K</SelectItem>
-                                        <SelectItem value="half_marathon" disabled>Half Marathon</SelectItem>
-                                        <SelectItem value="10k">10K</SelectItem>
+                                        <SelectItem value="marathon">{t('goalTypeMarathon')}</SelectItem>
+                                        <SelectItem value="5k">{t('goalType5k')}</SelectItem>
+                                        <SelectItem value="half_marathon" disabled>{t('goalTypeHalfMarathon')}</SelectItem>
+                                        <SelectItem value="10k">{t('goalType10k')}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -252,8 +254,8 @@ function NewPlanPageContent() {
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <div>
-                                    <Label htmlFor="goalDate">Goal Date</Label>
-                                    <p className="text-xs text-muted-foreground">Actual race date</p>
+                                    <Label htmlFor="goalDate">{t('goalDateLabel')}</Label>
+                                    <p className="text-xs text-muted-foreground">{t('goalDateHint')}</p>
                                 </div>
                                 <Input
                                     id="goalDate"
@@ -267,8 +269,8 @@ function NewPlanPageContent() {
 
                             <div className="space-y-2">
                                 <div>
-                                    <Label htmlFor="startDate">Start Date</Label>
-                                    <p className="text-xs text-muted-foreground">Defaults to upcoming week start</p>
+                                    <Label htmlFor="startDate">{t('startDateLabel')}</Label>
+                                    <p className="text-xs text-muted-foreground">{t('startDateHint')}</p>
                                 </div>
                                 <Input
                                     id="startDate"
@@ -283,7 +285,7 @@ function NewPlanPageContent() {
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="currentVolume">Current Weekly Volume ({distanceLabel()})</Label>
+                                <Label htmlFor="currentVolume">{t('currentVolumeLabel', { unit: distanceLabel() })}</Label>
                                 <Input
                                     id="currentVolume"
                                     type="number"
@@ -293,7 +295,7 @@ function NewPlanPageContent() {
                                         if (volumeErrors.current) setVolumeErrors(prev => ({ ...prev, current: undefined }))
                                     }}
                                     min={0}
-                                    placeholder={`e.g. ${units === 'imperial' ? '25' : '40'}`}
+                                    placeholder={t('currentVolumePlaceholder', { value: units === 'imperial' ? '25' : '40' })}
                                     className="w-full"
                                 />
                                 {volumeErrors.current && (
@@ -302,7 +304,7 @@ function NewPlanPageContent() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="maxVolume">Comfortable Peak Volume ({distanceLabel()}) <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                                <Label htmlFor="maxVolume">{t.rich('peakVolumeLabel', { unit: distanceLabel(), optional: (chunks) => <span className="text-muted-foreground font-normal">{chunks}</span> })}</Label>
                                 <Input
                                     id="maxVolume"
                                     type="number"
@@ -312,7 +314,7 @@ function NewPlanPageContent() {
                                         if (volumeErrors.peak) setVolumeErrors(prev => ({ ...prev, peak: undefined }))
                                     }}
                                     min={0}
-                                    placeholder={`e.g. ${units === 'imperial' ? '40' : '65'} (leave blank if unsure)`}
+                                    placeholder={t('peakVolumePlaceholder', { value: units === 'imperial' ? '40' : '65' })}
                                     className="w-full"
                                 />
                                 {volumeErrors.peak && (
@@ -323,16 +325,16 @@ function NewPlanPageContent() {
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-3">
-                                <Label>Experience Level</Label>
+                                <Label>{t('experienceLabel')}</Label>
                                 <RadioGroup value={experienceLevel} onValueChange={(value) => setExperienceLevel(value as any)}>
                                     <div className="flex items-start space-x-2">
                                         <RadioGroupItem value="complete_beginner" id="complete_beginner" className="mt-1" />
                                         <div className="space-y-0.5">
                                             <Label htmlFor="complete_beginner" className="font-normal cursor-pointer">
-                                                Complete Beginner
+                                                {t('experienceCompleteBeginner')}
                                             </Label>
                                             <p className="text-xs text-muted-foreground">
-                                                New to running, or returning after a long break
+                                                {t('experienceCompleteBeginnerDesc')}
                                             </p>
                                         </div>
                                     </div>
@@ -340,10 +342,10 @@ function NewPlanPageContent() {
                                         <RadioGroupItem value="beginner" id="beginner" className="mt-1" />
                                         <div className="space-y-0.5">
                                             <Label htmlFor="beginner" className="font-normal cursor-pointer">
-                                                Beginner
+                                                {t('experienceBeginner')}
                                             </Label>
                                             <p className="text-xs text-muted-foreground">
-                                                Can run 30 minutes continuously, some race experience
+                                                {t('experienceBeginnerDesc')}
                                             </p>
                                         </div>
                                     </div>
@@ -351,10 +353,10 @@ function NewPlanPageContent() {
                                         <RadioGroupItem value="intermediate" id="intermediate" className="mt-1" />
                                         <div className="space-y-0.5">
                                             <Label htmlFor="intermediate" className="font-normal cursor-pointer">
-                                                Intermediate
+                                                {t('experienceIntermediate')}
                                             </Label>
                                             <p className="text-xs text-muted-foreground">
-                                                Regular runner, comfortable with structured training and speedwork
+                                                {t('experienceIntermediateDesc')}
                                             </p>
                                         </div>
                                     </div>
@@ -362,10 +364,10 @@ function NewPlanPageContent() {
                                         <RadioGroupItem value="advanced" id="advanced" className="mt-1" />
                                         <div className="space-y-0.5">
                                             <Label htmlFor="advanced" className="font-normal cursor-pointer">
-                                                Advanced
+                                                {t('experienceAdvanced')}
                                             </Label>
                                             <p className="text-xs text-muted-foreground">
-                                                Competitive runner, experienced with high-volume and intense training
+                                                {t('experienceAdvancedDesc')}
                                             </p>
                                         </div>
                                     </div>
@@ -373,27 +375,27 @@ function NewPlanPageContent() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="daysPerWeek">Training Days Per Week</Label>
+                                <Label htmlFor="daysPerWeek">{t('daysPerWeekLabel')}</Label>
                                 <Select value={daysPerWeek} onValueChange={(val) => {
                                     setDaysPerWeek(val)
                                     // Reset preferred rest days when training days change
                                     setPreferredRestDays([])
                                 }}>
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Select days per week" />
+                                        <SelectValue placeholder={t('daysPerWeekPlaceholder')} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="3">3-4 days</SelectItem>
-                                        <SelectItem value="5">5 days</SelectItem>
-                                        <SelectItem value="6">6 days</SelectItem>
-                                        <SelectItem value="7">7 days</SelectItem>
+                                        <SelectItem value="3">{t('daysPerWeek34')}</SelectItem>
+                                        <SelectItem value="5">{t('daysPerWeek5')}</SelectItem>
+                                        <SelectItem value="6">{t('daysPerWeek6')}</SelectItem>
+                                        <SelectItem value="7">{t('daysPerWeek7')}</SelectItem>
                                     </SelectContent>
                                 </Select>
 
                                 {/* Preferred Rest Days - Only show if not training 7 days */}
                                 {parseInt(daysPerWeek) < 7 && (
                                     <div className="pt-3 space-y-2">
-                                        <Label className="text-sm">Required Non-Training Days (Optional)</Label>
+                                        <Label className="text-sm">{t('restDaysLabel')}</Label>
                                         <div className="flex flex-wrap gap-3">
                                             {DAYS_OF_WEEK.map((day) => (
                                                 <div key={day.value} className="flex items-center space-x-1.5">
@@ -423,7 +425,7 @@ function NewPlanPageContent() {
                                             ))}
                                         </div>
                                         <p className="text-xs text-muted-foreground">
-                                            Select up to {7 - parseInt(daysPerWeek)} days. If specified, these will be your required rest days.
+                                            {t('restDaysHint', { count: 7 - parseInt(daysPerWeek) })}
                                         </p>
                                     </div>
                                 )}
@@ -432,24 +434,26 @@ function NewPlanPageContent() {
 
                         {/* VDOT/Pace Input */}
                         <div className="space-y-2">
-                            <Label>Training Paces (Optional)</Label>
+                            <Label>{t('pacesLabel')}</Label>
                             <p className="text-sm text-muted-foreground">
-                                Provide race time or{' '}
-                                <a
-                                    href="https://vdoto2.com/"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="underline underline-offset-2 hover:text-foreground"
-                                >
-                                    VDOT
-                                </a>
-                                {' '}to calculate target paces - will be captured in your user profile
+                                {t.rich('pacesDescription', {
+                                    link: (chunks) => (
+                                        <a
+                                            href="https://vdoto2.com/"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="underline underline-offset-2 hover:text-foreground"
+                                        >
+                                            {chunks}
+                                        </a>
+                                    )
+                                })}
                             </p>
                             <VDOTInput value={vdotInput || undefined} onChange={setVDOTInput} />
                         </div>
 
                         <Button type="submit" disabled={isSubmitting} className="w-full">
-                            {isSubmitting ? 'Finding Templates...' : 'Find Recommended Templates'}
+                            {isSubmitting ? t('submitLoading') : t('submitIdle')}
                         </Button>
                     </form>
                 </CardContent>

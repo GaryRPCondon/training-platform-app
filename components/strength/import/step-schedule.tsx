@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { format, parseISO } from 'date-fns'
 import { toast } from 'sonner'
+import { useTranslations } from 'next-intl'
 
 import { scrollBehavior } from '@/lib/utils/motion'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -39,6 +40,7 @@ export function StepSchedule({
   onBack: () => void
   onConfirm: (placements: Placement[]) => void
 }) {
+  const t = useTranslations('strengthImport')
   const [generating, setGenerating] = useState(false)
   const [placements, setPlacements] = useState<Placement[]>([])
   const [workouts, setWorkouts] = useState<PlannedWorkoutSummary[]>([])
@@ -61,10 +63,10 @@ export function StepSchedule({
         body: JSON.stringify(body),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'Failed to generate schedule')
+      if (!res.ok) throw new Error(data.error ?? t('scheduleError'))
       setPlacements(data.placements ?? [])
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Schedule generation failed')
+      toast.error(err instanceof Error ? err.message : t('scheduleFailed'))
     } finally {
       setGenerating(false)
     }
@@ -123,9 +125,9 @@ export function StepSchedule({
     const session = templateSessionFor(p.session_index)
     if (programType === 'weekly') {
       const week = Math.floor((p.session_index - 1) / templateLen) + 1
-      return `W${week}: ${session?.title ?? 'Untitled'}`
+      return t('weekPrefix', { week, title: session?.title ?? t('untitled') })
     }
-    return session?.title ?? `Session ${p.session_index}`
+    return session?.title ?? t('sessionIndexLabel', { index: p.session_index })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [programType, templateLen, program.sessions])
 
@@ -141,20 +143,25 @@ export function StepSchedule({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Preview placement</CardTitle>
+        <CardTitle>{t('previewTitle')}</CardTitle>
         <CardDescription>
           {programType === 'weekly'
-            ? `Starting ${format(parseISO(startDate), 'EEE, MMM d')}, ${templateLen} session${templateLen === 1 ? '' : 's'} per week × ${weeksToRepeat} weeks = ${templateLen * weeksToRepeat} sessions. The AI distributes them around your running plan; adjust individual dates below before importing.`
-            : `Starting ${format(parseISO(startDate), 'EEE, MMM d')}. The AI distributes sessions around your running plan; adjust individual dates below before importing.`}
+            ? t('descWeekly', {
+                date: format(parseISO(startDate), 'EEE, MMM d'),
+                sessions: templateLen,
+                weeks: weeksToRepeat,
+                total: templateLen * weeksToRepeat,
+              })
+            : t('descFixed', { date: format(parseISO(startDate), 'EEE, MMM d') })}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="flex items-center gap-3">
           <Button variant="outline" onClick={generateSchedule} disabled={generating}>
-            {generating ? 'Generating...' : 'Regenerate'}
+            {generating ? t('generating') : t('regenerate')}
           </Button>
           {generating && placements.length === 0 && (
-            <span className="text-sm text-muted-foreground">Placing sessions around your runs…</span>
+            <span className="text-sm text-muted-foreground">{t('placingSessions')}</span>
           )}
         </div>
 
@@ -172,8 +179,7 @@ export function StepSchedule({
         {placements.length > 0 && (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              {placements.length} {placements.length === 1 ? 'session' : 'sessions'} scheduled.{' '}
-              Edit a date below to override the AI&apos;s choice, or click a session on the calendar above to jump to it.
+              {t('sessionsScheduled', { count: placements.length })}
             </p>
             {placements.map(placement => {
               const session = templateSessionFor(placement.session_index)
@@ -194,15 +200,15 @@ export function StepSchedule({
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground">
                           {weekNumber != null
-                            ? `Week ${weekNumber}`
-                            : `Session ${placement.session_index}`}
+                            ? t('weekLabel', { week: weekNumber })
+                            : t('sessionIndexLabel', { index: placement.session_index })}
                         </span>
-                        <span className="font-medium">{session?.title ?? 'Untitled'}</span>
+                        <span className="font-medium">{session?.title ?? t('untitled')}</span>
                       </div>
                       {session && session.exercises.length > 0 && (
                         <p className="mt-0.5 text-xs text-muted-foreground">
                           {session.exercises.slice(0, 4).map(e => e.display_name).join(' · ')}
-                          {session.exercises.length > 4 && ` +${session.exercises.length - 4} more`}
+                          {session.exercises.length > 4 && ` ${t('moreCount', { count: session.exercises.length - 4 })}`}
                         </p>
                       )}
                       <p className="mt-1 text-sm italic text-muted-foreground">
@@ -237,12 +243,12 @@ export function StepSchedule({
         )}
       </CardContent>
       <CardFooter className="flex justify-between gap-2">
-        <Button variant="outline" onClick={onBack}>Back</Button>
+        <Button variant="outline" onClick={onBack}>{t('back')}</Button>
         <Button
           disabled={placements.length === 0 || submitting}
           onClick={() => onConfirm(placements)}
         >
-          {submitting ? 'Importing...' : 'Import to calendar'}
+          {submitting ? t('importing') : t('importToCalendar')}
         </Button>
       </CardFooter>
     </Card>

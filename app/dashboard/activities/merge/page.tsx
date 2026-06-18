@@ -8,6 +8,7 @@ import { format } from 'date-fns'
 import { CheckCircle2, XCircle, Activity as ActivityIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { useUnits } from '@/lib/hooks/use-units'
+import { useTranslations } from 'next-intl'
 
 interface Activity {
     id: number
@@ -28,6 +29,7 @@ interface MergePair {
 
 export default function MergeReviewPage() {
     const queryClient = useQueryClient()
+    const t = useTranslations('merge')
 
     const { data: mergePairs, isLoading } = useQuery({
         queryKey: ['merge-candidates'],
@@ -50,10 +52,10 @@ export default function MergeReviewPage() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['merge-candidates'] })
-            toast.success('Activities merged successfully')
+            toast.success(t('mergedSuccess'))
         },
         onError: () => {
-            toast.error('Failed to merge activities')
+            toast.error(t('mergeError'))
         }
     })
 
@@ -69,10 +71,10 @@ export default function MergeReviewPage() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['merge-candidates'] })
-            toast.success('Kept activities separate')
+            toast.success(t('keptSeparate'))
         },
         onError: () => {
-            toast.error('Failed to update')
+            toast.error(t('updateError'))
         }
     })
 
@@ -85,7 +87,7 @@ export default function MergeReviewPage() {
     }
 
     if (isLoading) {
-        return <div className="p-8">Loading...</div>
+        return <div className="p-8">{t('loading')}</div>
     }
 
     const pairs: MergePair[] = mergePairs?.pairs || []
@@ -93,14 +95,14 @@ export default function MergeReviewPage() {
     return (
         <div className="container mx-auto p-6 space-y-6">
             <div>
-                <h1 className="text-3xl font-bold tracking-tight">Activity Merge Review</h1>
-                <p className="text-muted-foreground">Review and approve potential duplicate activities</p>
+                <h1 className="text-3xl font-bold tracking-tight">{t('candidatesTitle')}</h1>
+                <p className="text-muted-foreground">{t('candidatesSubtitle')}</p>
             </div>
 
             {pairs.length === 0 ? (
                 <Card>
                     <CardContent className="p-8 text-center text-muted-foreground">
-                        No pending merge candidates
+                        {t('noCandidates')}
                     </CardContent>
                 </Card>
             ) : (
@@ -109,12 +111,12 @@ export default function MergeReviewPage() {
                         <Card key={idx}>
                             <CardHeader>
                                 <div className="flex items-center justify-between">
-                                    <CardTitle className="text-lg">Potential Duplicate</CardTitle>
+                                    <CardTitle className="text-lg">{t('potentialDuplicate')}</CardTitle>
                                     <Badge variant={
                                         pair.confidence === 'high' ? 'default' :
                                             pair.confidence === 'medium' ? 'secondary' : 'outline'
                                     }>
-                                        {pair.confidence} confidence ({pair.confidenceScore}%)
+                                        {t('confidenceBadge', { confidence: pair.confidence, score: pair.confidenceScore })}
                                     </Badge>
                                 </div>
                             </CardHeader>
@@ -134,11 +136,11 @@ export default function MergeReviewPage() {
                                         </div>
                                         <div className="grid grid-cols-2 gap-2 text-sm">
                                             <div>
-                                                <div className="text-muted-foreground">Distance</div>
+                                                <div className="text-muted-foreground">{t('distance')}</div>
                                                 <div className="font-medium">{formatDistance(pair.activity.distance_meters)}</div>
                                             </div>
                                             <div>
-                                                <div className="text-muted-foreground">Duration</div>
+                                                <div className="text-muted-foreground">{t('duration')}</div>
                                                 <div className="font-medium">{formatDuration(pair.activity.duration_seconds)}</div>
                                             </div>
                                         </div>
@@ -158,11 +160,11 @@ export default function MergeReviewPage() {
                                         </div>
                                         <div className="grid grid-cols-2 gap-2 text-sm">
                                             <div>
-                                                <div className="text-muted-foreground">Distance</div>
+                                                <div className="text-muted-foreground">{t('distance')}</div>
                                                 <div className="font-medium">{formatDistance(pair.matchActivity.distance_meters)}</div>
                                             </div>
                                             <div>
-                                                <div className="text-muted-foreground">Duration</div>
+                                                <div className="text-muted-foreground">{t('duration')}</div>
                                                 <div className="font-medium">{formatDuration(pair.matchActivity.duration_seconds)}</div>
                                             </div>
                                         </div>
@@ -179,7 +181,7 @@ export default function MergeReviewPage() {
                                         className="flex-1"
                                     >
                                         <CheckCircle2 className="h-4 w-4 mr-2" />
-                                        Approve Merge
+                                        {t('approveMerge')}
                                     </Button>
                                     <Button
                                         variant="outline"
@@ -188,7 +190,7 @@ export default function MergeReviewPage() {
                                         className="flex-1"
                                     >
                                         <XCircle className="h-4 w-4 mr-2" />
-                                        Keep Separate
+                                        {t('keepSeparate')}
                                     </Button>
                                 </div>
                             </CardContent>

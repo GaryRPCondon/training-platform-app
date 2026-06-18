@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getTranslations } from 'next-intl/server'
 import { ActivitiesView } from './activities-view'
 
 interface ActivitiesPageProps {
@@ -66,11 +67,12 @@ export default async function ActivitiesPage({ searchParams }: ActivitiesPagePro
 
     if (error) {
         console.error('Error fetching activities:', error)
+        const t = await getTranslations('activities')
         return (
             <div className="space-y-6">
-                <h1 className="text-3xl font-bold tracking-tight">Activities</h1>
+                <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
                 <div className="text-center py-8 text-red-500">
-                    Failed to load activities. Please try again later.
+                    {t('loadError')}
                 </div>
             </div>
         )

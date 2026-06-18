@@ -23,6 +23,7 @@ import { getActivityLinks } from '@/lib/utils/activity-links'
 import { scrollBehavior } from '@/lib/utils/motion'
 import { getComplianceColorClass } from '@/lib/activities/scoring'
 import { GarminIcon, StravaIcon } from './platform-icons'
+import { useTranslations } from 'next-intl'
 
 type LapRow = Pick<Lap, 'lap_index' | 'distance_meters' | 'duration_seconds' | 'avg_hr' | 'max_hr' | 'avg_pace' | 'elevation_gain_meters' | 'intensity_type' | 'compliance_score'>
 
@@ -64,6 +65,7 @@ function intensityBadgeVariant(type: string | null): 'secondary' | 'default' | '
 export function ActivityDetail({ activity, onClose }: ActivityDetailProps) {
   const router = useRouter()
   const { formatDistance, formatPace, formatElevation } = useUnits()
+  const t = useTranslations('activityDetail')
 
   // Use moving time for pace (falls back to elapsed time)
   const movingSeconds = activity.moving_duration_seconds ?? activity.duration_seconds
@@ -91,7 +93,7 @@ export function ActivityDetail({ activity, onClose }: ActivityDetailProps) {
         <div className="flex items-start justify-between mb-2">
           <div>
             <h2 className="text-2xl font-semibold">
-              {activity.activity_name || 'Activity'}
+              {activity.activity_name || t('activityFallback')}
             </h2>
             {activity.start_time && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
@@ -109,7 +111,7 @@ export function ActivityDetail({ activity, onClose }: ActivityDetailProps) {
                   className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
                 >
                   {platform === 'garmin' ? <GarminIcon size={13} /> : <StravaIcon size={13} />}
-                  {platform === 'garmin' ? 'Garmin Connect' : 'Strava'}
+                  {platform === 'garmin' ? t('garminConnect') : t('strava')}
                 </a>
               ))}
               <Tooltip>
@@ -118,17 +120,17 @@ export function ActivityDetail({ activity, onClose }: ActivityDetailProps) {
                     variant="ghost"
                     size="sm"
                     className="h-7 px-2 text-violet-500 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950 gap-1"
-                    aria-label="Discuss with AI Coach"
+                    aria-label={t('discussWithAI')}
                     onClick={() => {
                       onClose?.()
                       router.push(`/dashboard/chat?activityId=${activity.id}`)
                     }}
                   >
                     <Sparkles className="h-3.5 w-3.5" />
-                    <span className="text-xs">AI Coach</span>
+                    <span className="text-xs">{t('aiCoach')}</span>
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Discuss with AI Coach</TooltipContent>
+                <TooltipContent>{t('discussWithAI')}</TooltipContent>
               </Tooltip>
               {activity.planned_workout_id && (
                 <Tooltip>
@@ -137,7 +139,7 @@ export function ActivityDetail({ activity, onClose }: ActivityDetailProps) {
                       variant="ghost"
                       size="sm"
                       className="h-7 px-2 text-amber-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950 gap-1"
-                      aria-label="AI Summary"
+                      aria-label={t('aiSummary')}
                       onClick={() => {
                         document.getElementById('ai-summary-panel')?.scrollIntoView({ behavior: scrollBehavior() })
                       }}
@@ -146,10 +148,10 @@ export function ActivityDetail({ activity, onClose }: ActivityDetailProps) {
                         <FileText className="h-3.5 w-3.5" />
                         <Sparkles className="h-2 w-2 absolute -top-0.5 -right-1" />
                       </span>
-                      <span className="text-xs">AI Summary</span>
+                      <span className="text-xs">{t('aiSummary')}</span>
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>View AI coaching summary</TooltipContent>
+                  <TooltipContent>{t('viewAISummary')}</TooltipContent>
                 </Tooltip>
               )}
             </div>
@@ -171,7 +173,7 @@ export function ActivityDetail({ activity, onClose }: ActivityDetailProps) {
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <ActivityIcon className="h-4 w-4" />
-                  Distance
+                  {t('distance')}
                 </div>
                 <div className="text-2xl font-bold">
                   {formatDistance(activity.distance_meters)}
@@ -184,7 +186,7 @@ export function ActivityDetail({ activity, onClose }: ActivityDetailProps) {
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Clock className="h-4 w-4" />
-                  {hasMovingTime ? 'Moving Time' : 'Duration'}
+                  {hasMovingTime ? t('movingTime') : t('duration')}
                 </div>
                 <div className="text-2xl font-bold">
                   {Math.floor(displaySeconds / 3600) > 0 && (
@@ -194,9 +196,9 @@ export function ActivityDetail({ activity, onClose }: ActivityDetailProps) {
                 </div>
                 {hasMovingTime && activity.duration_seconds && (
                   <div className="text-xs text-muted-foreground">
-                    Elapsed: {Math.floor(activity.duration_seconds / 3600) > 0
+                    {t('elapsedLabel', { value: Math.floor(activity.duration_seconds / 3600) > 0
                       ? `${Math.floor(activity.duration_seconds / 3600)}h ${Math.floor((activity.duration_seconds % 3600) / 60)}m`
-                      : `${Math.floor((activity.duration_seconds % 3600) / 60)}m`}
+                      : `${Math.floor((activity.duration_seconds % 3600) / 60)}m` })}
                   </div>
                 )}
               </div>
@@ -207,7 +209,7 @@ export function ActivityDetail({ activity, onClose }: ActivityDetailProps) {
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Gauge className="h-4 w-4" />
-                  Average Pace
+                  {t('averagePace')}
                 </div>
                 <div className="text-2xl font-bold">
                   {avgPace}
@@ -220,10 +222,10 @@ export function ActivityDetail({ activity, onClose }: ActivityDetailProps) {
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <TrendingUp className="h-4 w-4" />
-                  Average HR
+                  {t('averageHR')}
                 </div>
                 <div className="text-2xl font-bold">
-                  {activity.avg_hr} bpm
+                  {activity.avg_hr} {t('bpm')}
                 </div>
               </div>
             )}
@@ -233,10 +235,10 @@ export function ActivityDetail({ activity, onClose }: ActivityDetailProps) {
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <TrendingUp className="h-4 w-4" />
-                  Max HR
+                  {t('maxHR')}
                 </div>
                 <div className="text-2xl font-bold">
-                  {activity.max_hr} bpm
+                  {activity.max_hr} {t('bpm')}
                 </div>
               </div>
             )}
@@ -246,7 +248,7 @@ export function ActivityDetail({ activity, onClose }: ActivityDetailProps) {
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Mountain className="h-4 w-4" />
-                  Elevation Gain
+                  {t('elevationGain')}
                 </div>
                 <div className="text-2xl font-bold">
                   {formatElevation(activity.elevation_gain_meters)}
@@ -263,20 +265,20 @@ export function ActivityDetail({ activity, onClose }: ActivityDetailProps) {
       {laps.length > 0 && (
         <>
           <div>
-            <h3 className="text-sm font-semibold mb-3">Lap Breakdown</h3>
+            <h3 className="text-sm font-semibold mb-3">{t('lapBreakdown')}</h3>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-12">Lap</TableHead>
-                    <TableHead className="text-right">Distance</TableHead>
-                    <TableHead className="text-right">Time</TableHead>
-                    <TableHead className="text-right">Pace</TableHead>
-                    <TableHead className="text-right">Avg HR</TableHead>
-                    <TableHead className="text-right">Max HR</TableHead>
-                    <TableHead className="text-right">Climb</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead className="text-right">Adherence</TableHead>
+                    <TableHead className="w-12">{t('colLap')}</TableHead>
+                    <TableHead className="text-right">{t('colDistance')}</TableHead>
+                    <TableHead className="text-right">{t('colTime')}</TableHead>
+                    <TableHead className="text-right">{t('colPace')}</TableHead>
+                    <TableHead className="text-right">{t('colAvgHR')}</TableHead>
+                    <TableHead className="text-right">{t('colMaxHR')}</TableHead>
+                    <TableHead className="text-right">{t('colClimb')}</TableHead>
+                    <TableHead>{t('colType')}</TableHead>
+                    <TableHead className="text-right">{t('colAdherence')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

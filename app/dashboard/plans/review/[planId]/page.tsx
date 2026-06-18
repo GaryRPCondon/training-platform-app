@@ -13,6 +13,7 @@ import type { PlanReviewContext, WorkoutWithDetails } from '@/types/review'
 import { createClient } from '@/lib/supabase/client'
 import { activatePlan } from '@/lib/supabase/plan-activation'
 import { toast } from 'sonner'
+import { useTranslations } from 'next-intl'
 
 interface PageProps {
   params: Promise<{ planId: string }>
@@ -21,6 +22,7 @@ interface PageProps {
 export default function ReviewPage({ params }: PageProps) {
   const router = useRouter()
   const queryClient = useQueryClient()
+  const t = useTranslations('planReview')
   const { planId: planIdString } = use(params)
   const planId = parseInt(planIdString, 10)
 
@@ -55,12 +57,12 @@ export default function ReviewPage({ params }: PageProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plan-review', planId] })
-      toast.success('Plan activated successfully!')
+      toast.success(t('activatedSuccess'))
       router.push('/dashboard/plans')
     },
     onError: (error) => {
       console.error('Error activating plan:', error)
-      toast.error('Failed to activate plan')
+      toast.error(t('activateError'))
     }
   })
 
@@ -78,12 +80,12 @@ export default function ReviewPage({ params }: PageProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plan-review', planId] })
-      toast.success('Plan deleted successfully')
+      toast.success(t('deletedSuccess'))
       router.push('/dashboard/plans')
     },
     onError: (error) => {
       console.error('Error deleting plan:', error)
-      toast.error('Failed to delete plan')
+      toast.error(t('deleteError'))
     }
   })
 
@@ -123,7 +125,11 @@ export default function ReviewPage({ params }: PageProps) {
             <div>
               <h1 className="text-2xl font-bold">{context.plan_name}</h1>
               <p className="text-sm text-muted-foreground">
-                {context.total_weeks} weeks • {context.goal_type.replace('_', ' ')} • Goal: {context.goal_date}
+                {t('metaLine', {
+                  weeks: context.total_weeks,
+                  goalType: context.goal_type.replace('_', ' '),
+                  goalDate: context.goal_date
+                })}
               </p>
             </div>
           </div>
@@ -134,8 +140,8 @@ export default function ReviewPage({ params }: PageProps) {
             <Button
               onClick={() => {
                 const message = context.status === 'active'
-                  ? 'Are you sure you want to delete this active plan? All workouts and progress will be lost. This cannot be undone.'
-                  : 'Are you sure you want to delete this draft plan? This cannot be undone.'
+                  ? t('confirmDeleteActive')
+                  : t('confirmDeleteDraft')
                 if (confirm(message)) {
                   deletePlan.mutate()
                 }
@@ -147,12 +153,12 @@ export default function ReviewPage({ params }: PageProps) {
               {deletePlan.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Deleting...
+                  {t('deleting')}
                 </>
               ) : (
                 <>
                   <Trash2 className="mr-2 h-4 w-4" />
-                  Delete Plan
+                  {t('deletePlan')}
                 </>
               )}
             </Button>
@@ -165,12 +171,12 @@ export default function ReviewPage({ params }: PageProps) {
                 {acceptPlan.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Accepting...
+                    {t('accepting')}
                   </>
                 ) : (
                   <>
                     <CheckCircle2 className="mr-2 h-4 w-4" />
-                    Accept Plan
+                    {t('acceptPlan')}
                   </>
                 )}
               </Button>
@@ -196,10 +202,10 @@ export default function ReviewPage({ params }: PageProps) {
                 <button
                   onClick={() => setModifyPanelOpen(true)}
                   className="flex items-center justify-center gap-1.5 w-full py-2 rounded-md border border-border bg-background hover:bg-accent shadow-sm transition-colors"
-                  aria-label="Open modify panel"
+                  aria-label={t('openModifyPanel')}
                 >
                   <Sparkles className="h-4 w-4 text-violet-500" />
-                  <span className="text-sm font-medium">Modify with AI</span>
+                  <span className="text-sm font-medium">{t('modifyWithAI')}</span>
                 </button>
               ) : undefined
             }
@@ -216,12 +222,12 @@ export default function ReviewPage({ params }: PageProps) {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-1.5">
                 <Sparkles className="h-4 w-4 text-violet-500" />
-                <span className="text-sm font-semibold">Modify with AI</span>
+                <span className="text-sm font-semibold">{t('modifyWithAI')}</span>
               </div>
               <button
                 onClick={() => setModifyPanelOpen(false)}
                 className="p-1 rounded hover:bg-accent"
-                aria-label="Close modify panel"
+                aria-label={t('closeModifyPanel')}
               >
                 <PanelRightClose className="h-4 w-4" />
               </button>

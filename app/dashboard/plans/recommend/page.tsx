@@ -19,10 +19,12 @@ import { ArrowLeft, AlertCircle, Loader2 } from 'lucide-react'
 import { getActiveTrainingPlan } from '@/lib/supabase/queries'
 import type { TrainingPlan } from '@/types/database'
 import type { RecommendationResponse, UserCriteria } from '@/lib/templates/types'
+import { useTranslations } from 'next-intl'
 
 function RecommendPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const t = useTranslations('planRecommend')
   const [recommendations, setRecommendations] = useState<RecommendationResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -50,7 +52,7 @@ function RecommendPageContent() {
 
         // Validate
         if (!criteria.goal_type || !criteria.experience_level || !criteria.weeks_available) {
-          setError('Missing required criteria. Please go back and fill the form.')
+          setError(t('errorMissingCriteria'))
           setIsLoading(false)
           return
         }
@@ -70,7 +72,7 @@ function RecommendPageContent() {
         setRecommendations(data)
       } catch (err) {
         console.error('Error fetching recommendations:', err)
-        setError('Failed to load recommendations. Please try again.')
+        setError(t('errorLoad'))
       } finally {
         setIsLoading(false)
       }
@@ -137,7 +139,7 @@ function RecommendPageContent() {
           className="gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back
+          {t('back')}
         </Button>
         <div className="flex items-center gap-2 text-destructive">
           <AlertCircle className="h-5 w-5" />
@@ -156,13 +158,13 @@ function RecommendPageContent() {
           className="gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back
+          {t('back')}
         </Button>
         <div className="text-center space-y-2">
           <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground" />
-          <p className="text-lg font-medium">No matching templates found</p>
+          <p className="text-lg font-medium">{t('noTemplatesTitle')}</p>
           <p className="text-sm text-muted-foreground">
-            Try adjusting your criteria (more weeks, higher mileage tolerance, or fewer training days)
+            {t('noTemplatesHint')}
           </p>
         </div>
       </div>
@@ -207,19 +209,22 @@ function RecommendPageContent() {
       <AlertDialog open={!!activePlan && !replaceConfirmed}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Replace your active plan?</AlertDialogTitle>
+            <AlertDialogTitle>{t('replaceTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              You already have an active plan
-              {activePlan?.name ? <> &ldquo;<strong>{activePlan.name}</strong>&rdquo;</> : ''}.
-              Creating a new one will archive it. Completed workouts from the old plan will stay in your activity history.
+              {activePlan?.name
+                ? t.rich('replaceBodyNamed', {
+                    name: activePlan.name,
+                    strong: (chunks) => <strong>{chunks}</strong>
+                  })
+                : t('replaceBodyUnnamed')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => router.push('/dashboard/plans')}>
-              Cancel
+              {t('cancel')}
             </AlertDialogCancel>
             <AlertDialogAction onClick={() => setReplaceConfirmed(true)}>
-              Replace plan
+              {t('replaceAction')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -228,9 +233,9 @@ function RecommendPageContent() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Recommended Training Plans</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
           <p className="text-muted-foreground mt-1">
-            Found {recommendations.recommendations.length} plans matching your criteria
+            {t('foundCount', { count: recommendations.recommendations.length })}
           </p>
         </div>
         <Button
@@ -239,7 +244,7 @@ function RecommendPageContent() {
           className="gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back
+          {t('back')}
         </Button>
       </div>
 
@@ -250,19 +255,19 @@ function RecommendPageContent() {
             <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-500 flex-shrink-0 mt-0.5" />
             <div className="space-y-1">
               <p className="font-medium text-yellow-900 dark:text-yellow-200">
-                Short Timeline Warning
+                {t('shortTimelineTitle')}
               </p>
               <p className="text-sm text-yellow-800 dark:text-yellow-300">
                 {goalType === 'marathon'
-                  ? `Marathon training typically requires 12+ weeks. You have ${weeksAvailable} weeks available.`
+                  ? t('timelineMarathon', { weeks: Number(weeksAvailable) })
                   : goalType === 'half_marathon'
-                  ? `Half marathon training typically requires 8+ weeks. You have ${weeksAvailable} weeks available.`
+                  ? t('timelineHalf', { weeks: Number(weeksAvailable) })
                   : goalType === '5k'
-                  ? `5K training typically requires 6+ weeks. You have ${weeksAvailable} weeks available.`
+                  ? t('timeline5k', { weeks: Number(weeksAvailable) })
                   : goalType === '10k'
-                  ? `10K training typically requires 6+ weeks. You have ${weeksAvailable} weeks available.`
-                  : `Your timeline of ${weeksAvailable} weeks is shorter than typical for ${goalType} training.`
-                } The AI coach will adapt the selected plan to fit your schedule, but consider that compressed training increases injury risk.
+                  ? t('timeline10k', { weeks: Number(weeksAvailable) })
+                  : t('timelineGeneric', { weeks: Number(weeksAvailable), goalType: goalType ?? '' })
+                }{' '}{t('timelineSuffix')}
               </p>
             </div>
           </div>
@@ -272,8 +277,7 @@ function RecommendPageContent() {
       {/* Disclaimer */}
       <div className="bg-muted/50 border border-muted rounded-lg p-4 text-sm">
         <p className="text-muted-foreground">
-          These plans are <strong>based on</strong> established training methodologies and personalized to your needs.
-          They are inspired by proven approaches but customized for you.
+          {t.rich('disclaimer', { strong: (chunks) => <strong>{chunks}</strong> })}
         </p>
       </div>
 

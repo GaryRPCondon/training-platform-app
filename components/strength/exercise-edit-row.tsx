@@ -12,13 +12,14 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { useTranslations } from 'next-intl'
 import type { StrengthExercise } from '@/types/database'
 
-export function makeBlankExercise(): StrengthExercise {
+export function makeBlankExercise(displayName = 'New exercise'): StrengthExercise {
   return {
     canonical_name: 'new_exercise',
-    display_name: 'New exercise',
-    user_text: 'New exercise',
+    display_name: displayName,
+    user_text: displayName,
     measurement: { type: 'reps', sets: 3, reps_per_set: 10 },
     garmin_supported: false,
   }
@@ -40,6 +41,7 @@ export interface ExerciseEditRowProps {
 }
 
 export function ExerciseEditRow({ exercise, canDelete, onChange, onMeasurementChange, onTypeChange, onDelete }: ExerciseEditRowProps) {
+  const t = useTranslations('strengthExercise')
   const m = exercise.measurement
   return (
     <div className="space-y-2 rounded-md border border-border/60 px-3 py-2">
@@ -47,7 +49,7 @@ export function ExerciseEditRow({ exercise, canDelete, onChange, onMeasurementCh
         <Input
           value={exercise.display_name}
           onChange={e => onChange({ display_name: e.target.value })}
-          placeholder="Exercise name"
+          placeholder={t('exerciseNamePlaceholder')}
           className="h-8"
         />
         <Tooltip>
@@ -58,30 +60,30 @@ export function ExerciseEditRow({ exercise, canDelete, onChange, onMeasurementCh
               className="h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
               onClick={onDelete}
               disabled={!canDelete}
-              aria-label="Remove exercise"
+              aria-label={t('removeExercise')}
             >
               <Trash2 className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>{canDelete ? 'Remove' : 'At least one exercise is required'}</TooltipContent>
+          <TooltipContent>{canDelete ? t('remove') : t('atLeastOne')}</TooltipContent>
         </Tooltip>
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
         <div>
-          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Type</Label>
+          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('typeLabel')}</Label>
           <Select value={m.type} onValueChange={v => onTypeChange(v as StrengthExercise['measurement']['type'])}>
             <SelectTrigger className="h-8 mt-1">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="reps">Reps</SelectItem>
-              <SelectItem value="duration">Duration</SelectItem>
-              <SelectItem value="distance">Distance</SelectItem>
+              <SelectItem value="reps">{t('typeReps')}</SelectItem>
+              <SelectItem value="duration">{t('typeDuration')}</SelectItem>
+              <SelectItem value="distance">{t('typeDistance')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <div>
-          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Sets</Label>
+          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('setsLabel')}</Label>
           <Input
             type="number"
             inputMode="numeric"
@@ -96,7 +98,7 @@ export function ExerciseEditRow({ exercise, canDelete, onChange, onMeasurementCh
         </div>
         {m.type === 'reps' && (
           <div>
-            <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Reps</Label>
+            <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('repsLabel')}</Label>
             <Input
               type="number"
               inputMode="numeric"
@@ -112,7 +114,7 @@ export function ExerciseEditRow({ exercise, canDelete, onChange, onMeasurementCh
         )}
         {m.type === 'duration' && (
           <div>
-            <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Seconds</Label>
+            <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('secondsLabel')}</Label>
             <Input
               type="number"
               inputMode="numeric"
@@ -128,7 +130,7 @@ export function ExerciseEditRow({ exercise, canDelete, onChange, onMeasurementCh
         )}
         {m.type === 'distance' && (
           <div>
-            <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Metres</Label>
+            <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('metresLabel')}</Label>
             <Input
               type="number"
               inputMode="numeric"
@@ -144,7 +146,7 @@ export function ExerciseEditRow({ exercise, canDelete, onChange, onMeasurementCh
         )}
         {m.type === 'reps' && (
           <div>
-            <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Weight (kg)</Label>
+            <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('weightLabel')}</Label>
             <Input
               type="number"
               inputMode="decimal"
@@ -160,7 +162,7 @@ export function ExerciseEditRow({ exercise, canDelete, onChange, onMeasurementCh
           </div>
         )}
         <div>
-          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Rest (s)</Label>
+          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('restLabel')}</Label>
           <Input
             type="number"
             inputMode="numeric"
@@ -175,11 +177,11 @@ export function ExerciseEditRow({ exercise, canDelete, onChange, onMeasurementCh
         </div>
       </div>
       <div>
-        <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Notes</Label>
+        <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('notesLabel')}</Label>
         <Input
           value={exercise.notes ?? ''}
           onChange={e => onChange({ notes: e.target.value || undefined })}
-          placeholder="Optional cue or coaching note"
+          placeholder={t('notesPlaceholder')}
           className="h-8 mt-1"
         />
       </div>

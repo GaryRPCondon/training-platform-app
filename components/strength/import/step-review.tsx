@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AlertCircle, Check, X, Code2, Loader2 } from 'lucide-react'
 import { ParsedProgram, parsedProgramSchema, Exercise } from '@/lib/strength/schemas'
+import { useTranslations } from 'next-intl'
 
 interface ParseResult {
   program: ParsedProgram
@@ -27,6 +28,7 @@ export function StepReview({
   onStartOver: () => void
   onConfirm: (program: ParsedProgram) => void
 }) {
+  const t = useTranslations('strengthImport')
   const [editingJson, setEditingJson] = useState(false)
   const [jsonText, setJsonText] = useState(() => JSON.stringify(result.program, null, 2))
   const [jsonError, setJsonError] = useState<string | null>(null)
@@ -38,7 +40,7 @@ export function StepReview({
     try {
       parsed = JSON.parse(jsonText)
     } catch (err) {
-      setJsonError(err instanceof Error ? err.message : 'Invalid JSON')
+      setJsonError(err instanceof Error ? err.message : t('invalidJson'))
       return
     }
     const validated = parsedProgramSchema.safeParse(parsed)
@@ -56,7 +58,7 @@ export function StepReview({
       })
       const body = await res.json()
       if (!res.ok) {
-        setJsonError(body.error ?? 'Re-validation failed')
+        setJsonError(body.error ?? t('revalidationFailed'))
         return
       }
       const restamped = body.program as ParsedProgram
@@ -65,13 +67,13 @@ export function StepReview({
       setJsonText(JSON.stringify(restamped, null, 2))
       setEditingJson(false)
       if (changes.length > 0) {
-        const flipped = changes.map(c => `${c.canonical_name}→${c.after.garmin_supported ? 'supported' : 'unsupported'}`).join(', ')
-        toast.success(`Re-validated against catalog. ${changes.length} exercise${changes.length === 1 ? '' : 's'} updated: ${flipped}`)
+        const flipped = changes.map(c => `${c.canonical_name}→${c.after.garmin_supported ? t('supported') : t('unsupported')}`).join(', ')
+        toast.success(t('revalidatedChanges', { count: changes.length, flipped }))
       } else {
-        toast.success('Re-validated against catalog. No changes.')
+        toast.success(t('revalidatedNoChanges'))
       }
     } catch (err) {
-      setJsonError(err instanceof Error ? err.message : 'Re-validation failed')
+      setJsonError(err instanceof Error ? err.message : t('revalidationFailed'))
     } finally {
       setRevalidating(false)
     }
@@ -84,9 +86,11 @@ export function StepReview({
       <CardHeader>
         <CardTitle>{editedProgram.name}</CardTitle>
         <CardDescription>
-          {editedProgram.sessions.length} session{editedProgram.sessions.length === 1 ? '' : 's'} ·
-          {' '}content type: {editedProgram.content_type} ·
-          {' '}parse confidence: {(result.confidence * 100).toFixed(0)}%
+          {t('reviewMeta', {
+            count: editedProgram.sessions.length,
+            contentType: editedProgram.content_type,
+            confidence: (result.confidence * 100).toFixed(0),
+          })}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -97,15 +101,15 @@ export function StepReview({
               <div className="space-y-1">
                 <p className="font-medium">
                   {result.contentType === 'other'
-                    ? 'This does not look like a strength or mobility plan.'
-                    : 'Low parsing confidence.'}
+                    ? t('notStrengthPlan')
+                    : t('lowConfidence')}
                 </p>
                 {result.warnings.length > 0 && (
                   <ul className="list-disc pl-5 text-sm">
                     {result.warnings.map((w, i) => <li key={i}>{w}</li>)}
                   </ul>
                 )}
-                <p className="text-sm">Review carefully before importing, or go back and adjust your input.</p>
+                <p className="text-sm">{t('reviewWarning')}</p>
               </div>
             </AlertDescription>
           </Alert>
@@ -125,7 +129,7 @@ export function StepReview({
         <div className="flex justify-end">
           <Button variant="outline" size="sm" onClick={() => setEditingJson(v => !v)}>
             <Code2 className="mr-2 h-4 w-4" />
-            {editingJson ? 'Close JSON editor' : 'Edit JSON'}
+            {editingJson ? t('closeJsonEditor') : t('editJson')}
           </Button>
         </div>
 
@@ -142,7 +146,7 @@ export function StepReview({
             )}
             <Button size="sm" onClick={applyJson} disabled={revalidating}>
               {revalidating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Validate and re-check Garmin support
+              {t('validateRecheck')}
             </Button>
           </div>
         )}
@@ -151,10 +155,10 @@ export function StepReview({
           {editedProgram.sessions.map((session, idx) => (
             <div key={idx} className="rounded-md border p-4">
               <div className="mb-2 flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">Session {session.session_index}</span>
+                <span className="text-xs text-muted-foreground">{t('sessionLabel', { index: session.session_index })}</span>
                 <span className="font-medium">{session.title}</span>
                 {session.estimated_duration_minutes && (
-                  <Badge variant="secondary">{session.estimated_duration_minutes} min</Badge>
+                  <Badge variant="secondary">{t('minBadge', { min: session.estimated_duration_minutes })}</Badge>
                 )}
               </div>
               {session.coaching_note && (
@@ -171,25 +175,26 @@ export function StepReview({
       </CardContent>
       <CardFooter className="flex justify-between gap-2">
         <div className="flex gap-2">
-          <Button variant="outline" onClick={onBack}>Back</Button>
-          <Button variant="ghost" onClick={onStartOver}>Start over</Button>
+          <Button variant="outline" onClick={onBack}>{t('back')}</Button>
+          <Button variant="ghost" onClick={onStartOver}>{t('startOver')}</Button>
         </div>
-        <Button onClick={() => onConfirm(editedProgram)}>Schedule workouts</Button>
+        <Button onClick={() => onConfirm(editedProgram)}>{t('scheduleWorkouts')}</Button>
       </CardFooter>
     </Card>
   )
 }
 
 function ExerciseLine({ exercise }: { exercise: Exercise }) {
+  const t = useTranslations('strengthImport')
   const isApproximate = exercise.garmin_supported && exercise.garmin_match_quality === 'approximate'
   return (
     <li className="flex items-start gap-2 text-sm">
       <span className="mt-0.5">
         {exercise.garmin_supported
           ? isApproximate
-            ? <Check className="h-4 w-4 text-amber-500" aria-label="Approximate Garmin match" />
-            : <Check className="h-4 w-4 text-green-600" aria-label="Supported by Garmin" />
-          : <X className="h-4 w-4 text-muted-foreground" aria-label="Not supported by Garmin" />}
+            ? <Check className="h-4 w-4 text-amber-500" aria-label={t('approxMatchAria')} />
+            : <Check className="h-4 w-4 text-green-600" aria-label={t('supportedAria')} />
+          : <X className="h-4 w-4 text-muted-foreground" aria-label={t('notSupportedAria')} />}
       </span>
       <span className="flex-1">
         <span className="font-medium">{exercise.display_name}</span>
@@ -200,7 +205,7 @@ function ExerciseLine({ exercise }: { exercise: Exercise }) {
         )}
         {isApproximate && (
           <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs">
-            <Badge variant="outline" className="border-amber-500/40 text-[10px] text-amber-600">Approx match</Badge>
+            <Badge variant="outline" className="border-amber-500/40 text-[10px] text-amber-600">{t('approxMatch')}</Badge>
             <span className="text-muted-foreground">
               <span className="italic">“{stripLeadingBullet(exercise.user_text)}”</span>
               {' → '}

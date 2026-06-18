@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { useTranslations } from 'next-intl'
 import { ParsedProgram } from '@/lib/strength/schemas'
 import { StepInput, type ProgramType } from './step-input'
 import { StepReview } from './step-review'
@@ -29,6 +30,7 @@ export function ImportWizard({
   onImported: () => void
   onStartOver: () => void
 }) {
+  const t = useTranslations('strengthImport')
   const [step, setStep] = useState<Step>('input')
   const [sourceText, setSourceText] = useState('')
   const [sourceFormat, setSourceFormat] = useState<'free_text' | 'json'>('free_text')
@@ -62,7 +64,7 @@ export function ImportWizard({
       })
       const data = await res.json()
       if (!res.ok) {
-        throw new Error(data.error ?? 'Failed to parse plan')
+        throw new Error(data.error ?? t('parseError'))
       }
       const program: ParsedProgram = nameOverride
         ? { ...data.program, name: nameOverride }
@@ -75,7 +77,7 @@ export function ImportWizard({
       })
       setStep('review')
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Parse failed')
+      toast.error(err instanceof Error ? err.message : t('parseFailed'))
     } finally {
       setSubmitting(false)
     }
@@ -114,11 +116,11 @@ export function ImportWizard({
         }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'Failed to import program')
-      toast.success('Program imported')
+      if (!res.ok) throw new Error(data.error ?? t('importError'))
+      toast.success(t('imported'))
       onImported()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Import failed')
+      toast.error(err instanceof Error ? err.message : t('importFailed'))
     } finally {
       setSubmitting(false)
     }

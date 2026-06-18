@@ -31,6 +31,7 @@ import { GarminIcon, StravaIcon } from '@/components/activities/platform-icons'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { toast } from 'sonner'
 import { useUnits } from '@/lib/hooks/use-units'
+import { useTranslations } from 'next-intl'
 
 interface Activity {
     id: number
@@ -65,12 +66,12 @@ function formatDuration(seconds: number | null): string {
     }
 }
 
-function formatActivityType(activityType: string | null): string {
-    if (!activityType) return 'Unknown'
+function formatActivityType(activityType: string | null, unknownLabel: string): string {
+    if (!activityType) return unknownLabel
 
     try {
         const parsed = JSON.parse(activityType)
-        return parsed.typeKey || parsed.typeId || 'Unknown'
+        return parsed.typeKey || parsed.typeId || unknownLabel
     } catch {
         return activityType
     }
@@ -91,6 +92,8 @@ function getSourceBadgeColor(source: string): string {
 
 export function ActivitiesView({ initialActivities, selectedYear, availableYears }: ActivitiesViewProps) {
     const { formatDistance, toDisplayDistance, distanceLabel } = useUnits()
+    const t = useTranslations('activities')
+    const unknownLabel = t('unknownType')
     const router = useRouter()
     const [dateFilter, setDateFilter] = useState<string>('all')
     const [typeFilter, setTypeFilter] = useState<string>('all')
@@ -104,8 +107,8 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
     const activityTypes = useMemo(() => {
         const types = new Set<string>()
         initialActivities.forEach(activity => {
-            const type = formatActivityType(activity.activity_type)
-            if (type !== 'Unknown') types.add(type)
+            const type = formatActivityType(activity.activity_type, unknownLabel)
+            if (type !== unknownLabel) types.add(type)
         })
         return Array.from(types).sort()
     }, [initialActivities])
@@ -135,7 +138,7 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
 
             // Type filter
             if (typeFilter !== 'all') {
-                const type = formatActivityType(activity.activity_type)
+                const type = formatActivityType(activity.activity_type, unknownLabel)
                 if (type !== typeFilter) return false
             }
 
@@ -223,15 +226,15 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
             })
             const data = await res.json()
             if (data.success) {
-                toast.success(`Deleted ${data.count} ${data.count === 1 ? 'activity' : 'activities'}`)
+                toast.success(t('deletedToast', { count: data.count }))
                 setSelectedIds(new Set())
                 setDeleteDialogOpen(false)
                 router.refresh()
             } else {
-                toast.error(data.error || 'Failed to delete activities')
+                toast.error(data.error || t('deleteError'))
             }
         } catch (error) {
-            toast.error('Failed to delete activities')
+            toast.error(t('deleteError'))
         } finally {
             setIsDeleting(false)
         }
@@ -244,13 +247,13 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
 
     return (
         <div className="space-y-6">
-            <h1 className="text-3xl font-bold tracking-tight">Activities</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
 
             {/* Summary Stats */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Activities</CardTitle>
+                        <CardTitle className="text-sm font-medium">{t('statActivities')}</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{stats.totalActivities}</div>
@@ -259,7 +262,7 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Distance</CardTitle>
+                        <CardTitle className="text-sm font-medium">{t('statDistance')}</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{stats.totalDistance} {distanceLabel()}</div>
@@ -268,20 +271,20 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Duration</CardTitle>
+                        <CardTitle className="text-sm font-medium">{t('statDuration')}</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{stats.totalDuration} hrs</div>
+                        <div className="text-2xl font-bold">{stats.totalDuration} {t('hrsUnit')}</div>
                         <p className="text-xs text-muted-foreground">{selectedYear}</p>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">This Week</CardTitle>
+                        <CardTitle className="text-sm font-medium">{t('statThisWeek')}</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{stats.thisWeekActivities}</div>
-                        <p className="text-xs text-muted-foreground">Activities</p>
+                        <p className="text-xs text-muted-foreground">{t('statActivities')}</p>
                     </CardContent>
                 </Card>
             </div>
@@ -289,12 +292,12 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
             {/* Filters */}
             <Card>
                 <CardHeader>
-                    <CardTitle>Filters</CardTitle>
+                    <CardTitle>{t('filters')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <div className="grid gap-4 md:grid-cols-5">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Year</label>
+                            <label className="text-sm font-medium">{t('year')}</label>
                             <select
                                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                                 value={selectedYear}
@@ -306,53 +309,53 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
                             </select>
                         </div>
                         <div className="space-y-2">
-                            <label htmlFor="activity-name-filter" className="text-sm font-medium">Search Name</label>
+                            <label htmlFor="activity-name-filter" className="text-sm font-medium">{t('searchName')}</label>
                             <Input
                                 id="activity-name-filter"
                                 type="text"
-                                placeholder="Filter by name..."
+                                placeholder={t('searchNamePlaceholder')}
                                 value={nameFilter}
                                 onChange={(e) => setNameFilter(e.target.value)}
                                 className="w-full"
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Date Range</label>
+                            <label className="text-sm font-medium">{t('dateRange')}</label>
                             <select
                                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                                 value={dateFilter}
                                 onChange={(e) => setDateFilter(e.target.value)}
                             >
-                                <option value="all">Full Year</option>
-                                <option value="7days">Last 7 Days</option>
-                                <option value="30days">Last 30 Days</option>
-                                <option value="90days">Last 90 Days</option>
+                                <option value="all">{t('dateAll')}</option>
+                                <option value="7days">{t('date7days')}</option>
+                                <option value="30days">{t('date30days')}</option>
+                                <option value="90days">{t('date90days')}</option>
                             </select>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Activity Type</label>
+                            <label className="text-sm font-medium">{t('activityType')}</label>
                             <select
                                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                                 value={typeFilter}
                                 onChange={(e) => setTypeFilter(e.target.value)}
                             >
-                                <option value="all">All Types</option>
+                                <option value="all">{t('allTypes')}</option>
                                 {activityTypes.map(type => (
                                     <option key={type} value={type}>{type}</option>
                                 ))}
                             </select>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Source</label>
+                            <label className="text-sm font-medium">{t('source')}</label>
                             <select
                                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                                 value={sourceFilter}
                                 onChange={(e) => setSourceFilter(e.target.value)}
                             >
-                                <option value="all">All Sources</option>
-                                <option value="garmin">Garmin</option>
-                                <option value="strava">Strava</option>
-                                <option value="merged">Merged</option>
+                                <option value="all">{t('allSources')}</option>
+                                <option value="garmin">{t('sourceGarmin')}</option>
+                                <option value="strava">{t('sourceStrava')}</option>
+                                <option value="merged">{t('sourceMerged')}</option>
                             </select>
                         </div>
                     </div>
@@ -363,11 +366,11 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
             {selectedInView.size > 0 && (
                 <div className="flex items-center gap-3 rounded-lg border bg-muted/50 px-4 py-3">
                     <span className="text-sm font-medium">
-                        {selectedInView.size} {selectedInView.size === 1 ? 'activity' : 'activities'} selected
+                        {t('selectedCount', { count: selectedInView.size })}
                     </span>
                     <Button variant="ghost" size="sm" onClick={clearSelection}>
                         <X className="h-4 w-4 mr-1" />
-                        Clear
+                        {t('clear')}
                     </Button>
                     <Button
                         variant="destructive"
@@ -375,7 +378,7 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
                         onClick={() => setDeleteDialogOpen(true)}
                     >
                         <Trash2 className="h-4 w-4 mr-1" />
-                        Delete Selected
+                        {t('deleteSelected')}
                     </Button>
                 </div>
             )}
@@ -383,12 +386,12 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
             {/* Activities Table */}
             <Card>
                 <CardHeader>
-                    <CardTitle>Activities ({filteredActivities.length})</CardTitle>
+                    <CardTitle>{t('tableTitle', { count: filteredActivities.length })}</CardTitle>
                 </CardHeader>
                 <CardContent>
                     {filteredActivities.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">
-                            No activities found. Try adjusting your filters or sync your activities.
+                            {t('noActivities')}
                         </div>
                     ) : (
                         <div className="space-y-4">
@@ -401,16 +404,16 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
                                                 <Checkbox
                                                     checked={allFilteredSelected ? true : someFilteredSelected ? "indeterminate" : false}
                                                     onCheckedChange={toggleSelectAll}
-                                                    aria-label="Select all"
+                                                    aria-label={t('selectAll')}
                                                 />
                                             </TableHead>
-                                            <TableHead>Date</TableHead>
-                                            <TableHead>Name</TableHead>
-                                            <TableHead>Type</TableHead>
-                                            <TableHead className="text-right">Distance</TableHead>
-                                            <TableHead className="text-right">Duration</TableHead>
-                                            <TableHead>Source</TableHead>
-                                            <TableHead>Links</TableHead>
+                                            <TableHead>{t('colDate')}</TableHead>
+                                            <TableHead>{t('colName')}</TableHead>
+                                            <TableHead>{t('colType')}</TableHead>
+                                            <TableHead className="text-right">{t('colDistance')}</TableHead>
+                                            <TableHead className="text-right">{t('colDuration')}</TableHead>
+                                            <TableHead>{t('colSource')}</TableHead>
+                                            <TableHead>{t('colLinks')}</TableHead>
                                             <TableHead className="w-10"></TableHead>
                                             <TableHead className="w-10"></TableHead>
                                         </TableRow>
@@ -422,14 +425,14 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
                                                     <Checkbox
                                                         checked={selectedIds.has(activity.id)}
                                                         onCheckedChange={() => toggleSelect(activity.id)}
-                                                        aria-label={`Select ${activity.activity_name || 'activity'}`}
+                                                        aria-label={t('selectActivity', { name: activity.activity_name || t('activityFallback') })}
                                                     />
                                                 </TableCell>
                                                 <TableCell className="font-medium">
                                                     {format(new Date(activity.start_time), 'EEE, MMM d, yyyy')}
                                                 </TableCell>
-                                                <TableCell>{activity.activity_name || 'Untitled'}</TableCell>
-                                                <TableCell>{formatActivityType(activity.activity_type)}</TableCell>
+                                                <TableCell>{activity.activity_name || t('untitled')}</TableCell>
+                                                <TableCell>{formatActivityType(activity.activity_type, unknownLabel)}</TableCell>
                                                 <TableCell className="text-right">{activity.distance_meters ? formatDistance(activity.distance_meters) : '-'}</TableCell>
                                                 <TableCell className="text-right">{formatDuration(activity.duration_seconds)}</TableCell>
                                                 <TableCell>
@@ -472,13 +475,13 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
                                                                 variant="ghost"
                                                                 size="icon"
                                                                 className="h-8 w-8 text-violet-500 hover:text-violet-600 hover:bg-violet-50"
-                                                                aria-label="Discuss with AI Coach"
+                                                                aria-label={t('discussWithAI')}
                                                                 onClick={() => router.push(`/dashboard/chat?activityId=${activity.id}`)}
                                                             >
                                                                 <Sparkles className="h-4 w-4" />
                                                             </Button>
                                                         </TooltipTrigger>
-                                                        <TooltipContent>Discuss with AI Coach</TooltipContent>
+                                                        <TooltipContent>{t('discussWithAI')}</TooltipContent>
                                                     </Tooltip>
                                                 </TableCell>
                                                 <TableCell>
@@ -487,7 +490,7 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
                                                         size="icon"
                                                         className="h-8 w-8 text-muted-foreground hover:text-destructive"
                                                         onClick={() => handleSingleDelete(activity.id)}
-                                                        aria-label="Delete activity"
+                                                        aria-label={t('deleteActivity')}
                                                     >
                                                         <Trash2 className="h-4 w-4" />
                                                     </Button>
@@ -511,7 +514,7 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
                                                         className="mt-1"
                                                     />
                                                     <div>
-                                                        <p className="font-semibold">{activity.activity_name || 'Untitled'}</p>
+                                                        <p className="font-semibold">{activity.activity_name || t('untitled')}</p>
                                                         <p className="text-sm text-muted-foreground">
                                                             {format(new Date(activity.start_time), 'EEE, MMM d, yyyy')}
                                                         </p>
@@ -524,15 +527,15 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
 
                                             <div className="grid grid-cols-2 gap-2 text-sm">
                                                 <div>
-                                                    <span className="text-muted-foreground">Type: </span>
-                                                    {formatActivityType(activity.activity_type)}
+                                                    <span className="text-muted-foreground">{t('labelType')}</span>
+                                                    {formatActivityType(activity.activity_type, unknownLabel)}
                                                 </div>
                                                 <div>
-                                                    <span className="text-muted-foreground">Distance: </span>
+                                                    <span className="text-muted-foreground">{t('labelDistance')}</span>
                                                     {activity.distance_meters ? formatDistance(activity.distance_meters) : '-'}
                                                 </div>
                                                 <div>
-                                                    <span className="text-muted-foreground">Duration: </span>
+                                                    <span className="text-muted-foreground">{t('labelDuration')}</span>
                                                     {formatDuration(activity.duration_seconds)}
                                                 </div>
                                             </div>
@@ -543,11 +546,11 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
                                                         variant="ghost"
                                                         size="sm"
                                                         className="text-violet-500 hover:text-violet-600 hover:bg-violet-50 gap-1.5 h-8 px-2"
-                                                        aria-label="Discuss with AI Coach"
+                                                        aria-label={t('discussWithAI')}
                                                         onClick={() => router.push(`/dashboard/chat?activityId=${activity.id}`)}
                                                     >
                                                         <Sparkles className="h-3.5 w-3.5" />
-                                                        <span className="text-xs">AI Coach</span>
+                                                        <span className="text-xs">{t('aiCoach')}</span>
                                                     </Button>
                                                     {activity.garmin_id && (
                                                         <a
@@ -557,7 +560,7 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
                                                             className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
                                                         >
                                                             <GarminIcon size={12} />
-                                                            Garmin Connect
+                                                            {t('garminConnect')}
                                                         </a>
                                                     )}
                                                     {activity.strava_id && (
@@ -568,7 +571,7 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
                                                             className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
                                                         >
                                                             <StravaIcon size={12} />
-                                                            Strava
+                                                            {t('strava')}
                                                         </a>
                                                     )}
                                                 </div>
@@ -579,7 +582,7 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
                                                     onClick={() => handleSingleDelete(activity.id)}
                                                 >
                                                     <Trash2 className="h-4 w-4" />
-                                                    Delete
+                                                    {t('delete')}
                                                 </Button>
                                             </div>
                                         </div>
@@ -595,15 +598,14 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
             <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Delete Activities</DialogTitle>
+                        <DialogTitle>{t('deleteDialogTitle')}</DialogTitle>
                         <DialogDescription>
-                            Are you sure you want to delete {selectedIds.size} {selectedIds.size === 1 ? 'activity' : 'activities'}?
-                            This action cannot be undone. Linked workout references will be cleared automatically.
+                            {t('deleteDialogBody', { count: selectedIds.size })}
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={isDeleting}>
-                            Cancel
+                            {t('cancel')}
                         </Button>
                         <Button
                             variant="destructive"
@@ -613,10 +615,10 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
                             {isDeleting ? (
                                 <>
                                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                    Deleting...
+                                    {t('deleting')}
                                 </>
                             ) : (
-                                `Delete ${selectedIds.size} ${selectedIds.size === 1 ? 'Activity' : 'Activities'}`
+                                t('deleteConfirm', { count: selectedIds.size })
                             )}
                         </Button>
                     </DialogFooter>

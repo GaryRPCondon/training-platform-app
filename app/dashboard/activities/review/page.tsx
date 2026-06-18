@@ -1,8 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
+import { getTranslations } from 'next-intl/server'
 import { MergeReviewList } from '@/components/activities/merge-review-list'
 
 export default async function MergeReviewPage() {
     const supabase = await createClient()
+    const t = await getTranslations('merge')
 
     // Fetch flags of type 'merge_conflict'
     const { data: flags } = await supabase
@@ -37,7 +39,7 @@ export default async function MergeReviewPage() {
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
-                <h1 className="text-3xl font-bold tracking-tight">Review Merges</h1>
+                <h1 className="text-3xl font-bold tracking-tight">{t('reviewTitle')}</h1>
             </div>
 
             <MergeReviewList conflicts={conflicts} />

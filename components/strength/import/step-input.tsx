@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { HelpCircle } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 export type ProgramType = 'fixed' | 'weekly'
 
@@ -43,6 +44,7 @@ export function StepInput({
   ) => void
   onCancel: () => void
 }) {
+  const t = useTranslations('strengthImport')
   const [tab, setTab] = useState<'free_text' | 'file' | 'json'>('free_text')
   const [text, setText] = useState('')
   const [programType, setProgramType] = useState<ProgramType>('weekly')
@@ -69,23 +71,23 @@ export function StepInput({
       <CardHeader>
         <div className="flex items-start justify-between gap-4">
           <div>
-            <CardTitle>Paste your program</CardTitle>
+            <CardTitle>{t('inputTitle')}</CardTitle>
             <CardDescription>
-              Insert your strength workout details and timing requirements and they will be interpreted and presented for scheduling.
+              {t('inputDescription')}
             </CardDescription>
           </div>
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Show recommended format">
+              <Button variant="ghost" size="icon" aria-label={t('showRecommendedFormat')}>
                 <HelpCircle className="h-4 w-4" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-96">
               <div className="space-y-2">
-                <p className="text-sm font-medium">Recommended format</p>
+                <p className="text-sm font-medium">{t('recommendedFormat')}</p>
                 <pre className="rounded bg-muted p-3 text-xs whitespace-pre-wrap">{RECOMMENDED_FORMAT}</pre>
                 <p className="text-xs text-muted-foreground">
-                  Variation is fine — the AI tolerates non-standard formatting and will flag anything ambiguous.
+                  {t('formatNote')}
                 </p>
               </div>
             </PopoverContent>
@@ -94,7 +96,7 @@ export function StepInput({
       </CardHeader>
       <CardContent>
         <div className="mb-6">
-          <Label className="text-sm font-medium">Program type</Label>
+          <Label className="text-sm font-medium">{t('programTypeLabel')}</Label>
           <RadioGroup
             value={programType}
             onValueChange={v => setProgramType(v as ProgramType)}
@@ -106,10 +108,10 @@ export function StepInput({
             >
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="weekly" id="program-type-weekly" />
-                <span className="font-medium">Weekly routine</span>
+                <span className="font-medium">{t('weeklyTitle')}</span>
               </div>
               <span className="ml-6 text-xs text-muted-foreground">
-                Fixed number of sessions, repeats for the number of weeks selected below.
+                {t('weeklyDesc')}
               </span>
             </label>
             <label
@@ -118,10 +120,10 @@ export function StepInput({
             >
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="fixed" id="program-type-fixed" />
-                <span className="font-medium">Full plan</span>
+                <span className="font-medium">{t('fullPlanTitle')}</span>
               </div>
               <span className="ml-6 text-xs text-muted-foreground">
-                The complete schedule, written out session by session. Sessions are placed on the calendar once.
+                {t('fullPlanDesc')}
               </span>
             </label>
           </RadioGroup>
@@ -129,29 +131,29 @@ export function StepInput({
 
         <div className="mb-6 max-w-md">
           <Label htmlFor="plan-name" className="text-sm font-medium">
-            Plan name <span className="text-xs font-normal text-muted-foreground">(optional)</span>
+            {t.rich('planNameLabel', { optional: (chunks) => <span className="text-xs font-normal text-muted-foreground">{chunks}</span> })}
           </Label>
           <Input
             id="plan-name"
             className="mt-2"
             value={nameOverride}
             onChange={e => setNameOverride(e.target.value)}
-            placeholder="e.g. Glute & Core Block — Spring 2026"
+            placeholder={t('planNamePlaceholder')}
             maxLength={120}
           />
           <p className="mt-1 text-xs text-muted-foreground">
-            Helps you to uniquely identify your plans.
+            {t('planNameHelp')}
           </p>
         </div>
 
         <div className="mb-6">
-          <Label className="text-sm font-medium">Scheduling</Label>
+          <Label className="text-sm font-medium">{t('schedulingLabel')}</Label>
           <p className="mt-1 mb-3 text-xs text-muted-foreground">
-            Select your start date and if applicable, number of repeat weeks.
+            {t('schedulingHelp')}
           </p>
           <div className="flex flex-wrap items-end gap-4">
             <div className="w-40">
-              <Label htmlFor="start-date" className="text-xs text-muted-foreground">Start date</Label>
+              <Label htmlFor="start-date" className="text-xs text-muted-foreground">{t('startDateLabel')}</Label>
               <Input
                 id="start-date"
                 type="date"
@@ -162,7 +164,7 @@ export function StepInput({
             </div>
             {programType === 'weekly' && (
               <div className="w-32">
-                <Label htmlFor="weeks-to-repeat" className="text-xs text-muted-foreground">Repeat for (weeks)</Label>
+                <Label htmlFor="weeks-to-repeat" className="text-xs text-muted-foreground">{t('repeatWeeksLabel')}</Label>
                 <Input
                   id="weeks-to-repeat"
                   type="number"
@@ -184,13 +186,13 @@ export function StepInput({
 
         <Tabs value={tab} onValueChange={v => setTab(v as typeof tab)}>
           <TabsList>
-            <TabsTrigger value="free_text">Paste text</TabsTrigger>
-            <TabsTrigger value="file">Upload file</TabsTrigger>
-            <TabsTrigger value="json">Paste JSON</TabsTrigger>
+            <TabsTrigger value="free_text">{t('tabPasteText')}</TabsTrigger>
+            <TabsTrigger value="file">{t('tabUploadFile')}</TabsTrigger>
+            <TabsTrigger value="json">{t('tabPasteJson')}</TabsTrigger>
           </TabsList>
           <TabsContent value="free_text" className="mt-4">
             <Textarea
-              placeholder="Paste your strength or mobility program here..."
+              placeholder={t('pastePlaceholder')}
               value={text}
               onChange={e => setText(e.target.value)}
               rows={16}
@@ -225,9 +227,9 @@ export function StepInput({
         </Tabs>
       </CardContent>
       <CardFooter className="flex justify-end gap-2">
-        <Button variant="outline" onClick={onCancel}>Cancel</Button>
+        <Button variant="outline" onClick={onCancel}>{t('cancel')}</Button>
         <Button onClick={submit} disabled={submitting || text.trim().length === 0}>
-          {submitting ? 'Parsing...' : 'Parse'}
+          {submitting ? t('parsing') : t('parse')}
         </Button>
       </CardFooter>
     </Card>

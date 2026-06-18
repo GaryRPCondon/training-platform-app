@@ -10,6 +10,7 @@ import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import type { Activity } from '@/types/database'
 import { useUnits } from '@/lib/hooks/use-units'
+import { useTranslations } from 'next-intl'
 
 interface MergeConflict {
     flag_id: number
@@ -23,6 +24,7 @@ export function MergeReviewList({ conflicts }: { conflicts: MergeConflict[] }) {
     const router = useRouter()
     const supabase = createClient()
     const { formatDistance } = useUnits()
+    const t = useTranslations('merge')
 
     const handleMerge = async (conflict: MergeConflict) => {
         setProcessingId(conflict.flag_id)
@@ -52,11 +54,11 @@ export function MergeReviewList({ conflicts }: { conflicts: MergeConflict[] }) {
             // 3. Delete the flag
             await supabase.from('workout_flags').delete().eq('id', conflict.flag_id)
 
-            toast.success('Activities merged successfully')
+            toast.success(t('mergedSuccess'))
             router.refresh()
         } catch (error) {
             console.error('Merge failed:', error)
-            toast.error('Failed to merge activities')
+            toast.error(t('mergeError'))
         } finally {
             setProcessingId(null)
         }
@@ -74,10 +76,10 @@ export function MergeReviewList({ conflicts }: { conflicts: MergeConflict[] }) {
                 .update({ merge_status: 'ignored' })
                 .eq('id', conflict.activity.id)
 
-            toast.success('Activities kept separate')
+            toast.success(t('keptSeparateAlt'))
             router.refresh()
         } catch (error) {
-            toast.error('Failed to update')
+            toast.error(t('updateError'))
         } finally {
             setProcessingId(null)
         }
@@ -86,7 +88,7 @@ export function MergeReviewList({ conflicts }: { conflicts: MergeConflict[] }) {
     if (conflicts.length === 0) {
         return (
             <div className="text-center py-12">
-                <p className="text-muted-foreground">No pending merge conflicts.</p>
+                <p className="text-muted-foreground">{t('noConflicts')}</p>
             </div>
         )
     }
@@ -99,34 +101,34 @@ export function MergeReviewList({ conflicts }: { conflicts: MergeConflict[] }) {
                         <div className="flex items-center justify-between">
                             <CardTitle className="flex items-center gap-2">
                                 <ArrowRightLeft className="h-5 w-5 text-orange-500" />
-                                Potential Match Found
+                                {t('potentialMatch')}
                             </CardTitle>
                             <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
-                                {Math.round(conflict.confidence_score)}% Confidence
+                                {t('confidencePercent', { score: Math.round(conflict.confidence_score) })}
                             </Badge>
                         </div>
                         <CardDescription>
-                            We found a similar activity that might be a duplicate.
+                            {t('duplicateDesc')}
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="p-4 border rounded-lg bg-muted/50">
-                                <h4 className="font-medium mb-2 capitalize">{conflict.activity.source} (New)</h4>
+                                <h4 className="font-medium mb-2 capitalize">{t('sourceNew', { source: conflict.activity.source })}</h4>
                                 <div className="space-y-1 text-sm">
-                                    <p>{conflict.activity.activity_name || 'Activity'}</p>
-                                    <p>{conflict.activity.start_time ? new Date(conflict.activity.start_time).toLocaleString() : 'N/A'}</p>
-                                    <p>{conflict.activity.distance_meters ? formatDistance(conflict.activity.distance_meters) : 'N/A'}</p>
-                                    <p>{conflict.activity.duration_seconds ? Math.floor(conflict.activity.duration_seconds / 60) + ' min' : 'N/A'}</p>
+                                    <p>{conflict.activity.activity_name || t('activityFallback')}</p>
+                                    <p>{conflict.activity.start_time ? new Date(conflict.activity.start_time).toLocaleString() : t('na')}</p>
+                                    <p>{conflict.activity.distance_meters ? formatDistance(conflict.activity.distance_meters) : t('na')}</p>
+                                    <p>{conflict.activity.duration_seconds ? t('minutesValue', { min: Math.floor(conflict.activity.duration_seconds / 60) }) : t('na')}</p>
                                 </div>
                             </div>
                             <div className="p-4 border rounded-lg">
-                                <h4 className="font-medium mb-2 capitalize">{conflict.potential_match.source} (Existing)</h4>
+                                <h4 className="font-medium mb-2 capitalize">{t('sourceExisting', { source: conflict.potential_match.source })}</h4>
                                 <div className="space-y-1 text-sm">
-                                    <p>{conflict.potential_match.activity_name || 'Activity'}</p>
-                                    <p>{conflict.potential_match.start_time ? new Date(conflict.potential_match.start_time).toLocaleString() : 'N/A'}</p>
-                                    <p>{conflict.potential_match.distance_meters ? formatDistance(conflict.potential_match.distance_meters) : 'N/A'}</p>
-                                    <p>{conflict.potential_match.duration_seconds ? Math.floor(conflict.potential_match.duration_seconds / 60) + ' min' : 'N/A'}</p>
+                                    <p>{conflict.potential_match.activity_name || t('activityFallback')}</p>
+                                    <p>{conflict.potential_match.start_time ? new Date(conflict.potential_match.start_time).toLocaleString() : t('na')}</p>
+                                    <p>{conflict.potential_match.distance_meters ? formatDistance(conflict.potential_match.distance_meters) : t('na')}</p>
+                                    <p>{conflict.potential_match.duration_seconds ? t('minutesValue', { min: Math.floor(conflict.potential_match.duration_seconds / 60) }) : t('na')}</p>
                                 </div>
                             </div>
                         </div>
@@ -138,14 +140,14 @@ export function MergeReviewList({ conflicts }: { conflicts: MergeConflict[] }) {
                             disabled={processingId === conflict.flag_id}
                         >
                             <X className="mr-2 h-4 w-4" />
-                            Keep Separate
+                            {t('keepSeparate')}
                         </Button>
                         <Button
                             onClick={() => handleMerge(conflict)}
                             disabled={processingId === conflict.flag_id}
                         >
                             <Check className="mr-2 h-4 w-4" />
-                            Merge Activities
+                            {t('mergeActivities')}
                         </Button>
                     </CardFooter>
                 </Card>
