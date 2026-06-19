@@ -5,19 +5,21 @@ import { Button } from '@/components/ui/button'
 import { Clock } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { useTranslations } from 'next-intl'
 
 export default function PendingApprovalPage() {
     const router = useRouter()
+    const t = useTranslations('auth')
 
     async function handleLogout() {
         try {
             const response = await fetch('/api/auth/logout', { method: 'POST' })
             if (!response.ok) throw new Error('Logout failed')
-            toast.success('Logged out successfully')
+            toast.success(t('loggedOut'))
             router.push('/login')
             router.refresh()
         } catch {
-            toast.error('Failed to log out')
+            toast.error(t('logoutFailed'))
         }
     }
 
@@ -28,18 +30,17 @@ export default function PendingApprovalPage() {
                     <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900">
                         <Clock className="h-6 w-6 text-amber-600 dark:text-amber-400" />
                     </div>
-                    <CardTitle className="text-2xl">Account Pending Approval</CardTitle>
+                    <CardTitle className="text-2xl">{t('pendingTitle')}</CardTitle>
                     <CardDescription>
-                        Your account has been created and is awaiting admin approval.
-                        You&apos;ll be able to access the platform once your account is approved.
+                        {t('pendingBody')}
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-3">
                     <Button variant="outline" onClick={() => router.refresh()}>
-                        Check Status
+                        {t('checkStatus')}
                     </Button>
                     <Button variant="ghost" onClick={handleLogout}>
-                        Logout
+                        {t('logout')}
                     </Button>
                 </CardContent>
             </Card>

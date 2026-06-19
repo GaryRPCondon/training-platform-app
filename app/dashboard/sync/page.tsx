@@ -11,6 +11,7 @@ import { Activity, CheckCircle2, Loader2, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { format, startOfYear, endOfYear, subDays } from 'date-fns'
 import { useQueryClient } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
 
 type DateRangeOption = 'latest' | 'week' | 'month' | 'year' | 'custom'
 
@@ -23,6 +24,7 @@ interface SyncResult {
 }
 
 export default function ActivitySyncPage() {
+    const t = useTranslations('sync')
     const queryClient = useQueryClient()
     const [dateRange, setDateRange] = useState<DateRangeOption>('latest')
     const [customStartDate, setCustomStartDate] = useState<Date>()
@@ -60,7 +62,7 @@ export default function ActivitySyncPage() {
                 break
             case 'custom':
                 if (!customStartDate || !customEndDate) {
-                    toast.error('Please select both start and end dates')
+                    toast.error(t('selectBothDates'))
                     throw new Error('Invalid custom date range')
                 }
                 start = customStartDate
@@ -83,7 +85,7 @@ export default function ActivitySyncPage() {
             })
             const data = await res.json()
             if (data.matchCount > 0) {
-                toast.success(`${data.matchCount} activit${data.matchCount === 1 ? 'y' : 'ies'} matched to workouts`)
+                toast.success(t('matchedToWorkouts', { count: data.matchCount }))
             }
         } catch {
             // Non-critical - don't block sync results
@@ -103,7 +105,7 @@ export default function ActivitySyncPage() {
             })
             const data = await res.json()
             if (res.status === 409) {
-                toast.error('Sync already in progress. Please wait and try again.')
+                toast.error(t('syncInProgress'))
                 return
             }
             setGarminResult(data)
@@ -112,13 +114,13 @@ export default function ActivitySyncPage() {
                 await autoMatchActivities(startDate, endDate)
                 queryClient.invalidateQueries({ queryKey: ['activities'] })
                 queryClient.invalidateQueries({ queryKey: ['workouts'] })
-                toast.success(`Garmin sync complete: ${data.synced} activities`)
+                toast.success(t('garminComplete', { count: data.synced }))
             } else {
-                toast.error(data.error || 'Sync failed')
+                toast.error(data.error || t('syncFailed'))
             }
         } catch (error) {
             setGarminResult({ success: false, error: String(error) })
-            toast.error('Sync failed')
+            toast.error(t('syncFailed'))
         } finally {
             setGarminLoading(false)
         }
@@ -137,7 +139,7 @@ export default function ActivitySyncPage() {
             })
             const data = await res.json()
             if (res.status === 409) {
-                toast.error('Sync already in progress. Please wait and try again.')
+                toast.error(t('syncInProgress'))
                 return
             }
             setStravaResult(data)
@@ -146,13 +148,13 @@ export default function ActivitySyncPage() {
                 await autoMatchActivities(startDate, endDate)
                 queryClient.invalidateQueries({ queryKey: ['activities'] })
                 queryClient.invalidateQueries({ queryKey: ['workouts'] })
-                toast.success(`Strava sync complete: ${data.synced} activities`)
+                toast.success(t('stravaComplete', { count: data.synced }))
             } else {
-                toast.error(data.error || 'Sync failed')
+                toast.error(data.error || t('syncFailed'))
             }
         } catch (error) {
             setStravaResult({ success: false, error: String(error) })
-            toast.error('Sync failed')
+            toast.error(t('syncFailed'))
         } finally {
             setStravaLoading(false)
         }
@@ -167,52 +169,52 @@ export default function ActivitySyncPage() {
     return (
         <div className="space-y-8">
             <div>
-                <h1 className="text-3xl font-bold tracking-tight">Activity Sync</h1>
-                <p className="text-muted-foreground">Sync your activities from Garmin and Strava</p>
+                <h1 className="text-3xl font-bold tracking-tight">{t('pageTitle')}</h1>
+                <p className="text-muted-foreground">{t('pageSubtitle')}</p>
             </div>
 
             <div aria-live="polite" role="status" className="sr-only">
-                {garminLoading ? 'Syncing activities from Garmin…' : ''}
-                {stravaLoading ? 'Syncing activities from Strava…' : ''}
+                {garminLoading ? t('srGarmin') : ''}
+                {stravaLoading ? t('srStrava') : ''}
             </div>
 
             {/* Date Range & Sync */}
             <Card className="w-full md:w-1/2">
                 <CardHeader>
-                    <CardTitle>Sync Activities</CardTitle>
+                    <CardTitle>{t('syncActivities')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <div className="flex flex-col md:flex-row gap-8 max-w-xl">
                         {/* Left: Date Range */}
                         <div className="space-y-4 flex-1">
-                            <Label className="text-sm font-medium text-muted-foreground">Date Range</Label>
+                            <Label className="text-sm font-medium text-muted-foreground">{t('dateRange')}</Label>
                             <RadioGroup value={dateRange} onValueChange={(value: string) => setDateRange(value as DateRangeOption)}>
                                 <div className="flex items-center space-x-2">
                                     <RadioGroupItem value="latest" id="latest" />
-                                    <Label htmlFor="latest">Latest Activity (Newest single activity only)</Label>
+                                    <Label htmlFor="latest">{t('rangeLatest')}</Label>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <RadioGroupItem value="week" id="week" />
-                                    <Label htmlFor="week">Last 7 Days</Label>
+                                    <Label htmlFor="week">{t('rangeWeek')}</Label>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <RadioGroupItem value="month" id="month" />
-                                    <Label htmlFor="month">Last 4 Weeks</Label>
+                                    <Label htmlFor="month">{t('rangeMonth')}</Label>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <RadioGroupItem value="year" id="year" />
-                                    <Label htmlFor="year">This Year</Label>
+                                    <Label htmlFor="year">{t('rangeYear')}</Label>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <RadioGroupItem value="custom" id="custom" />
-                                    <Label htmlFor="custom">Custom</Label>
+                                    <Label htmlFor="custom">{t('rangeCustom')}</Label>
                                 </div>
                             </RadioGroup>
 
                             {dateRange === 'custom' && (
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label htmlFor="start-date">Start Date</Label>
+                                        <Label htmlFor="start-date">{t('startDate')}</Label>
                                         <Input
                                             id="start-date"
                                             type="date"
@@ -226,7 +228,7 @@ export default function ActivitySyncPage() {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="end-date">End Date</Label>
+                                        <Label htmlFor="end-date">{t('endDate')}</Label>
                                         <Input
                                             id="end-date"
                                             type="date"
@@ -253,12 +255,12 @@ export default function ActivitySyncPage() {
                                 {garminLoading ? (
                                     <>
                                         <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
-                                        Syncing...
+                                        {t('syncing')}
                                     </>
                                 ) : (
                                     <>
                                         <Activity className="h-3.5 w-3.5 mr-2" />
-                                        Sync Garmin
+                                        {t('syncGarmin')}
                                     </>
                                 )}
                             </Button>
@@ -270,12 +272,12 @@ export default function ActivitySyncPage() {
                                 {stravaLoading ? (
                                     <>
                                         <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
-                                        Syncing...
+                                        {t('syncing')}
                                     </>
                                 ) : (
                                     <>
                                         <Activity className="h-3.5 w-3.5 mr-2" />
-                                        Sync Strava
+                                        {t('syncStrava')}
                                     </>
                                 )}
                             </Button>
@@ -288,12 +290,12 @@ export default function ActivitySyncPage() {
                                 {garminLoading || stravaLoading ? (
                                     <>
                                         <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
-                                        Syncing...
+                                        {t('syncing')}
                                     </>
                                 ) : (
                                     <>
                                         <RefreshCw className="h-3.5 w-3.5 mr-2" />
-                                        Sync Both
+                                        {t('syncBoth')}
                                     </>
                                 )}
                             </Button>
@@ -311,10 +313,10 @@ export default function ActivitySyncPage() {
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
                                         <Activity className="h-5 w-5 text-blue-500" />
-                                        <CardTitle>Garmin</CardTitle>
+                                        <CardTitle>{t('garmin')}</CardTitle>
                                     </div>
                                     {garminResult.success && (
-                                        <Badge className="bg-green-500">Success</Badge>
+                                        <Badge className="bg-green-500">{t('success')}</Badge>
                                     )}
                                 </div>
                             </CardHeader>
@@ -323,26 +325,26 @@ export default function ActivitySyncPage() {
                                     <div className="space-y-2">
                                         <div className="flex items-center gap-2 text-sm">
                                             <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                            <span className="font-medium">Sync Complete</span>
+                                            <span className="font-medium">{t('syncComplete')}</span>
                                         </div>
                                         <div className="grid grid-cols-3 gap-2 text-sm mt-3">
                                             <div>
-                                                <div className="text-muted-foreground">Synced</div>
+                                                <div className="text-muted-foreground">{t('synced')}</div>
                                                 <div className="text-lg font-bold">{garminResult.synced || 0}</div>
                                             </div>
                                             <div>
-                                                <div className="text-muted-foreground">Merged</div>
+                                                <div className="text-muted-foreground">{t('merged')}</div>
                                                 <div className="text-lg font-bold">{garminResult.merged || 0}</div>
                                             </div>
                                             <div>
-                                                <div className="text-muted-foreground">Review</div>
+                                                <div className="text-muted-foreground">{t('review')}</div>
                                                 <div className="text-lg font-bold">{garminResult.pendingReview || 0}</div>
                                             </div>
                                         </div>
                                     </div>
                                 ) : (
                                     <div className="text-sm text-destructive">
-                                        Error: {garminResult.error || 'Unknown error'}
+                                        {t('errorPrefix', { error: garminResult.error || t('unknownError') })}
                                     </div>
                                 )}
                             </CardContent>
@@ -355,10 +357,10 @@ export default function ActivitySyncPage() {
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
                                         <Activity className="h-5 w-5 text-orange-500" />
-                                        <CardTitle>Strava</CardTitle>
+                                        <CardTitle>{t('strava')}</CardTitle>
                                     </div>
                                     {stravaResult.success && (
-                                        <Badge className="bg-green-500">Success</Badge>
+                                        <Badge className="bg-green-500">{t('success')}</Badge>
                                     )}
                                 </div>
                             </CardHeader>
@@ -367,26 +369,26 @@ export default function ActivitySyncPage() {
                                     <div className="space-y-2">
                                         <div className="flex items-center gap-2 text-sm">
                                             <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                            <span className="font-medium">Sync Complete</span>
+                                            <span className="font-medium">{t('syncComplete')}</span>
                                         </div>
                                         <div className="grid grid-cols-3 gap-2 text-sm mt-3">
                                             <div>
-                                                <div className="text-muted-foreground">Synced</div>
+                                                <div className="text-muted-foreground">{t('synced')}</div>
                                                 <div className="text-lg font-bold">{stravaResult.synced || 0}</div>
                                             </div>
                                             <div>
-                                                <div className="text-muted-foreground">Merged</div>
+                                                <div className="text-muted-foreground">{t('merged')}</div>
                                                 <div className="text-lg font-bold">{stravaResult.merged || 0}</div>
                                             </div>
                                             <div>
-                                                <div className="text-muted-foreground">Review</div>
+                                                <div className="text-muted-foreground">{t('review')}</div>
                                                 <div className="text-lg font-bold">{stravaResult.pendingReview || 0}</div>
                                             </div>
                                         </div>
                                     </div>
                                 ) : (
                                     <div className="text-sm text-destructive">
-                                        Error: {stravaResult.error || 'Unknown error'}
+                                        {t('errorPrefix', { error: stravaResult.error || t('unknownError') })}
                                     </div>
                                 )}
                             </CardContent>

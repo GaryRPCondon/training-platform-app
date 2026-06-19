@@ -10,8 +10,10 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { Clock } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 function LoginForm() {
+    const t = useTranslations('auth')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [loading, setLoading] = useState(false)
@@ -36,11 +38,11 @@ function LoginForm() {
 
             if (error) throw error
 
-            toast.success('Logged in successfully')
+            toast.success(t('loggedIn'))
             router.push(redirectTo)
             router.refresh()
         } catch (error: any) {
-            toast.error(error.message || 'Login failed')
+            toast.error(error.message || t('loginFailed'))
         } finally {
             setLoading(false)
         }
@@ -87,9 +89,9 @@ function LoginForm() {
             }
 
             setSignupComplete(true)
-            toast.success('Account created! Awaiting admin approval.')
+            toast.success(t('accountCreated'))
         } catch (error: any) {
-            toast.error(error.message || 'Sign up failed')
+            toast.error(error.message || t('signUpFailed'))
         } finally {
             setLoading(false)
         }
@@ -99,33 +101,32 @@ function LoginForm() {
         <div className="min-h-screen flex items-center justify-center bg-background p-4">
             <Card className="w-full max-w-md">
                 <CardHeader>
-                    <CardTitle className="text-2xl">TrAIner Login</CardTitle>
-                    <CardDescription>Sign in to access your training platform</CardDescription>
+                    <CardTitle className="text-2xl">{t('loginTitle')}</CardTitle>
+                    <CardDescription>{t('loginSubtitle')}</CardDescription>
                 </CardHeader>
                 <CardContent>
                     {signupComplete && (
                         <Alert className="mb-4">
                             <Clock className="h-4 w-4" />
                             <AlertDescription>
-                                Your account has been created and is awaiting admin approval.
-                                You&apos;ll receive access once an administrator approves your account.
+                                {t('signupPending')}
                             </AlertDescription>
                         </Alert>
                     )}
                     <form onSubmit={handleLogin} className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="email">Email</Label>
+                            <Label htmlFor="email">{t('emailLabel')}</Label>
                             <Input
                                 id="email"
                                 type="email"
-                                placeholder="you@example.com"
+                                placeholder={t('emailPlaceholder')}
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="password">Password</Label>
+                            <Label htmlFor="password">{t('passwordLabel')}</Label>
                             <Input
                                 id="password"
                                 type="password"
@@ -137,7 +138,7 @@ function LoginForm() {
                         </div>
                         <div className="flex gap-2">
                             <Button type="submit" disabled={loading} className="flex-1">
-                                {loading ? 'Loading...' : 'Sign In'}
+                                {loading ? t('loading') : t('signIn')}
                             </Button>
                             <Button
                                 type="button"
@@ -146,7 +147,7 @@ function LoginForm() {
                                 disabled={loading}
                                 className="flex-1"
                             >
-                                Sign Up
+                                {t('signUp')}
                             </Button>
                         </div>
                     </form>

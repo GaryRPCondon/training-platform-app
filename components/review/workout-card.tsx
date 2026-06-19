@@ -26,6 +26,8 @@ import { useUnits } from '@/lib/hooks/use-units'
 import { formatDistance as fmtDist, formatClock, paceParts, type UnitSystem } from '@/lib/utils/units'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
+import { useEnumLabels } from '@/lib/i18n/enum-labels'
 import { SplitDialog } from '@/components/calendar/split-dialog'
 import {
   AlertDialog,
@@ -43,10 +45,6 @@ const INTENSITY_OPTIONS = ['easy', 'moderate', 'marathon', 'hard', 'tempo', 'thr
 const WORKOUT_TYPES = ['easy_run', 'long_run', 'intervals', 'tempo', 'rest', 'cross_training', 'recovery', 'race'] as const
 
 const KM_TO_MILES = 0.621371
-
-function formatWorkoutType(type: string): string {
-  return type.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
-}
 
 interface WorkoutCardProps {
   workout: WorkoutWithDetails
@@ -254,10 +252,11 @@ function IntensitySelect({
   value: string | undefined
   onChange: (v: string) => void
 }) {
+  const t = useTranslations('workoutCard')
   return (
     <Select value={value ?? ''} onValueChange={onChange}>
       <SelectTrigger className="h-8 text-xs">
-        <SelectValue placeholder="Intensity" />
+        <SelectValue placeholder={t('intensityPlaceholder')} />
       </SelectTrigger>
       <SelectContent>
         {INTENSITY_OPTIONS.map(opt => (
@@ -285,6 +284,7 @@ function WarmupCooldownStep({
   units: UnitSystem
   trainingPaces?: TrainingPaces | null
 }) {
+  const t = useTranslations('workoutCard')
   const isExpanded = expandedKey === rowKey
   const isCustom = data.intensity === 'custom'
   const metric = data.duration_minutes
@@ -338,7 +338,7 @@ function WarmupCooldownStep({
           size="icon"
           className="h-7 w-7 shrink-0"
           onClick={onToggle}
-          aria-label={isExpanded ? `Collapse ${label}` : `Edit ${label}`}
+          aria-label={isExpanded ? t('collapseLabel', { label }) : t('editLabel', { label })}
         >
           {isExpanded ? <ChevronUp className="h-3 w-3" /> : <Pencil className="h-3 w-3" />}
         </Button>
@@ -349,7 +349,7 @@ function WarmupCooldownStep({
         <div className="mx-1 mb-1 border rounded-md p-3 bg-muted/20 space-y-3">
           <div className="flex items-end gap-2 flex-wrap">
             <div className="space-y-1">
-              <Label className="text-xs">Duration</Label>
+              <Label className="text-xs">{t('duration')}</Label>
               <div className="flex items-center gap-1">
                 <Input
                   type="number" min={0} placeholder="—"
@@ -357,12 +357,12 @@ function WarmupCooldownStep({
                   value={data.duration_minutes ?? ''}
                   onChange={e => onChange({ ...data, duration_minutes: e.target.value ? Number(e.target.value) : undefined })}
                 />
-                <span className="text-xs text-muted-foreground">min</span>
+                <span className="text-xs text-muted-foreground">{t('minUnit')}</span>
               </div>
             </div>
-            <span className="text-xs text-muted-foreground mb-2">or</span>
+            <span className="text-xs text-muted-foreground mb-2">{t('or')}</span>
             <div className="space-y-1">
-              <Label className="text-xs">Distance</Label>
+              <Label className="text-xs">{t('distance')}</Label>
               <div className="flex items-center gap-1">
                 <Input
                   type="number" min={0} placeholder="—"
@@ -370,11 +370,11 @@ function WarmupCooldownStep({
                   value={data.distance_meters ?? ''}
                   onChange={e => onChange({ ...data, distance_meters: e.target.value ? Number(e.target.value) : undefined })}
                 />
-                <span className="text-xs text-muted-foreground">m</span>
+                <span className="text-xs text-muted-foreground">{t('mUnit')}</span>
               </div>
             </div>
             <div className="space-y-1 flex-1 min-w-[110px]">
-              <Label className="text-xs">Intensity</Label>
+              <Label className="text-xs">{t('intensity')}</Label>
               <IntensitySelect
                 value={data.intensity}
                 onChange={intensity => onChange({ ...data, intensity, target_pace: intensity !== 'custom' ? undefined : data.target_pace })}
@@ -387,7 +387,7 @@ function WarmupCooldownStep({
               if (!rangeStr) return null
               return (
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Pace range</Label>
+                  <Label className="text-xs text-muted-foreground">{t('paceRange')}</Label>
                   <div className="h-8 flex items-center">
                     <span className="text-xs font-mono">{rangeStr}</span>
                   </div>
@@ -399,7 +399,7 @@ function WarmupCooldownStep({
           {/* Custom pace — only when intensity is 'custom' */}
           {isCustom && (
             <div className="space-y-1">
-              <Label className="text-xs">Pace</Label>
+              <Label className="text-xs">{t('pace')}</Label>
               <div className="flex items-center gap-1">
                 <Input
                   type="number" min={0} max={99} placeholder="M"
@@ -425,9 +425,9 @@ function WarmupCooldownStep({
               className="h-7 text-xs text-destructive hover:text-destructive"
               onClick={onRemove}
             >
-              <Trash2 className="h-3 w-3 mr-1" />Remove
+              <Trash2 className="h-3 w-3 mr-1" />{t('remove')}
             </Button>
-            <Button size="sm" className="h-7 text-xs" onClick={onToggle}>Done</Button>
+            <Button size="sm" className="h-7 text-xs" onClick={onToggle}>{t('done')}</Button>
           </div>
         </div>
       )}
@@ -460,6 +460,7 @@ function IntervalStep({
   stampedPaceSec?: number
   workoutIntensity?: string
 }) {
+  const t = useTranslations('workoutCard')
   const isExpanded = expandedKey === rowKey
   const isIndented = !isFirstInSet
   const hasMultiple = set.intervals.length > 1 || set.repeat > 1
@@ -486,7 +487,7 @@ function IntervalStep({
     ? `${interval.distance_meters} m`
     : interval.duration_seconds
     ? formatDurationSeconds(interval.duration_seconds)
-    : 'Step'
+    : t('step')
   const label = showRepeat ? `${set.repeat} × ${distLabel}` : distLabel
 
   const paceDisplay = isFirstInSet
@@ -555,7 +556,7 @@ function IntervalStep({
           size="icon"
           className="h-7 w-7 shrink-0"
           onClick={onToggle}
-          aria-label={isExpanded ? 'Collapse step' : 'Edit step'}
+          aria-label={isExpanded ? t('collapseStep') : t('editStep')}
         >
           {isExpanded ? <ChevronUp className="h-3 w-3" /> : <Pencil className="h-3 w-3" />}
         </Button>
@@ -567,21 +568,21 @@ function IntervalStep({
           {/* Repeat — only for first interval in a multi-repeat or multi-interval set */}
           {showRepeat && (
             <div className="flex items-center gap-2">
-              <Label className="text-xs w-14 shrink-0">Repeat</Label>
+              <Label className="text-xs w-14 shrink-0">{t('repeat')}</Label>
               <Input
                 type="number" min={1}
                 className="h-8 w-16 text-sm"
                 value={set.repeat}
                 onChange={e => onChangeSet({ ...set, repeat: Math.max(1, Number(e.target.value) || 1) })}
               />
-              <span className="text-xs text-muted-foreground">times</span>
+              <span className="text-xs text-muted-foreground">{t('times')}</span>
             </div>
           )}
 
           {/* Distance / Duration */}
           <div className="flex items-end gap-2 flex-wrap">
             <div className="space-y-1">
-              <Label className="text-xs">Distance</Label>
+              <Label className="text-xs">{t('distance')}</Label>
               <div className="flex items-center gap-1">
                 <Input
                   type="number" min={0} placeholder="—"
@@ -589,12 +590,12 @@ function IntervalStep({
                   value={interval.distance_meters ?? ''}
                   onChange={e => onChange({ ...interval, distance_meters: e.target.value ? Number(e.target.value) : undefined })}
                 />
-                <span className="text-xs text-muted-foreground">m</span>
+                <span className="text-xs text-muted-foreground">{t('mUnit')}</span>
               </div>
             </div>
-            <span className="text-xs text-muted-foreground mb-2">or</span>
+            <span className="text-xs text-muted-foreground mb-2">{t('or')}</span>
             <div className="space-y-1">
-              <Label className="text-xs">Duration</Label>
+              <Label className="text-xs">{t('duration')}</Label>
               <div className="flex items-center gap-1">
                 <Input
                   type="number" min={0} placeholder="—"
@@ -602,7 +603,7 @@ function IntervalStep({
                   value={interval.duration_seconds ?? ''}
                   onChange={e => onChange({ ...interval, duration_seconds: e.target.value ? Number(e.target.value) : undefined })}
                 />
-                <span className="text-xs text-muted-foreground">s</span>
+                <span className="text-xs text-muted-foreground">{t('sUnit')}</span>
               </div>
             </div>
           </div>
@@ -610,9 +611,9 @@ function IntervalStep({
           {/* Pace range */}
           <div className="space-y-1.5">
             <div className="flex items-center gap-2 flex-wrap">
-              <Label className="text-xs">Pace range</Label>
+              <Label className="text-xs">{t('paceRange')}</Label>
               {vdotLabel && (
-                <span className="text-xs text-muted-foreground">VDOT target: {vdotLabel}</span>
+                <span className="text-xs text-muted-foreground">{t('vdotTarget', { pace: vdotLabel })}</span>
               )}
             </div>
             <div className="flex items-center gap-1 flex-wrap">
@@ -629,7 +630,7 @@ function IntervalStep({
                 value={paceInputs.fasterS}
                 onChange={e => handlePaceInput('fasterS', e.target.value)}
               />
-              <span className="text-xs text-muted-foreground mx-1">to</span>
+              <span className="text-xs text-muted-foreground mx-1">{t('to')}</span>
               <Input
                 type="number" min={0} max={99} placeholder="M"
                 className="h-8 w-10 text-sm text-center px-1"
@@ -649,7 +650,7 @@ function IntervalStep({
 
           {/* Intensity */}
           <div className="space-y-1">
-            <Label className="text-xs">Intensity</Label>
+            <Label className="text-xs">{t('intensity')}</Label>
             <IntensitySelect
               value={interval.intensity}
               onChange={intensity => {
@@ -684,7 +685,7 @@ function IntervalStep({
                 onCheckedChange={checked => onChangeSet({ ...set, skip_last_recovery: !!checked })}
               />
               <Label htmlFor={`skip-recovery-${rowKey}`} className="text-xs cursor-pointer">
-                Skip this recovery after the last rep
+                {t('skipLastRecovery')}
               </Label>
             </div>
           )}
@@ -696,9 +697,9 @@ function IntervalStep({
               className="h-7 text-xs text-destructive hover:text-destructive"
               onClick={onRemove}
             >
-              <Trash2 className="h-3 w-3 mr-1" />Remove
+              <Trash2 className="h-3 w-3 mr-1" />{t('remove')}
             </Button>
-            <Button size="sm" className="h-7 text-xs" onClick={onToggle}>Done</Button>
+            <Button size="sm" className="h-7 text-xs" onClick={onToggle}>{t('done')}</Button>
           </div>
         </div>
       )}
@@ -725,6 +726,7 @@ function StructuredWorkoutEditor({
   stampedPaceSec?: number
   workoutIntensity?: string
 }) {
+  const t = useTranslations('workoutCard')
   const [expandedKey, setExpandedKey] = useState<string | null>(null)
   const totalMeters = useMemo(
     () => calcTotalDistance(structured, trainingPaces),
@@ -791,7 +793,7 @@ function StructuredWorkoutEditor({
     <div className="space-y-0.5">
       {structured.warmup !== undefined && (
         <WarmupCooldownStep
-          label="Warmup"
+          label={t('warmup')}
           data={structured.warmup}
           rowKey="warmup"
           expandedKey={expandedKey}
@@ -838,7 +840,7 @@ function StructuredWorkoutEditor({
                   className="h-7 text-xs gap-1 text-muted-foreground"
                   onClick={() => addStepToSet(setIdx)}
                 >
-                  <Plus className="h-3 w-3" />Add step to repeat
+                  <Plus className="h-3 w-3" />{t('addStepToRepeat')}
                 </Button>
               </div>
             )}
@@ -848,7 +850,7 @@ function StructuredWorkoutEditor({
 
       {structured.cooldown !== undefined && (
         <WarmupCooldownStep
-          label="Cooldown"
+          label={t('cooldown')}
           data={structured.cooldown}
           rowKey="cooldown"
           expandedKey={expandedKey}
@@ -866,20 +868,20 @@ function StructuredWorkoutEditor({
           className="h-7 text-xs gap-1 text-muted-foreground"
           onClick={addStep}
         >
-          <Plus className="h-3 w-3" />Add step
+          <Plus className="h-3 w-3" />{t('addStep')}
         </Button>
         <Button
           variant="ghost" size="sm"
           className="h-7 text-xs gap-1 text-muted-foreground"
           onClick={addRepeat}
         >
-          <Repeat2 className="h-3 w-3" />Add repeat
+          <Repeat2 className="h-3 w-3" />{t('addRepeat')}
         </Button>
       </div>
 
       {totalMeters > 0 && (
         <div className="text-xs text-muted-foreground bg-muted/50 rounded px-2 py-1 mt-1">
-          Approx. distance: {fmtDist(totalMeters, units, 1)}
+          {t('approxDistanceValue', { distance: fmtDist(totalMeters, units, 1) })}
         </div>
       )}
     </div>
@@ -908,6 +910,8 @@ export function WorkoutCard({
   onSplitChanged,
 }: WorkoutCardProps) {
   const { units, formatDistance, formatPace, toDisplayDistance, distanceLabel } = useUnits()
+  const t = useTranslations('workoutCard')
+  const { workoutType: workoutTypeLabel, completionStatus } = useEnumLabels()
   const queryClient = useQueryClient()
 
   const [isEditing, setIsEditing] = useState(isNew)
@@ -958,13 +962,13 @@ export function WorkoutCard({
       })
       const json = await res.json()
       if (!res.ok) {
-        toast.error(json.error || 'Failed to merge workouts')
+        toast.error(json.error || t('mergeError'))
         return
       }
-      toast.success('Runs merged')
+      toast.success(t('runsMerged'))
       onSplitChanged?.()
     } catch {
-      toast.error('Failed to merge workouts')
+      toast.error(t('mergeError'))
     } finally {
       setIsMerging(false)
     }
@@ -1190,11 +1194,11 @@ export function WorkoutCard({
 
         if (!response.ok) {
           const err = await response.json()
-          throw new Error(err.error || 'Failed to create')
+          throw new Error(err.error || t('createError'))
         }
 
         queryClient.invalidateQueries({ queryKey: ['workouts'] })
-        toast.success('Workout created')
+        toast.success(t('workoutCreated'))
         onCreated?.()
         return
       }
@@ -1259,14 +1263,14 @@ export function WorkoutCard({
 
       if (!response.ok) {
         const err = await response.json()
-        throw new Error(err.error || 'Failed to save')
+        throw new Error(err.error || t('saveError'))
       }
 
       const { workout: updated } = await response.json()
 
       queryClient.invalidateQueries({ queryKey: ['workouts'] })
 
-      toast.success('Workout saved')
+      toast.success(t('workoutSaved'))
       setIsEditing(false)
 
       if (onSaved && updated) {
@@ -1280,7 +1284,7 @@ export function WorkoutCard({
         })
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to save workout'
+      const message = err instanceof Error ? err.message : t('saveFailedFallback')
       toast.error(message)
     } finally {
       setIsSaving(false)
@@ -1288,11 +1292,11 @@ export function WorkoutCard({
   }
 
   const handleDelete = async () => {
-    if (!confirm('Delete this workout from the plan? This cannot be undone.')) return
+    if (!confirm(t('deleteConfirm'))) return
     setIsDeleting(true)
     try {
       const res = await fetch(`/api/workouts?id=${workout.id}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('Failed to delete workout')
+      if (!res.ok) throw new Error(t('deleteError'))
       onDeleted?.()
     } catch {
       // error is surfaced via the button's disabled state reverting
@@ -1314,9 +1318,9 @@ export function WorkoutCard({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ workoutId: workout.id, newDate: newDateStr }),
       })
-      if (!res.ok) throw new Error('Failed to reschedule')
+      if (!res.ok) throw new Error(t('rescheduleError'))
       queryClient.invalidateQueries({ queryKey: ['workouts'] })
-      toast.success('Workout rescheduled')
+      toast.success(t('workoutRescheduled'))
       setDatePickerOpen(false)
       onSaved?.({
         ...workout,
@@ -1325,7 +1329,7 @@ export function WorkoutCard({
         formatted_date: format(newDate, 'EEE, MMM d'),
       })
     } catch {
-      toast.error('Failed to reschedule workout')
+      toast.error(t('rescheduleFailed'))
     } finally {
       setIsRescheduling(false)
     }
@@ -1337,7 +1341,7 @@ export function WorkoutCard({
       <div>
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-xl font-semibold">
-            {formatWorkoutType(isNew ? editWorkoutType : workout.workout_type)}
+            {workoutTypeLabel(isNew ? editWorkoutType : workout.workout_type)}
           </h3>
           <div className="flex items-center gap-2">
             {!isNew && workout.workout_index && (
@@ -1346,11 +1350,11 @@ export function WorkoutCard({
             {canSplit && !isEditing && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsSplitDialogOpen(true)} aria-label="Split into two runs">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsSplitDialogOpen(true)} aria-label={t('splitIntoTwo')}>
                     <Split className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Split into two runs</TooltipContent>
+                <TooltipContent>{t('splitIntoTwo')}</TooltipContent>
               </Tooltip>
             )}
             {canUnsplit && !isEditing && (
@@ -1362,22 +1366,22 @@ export function WorkoutCard({
                     className="h-8 w-8"
                     onClick={() => setIsMergeConfirmOpen(true)}
                     disabled={isMerging}
-                    aria-label={`Merge with Run ${siblings[0].session_order}`}
+                    aria-label={t('mergeWithRun', { order: siblings[0].session_order })}
                   >
                     {isMerging ? <Loader2 className="h-4 w-4 animate-spin" /> : <Merge className="h-4 w-4" />}
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Merge with Run {siblings[0].session_order}</TooltipContent>
+                <TooltipContent>{t('mergeWithRun', { order: siblings[0].session_order })}</TooltipContent>
               </Tooltip>
             )}
             {editable && !isEditing && !isNew && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={enterEditMode} aria-label="Edit workout">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={enterEditMode} aria-label={t('editWorkout')}>
                     <Pencil className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Edit workout</TooltipContent>
+                <TooltipContent>{t('editWorkout')}</TooltipContent>
               </Tooltip>
             )}
             {onDiscuss && !isEditing && !isNew && (
@@ -1388,12 +1392,12 @@ export function WorkoutCard({
                     size="icon"
                     className="h-8 w-8 text-violet-500 hover:text-violet-600 hover:bg-violet-50"
                     onClick={() => onDiscuss(workout)}
-                    aria-label="Discuss with AI Coach"
+                    aria-label={t('discussWithAI')}
                   >
                     <Sparkles className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Discuss with AI Coach</TooltipContent>
+                <TooltipContent>{t('discussWithAI')}</TooltipContent>
               </Tooltip>
             )}
             {onDeleted && !isEditing && !isNew && (
@@ -1405,12 +1409,12 @@ export function WorkoutCard({
                     className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
                     disabled={isDeleting}
                     onClick={handleDelete}
-                    aria-label="Delete workout"
+                    aria-label={t('deleteWorkout')}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Delete workout</TooltipContent>
+                <TooltipContent>{t('deleteWorkout')}</TooltipContent>
               </Tooltip>
             )}
           </div>
@@ -1452,19 +1456,19 @@ export function WorkoutCard({
           {workout.completion_status === 'completed' && (
             <>
               <CheckCircle className="h-4 w-4 text-green-500" />
-              <span className="text-green-600 font-medium">Completed</span>
+              <span className="text-green-600 font-medium">{completionStatus('completed')}</span>
             </>
           )}
           {workout.completion_status === 'partial' && (
             <>
               <AlertCircle className="h-4 w-4 text-yellow-500" />
-              <span className="text-yellow-600 font-medium">Partial</span>
+              <span className="text-yellow-600 font-medium">{completionStatus('partial')}</span>
             </>
           )}
           {workout.completion_status === 'skipped' && (
             <>
               <XCircle className="h-4 w-4 text-red-500" />
-              <span className="text-red-600 font-medium">Skipped</span>
+              <span className="text-red-600 font-medium">{completionStatus('skipped')}</span>
             </>
           )}
 
@@ -1516,7 +1520,7 @@ export function WorkoutCard({
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Target className="h-4 w-4" />
-                  {distanceIsTotalEstimate ? 'Approx. distance' : 'Distance Target'}
+                  {distanceIsTotalEstimate ? t('approxDistance') : t('distanceTarget')}
                 </div>
                 <div className="text-lg font-medium">
                   {formatDistance(distanceIsTotalEstimate ? totalWorkoutDistance : workout.distance_target_meters, 1)}
@@ -1528,7 +1532,7 @@ export function WorkoutCard({
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <TrendingUp className="h-4 w-4" />
-                  Intensity
+                  {t('intensity')}
                 </div>
                 <Badge>{workout.intensity_target}</Badge>
               </div>
@@ -1538,14 +1542,14 @@ export function WorkoutCard({
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Gauge className="h-4 w-4" />
-                  {paceLabel} Pace
+                  {t('paceLabelSuffix', { label: paceLabel ?? '' })}
                 </div>
                 <div className="text-lg font-medium">
                   {formatPace(targetPace!)}
                 </div>
                 {vdot && (
                   <div className="text-xs text-muted-foreground">
-                    VDOT {vdot}
+                    {t('vdotValue', { vdot })}
                   </div>
                 )}
               </div>
@@ -1555,10 +1559,10 @@ export function WorkoutCard({
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Clock className="h-4 w-4" />
-                  Estimated Duration
+                  {t('estimatedDuration')}
                 </div>
                 <div className="text-lg font-medium">
-                  {estimatedDurationMinutes} min
+                  {t('estMinutes', { minutes: estimatedDurationMinutes })}
                 </div>
               </div>
             )}
@@ -1569,9 +1573,9 @@ export function WorkoutCard({
             <>
               <Separator />
               <div>
-                <h4 className="font-medium mb-2">Workout Structure</h4>
+                <h4 className="font-medium mb-2">{t('workoutStructure')}</h4>
                 <div className="text-sm space-y-1">
-                  {renderStructuredWorkout(workout.structured_workout as StructuredBlob, units)}
+                  {renderStructuredWorkout(workout.structured_workout as StructuredBlob, units, t)}
                 </div>
               </div>
             </>
@@ -1580,7 +1584,7 @@ export function WorkoutCard({
           <div className="flex gap-2 pt-2">
             {onClose && (
               <Button onClick={onClose} variant="outline">
-                Close
+                {t('close')}
               </Button>
             )}
             {garminConnected && onSendToGarmin && workout.workout_type !== 'rest' && (
@@ -1596,7 +1600,7 @@ export function WorkoutCard({
                   }
                 }}
               >
-                {isSendingToGarmin ? 'Sending...' : 'Send to Garmin'}
+                {isSendingToGarmin ? t('sending') : t('sendToGarmin')}
               </Button>
             )}
             {garminConnected && onRemoveFromGarmin && workout.garmin_workout_id && workout.workout_type !== 'rest' && (
@@ -1613,7 +1617,7 @@ export function WorkoutCard({
                   }
                 }}
               >
-                {isRemovingFromGarmin ? 'Removing...' : 'Remove from Garmin'}
+                {isRemovingFromGarmin ? t('removing') : t('removeFromGarmin')}
               </Button>
             )}
           </div>
@@ -1628,7 +1632,7 @@ export function WorkoutCard({
           <div className="space-y-4">
             {isNew && (
               <div className="space-y-1.5">
-                <Label className="text-sm">Workout Type</Label>
+                <Label className="text-sm">{t('workoutType')}</Label>
                 <Select
                   value={editWorkoutType}
                   onValueChange={v => setEditWorkoutType(v as typeof editWorkoutType)}
@@ -1637,8 +1641,8 @@ export function WorkoutCard({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {WORKOUT_TYPES.map(t => (
-                      <SelectItem key={t} value={t}>{formatWorkoutType(t)}</SelectItem>
+                    {WORKOUT_TYPES.map(wt => (
+                      <SelectItem key={wt} value={wt}>{workoutTypeLabel(wt)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -1646,18 +1650,18 @@ export function WorkoutCard({
             )}
 
             <div className="space-y-1.5">
-              <Label className="text-sm">Description</Label>
+              <Label className="text-sm">{t('description')}</Label>
               <Input
                 value={editDescription}
                 onChange={e => setEditDescription(e.target.value)}
-                placeholder="Workout description"
+                placeholder={t('descriptionPlaceholder')}
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className={`text-sm ${editStructured ? 'text-muted-foreground' : ''}`}>
-                  {editStructured ? `Approx. distance (${distanceLabel()})` : `Distance (${distanceLabel()})`}
+                  {editStructured ? t('approxDistanceUnit', { unit: distanceLabel() }) : t('distanceUnit', { unit: distanceLabel() })}
                 </Label>
                 <Input
                   type="number"
@@ -1665,20 +1669,20 @@ export function WorkoutCard({
                   step={0.1}
                   value={editDistanceDisplay}
                   onChange={e => setEditDistanceDisplay(e.target.value)}
-                  placeholder="e.g. 10"
+                  placeholder={t('distancePlaceholder')}
                   disabled={!!editStructured}
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label className={`text-sm ${editStructured ? 'text-muted-foreground' : ''}`}>Intensity</Label>
+                <Label className={`text-sm ${editStructured ? 'text-muted-foreground' : ''}`}>{t('intensity')}</Label>
                 <Select
                   value={editIntensity}
                   onValueChange={setEditIntensity}
                   disabled={!!editStructured}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select intensity" />
+                    <SelectValue placeholder={t('selectIntensity')} />
                   </SelectTrigger>
                   <SelectContent>
                     {INTENSITY_OPTIONS.map(opt => (
@@ -1689,13 +1693,13 @@ export function WorkoutCard({
               </div>
 
               <div className="space-y-1.5">
-                <Label className={`text-sm ${editStructured ? 'text-muted-foreground' : ''}`}>Duration (minutes)</Label>
+                <Label className={`text-sm ${editStructured ? 'text-muted-foreground' : ''}`}>{t('durationMinutes')}</Label>
                 <Input
                   type="number"
                   min={0}
                   value={editDurationMinutes}
                   onChange={e => setEditDurationMinutes(e.target.value)}
-                  placeholder="e.g. 60"
+                  placeholder={t('durationPlaceholder')}
                   disabled={!!editStructured}
                 />
               </div>
@@ -1703,7 +1707,7 @@ export function WorkoutCard({
               {/* Pace range preview — col 2, row 2; only for simple (non-structured) workouts */}
               {!editStructured && (
                 <div className="space-y-1.5">
-                  <Label className="text-sm text-muted-foreground">Pace range</Label>
+                  <Label className="text-sm text-muted-foreground">{t('paceRange')}</Label>
                   <div className="h-9 flex items-center">
                     {editPaceRangeStr
                       ? <span className="font-mono text-sm">{editPaceRangeStr}</span>
@@ -1716,7 +1720,7 @@ export function WorkoutCard({
               {/* Custom pace — only for simple (non-structured) workouts */}
               {editIntensity === 'custom' && !editStructured && (
                 <div className="space-y-1.5 col-span-2">
-                  <Label className="text-sm">Pace ({units === 'imperial' ? 'min/mi' : 'min/km'})</Label>
+                  <Label className="text-sm">{t('paceUnitLabel', { unit: units === 'imperial' ? 'min/mi' : 'min/km' })}</Label>
                   <div className="flex items-center gap-1">
                     <Input
                       type="number" min={0} max={99} placeholder="M"
@@ -1740,14 +1744,14 @@ export function WorkoutCard({
             {editStructured ? (
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-medium text-sm">Workout Structure</h4>
+                  <h4 className="font-medium text-sm">{t('workoutStructure')}</h4>
                   <Button
                     variant="ghost"
                     size="sm"
                     className="h-6 text-xs text-muted-foreground"
                     onClick={() => setEditStructured(null)}
                   >
-                    Remove structure
+                    {t('removeStructure')}
                   </Button>
                 </div>
                 <StructuredWorkoutEditor
@@ -1771,17 +1775,17 @@ export function WorkoutCard({
                 onClick={() => setEditStructured({ main_set: [] })}
               >
                 <Plus className="h-3 w-3 mr-1" />
-                Add workout structure
+                {t('addWorkoutStructure')}
               </Button>
             )}
           </div>
 
           <div className="flex gap-2 pt-2">
             <Button onClick={handleSave} disabled={isSaving} className="flex-1">
-              {isSaving ? 'Saving...' : 'Save'}
+              {isSaving ? t('saving') : t('save')}
             </Button>
             <Button onClick={cancelEdit} variant="outline" disabled={isSaving}>
-              Cancel
+              {t('cancel')}
             </Button>
           </div>
         </>
@@ -1799,15 +1803,14 @@ export function WorkoutCard({
         <AlertDialog open={isMergeConfirmOpen} onOpenChange={setIsMergeConfirmOpen}>
           <AlertDialogContent className="md:left-[calc(108px+min(640px,50vw))]">
             <AlertDialogHeader>
-              <AlertDialogTitle>Merge both runs back into a single workout?</AlertDialogTitle>
+              <AlertDialogTitle>{t('mergeTitle')}</AlertDialogTitle>
               <AlertDialogDescription>
-                Run 1 and Run 2 will be combined into one workout with their distances summed.
-                Garmin sync state will reset — you can re-send to Garmin afterwards.
+                {t('mergeBody')}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleUnsplit}>Merge</AlertDialogAction>
+              <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+              <AlertDialogAction onClick={handleUnsplit}>{t('merge')}</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
@@ -1823,13 +1826,13 @@ export function WorkoutCard({
 // Loose type for the structured_workout JSON blob from the database
 type StructuredBlob = Record<string, unknown>
 
-function renderStructuredWorkout(structure: StructuredBlob, units: UnitSystem = 'metric'): React.ReactNode {
+function renderStructuredWorkout(structure: StructuredBlob, units: UnitSystem = 'metric', t: (key: string, values?: Record<string, string | number>) => string): React.ReactNode {
   if (!structure) return null
 
   const parts: string[] = []
 
   if (structure.warmup) {
-    parts.push(`Warmup: ${formatWorkoutPart(structure.warmup as StructuredBlob, units)}`)
+    parts.push(t('structWarmup', { detail: formatWorkoutPart(structure.warmup as StructuredBlob, units) }))
   }
 
   if (structure.main_set) {
@@ -1838,16 +1841,16 @@ function renderStructuredWorkout(structure: StructuredBlob, units: UnitSystem = 
         const set = s as StructuredBlob
         if (set.repeat && set.intervals && Array.isArray(set.intervals)) {
           const intervals = set.intervals.map((int: unknown) => formatInterval(int as StructuredBlob)).join(', ')
-          parts.push(`Set ${i + 1}: ${set.repeat}x (${intervals})`)
+          parts.push(t('structSet', { index: i + 1, repeat: set.repeat as number, intervals }))
         }
       })
     } else {
-      parts.push(`Main: ${formatWorkoutPart(structure.main_set as StructuredBlob, units)}`)
+      parts.push(t('structMain', { detail: formatWorkoutPart(structure.main_set as StructuredBlob, units) }))
     }
   }
 
   if (structure.cooldown) {
-    parts.push(`Cooldown: ${formatWorkoutPart(structure.cooldown as StructuredBlob, units)}`)
+    parts.push(t('structCooldown', { detail: formatWorkoutPart(structure.cooldown as StructuredBlob, units) }))
   }
 
   return (

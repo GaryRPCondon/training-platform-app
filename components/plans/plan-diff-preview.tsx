@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { CheckCircle2, XCircle, AlertTriangle, Loader2 } from 'lucide-react'
 import { useUnits } from '@/lib/hooks/use-units'
+import { useTranslations } from 'next-intl'
 
 interface RegeneratedWeek {
   week_number: number
@@ -77,6 +78,7 @@ export function PlanDiffPreview({
   const [applying, setApplying] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { toDisplayDistance, distanceLabel } = useUnits()
+  const t = useTranslations('planModify')
 
   const handleApprove = async () => {
     setApplying(true)
@@ -84,7 +86,7 @@ export function PlanDiffPreview({
     try {
       await onApprove(preview.regenerated_weeks)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to apply changes')
+      setError(err instanceof Error ? err.message : t('errApplyChanges'))
       setApplying(false)
     }
   }
@@ -96,19 +98,18 @@ export function PlanDiffPreview({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <CheckCircle2 className="h-5 w-5 text-green-600" />
-            Plan Modification Preview
+            {t('planModPreview')}
           </CardTitle>
           <CardDescription>{preview.intent_summary}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <span>Provider: {preview.metadata.llm_provider}</span>
+            <span>{t('provider', { provider: preview.metadata.llm_provider })}</span>
             <span>•</span>
-            <span>Generated in {preview.metadata.llm_duration_seconds}s</span>
+            <span>{t('generatedIn', { seconds: preview.metadata.llm_duration_seconds })}</span>
             <span>•</span>
             <span>
-              {preview.metadata.weeks_to_replace} week
-              {preview.metadata.weeks_to_replace > 1 ? 's' : ''} affected
+              {t('weeksAffected', { count: preview.metadata.weeks_to_replace })}
             </span>
           </div>
         </CardContent>
@@ -119,7 +120,7 @@ export function PlanDiffPreview({
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            <div className="font-medium mb-2">Validation Warnings:</div>
+            <div className="font-medium mb-2">{t('validationWarnings')}</div>
             <div className="whitespace-pre-line text-sm">
               {preview.validation.formatted_errors}
             </div>
@@ -129,7 +130,7 @@ export function PlanDiffPreview({
 
       {/* Week-by-Week Comparison */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Changes Preview</h3>
+        <h3 className="text-lg font-semibold">{t('changesPreview')}</h3>
         {preview.regenerated_weeks.map(newWeek => {
           const originalWeek = originalWeeks.find(w => w.week_number === newWeek.week_number)
 
@@ -138,7 +139,7 @@ export function PlanDiffPreview({
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base">
-                    Week {newWeek.week_number} ({newWeek.phase_name})
+                    {t('weekPhase', { week: newWeek.week_number, phase: newWeek.phase_name })}
                   </CardTitle>
                   <Badge
                     variant={
@@ -156,14 +157,14 @@ export function PlanDiffPreview({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Before */}
                   <div>
-                    <h4 className="text-sm font-medium mb-2 text-muted-foreground">Before</h4>
+                    <h4 className="text-sm font-medium mb-2 text-muted-foreground">{t('before')}</h4>
                     <div className="space-y-1">
                       {originalWeek?.workouts.map(workout => (
                         <div
                           key={workout.day}
                           className="text-sm p-2 bg-muted/50 rounded"
                         >
-                          <span className="font-medium">Day {workout.day}:</span>{' '}
+                          <span className="font-medium">{t('dayPrefix', { day: workout.day })}</span>{' '}
                           {workout.description}
                           {workout.distance_km && (
                             <span className="text-muted-foreground ml-1">
@@ -173,7 +174,7 @@ export function PlanDiffPreview({
                         </div>
                       )) || (
                         <div className="text-sm text-muted-foreground italic">
-                          No original week data
+                          {t('noOriginalData')}
                         </div>
                       )}
                     </div>
@@ -181,7 +182,7 @@ export function PlanDiffPreview({
 
                   {/* After */}
                   <div>
-                    <h4 className="text-sm font-medium mb-2 text-green-600">After</h4>
+                    <h4 className="text-sm font-medium mb-2 text-green-600">{t('after')}</h4>
                     <div className="space-y-1">
                       {newWeek.workouts.map(workout => {
                         const originalWorkout = originalWeek?.workouts.find(
@@ -218,7 +219,7 @@ export function PlanDiffPreview({
                                 : 'bg-muted/50'
                             }`}
                           >
-                            <span className="font-medium">Day {workout.day}:</span>{' '}
+                            <span className="font-medium">{t('dayPrefix', { day: workout.day })}</span>{' '}
                             {workout.description}
                             {workout.distance_km && (
                               <span className="text-muted-foreground ml-1">
@@ -227,7 +228,7 @@ export function PlanDiffPreview({
                             )}
                             {isChanged && (
                               <Badge variant="outline" className="ml-2 text-xs">
-                                Modified
+                                {t('modified')}
                               </Badge>
                             )}
                           </div>
@@ -253,18 +254,18 @@ export function PlanDiffPreview({
       {/* Actions */}
       <div className="flex gap-3 justify-end">
         <Button variant="outline" onClick={onReject} disabled={applying}>
-          Cancel
+          {t('cancel')}
         </Button>
         <Button onClick={handleApprove} disabled={applying}>
           {applying ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Applying Changes...
+              {t('applyingChanges')}
             </>
           ) : (
             <>
               <CheckCircle2 className="h-4 w-4 mr-2" />
-              Apply Changes
+              {t('applyChanges')}
             </>
           )}
         </Button>

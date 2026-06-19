@@ -21,9 +21,11 @@ import {
 } from 'lucide-react'
 import { MobileNavigation } from './navigation'
 import { toast } from 'sonner'
+import { useTranslations } from 'next-intl'
 
 export function Header() {
     const router = useRouter()
+    const t = useTranslations('header')
 
     async function handleLogout() {
         try {
@@ -36,12 +38,12 @@ export function Header() {
             }
 
             sessionStorage.removeItem('auto_sync_done')
-            toast.success('Logged out successfully')
+            toast.success(t('loggedOut'))
             router.push('/login')
             router.refresh()
         } catch (error) {
             console.error('Error logging out:', error)
-            toast.error('Failed to log out')
+            toast.error(t('logoutFailed'))
         }
     }
 
@@ -59,24 +61,24 @@ export function Header() {
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" aria-label="Profile & logout">
+                                    <Button variant="ghost" size="icon" aria-label={t('profileLogout')}>
                                         <User className="h-5 w-5" />
                                     </Button>
                                 </DropdownMenuTrigger>
                             </TooltipTrigger>
-                            <TooltipContent side="bottom">Profile & logout</TooltipContent>
+                            <TooltipContent side="bottom">{t('profileLogout')}</TooltipContent>
                         </Tooltip>
                         <DropdownMenuContent align="end">
                             <DropdownMenuItem asChild>
                                 <Link href="/dashboard/profile" className="cursor-pointer">
                                     <User className="mr-2 h-4 w-4" />
-                                    Profile
+                                    {t('profile')}
                                 </Link>
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive">
                                 <LogOut className="mr-2 h-4 w-4" />
-                                Logout
+                                {t('logout')}
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>

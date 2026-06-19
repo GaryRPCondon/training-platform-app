@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { AlertCircle, CheckCircle, Loader2, TrendingDown, Calendar } from 'lucide-react'
 import { toast } from 'sonner'
+import { useTranslations } from 'next-intl'
 
 async function getObservations() {
     const response = await fetch('/api/observations')
@@ -24,6 +25,7 @@ async function dismissObservation(observationId: string) {
 }
 
 export function ObservationsPanel() {
+    const t = useTranslations('observations')
     const queryClient = useQueryClient()
     const { data, isLoading, error } = useQuery({
         queryKey: ['observations'],
@@ -34,10 +36,10 @@ export function ObservationsPanel() {
         mutationFn: dismissObservation,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['observations'] })
-            toast.success('Observation dismissed')
+            toast.success(t('dismissed'))
         },
         onError: () => {
-            toast.error('Failed to dismiss observation')
+            toast.error(t('dismissError'))
         }
     })
 
@@ -53,10 +55,10 @@ export function ObservationsPanel() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['observations'] })
-            toast.success('Adjustment applied successfully')
+            toast.success(t('applied'))
         },
         onError: () => {
-            toast.error('Failed to apply adjustment')
+            toast.error(t('applyError'))
         }
     })
 
@@ -72,10 +74,10 @@ export function ObservationsPanel() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['observations'] })
-            toast.success('Adjustment rejected')
+            toast.success(t('rejected'))
         },
         onError: () => {
-            toast.error('Failed to reject adjustment')
+            toast.error(t('rejectError'))
         }
     })
 
@@ -85,7 +87,7 @@ export function ObservationsPanel() {
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <AlertCircle className="h-5 w-5" />
-                        Observations
+                        {t('title')}
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex justify-center py-6">
@@ -99,10 +101,10 @@ export function ObservationsPanel() {
         return (
             <Card>
                 <CardHeader>
-                    <CardTitle>Observations</CardTitle>
+                    <CardTitle>{t('title')}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="text-destructive">Failed to load observations</div>
+                    <div className="text-destructive">{t('loadError')}</div>
                 </CardContent>
             </Card>
         )
@@ -118,10 +120,10 @@ export function ObservationsPanel() {
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <AlertCircle className="h-5 w-5" />
-                        Observations
+                        {t('title')}
                         {observations.length > 0 && (
                             <Badge variant="destructive" className="ml-auto">
-                                {observations.length} New
+                                {t('newBadge', { count: observations.length })}
                             </Badge>
                         )}
                     </CardTitle>
@@ -130,7 +132,7 @@ export function ObservationsPanel() {
                     {observations.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-6 text-muted-foreground gap-2">
                             <CheckCircle className="h-8 w-8 text-green-500" />
-                            <p>No concerns detected</p>
+                            <p>{t('noConcerns')}</p>
                         </div>
                     ) : (
                         <div className="space-y-4">
@@ -159,7 +161,7 @@ export function ObservationsPanel() {
                                         onClick={() => dismissMutation.mutate(obs.id)}
                                         disabled={dismissMutation.isPending}
                                     >
-                                        Dismiss
+                                        {t('dismiss')}
                                     </Button>
                                 </div>
                             ))}
@@ -174,7 +176,7 @@ export function ObservationsPanel() {
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <TrendingDown className="h-5 w-5" />
-                            Suggested Adjustments
+                            {t('suggestedAdjustments')}
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -190,10 +192,10 @@ export function ObservationsPanel() {
                                     </div>
                                     <p className="text-sm text-muted-foreground mb-2">{adj.description}</p>
                                     <div className="text-xs text-muted-foreground mb-3">
-                                        <strong>Why:</strong> {adj.rationale}
+                                        <strong>{t('whyLabel')}</strong> {adj.rationale}
                                     </div>
                                     <div className="text-xs text-muted-foreground mb-3">
-                                        <strong>Impact:</strong> {adj.impact}
+                                        <strong>{t('impactLabel')}</strong> {adj.impact}
                                     </div>
                                     <div className="flex gap-2">
                                         <Button
@@ -202,7 +204,7 @@ export function ObservationsPanel() {
                                             onClick={() => acceptMutation.mutate(adj.id)}
                                             disabled={acceptMutation.isPending || rejectMutation.isPending}
                                         >
-                                            Accept
+                                            {t('accept')}
                                         </Button>
                                         <Button
                                             size="sm"
@@ -210,7 +212,7 @@ export function ObservationsPanel() {
                                             onClick={() => rejectMutation.mutate(adj.id)}
                                             disabled={acceptMutation.isPending || rejectMutation.isPending}
                                         >
-                                            Reject
+                                            {t('reject')}
                                         </Button>
                                     </div>
                                 </div>

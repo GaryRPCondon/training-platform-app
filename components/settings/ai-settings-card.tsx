@@ -264,7 +264,7 @@ export function AISettingsCard() {
                         step={1}
                         disabled={!aiSummariesEnabled}
                         onValueChange={(v) => setFeedbackTone(TONE_VALUES[v[0]])}
-                        aria-label="Feedback tone"
+                        aria-label={t('feedbackToneAria')}
                     />
                     <div className="flex justify-between text-xs text-muted-foreground">
                         {TONE_VALUES.map((tone) => (

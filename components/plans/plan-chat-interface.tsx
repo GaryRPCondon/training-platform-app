@@ -53,6 +53,7 @@ import {
   Clock,
   AlertTriangle
 } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 type ResponseMode = 'operations' | 'full' | 'fallback_required'
 
@@ -79,6 +80,7 @@ export function PlanChatInterface({
   currentWeeks,
   onPlanUpdated
 }: PlanChatInterfaceProps) {
+  const t = useTranslations('planModify')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -100,13 +102,13 @@ export function PlanChatInterface({
 
     // Validation: Empty message
     if (!trimmedMessage) {
-      setError('Please enter a modification request')
+      setError(t('errEnterRequest'))
       return
     }
 
     // Validation: Message length
     if (trimmedMessage.length > 2000) {
-      setError('Message too long (max 2000 characters)')
+      setError(t('errTooLong'))
       return
     }
 
@@ -137,13 +139,13 @@ export function PlanChatInterface({
       if (!response.ok) {
         // Better error messages based on status
         if (response.status === 401) {
-          throw new Error('You must be logged in to modify plans')
+          throw new Error(t('errLoggedIn'))
         } else if (response.status === 404) {
-          throw new Error('Plan not found or you do not have access')
+          throw new Error(t('errNotFound'))
         } else if (response.status === 400) {
-          throw new Error(data.error || 'Invalid request')
+          throw new Error(data.error || t('errInvalidRequest'))
         } else {
-          throw new Error(data.error || 'Failed to generate preview')
+          throw new Error(data.error || t('errGeneratePreview'))
         }
       }
 
@@ -163,10 +165,10 @@ export function PlanChatInterface({
         setShowPreviewDialog(true) // Auto-open the dialog
         setFallbackInfo(null) // Clear any previous fallback info
       } else {
-        throw new Error('Invalid response from server')
+        throw new Error(t('errInvalidResponse'))
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to process request')
+      setError(err instanceof Error ? err.message : t('errProcessRequest'))
     } finally {
       setLoading(false)
       setProcessingFallback(false)
@@ -204,7 +206,7 @@ export function PlanChatInterface({
         // Full regeneration mode - send regeneratedWeeks
         bodyData.regeneratedWeeks = data
       } else {
-        throw new Error('Invalid preview state')
+        throw new Error(t('errInvalidPreviewState'))
       }
 
       // Call apply-changes API
@@ -219,19 +221,19 @@ export function PlanChatInterface({
       if (!response.ok) {
         // Better error messages based on status
         if (response.status === 401) {
-          throw new Error('You must be logged in to modify plans')
+          throw new Error(t('errLoggedIn'))
         } else if (response.status === 404) {
-          throw new Error('Plan not found or you do not have access')
+          throw new Error(t('errNotFound'))
         } else if (response.status === 400) {
           // Validation errors - show details
           if (responseData.validation_errors && Array.isArray(responseData.validation_errors)) {
             throw new Error(
-              `Validation failed:\n${responseData.validation_errors.slice(0, 3).join('\n')}`
+              t('errValidationFailed', { errors: responseData.validation_errors.slice(0, 3).join('\n') })
             )
           }
-          throw new Error(responseData.error || 'Invalid plan modifications')
+          throw new Error(responseData.error || t('errInvalidMods'))
         } else {
-          throw new Error(responseData.error || 'Failed to apply changes')
+          throw new Error(responseData.error || t('errApplyChanges'))
         }
       }
 
@@ -240,9 +242,9 @@ export function PlanChatInterface({
         let successMsg = responseData.message
         if (!successMsg) {
           if (responseData.mode === 'operations') {
-            successMsg = `Successfully applied ${responseData.operations_applied} operation${responseData.operations_applied > 1 ? 's' : ''}`
+            successMsg = t('successOps', { count: responseData.operations_applied })
           } else {
-            successMsg = `Successfully updated ${responseData.weeks_replaced} week${responseData.weeks_replaced > 1 ? 's' : ''}`
+            successMsg = t('successWeeks', { count: responseData.weeks_replaced })
           }
         }
 
@@ -260,7 +262,7 @@ export function PlanChatInterface({
         throw new Error('Failed to apply changes')
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to apply changes')
+      setError(err instanceof Error ? err.message : t('errApplyChanges'))
       throw err // Re-throw to let preview component handle the error state
     } finally {
       setLoading(false)
@@ -281,10 +283,10 @@ export function PlanChatInterface({
   }
 
   const examplePrompts = [
-    'Move all rest days to Fridays',
-    'Make week 5 easier',
-    'Put long runs on Saturdays',
-    'Increase volume in weeks 8-10'
+    t('example1'),
+    t('example2'),
+    t('example3'),
+    t('example4')
   ]
 
   return (
@@ -294,11 +296,10 @@ export function PlanChatInterface({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-purple-600" />
-            Modify Plan with AI Coach
+            {t('modifyTitle')}
           </CardTitle>
           <CardDescription>
-            Describe how you'd like to modify "{planName}" and the AI will regenerate the affected
-            weeks.
+            {t('modifyDescription', { planName })}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -306,21 +307,21 @@ export function PlanChatInterface({
             <Textarea
               value={message}
               onChange={e => setMessage(e.target.value)}
-              placeholder="E.g., Move all rest days to Fridays, or Make week 5 easier, or Change W4:D2 to 12km tempo..."
-              aria-label="Describe how to modify this plan"
+              placeholder={t('modifyPlaceholder')}
+              aria-label={t('modifyAria')}
               rows={3}
               disabled={loading || !!preview}
               className="resize-none"
             />
 
             <div aria-live="polite" role="status" className="sr-only">
-              {loading ? 'Generating plan preview…' : ''}
+              {loading ? t('srGenerating') : ''}
             </div>
 
             {/* Example Prompts */}
             {!preview && !loading && (
               <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">Examples:</p>
+                <p className="text-xs text-muted-foreground">{t('examples')}</p>
                 <div className="flex flex-wrap gap-2">
                   {examplePrompts.map(prompt => (
                     <Button
@@ -343,12 +344,12 @@ export function PlanChatInterface({
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Generating Preview...
+                  {t('generatingPreview')}
                 </>
               ) : (
                 <>
                   <Send className="h-4 w-4 mr-2" />
-                  Generate Preview
+                  {t('generatePreview')}
                 </>
               )}
             </Button>
@@ -380,10 +381,10 @@ export function PlanChatInterface({
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-purple-900 dark:text-purple-100">
               <CheckCircle2 className="h-5 w-5" />
-              Preview Ready
+              {t('previewReady')}
               {previewMode === 'operations' && (
                 <span className="text-xs font-normal bg-purple-200 dark:bg-purple-800 px-2 py-0.5 rounded">
-                  Fast Mode
+                  {t('fastMode')}
                 </span>
               )}
             </CardTitle>
@@ -395,15 +396,15 @@ export function PlanChatInterface({
             <div className="flex items-center gap-4 text-sm text-purple-800 dark:text-purple-200">
               <div className="flex items-center gap-1">
                 <Clock className="h-4 w-4" />
-                <span>{preview.metadata.llm_duration_seconds.toFixed(1)}s</span>
+                <span>{t('seconds', { value: preview.metadata.llm_duration_seconds.toFixed(1) })}</span>
               </div>
               {previewMode === 'operations' ? (
                 <div>
-                  {preview.metadata.operations_count} operation{preview.metadata.operations_count !== 1 ? 's' : ''}
+                  {t('opsCount', { count: preview.metadata.operations_count })}
                 </div>
               ) : (
                 <div>
-                  {preview.metadata.weeks_to_replace} weeks, {preview.metadata.workouts_to_create} workouts
+                  {t('weeksWorkouts', { weeks: preview.metadata.weeks_to_replace, workouts: preview.metadata.workouts_to_create })}
                 </div>
               )}
               <div className="text-xs text-purple-600 dark:text-purple-400">
@@ -416,7 +417,7 @@ export function PlanChatInterface({
               variant="default"
             >
               <Eye className="h-4 w-4 mr-2" />
-              Review Changes
+              {t('reviewChanges')}
             </Button>
           </CardContent>
         </Card>
@@ -428,7 +429,7 @@ export function PlanChatInterface({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-amber-500" />
-              Full Plan Regeneration Required
+              {t('fullRegenTitle')}
             </DialogTitle>
             <DialogDescription>
               {fallbackInfo?.reason}
@@ -437,21 +438,21 @@ export function PlanChatInterface({
           <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-950">
             <AlertTriangle className="h-4 w-4 text-amber-600" />
             <AlertDescription className="text-amber-800 dark:text-amber-200">
-              This will take approximately {fallbackInfo?.estimatedTime} with your current LLM provider.
+              {t('fullRegenWarning', { time: fallbackInfo?.estimatedTime ?? '' })}
             </AlertDescription>
           </Alert>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={handleCancelFallback}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button onClick={handleProceedWithFallback} disabled={processingFallback}>
               {processingFallback ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Regenerating...
+                  {t('regenerating')}
                 </>
               ) : (
-                'Proceed with Regeneration'
+                t('proceedRegen')
               )}
             </Button>
           </DialogFooter>
@@ -462,9 +463,9 @@ export function PlanChatInterface({
       <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Review Plan Changes</DialogTitle>
+            <DialogTitle>{t('reviewPlanChanges')}</DialogTitle>
             <DialogDescription>
-              Review the proposed changes before applying them to your plan
+              {t('reviewPlanChangesDesc')}
             </DialogDescription>
           </DialogHeader>
           {preview && previewMode === 'operations' && (

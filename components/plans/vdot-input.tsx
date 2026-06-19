@@ -15,6 +15,7 @@ import {
   type RaceDistance,
   type TrainingPaces
 } from '@/lib/training/vdot'
+import { useTranslations } from 'next-intl'
 
 export interface VDOTInputValue {
   vdot: number
@@ -34,6 +35,7 @@ interface Props {
 }
 
 export function VDOTInput({ value, onChange }: Props) {
+  const t = useTranslations('vdotInput')
   const [inputMethod, setInputMethod] = useState<'race' | 'vdot'>(
     value?.source === 'vdot_direct' ? 'vdot' : 'race'
   )
@@ -119,11 +121,11 @@ export function VDOTInput({ value, onChange }: Props) {
         >
           <div className="flex items-center space-x-2">
             <RadioGroupItem value="race" id="race" />
-            <Label htmlFor="race" className="font-normal cursor-pointer">Recent Race Time</Label>
+            <Label htmlFor="race" className="font-normal cursor-pointer">{t('recentRaceTime')}</Label>
           </div>
           <div className="flex items-center space-x-2">
             <RadioGroupItem value="vdot" id="vdot" />
-            <Label htmlFor="vdot" className="font-normal cursor-pointer">VDOT Score</Label>
+            <Label htmlFor="vdot" className="font-normal cursor-pointer">{t('vdotScore')}</Label>
           </div>
         </RadioGroup>
 
@@ -131,7 +133,7 @@ export function VDOTInput({ value, onChange }: Props) {
         {inputMethod === 'race' && (
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Race Distance</Label>
+              <Label>{t('raceDistance')}</Label>
               <Select
                 value={raceDistance}
                 onValueChange={(val) => {
@@ -155,16 +157,16 @@ export function VDOTInput({ value, onChange }: Props) {
             </div>
 
             <div>
-              <Label>Race Time</Label>
+              <Label>{t('raceTime')}</Label>
               <Input
                 type="text"
-                placeholder="HH:MM:SS or MM:SS"
+                placeholder={t('raceTimePlaceholder')}
                 value={raceTime}
                 onChange={(e) => handleRaceTimeChange(e.target.value)}
                 className="w-full"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                e.g., 3:30:00 or 40:00
+                {t('raceTimeHint')}
               </p>
             </div>
           </div>
@@ -173,18 +175,18 @@ export function VDOTInput({ value, onChange }: Props) {
         {/* Direct VDOT Input */}
         {inputMethod === 'vdot' && (
           <div className="max-w-xs">
-            <Label>VDOT Value</Label>
+            <Label>{t('vdotValue')}</Label>
             <Input
               type="number"
               min="20"
               max="100"
               step="0.1"
-              placeholder="e.g., 50.5"
+              placeholder={t('vdotPlaceholder')}
               value={vdotDirect}
               onChange={(e) => handleVDOTChange(e.target.value)}
             />
             <p className="text-xs text-muted-foreground mt-1">
-              Range: 30 (beginner) to 85 (elite)
+              {t('vdotHint')}
             </p>
           </div>
         )}
@@ -193,30 +195,30 @@ export function VDOTInput({ value, onChange }: Props) {
         {calculatedVDOT && calculatedPaces && (
           <div className="border-t pt-4 space-y-3">
             <div>
-              <p className="text-sm font-medium">Calculated VDOT: {calculatedVDOT}</p>
+              <p className="text-sm font-medium">{t('calculatedVDOT', { vdot: calculatedVDOT })}</p>
             </div>
 
             <div>
-              <p className="text-sm font-medium mb-2">Training Paces:</p>
+              <p className="text-sm font-medium mb-2">{t('trainingPaces')}</p>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>
-                  <span className="text-muted-foreground">Easy:</span>{' '}
+                  <span className="text-muted-foreground">{t('easy')}</span>{' '}
                   <span className="font-mono">{formatPace(calculatedPaces.easy)}</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Marathon:</span>{' '}
+                  <span className="text-muted-foreground">{t('marathon')}</span>{' '}
                   <span className="font-mono">{formatPace(calculatedPaces.marathon)}</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Tempo:</span>{' '}
+                  <span className="text-muted-foreground">{t('tempo')}</span>{' '}
                   <span className="font-mono">{formatPace(calculatedPaces.tempo)}</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Interval:</span>{' '}
+                  <span className="text-muted-foreground">{t('interval')}</span>{' '}
                   <span className="font-mono">{formatPace(calculatedPaces.interval)}</span>
                 </div>
                 <div className="col-span-2">
-                  <span className="text-muted-foreground">Repetition:</span>{' '}
+                  <span className="text-muted-foreground">{t('repetition')}</span>{' '}
                   <span className="font-mono">{formatPace(calculatedPaces.repetition)}</span>
                 </div>
               </div>

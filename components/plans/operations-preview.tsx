@@ -31,6 +31,7 @@ import {
   ChevronUp
 } from 'lucide-react'
 import { useUnits } from '@/lib/hooks/use-units'
+import { useTranslations } from 'next-intl'
 
 interface Operation {
   op: string
@@ -139,6 +140,7 @@ export function OperationsPreview({
   const [error, setError] = useState<string | null>(null)
   const [showWeekView, setShowWeekView] = useState(false)
   const { toDisplayDistance, distanceLabel } = useUnits()
+  const t = useTranslations('planModify')
 
   const handleApprove = async () => {
     setApplying(true)
@@ -146,7 +148,7 @@ export function OperationsPreview({
     try {
       await onApprove()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to apply changes')
+      setError(err instanceof Error ? err.message : t('errApplyChanges'))
     } finally {
       setApplying(false)
     }
@@ -194,7 +196,7 @@ export function OperationsPreview({
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">
-            Operations ({operations.length})
+            {t('operationsCount', { count: operations.length })}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
@@ -222,7 +224,7 @@ export function OperationsPreview({
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">
-              Affected Workouts ({affected_workouts.length})
+              {t('affectedWorkouts', { count: affected_workouts.length })}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
@@ -256,7 +258,7 @@ export function OperationsPreview({
             ))}
             {affected_workouts.length > 10 && (
               <p className="text-xs text-muted-foreground text-center py-2">
-                ... and {affected_workouts.length - 10} more workouts
+                {t('andMoreWorkouts', { count: affected_workouts.length - 10 })}
               </p>
             )}
           </CardContent>
@@ -274,12 +276,12 @@ export function OperationsPreview({
             {showWeekView ? (
               <>
                 <ChevronUp className="h-4 w-4 mr-2" />
-                Hide week-by-week view
+                {t('hideWeekView')}
               </>
             ) : (
               <>
                 <ChevronDown className="h-4 w-4 mr-2" />
-                View changes by week ({Object.keys(workoutsByWeek).length} weeks affected)
+                {t('viewByWeek', { count: Object.keys(workoutsByWeek).length })}
               </>
             )}
           </Button>
@@ -314,15 +316,15 @@ export function OperationsPreview({
         return (
           <Card key={weekNum}>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Week {weekNum}</CardTitle>
+              <CardTitle className="text-base">{t('week', { week: weekNum })}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-1">
                 {/* Header Row */}
                 <div className="grid grid-cols-3 gap-2 pb-2 border-b">
-                  <div className="font-semibold text-sm text-muted-foreground">Day</div>
-                  <div className="font-semibold text-sm text-muted-foreground">Before</div>
-                  <div className="font-semibold text-sm text-muted-foreground">After</div>
+                  <div className="font-semibold text-sm text-muted-foreground">{t('day')}</div>
+                  <div className="font-semibold text-sm text-muted-foreground">{t('before')}</div>
+                  <div className="font-semibold text-sm text-muted-foreground">{t('after')}</div>
                 </div>
 
                 {/* All 7 days */}
@@ -358,7 +360,7 @@ export function OperationsPreview({
                             )}
                           </div>
                         ) : (
-                          <span className="text-xs italic">No change</span>
+                          <span className="text-xs italic">{t('noChange')}</span>
                         )}
                       </div>
 
@@ -376,7 +378,7 @@ export function OperationsPreview({
                             )}
                           </div>
                         ) : (
-                          <span className="text-xs italic">No change</span>
+                          <span className="text-xs italic">{t('noChange')}</span>
                         )}
                       </div>
                     </div>
@@ -400,7 +402,7 @@ export function OperationsPreview({
       <div className="flex justify-end gap-3 pt-2">
         <Button variant="outline" onClick={onReject} disabled={applying || loading}>
           <X className="h-4 w-4 mr-2" />
-          Cancel
+          {t('cancel')}
         </Button>
         <Button
           onClick={handleApprove}
@@ -409,12 +411,12 @@ export function OperationsPreview({
           {applying || loading ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Applying...
+              {t('applying')}
             </>
           ) : (
             <>
               <Check className="h-4 w-4 mr-2" />
-              Apply {operations.length} Operation{operations.length !== 1 ? 's' : ''}
+              {t('applyOperations', { count: operations.length })}
             </>
           )}
         </Button>

@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Loader2, Send } from 'lucide-react'
 import type { ReviewMessage } from '@/types/review'
+import { useTranslations } from 'next-intl'
 
 interface ChatPanelProps {
   planId: number
@@ -22,6 +23,7 @@ export function ChatPanel({
   onSendMessage,
   isLoading = false
 }: ChatPanelProps) {
+  const t = useTranslations('reviewChat')
   const [input, setInput] = useState('')
   const [isSending, setIsSending] = useState(false)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
@@ -56,9 +58,9 @@ export function ChatPanel({
     <div className="flex flex-col h-full bg-background border-l">
       {/* Header */}
       <div className="p-4 border-b">
-        <h2 className="font-semibold">Chat with Your AI Coach</h2>
+        <h2 className="font-semibold">{t('title')}</h2>
         <p className="text-sm text-muted-foreground">
-          Ask questions or request changes using workout codes (e.g., "Make W4:D2 easier")
+          {t('subtitle')}
         </p>
       </div>
 
@@ -67,9 +69,9 @@ export function ChatPanel({
         <div className="space-y-4">
           {messages.length === 0 ? (
             <div className="text-center text-muted-foreground py-8">
-              <p>Start a conversation about your training plan.</p>
+              <p>{t('emptyTitle')}</p>
               <p className="text-sm mt-2">
-                Try: "What's the purpose of W1:D3?" or "Make W5:D2 10km instead"
+                {t('emptyHint')}
               </p>
             </div>
           ) : (
@@ -81,7 +83,7 @@ export function ChatPanel({
           {isLoading && (
             <div className="flex items-center gap-2 text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-sm">Coach is thinking...</span>
+              <span className="text-sm">{t('thinking')}</span>
             </div>
           )}
         </div>
@@ -94,7 +96,7 @@ export function ChatPanel({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Type your message... (Shift+Enter for new line)"
+            placeholder={t('placeholder')}
             className="min-h-[60px] max-h-[120px]"
             disabled={isSending}
           />

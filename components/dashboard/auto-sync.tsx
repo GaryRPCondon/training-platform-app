@@ -6,8 +6,10 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { format, subDays } from 'date-fns'
 import { getAthleteProfile } from '@/lib/supabase/queries'
+import { useTranslations } from 'next-intl'
 
 export function AutoSync() {
+    const t = useTranslations('sync')
     const triggered = useRef(false)
     const queryClient = useQueryClient()
     const router = useRouter()
@@ -34,7 +36,7 @@ export function AutoSync() {
             if (athlete.garmin_connected) platforms.push('garmin')
             if (athlete.strava_connected) platforms.push('strava')
 
-            toast.info(`Syncing recent activities from ${platforms.join(' & ')}...`)
+            toast.info(t('autoSyncing', { platforms: platforms.join(' & ') }))
 
             try {
                 // Run syncs sequentially (Strava after Garmin) to avoid race conditions in dedup
@@ -60,8 +62,9 @@ export function AutoSync() {
                 queryClient.invalidateQueries({ queryKey: ['todays-workout'] })
                 queryClient.invalidateQueries({ queryKey: ['phase-progress'] })
                 queryClient.invalidateQueries({ queryKey: ['weekly-progress'] })
-                const matchMsg = matchData.matchCount ? ` (${matchData.matchCount} matched to workouts)` : ''
-                toast.success(`Activities synced${matchMsg}`)
+                toast.success(matchData.matchCount
+                    ? t('autoSyncedMatched', { count: matchData.matchCount })
+                    : t('autoSynced'))
                 router.refresh()
             } catch {
                 // Silently fail - user can always manually sync

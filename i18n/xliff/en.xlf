@@ -478,6 +478,11 @@
         <source>Feedback tone</source>
       </segment>
     </unit>
+    <unit id="feedbackToneAria">
+      <segment>
+        <source>Feedback tone</source>
+      </segment>
+    </unit>
     <unit id="feedbackToneHelp">
       <segment>
         <source>How the AI Coach frames summaries. The verdict still lands honestly — only the emphasis shifts.</source>
@@ -4127,6 +4132,1359 @@ This cannot be undone.</source>
     <unit id="notesPlaceholder">
       <segment>
         <source>Optional cue or coaching note</source>
+      </segment>
+    </unit>
+  </file>
+  <file id="auth">
+    <unit id="loggedIn">
+      <segment>
+        <source>Logged in successfully</source>
+      </segment>
+    </unit>
+    <unit id="loginFailed">
+      <segment>
+        <source>Login failed</source>
+      </segment>
+    </unit>
+    <unit id="accountCreated">
+      <segment>
+        <source>Account created! Awaiting admin approval.</source>
+      </segment>
+    </unit>
+    <unit id="signUpFailed">
+      <segment>
+        <source>Sign up failed</source>
+      </segment>
+    </unit>
+    <unit id="loginTitle">
+      <segment>
+        <source>TrAIner Login</source>
+      </segment>
+    </unit>
+    <unit id="loginSubtitle">
+      <segment>
+        <source>Sign in to access your training platform</source>
+      </segment>
+    </unit>
+    <unit id="signupPending">
+      <segment>
+        <source>Your account has been created and is awaiting admin approval. You'll receive access once an administrator approves your account.</source>
+      </segment>
+    </unit>
+    <unit id="emailLabel">
+      <segment>
+        <source>Email</source>
+      </segment>
+    </unit>
+    <unit id="emailPlaceholder">
+      <segment>
+        <source>you@example.com</source>
+      </segment>
+    </unit>
+    <unit id="passwordLabel">
+      <segment>
+        <source>Password</source>
+      </segment>
+    </unit>
+    <unit id="loading">
+      <segment>
+        <source>Loading...</source>
+      </segment>
+    </unit>
+    <unit id="signIn">
+      <segment>
+        <source>Sign In</source>
+      </segment>
+    </unit>
+    <unit id="signUp">
+      <segment>
+        <source>Sign Up</source>
+      </segment>
+    </unit>
+    <unit id="loggedOut">
+      <segment>
+        <source>Logged out successfully</source>
+      </segment>
+    </unit>
+    <unit id="logoutFailed">
+      <segment>
+        <source>Failed to log out</source>
+      </segment>
+    </unit>
+    <unit id="pendingTitle">
+      <segment>
+        <source>Account Pending Approval</source>
+      </segment>
+    </unit>
+    <unit id="pendingBody">
+      <segment>
+        <source>Your account has been created and is awaiting admin approval. You'll be able to access the platform once your account is approved.</source>
+      </segment>
+    </unit>
+    <unit id="checkStatus">
+      <segment>
+        <source>Check Status</source>
+      </segment>
+    </unit>
+    <unit id="logout">
+      <segment>
+        <source>Logout</source>
+      </segment>
+    </unit>
+  </file>
+  <file id="observations">
+    <unit id="pageTitle">
+      <segment>
+        <source>Intelligence &amp; Analysis</source>
+      </segment>
+    </unit>
+    <unit id="trends">
+      <segment>
+        <source>Trends</source>
+      </segment>
+    </unit>
+    <unit id="trendsBody">
+      <segment>
+        <source>Detailed trend analysis coming in future updates.</source>
+      </segment>
+    </unit>
+    <unit id="dismissed">
+      <segment>
+        <source>Observation dismissed</source>
+      </segment>
+    </unit>
+    <unit id="dismissError">
+      <segment>
+        <source>Failed to dismiss observation</source>
+      </segment>
+    </unit>
+    <unit id="applied">
+      <segment>
+        <source>Adjustment applied successfully</source>
+      </segment>
+    </unit>
+    <unit id="applyError">
+      <segment>
+        <source>Failed to apply adjustment</source>
+      </segment>
+    </unit>
+    <unit id="rejected">
+      <segment>
+        <source>Adjustment rejected</source>
+      </segment>
+    </unit>
+    <unit id="rejectError">
+      <segment>
+        <source>Failed to reject adjustment</source>
+      </segment>
+    </unit>
+    <unit id="title">
+      <segment>
+        <source>Observations</source>
+      </segment>
+    </unit>
+    <unit id="loadError">
+      <segment>
+        <source>Failed to load observations</source>
+      </segment>
+    </unit>
+    <unit id="newBadge">
+      <segment>
+        <source>{count} New</source>
+      </segment>
+    </unit>
+    <unit id="noConcerns">
+      <segment>
+        <source>No concerns detected</source>
+      </segment>
+    </unit>
+    <unit id="dismiss">
+      <segment>
+        <source>Dismiss</source>
+      </segment>
+    </unit>
+    <unit id="suggestedAdjustments">
+      <segment>
+        <source>Suggested Adjustments</source>
+      </segment>
+    </unit>
+    <unit id="whyLabel">
+      <segment>
+        <source>Why:</source>
+      </segment>
+    </unit>
+    <unit id="impactLabel">
+      <segment>
+        <source>Impact:</source>
+      </segment>
+    </unit>
+    <unit id="accept">
+      <segment>
+        <source>Accept</source>
+      </segment>
+    </unit>
+    <unit id="reject">
+      <segment>
+        <source>Reject</source>
+      </segment>
+    </unit>
+  </file>
+  <file id="sync">
+    <unit id="selectBothDates">
+      <segment>
+        <source>Please select both start and end dates</source>
+      </segment>
+    </unit>
+    <unit id="matchedToWorkouts">
+      <segment>
+        <source>{count, plural, one {# activity matched to workouts} other {# activities matched to workouts}}</source>
+      </segment>
+    </unit>
+    <unit id="syncInProgress">
+      <segment>
+        <source>Sync already in progress. Please wait and try again.</source>
+      </segment>
+    </unit>
+    <unit id="garminComplete">
+      <segment>
+        <source>Garmin sync complete: {count} activities</source>
+      </segment>
+    </unit>
+    <unit id="stravaComplete">
+      <segment>
+        <source>Strava sync complete: {count} activities</source>
+      </segment>
+    </unit>
+    <unit id="syncFailed">
+      <segment>
+        <source>Sync failed</source>
+      </segment>
+    </unit>
+    <unit id="srGarmin">
+      <segment>
+        <source>Syncing activities from Garmin…</source>
+      </segment>
+    </unit>
+    <unit id="srStrava">
+      <segment>
+        <source>Syncing activities from Strava…</source>
+      </segment>
+    </unit>
+    <unit id="pageTitle">
+      <segment>
+        <source>Activity Sync</source>
+      </segment>
+    </unit>
+    <unit id="pageSubtitle">
+      <segment>
+        <source>Sync your activities from Garmin and Strava</source>
+      </segment>
+    </unit>
+    <unit id="syncActivities">
+      <segment>
+        <source>Sync Activities</source>
+      </segment>
+    </unit>
+    <unit id="dateRange">
+      <segment>
+        <source>Date Range</source>
+      </segment>
+    </unit>
+    <unit id="rangeLatest">
+      <segment>
+        <source>Latest Activity (Newest single activity only)</source>
+      </segment>
+    </unit>
+    <unit id="rangeWeek">
+      <segment>
+        <source>Last 7 Days</source>
+      </segment>
+    </unit>
+    <unit id="rangeMonth">
+      <segment>
+        <source>Last 4 Weeks</source>
+      </segment>
+    </unit>
+    <unit id="rangeYear">
+      <segment>
+        <source>This Year</source>
+      </segment>
+    </unit>
+    <unit id="rangeCustom">
+      <segment>
+        <source>Custom</source>
+      </segment>
+    </unit>
+    <unit id="startDate">
+      <segment>
+        <source>Start Date</source>
+      </segment>
+    </unit>
+    <unit id="endDate">
+      <segment>
+        <source>End Date</source>
+      </segment>
+    </unit>
+    <unit id="syncing">
+      <segment>
+        <source>Syncing...</source>
+      </segment>
+    </unit>
+    <unit id="syncGarmin">
+      <segment>
+        <source>Sync Garmin</source>
+      </segment>
+    </unit>
+    <unit id="syncStrava">
+      <segment>
+        <source>Sync Strava</source>
+      </segment>
+    </unit>
+    <unit id="syncBoth">
+      <segment>
+        <source>Sync Both</source>
+      </segment>
+    </unit>
+    <unit id="garmin">
+      <segment>
+        <source>Garmin</source>
+      </segment>
+    </unit>
+    <unit id="strava">
+      <segment>
+        <source>Strava</source>
+      </segment>
+    </unit>
+    <unit id="success">
+      <segment>
+        <source>Success</source>
+      </segment>
+    </unit>
+    <unit id="syncComplete">
+      <segment>
+        <source>Sync Complete</source>
+      </segment>
+    </unit>
+    <unit id="synced">
+      <segment>
+        <source>Synced</source>
+      </segment>
+    </unit>
+    <unit id="merged">
+      <segment>
+        <source>Merged</source>
+      </segment>
+    </unit>
+    <unit id="review">
+      <segment>
+        <source>Review</source>
+      </segment>
+    </unit>
+    <unit id="errorPrefix">
+      <segment>
+        <source>Error: {error}</source>
+      </segment>
+    </unit>
+    <unit id="unknownError">
+      <segment>
+        <source>Unknown error</source>
+      </segment>
+    </unit>
+    <unit id="autoSyncing">
+      <segment>
+        <source>Syncing recent activities from {platforms}...</source>
+      </segment>
+    </unit>
+    <unit id="autoSynced">
+      <segment>
+        <source>Activities synced</source>
+      </segment>
+    </unit>
+    <unit id="autoSyncedMatched">
+      <segment>
+        <source>Activities synced ({count} matched to workouts)</source>
+      </segment>
+    </unit>
+  </file>
+  <file id="reviewChat">
+    <unit id="title">
+      <segment>
+        <source>Chat with Your AI Coach</source>
+      </segment>
+    </unit>
+    <unit id="subtitle">
+      <segment>
+        <source>Ask questions or request changes using workout codes (e.g., "Make W4:D2 easier")</source>
+      </segment>
+    </unit>
+    <unit id="emptyTitle">
+      <segment>
+        <source>Start a conversation about your training plan.</source>
+      </segment>
+    </unit>
+    <unit id="emptyHint">
+      <segment>
+        <source>Try: "What's the purpose of W1:D3?" or "Make W5:D2 10km instead"</source>
+      </segment>
+    </unit>
+    <unit id="thinking">
+      <segment>
+        <source>Coach is thinking...</source>
+      </segment>
+    </unit>
+    <unit id="placeholder">
+      <segment>
+        <source>Type your message... (Shift+Enter for new line)</source>
+      </segment>
+    </unit>
+  </file>
+  <file id="reviewCalendar">
+    <unit id="workoutFallback">
+      <segment>
+        <source>Workout</source>
+      </segment>
+    </unit>
+    <unit id="workoutDetails">
+      <segment>
+        <source>Workout Details</source>
+      </segment>
+    </unit>
+  </file>
+  <file id="workoutCard">
+    <unit id="intensityPlaceholder">
+      <segment>
+        <source>Intensity</source>
+      </segment>
+    </unit>
+    <unit id="duration">
+      <segment>
+        <source>Duration</source>
+      </segment>
+    </unit>
+    <unit id="minUnit">
+      <segment>
+        <source>min</source>
+      </segment>
+    </unit>
+    <unit id="or">
+      <segment>
+        <source>or</source>
+      </segment>
+    </unit>
+    <unit id="distance">
+      <segment>
+        <source>Distance</source>
+      </segment>
+    </unit>
+    <unit id="mUnit">
+      <segment>
+        <source>m</source>
+      </segment>
+    </unit>
+    <unit id="sUnit">
+      <segment>
+        <source>s</source>
+      </segment>
+    </unit>
+    <unit id="intensity">
+      <segment>
+        <source>Intensity</source>
+      </segment>
+    </unit>
+    <unit id="paceRange">
+      <segment>
+        <source>Pace range</source>
+      </segment>
+    </unit>
+    <unit id="pace">
+      <segment>
+        <source>Pace</source>
+      </segment>
+    </unit>
+    <unit id="remove">
+      <segment>
+        <source>Remove</source>
+      </segment>
+    </unit>
+    <unit id="done">
+      <segment>
+        <source>Done</source>
+      </segment>
+    </unit>
+    <unit id="collapseLabel">
+      <segment>
+        <source>Collapse {label}</source>
+      </segment>
+    </unit>
+    <unit id="editLabel">
+      <segment>
+        <source>Edit {label}</source>
+      </segment>
+    </unit>
+    <unit id="step">
+      <segment>
+        <source>Step</source>
+      </segment>
+    </unit>
+    <unit id="collapseStep">
+      <segment>
+        <source>Collapse step</source>
+      </segment>
+    </unit>
+    <unit id="editStep">
+      <segment>
+        <source>Edit step</source>
+      </segment>
+    </unit>
+    <unit id="repeat">
+      <segment>
+        <source>Repeat</source>
+      </segment>
+    </unit>
+    <unit id="times">
+      <segment>
+        <source>times</source>
+      </segment>
+    </unit>
+    <unit id="vdotTarget">
+      <segment>
+        <source>VDOT target: {pace}</source>
+      </segment>
+    </unit>
+    <unit id="to">
+      <segment>
+        <source>to</source>
+      </segment>
+    </unit>
+    <unit id="skipLastRecovery">
+      <segment>
+        <source>Skip this recovery after the last rep</source>
+      </segment>
+    </unit>
+    <unit id="warmup">
+      <segment>
+        <source>Warmup</source>
+      </segment>
+    </unit>
+    <unit id="cooldown">
+      <segment>
+        <source>Cooldown</source>
+      </segment>
+    </unit>
+    <unit id="addStepToRepeat">
+      <segment>
+        <source>Add step to repeat</source>
+      </segment>
+    </unit>
+    <unit id="addStep">
+      <segment>
+        <source>Add step</source>
+      </segment>
+    </unit>
+    <unit id="addRepeat">
+      <segment>
+        <source>Add repeat</source>
+      </segment>
+    </unit>
+    <unit id="approxDistanceValue">
+      <segment>
+        <source>Approx. distance: {distance}</source>
+      </segment>
+    </unit>
+    <unit id="mergeError">
+      <segment>
+        <source>Failed to merge workouts</source>
+      </segment>
+    </unit>
+    <unit id="runsMerged">
+      <segment>
+        <source>Runs merged</source>
+      </segment>
+    </unit>
+    <unit id="createError">
+      <segment>
+        <source>Failed to create</source>
+      </segment>
+    </unit>
+    <unit id="workoutCreated">
+      <segment>
+        <source>Workout created</source>
+      </segment>
+    </unit>
+    <unit id="saveError">
+      <segment>
+        <source>Failed to save</source>
+      </segment>
+    </unit>
+    <unit id="workoutSaved">
+      <segment>
+        <source>Workout saved</source>
+      </segment>
+    </unit>
+    <unit id="saveFailedFallback">
+      <segment>
+        <source>Failed to save workout</source>
+      </segment>
+    </unit>
+    <unit id="deleteConfirm">
+      <segment>
+        <source>Delete this workout from the plan? This cannot be undone.</source>
+      </segment>
+    </unit>
+    <unit id="deleteError">
+      <segment>
+        <source>Failed to delete workout</source>
+      </segment>
+    </unit>
+    <unit id="rescheduleError">
+      <segment>
+        <source>Failed to reschedule</source>
+      </segment>
+    </unit>
+    <unit id="workoutRescheduled">
+      <segment>
+        <source>Workout rescheduled</source>
+      </segment>
+    </unit>
+    <unit id="rescheduleFailed">
+      <segment>
+        <source>Failed to reschedule workout</source>
+      </segment>
+    </unit>
+    <unit id="splitIntoTwo">
+      <segment>
+        <source>Split into two runs</source>
+      </segment>
+    </unit>
+    <unit id="mergeWithRun">
+      <segment>
+        <source>Merge with Run {order}</source>
+      </segment>
+    </unit>
+    <unit id="editWorkout">
+      <segment>
+        <source>Edit workout</source>
+      </segment>
+    </unit>
+    <unit id="discussWithAI">
+      <segment>
+        <source>Discuss with AI Coach</source>
+      </segment>
+    </unit>
+    <unit id="deleteWorkout">
+      <segment>
+        <source>Delete workout</source>
+      </segment>
+    </unit>
+    <unit id="approxDistance">
+      <segment>
+        <source>Approx. distance</source>
+      </segment>
+    </unit>
+    <unit id="distanceTarget">
+      <segment>
+        <source>Distance Target</source>
+      </segment>
+    </unit>
+    <unit id="paceLabelSuffix">
+      <segment>
+        <source>{label} Pace</source>
+      </segment>
+    </unit>
+    <unit id="vdotValue">
+      <segment>
+        <source>VDOT {vdot}</source>
+      </segment>
+    </unit>
+    <unit id="estimatedDuration">
+      <segment>
+        <source>Estimated Duration</source>
+      </segment>
+    </unit>
+    <unit id="estMinutes">
+      <segment>
+        <source>{minutes} min</source>
+      </segment>
+    </unit>
+    <unit id="workoutStructure">
+      <segment>
+        <source>Workout Structure</source>
+      </segment>
+    </unit>
+    <unit id="close">
+      <segment>
+        <source>Close</source>
+      </segment>
+    </unit>
+    <unit id="sending">
+      <segment>
+        <source>Sending...</source>
+      </segment>
+    </unit>
+    <unit id="sendToGarmin">
+      <segment>
+        <source>Send to Garmin</source>
+      </segment>
+    </unit>
+    <unit id="removing">
+      <segment>
+        <source>Removing...</source>
+      </segment>
+    </unit>
+    <unit id="removeFromGarmin">
+      <segment>
+        <source>Remove from Garmin</source>
+      </segment>
+    </unit>
+    <unit id="workoutType">
+      <segment>
+        <source>Workout Type</source>
+      </segment>
+    </unit>
+    <unit id="description">
+      <segment>
+        <source>Description</source>
+      </segment>
+    </unit>
+    <unit id="descriptionPlaceholder">
+      <segment>
+        <source>Workout description</source>
+      </segment>
+    </unit>
+    <unit id="approxDistanceUnit">
+      <segment>
+        <source>Approx. distance ({unit})</source>
+      </segment>
+    </unit>
+    <unit id="distanceUnit">
+      <segment>
+        <source>Distance ({unit})</source>
+      </segment>
+    </unit>
+    <unit id="distancePlaceholder">
+      <segment>
+        <source>e.g. 10</source>
+      </segment>
+    </unit>
+    <unit id="selectIntensity">
+      <segment>
+        <source>Select intensity</source>
+      </segment>
+    </unit>
+    <unit id="durationMinutes">
+      <segment>
+        <source>Duration (minutes)</source>
+      </segment>
+    </unit>
+    <unit id="durationPlaceholder">
+      <segment>
+        <source>e.g. 60</source>
+      </segment>
+    </unit>
+    <unit id="paceUnitLabel">
+      <segment>
+        <source>Pace ({unit})</source>
+      </segment>
+    </unit>
+    <unit id="removeStructure">
+      <segment>
+        <source>Remove structure</source>
+      </segment>
+    </unit>
+    <unit id="addWorkoutStructure">
+      <segment>
+        <source>Add workout structure</source>
+      </segment>
+    </unit>
+    <unit id="saving">
+      <segment>
+        <source>Saving...</source>
+      </segment>
+    </unit>
+    <unit id="save">
+      <segment>
+        <source>Save</source>
+      </segment>
+    </unit>
+    <unit id="cancel">
+      <segment>
+        <source>Cancel</source>
+      </segment>
+    </unit>
+    <unit id="mergeTitle">
+      <segment>
+        <source>Merge both runs back into a single workout?</source>
+      </segment>
+    </unit>
+    <unit id="mergeBody">
+      <segment>
+        <source>Run 1 and Run 2 will be combined into one workout with their distances summed. Garmin sync state will reset — you can re-send to Garmin afterwards.</source>
+      </segment>
+    </unit>
+    <unit id="merge">
+      <segment>
+        <source>Merge</source>
+      </segment>
+    </unit>
+    <unit id="structWarmup">
+      <segment>
+        <source>Warmup: {detail}</source>
+      </segment>
+    </unit>
+    <unit id="structMain">
+      <segment>
+        <source>Main: {detail}</source>
+      </segment>
+    </unit>
+    <unit id="structSet">
+      <segment>
+        <source>Set {index}: {repeat}x ({intervals})</source>
+      </segment>
+    </unit>
+    <unit id="structCooldown">
+      <segment>
+        <source>Cooldown: {detail}</source>
+      </segment>
+    </unit>
+  </file>
+  <file id="vdotInput">
+    <unit id="recentRaceTime">
+      <segment>
+        <source>Recent Race Time</source>
+      </segment>
+    </unit>
+    <unit id="vdotScore">
+      <segment>
+        <source>VDOT Score</source>
+      </segment>
+    </unit>
+    <unit id="raceDistance">
+      <segment>
+        <source>Race Distance</source>
+      </segment>
+    </unit>
+    <unit id="raceTime">
+      <segment>
+        <source>Race Time</source>
+      </segment>
+    </unit>
+    <unit id="raceTimePlaceholder">
+      <segment>
+        <source>HH:MM:SS or MM:SS</source>
+      </segment>
+    </unit>
+    <unit id="raceTimeHint">
+      <segment>
+        <source>e.g., 3:30:00 or 40:00</source>
+      </segment>
+    </unit>
+    <unit id="vdotValue">
+      <segment>
+        <source>VDOT Value</source>
+      </segment>
+    </unit>
+    <unit id="vdotPlaceholder">
+      <segment>
+        <source>e.g., 50.5</source>
+      </segment>
+    </unit>
+    <unit id="vdotHint">
+      <segment>
+        <source>Range: 30 (beginner) to 85 (elite)</source>
+      </segment>
+    </unit>
+    <unit id="calculatedVDOT">
+      <segment>
+        <source>Calculated VDOT: {vdot}</source>
+      </segment>
+    </unit>
+    <unit id="trainingPaces">
+      <segment>
+        <source>Training Paces:</source>
+      </segment>
+    </unit>
+    <unit id="easy">
+      <segment>
+        <source>Easy:</source>
+      </segment>
+    </unit>
+    <unit id="marathon">
+      <segment>
+        <source>Marathon:</source>
+      </segment>
+    </unit>
+    <unit id="tempo">
+      <segment>
+        <source>Tempo:</source>
+      </segment>
+    </unit>
+    <unit id="interval">
+      <segment>
+        <source>Interval:</source>
+      </segment>
+    </unit>
+    <unit id="repetition">
+      <segment>
+        <source>Repetition:</source>
+      </segment>
+    </unit>
+  </file>
+  <file id="templateCard">
+    <unit id="basedOnMethodology">
+      <segment>
+        <source>Based on {author}'s methodology</source>
+      </segment>
+    </unit>
+    <unit id="basedOnMethodologyPeriod">
+      <segment>
+        <source>Based on {author}'s methodology.</source>
+      </segment>
+    </unit>
+    <unit id="bestMatch">
+      <segment>
+        <source>Best Match</source>
+      </segment>
+    </unit>
+    <unit id="fitScore">
+      <segment>
+        <source>{score}/100 fit</source>
+      </segment>
+    </unit>
+    <unit id="weeks">
+      <segment>
+        <source>{weeks} weeks</source>
+      </segment>
+    </unit>
+    <unit id="daysPerWeek">
+      <segment>
+        <source>{days} days/week</source>
+      </segment>
+    </unit>
+    <unit id="peak">
+      <segment>
+        <source>{peak} peak</source>
+      </segment>
+    </unit>
+    <unit id="difficulty">
+      <segment>
+        <source>Difficulty: {score}/10</source>
+      </segment>
+    </unit>
+    <unit id="whyThisFits">
+      <segment>
+        <source>Why this fits:</source>
+      </segment>
+    </unit>
+    <unit id="bookLink">
+      <segment>
+        <source>{title} →</source>
+      </segment>
+    </unit>
+    <unit id="visitWebsite">
+      <segment>
+        <source>Visit website →</source>
+      </segment>
+    </unit>
+    <unit id="selectTemplate">
+      <segment>
+        <source>Select This Template</source>
+      </segment>
+    </unit>
+  </file>
+  <file id="workoutDetail">
+    <unit id="date">
+      <segment>
+        <source>Date</source>
+      </segment>
+    </unit>
+    <unit id="distanceTarget">
+      <segment>
+        <source>Distance Target</source>
+      </segment>
+    </unit>
+    <unit id="intensity">
+      <segment>
+        <source>Intensity</source>
+      </segment>
+    </unit>
+    <unit id="notSet">
+      <segment>
+        <source>Not set</source>
+      </segment>
+    </unit>
+    <unit id="paceLabelSuffix">
+      <segment>
+        <source>{label} Pace</source>
+      </segment>
+    </unit>
+    <unit id="vdotValue">
+      <segment>
+        <source>(VDOT {vdot})</source>
+      </segment>
+    </unit>
+    <unit id="estimatedDuration">
+      <segment>
+        <source>Estimated Duration</source>
+      </segment>
+    </unit>
+    <unit id="minutes">
+      <segment>
+        <source>{minutes} minutes</source>
+      </segment>
+    </unit>
+    <unit id="edit">
+      <segment>
+        <source>Edit</source>
+      </segment>
+    </unit>
+    <unit id="delete">
+      <segment>
+        <source>Delete</source>
+      </segment>
+    </unit>
+  </file>
+  <file id="planModify">
+    <unit id="errEnterRequest">
+      <segment>
+        <source>Please enter a modification request</source>
+      </segment>
+    </unit>
+    <unit id="errTooLong">
+      <segment>
+        <source>Message too long (max 2000 characters)</source>
+      </segment>
+    </unit>
+    <unit id="errLoggedIn">
+      <segment>
+        <source>You must be logged in to modify plans</source>
+      </segment>
+    </unit>
+    <unit id="errNotFound">
+      <segment>
+        <source>Plan not found or you do not have access</source>
+      </segment>
+    </unit>
+    <unit id="errInvalidRequest">
+      <segment>
+        <source>Invalid request</source>
+      </segment>
+    </unit>
+    <unit id="errGeneratePreview">
+      <segment>
+        <source>Failed to generate preview</source>
+      </segment>
+    </unit>
+    <unit id="errInvalidResponse">
+      <segment>
+        <source>Invalid response from server</source>
+      </segment>
+    </unit>
+    <unit id="errProcessRequest">
+      <segment>
+        <source>Failed to process request</source>
+      </segment>
+    </unit>
+    <unit id="errValidationFailed">
+      <segment>
+        <source>Validation failed:
+{errors}</source>
+      </segment>
+    </unit>
+    <unit id="errInvalidMods">
+      <segment>
+        <source>Invalid plan modifications</source>
+      </segment>
+    </unit>
+    <unit id="errApplyChanges">
+      <segment>
+        <source>Failed to apply changes</source>
+      </segment>
+    </unit>
+    <unit id="errInvalidPreviewState">
+      <segment>
+        <source>Invalid preview state</source>
+      </segment>
+    </unit>
+    <unit id="successOps">
+      <segment>
+        <source>{count, plural, one {Successfully applied # operation} other {Successfully applied # operations}}</source>
+      </segment>
+    </unit>
+    <unit id="successWeeks">
+      <segment>
+        <source>{count, plural, one {Successfully updated # week} other {Successfully updated # weeks}}</source>
+      </segment>
+    </unit>
+    <unit id="example1">
+      <segment>
+        <source>Move all rest days to Fridays</source>
+      </segment>
+    </unit>
+    <unit id="example2">
+      <segment>
+        <source>Make week 5 easier</source>
+      </segment>
+    </unit>
+    <unit id="example3">
+      <segment>
+        <source>Put long runs on Saturdays</source>
+      </segment>
+    </unit>
+    <unit id="example4">
+      <segment>
+        <source>Increase volume in weeks 8-10</source>
+      </segment>
+    </unit>
+    <unit id="modifyTitle">
+      <segment>
+        <source>Modify Plan with AI Coach</source>
+      </segment>
+    </unit>
+    <unit id="modifyDescription">
+      <segment>
+        <source>Describe how you'd like to modify "{planName}" and the AI will regenerate the affected weeks.</source>
+      </segment>
+    </unit>
+    <unit id="modifyPlaceholder">
+      <segment>
+        <source>E.g., Move all rest days to Fridays, or Make week 5 easier, or Change W4:D2 to 12km tempo...</source>
+      </segment>
+    </unit>
+    <unit id="modifyAria">
+      <segment>
+        <source>Describe how to modify this plan</source>
+      </segment>
+    </unit>
+    <unit id="srGenerating">
+      <segment>
+        <source>Generating plan preview…</source>
+      </segment>
+    </unit>
+    <unit id="examples">
+      <segment>
+        <source>Examples:</source>
+      </segment>
+    </unit>
+    <unit id="generatingPreview">
+      <segment>
+        <source>Generating Preview...</source>
+      </segment>
+    </unit>
+    <unit id="generatePreview">
+      <segment>
+        <source>Generate Preview</source>
+      </segment>
+    </unit>
+    <unit id="previewReady">
+      <segment>
+        <source>Preview Ready</source>
+      </segment>
+    </unit>
+    <unit id="fastMode">
+      <segment>
+        <source>Fast Mode</source>
+      </segment>
+    </unit>
+    <unit id="seconds">
+      <segment>
+        <source>{value}s</source>
+      </segment>
+    </unit>
+    <unit id="opsCount">
+      <segment>
+        <source>{count, plural, one {# operation} other {# operations}}</source>
+      </segment>
+    </unit>
+    <unit id="weeksWorkouts">
+      <segment>
+        <source>{weeks} weeks, {workouts} workouts</source>
+      </segment>
+    </unit>
+    <unit id="reviewChanges">
+      <segment>
+        <source>Review Changes</source>
+      </segment>
+    </unit>
+    <unit id="fullRegenTitle">
+      <segment>
+        <source>Full Plan Regeneration Required</source>
+      </segment>
+    </unit>
+    <unit id="fullRegenWarning">
+      <segment>
+        <source>This will take approximately {time} with your current LLM provider.</source>
+      </segment>
+    </unit>
+    <unit id="cancel">
+      <segment>
+        <source>Cancel</source>
+      </segment>
+    </unit>
+    <unit id="regenerating">
+      <segment>
+        <source>Regenerating...</source>
+      </segment>
+    </unit>
+    <unit id="proceedRegen">
+      <segment>
+        <source>Proceed with Regeneration</source>
+      </segment>
+    </unit>
+    <unit id="reviewPlanChanges">
+      <segment>
+        <source>Review Plan Changes</source>
+      </segment>
+    </unit>
+    <unit id="reviewPlanChangesDesc">
+      <segment>
+        <source>Review the proposed changes before applying them to your plan</source>
+      </segment>
+    </unit>
+    <unit id="operationsCount">
+      <segment>
+        <source>Operations ({count})</source>
+      </segment>
+    </unit>
+    <unit id="affectedWorkouts">
+      <segment>
+        <source>Affected Workouts ({count})</source>
+      </segment>
+    </unit>
+    <unit id="andMoreWorkouts">
+      <segment>
+        <source>... and {count} more workouts</source>
+      </segment>
+    </unit>
+    <unit id="hideWeekView">
+      <segment>
+        <source>Hide week-by-week view</source>
+      </segment>
+    </unit>
+    <unit id="viewByWeek">
+      <segment>
+        <source>View changes by week ({count} weeks affected)</source>
+      </segment>
+    </unit>
+    <unit id="week">
+      <segment>
+        <source>Week {week}</source>
+      </segment>
+    </unit>
+    <unit id="day">
+      <segment>
+        <source>Day</source>
+      </segment>
+    </unit>
+    <unit id="before">
+      <segment>
+        <source>Before</source>
+      </segment>
+    </unit>
+    <unit id="after">
+      <segment>
+        <source>After</source>
+      </segment>
+    </unit>
+    <unit id="noChange">
+      <segment>
+        <source>No change</source>
+      </segment>
+    </unit>
+    <unit id="applying">
+      <segment>
+        <source>Applying...</source>
+      </segment>
+    </unit>
+    <unit id="applyOperations">
+      <segment>
+        <source>{count, plural, one {Apply # Operation} other {Apply # Operations}}</source>
+      </segment>
+    </unit>
+    <unit id="planModPreview">
+      <segment>
+        <source>Plan Modification Preview</source>
+      </segment>
+    </unit>
+    <unit id="provider">
+      <segment>
+        <source>Provider: {provider}</source>
+      </segment>
+    </unit>
+    <unit id="generatedIn">
+      <segment>
+        <source>Generated in {seconds}s</source>
+      </segment>
+    </unit>
+    <unit id="weeksAffected">
+      <segment>
+        <source>{count, plural, one {# week affected} other {# weeks affected}}</source>
+      </segment>
+    </unit>
+    <unit id="validationWarnings">
+      <segment>
+        <source>Validation Warnings:</source>
+      </segment>
+    </unit>
+    <unit id="changesPreview">
+      <segment>
+        <source>Changes Preview</source>
+      </segment>
+    </unit>
+    <unit id="weekPhase">
+      <segment>
+        <source>Week {week} ({phase})</source>
+      </segment>
+    </unit>
+    <unit id="dayPrefix">
+      <segment>
+        <source>Day {day}:</source>
+      </segment>
+    </unit>
+    <unit id="noOriginalData">
+      <segment>
+        <source>No original week data</source>
+      </segment>
+    </unit>
+    <unit id="modified">
+      <segment>
+        <source>Modified</source>
+      </segment>
+    </unit>
+    <unit id="applyingChanges">
+      <segment>
+        <source>Applying Changes...</source>
+      </segment>
+    </unit>
+    <unit id="applyChanges">
+      <segment>
+        <source>Apply Changes</source>
+      </segment>
+    </unit>
+  </file>
+  <file id="header">
+    <unit id="loggedOut">
+      <segment>
+        <source>Logged out successfully</source>
+      </segment>
+    </unit>
+    <unit id="logoutFailed">
+      <segment>
+        <source>Failed to log out</source>
+      </segment>
+    </unit>
+    <unit id="profileLogout">
+      <segment>
+        <source>Profile &amp; logout</source>
+      </segment>
+    </unit>
+    <unit id="profile">
+      <segment>
+        <source>Profile</source>
+      </segment>
+    </unit>
+    <unit id="logout">
+      <segment>
+        <source>Logout</source>
       </segment>
     </unit>
   </file>

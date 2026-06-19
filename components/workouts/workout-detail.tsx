@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import type { PlannedWorkout, TrainingPaces } from '@/types'
 import { estimateDuration, getWorkoutPaceType } from '@/lib/training/vdot'
 import { useUnits } from '@/lib/hooks/use-units'
+import { useTranslations } from 'next-intl'
 
 interface WorkoutDetailProps {
     workout: PlannedWorkout
@@ -17,6 +18,7 @@ interface WorkoutDetailProps {
 
 export function WorkoutDetail({ workout, trainingPaces, vdot, onEdit, onDelete }: WorkoutDetailProps) {
     const { formatDistance, formatPace } = useUnits()
+    const t = useTranslations('workoutDetail')
 
     // Calculate target pace and estimated duration if we have training paces
     let targetPace: number | null = null
@@ -54,39 +56,39 @@ export function WorkoutDetail({ workout, trainingPaces, vdot, onEdit, onDelete }
 
             <div className="grid gap-4">
                 <div>
-                    <div className="text-sm text-muted-foreground">Date</div>
+                    <div className="text-sm text-muted-foreground">{t('date')}</div>
                     <div>{new Date(workout.scheduled_date).toLocaleDateString()}</div>
                 </div>
 
                 {workout.distance_target_meters && (
                     <div>
-                        <div className="text-sm text-muted-foreground">Distance Target</div>
+                        <div className="text-sm text-muted-foreground">{t('distanceTarget')}</div>
                         <div>{formatDistance(workout.distance_target_meters, 1)}</div>
                     </div>
                 )}
 
                 <div>
-                    <div className="text-sm text-muted-foreground">Intensity</div>
-                    <Badge variant="outline">{workout.intensity_target || 'Not set'}</Badge>
+                    <div className="text-sm text-muted-foreground">{t('intensity')}</div>
+                    <Badge variant="outline">{workout.intensity_target || t('notSet')}</Badge>
                 </div>
 
                 {targetPace !== null && (
                     <div>
-                        <div className="text-sm text-muted-foreground">{paceLabel} Pace</div>
-                        <div>{formatPace(targetPace!)} {vdot && <span className="text-xs text-muted-foreground">(VDOT {vdot})</span>}</div>
+                        <div className="text-sm text-muted-foreground">{t('paceLabelSuffix', { label: paceLabel ?? '' })}</div>
+                        <div>{formatPace(targetPace!)} {vdot && <span className="text-xs text-muted-foreground">{t('vdotValue', { vdot })}</span>}</div>
                     </div>
                 )}
 
                 {estimatedDurationMinutes !== null && (
                     <div>
-                        <div className="text-sm text-muted-foreground">Estimated Duration</div>
-                        <div>{estimatedDurationMinutes} minutes</div>
+                        <div className="text-sm text-muted-foreground">{t('estimatedDuration')}</div>
+                        <div>{t('minutes', { minutes: estimatedDurationMinutes })}</div>
                     </div>
                 )}
 
                 <div className="flex gap-2 pt-4">
-                    <Button onClick={onEdit} variant="outline" size="sm">Edit</Button>
-                    <Button onClick={onDelete} variant="destructive" size="sm">Delete</Button>
+                    <Button onClick={onEdit} variant="outline" size="sm">{t('edit')}</Button>
+                    <Button onClick={onDelete} variant="destructive" size="sm">{t('delete')}</Button>
                 </div>
             </div>
         </div>

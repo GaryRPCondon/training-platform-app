@@ -14,6 +14,7 @@ import { WeeklyTotals } from '../calendar/weekly-totals'
 import { useQuery } from '@tanstack/react-query'
 import { getAthleteProfile } from '@/lib/supabase/queries'
 import { CustomToolbar } from '../calendar/custom-toolbar'
+import { useTranslations } from 'next-intl'
 
 // Custom styles to enable text wrapping and enforce alignment
 const calendarStyles = `
@@ -57,8 +58,8 @@ interface TrainingCalendarProps {
   weeklyIntents?: Record<string, number>
 }
 
-function formatWorkoutTitle(workout: WorkoutWithDetails, units: UnitSystem = 'metric'): string {
-  const description = workout.description || 'Workout'
+function formatWorkoutTitle(workout: WorkoutWithDetails, units: UnitSystem = 'metric', fallback = 'Workout'): string {
+  const description = workout.description || fallback
 
   // Check if description already contains distance information (e.g., "10km", "15km", "5K")
   const hasDistanceInDescription = /\d+\.?\d*\s?(km|k|miles?|mi)\b/i.test(description)
@@ -77,6 +78,7 @@ function formatWorkoutTitle(workout: WorkoutWithDetails, units: UnitSystem = 'me
 }
 
 export function TrainingCalendar({ workouts, trainingPaces, vdot, onWorkoutSelect, modifyButton, initialDate, weeklyIntents }: TrainingCalendarProps) {
+  const t = useTranslations('reviewCalendar')
   const [selectedWorkout, setSelectedWorkout] = useState<WorkoutWithDetails | null>(null)
   const [view, setView] = useState<View>('month')
   const [currentDate, setCurrentDate] = useState(initialDate ?? new Date())
@@ -96,12 +98,12 @@ export function TrainingCalendar({ workouts, trainingPaces, vdot, onWorkoutSelec
   const events: WorkoutEvent[] = useMemo(() => {
     return workouts.map(workout => ({
       id: workout.id,
-      title: formatWorkoutTitle(workout, preferredUnits),
+      title: formatWorkoutTitle(workout, preferredUnits, t('workoutFallback')),
       start: workout.date,
       end: workout.date,
       resource: workout
     }))
-  }, [workouts, preferredUnits])
+  }, [workouts, preferredUnits, t])
 
   const handleSelectEvent = (event: WorkoutEvent) => {
     setSelectedWorkout(event.resource)
@@ -193,7 +195,7 @@ export function TrainingCalendar({ workouts, trainingPaces, vdot, onWorkoutSelec
 
       <Dialog open={!!selectedWorkout} onOpenChange={() => setSelectedWorkout(null)}>
         <DialogContent className="max-w-2xl">
-          <DialogTitle className="sr-only">Workout Details</DialogTitle>
+          <DialogTitle className="sr-only">{t('workoutDetails')}</DialogTitle>
           {selectedWorkout && (
             <WorkoutCard
               workout={selectedWorkout}

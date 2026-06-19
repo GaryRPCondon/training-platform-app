@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Star, Calendar, TrendingUp, Activity, BookOpen, Globe } from 'lucide-react'
 import type { TemplateRecommendation } from '@/lib/templates/types'
 import { useUnits } from '@/lib/hooks/use-units'
+import { useTranslations } from 'next-intl'
 
 interface TemplateCardProps {
   recommendation: TemplateRecommendation
@@ -26,6 +27,7 @@ export function TemplateCard({ recommendation, rank, onSelect }: TemplateCardPro
   } = recommendation
 
   const { units } = useUnits()
+  const t = useTranslations('templateCard')
 
   // Calculate star rating (0-5 based on fit_score)
   const stars = Math.round((fit_score / 100) * 5)
@@ -42,12 +44,12 @@ export function TemplateCard({ recommendation, rank, onSelect }: TemplateCardPro
           <div className="space-y-1 flex-1">
             <CardTitle className="text-xl">{name}</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Based on {author}'s methodology
+              {t('basedOnMethodology', { author })}
             </p>
           </div>
           {rank === 1 && (
             <Badge variant="default" className="ml-2">
-              Best Match
+              {t('bestMatch')}
             </Badge>
           )}
         </div>
@@ -63,7 +65,7 @@ export function TemplateCard({ recommendation, rank, onSelect }: TemplateCardPro
             />
           ))}
           <span className="text-sm text-muted-foreground ml-2">
-            {fit_score}/100 fit
+            {t('fitScore', { score: fit_score })}
           </span>
         </div>
       </CardHeader>
@@ -73,28 +75,28 @@ export function TemplateCard({ recommendation, rank, onSelect }: TemplateCardPro
         <div className="grid grid-cols-3 gap-2 text-sm">
           <div className="flex items-center gap-1">
             <Calendar className="h-4 w-4 text-muted-foreground" />
-            <span>{characteristics.duration_weeks} weeks</span>
+            <span>{t('weeks', { weeks: characteristics.duration_weeks })}</span>
           </div>
           <div className="flex items-center gap-1">
             <Activity className="h-4 w-4 text-muted-foreground" />
-            <span>{characteristics.training_days_per_week} days/week</span>
+            <span>{t('daysPerWeek', { days: characteristics.training_days_per_week })}</span>
           </div>
           <div className="flex items-center gap-1">
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            <span>{peakDisplay} peak</span>
+            <span>{t('peak', { peak: peakDisplay })}</span>
           </div>
         </div>
 
         {/* Difficulty Badge */}
         <div>
           <Badge variant="outline">
-            Difficulty: {characteristics.difficulty_score}/10
+            {t('difficulty', { score: characteristics.difficulty_score })}
           </Badge>
         </div>
 
         {/* Why it fits */}
         <div className="space-y-2">
-          <p className="text-sm font-medium">Why this fits:</p>
+          <p className="text-sm font-medium">{t('whyThisFits')}</p>
           <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
             <li>{reasoning.mileage_fit}</li>
             <li>{reasoning.experience_match}</li>
@@ -110,7 +112,7 @@ export function TemplateCard({ recommendation, rank, onSelect }: TemplateCardPro
         {/* Source attribution */}
         {source_reference && (
           <div className="text-xs text-muted-foreground space-y-1 pt-1 border-t border-muted">
-            <p>Based on {author}&apos;s methodology.</p>
+            <p>{t('basedOnMethodologyPeriod', { author })}</p>
             {source_reference.book_title && (
               <a
                 href={source_reference.book_url || '#'}
@@ -119,7 +121,7 @@ export function TemplateCard({ recommendation, rank, onSelect }: TemplateCardPro
                 className="flex items-center gap-1 text-primary hover:underline"
               >
                 <BookOpen className="h-3 w-3" />
-                {source_reference.book_title} →
+                {t('bookLink', { title: source_reference.book_title })}
               </a>
             )}
             {!source_reference.book_title && source_reference.website_url && (
@@ -130,7 +132,7 @@ export function TemplateCard({ recommendation, rank, onSelect }: TemplateCardPro
                 className="flex items-center gap-1 text-primary hover:underline"
               >
                 <Globe className="h-3 w-3" />
-                Visit website →
+                {t('visitWebsite')}
               </a>
             )}
             <p>{source_reference.pacing_guidance_note}</p>
@@ -143,7 +145,7 @@ export function TemplateCard({ recommendation, rank, onSelect }: TemplateCardPro
           className="w-full"
           variant={rank === 1 ? 'default' : 'outline'}
         >
-          Select This Template
+          {t('selectTemplate')}
         </Button>
       </CardContent>
     </Card>
