@@ -50,6 +50,11 @@
         <source>Profile</source>
       </segment>
     </unit>
+    <unit id="skipToMain">
+      <segment>
+        <source>Skip to main content</source>
+      </segment>
+    </unit>
   </file>
   <file id="settings">
     <unit id="title">
@@ -379,6 +384,11 @@
     <unit id="saveError">
       <segment>
         <source>Failed to update training paces</source>
+      </segment>
+    </unit>
+    <unit id="cardTitle">
+      <segment>
+        <source>Performance Metrics</source>
       </segment>
     </unit>
   </file>
@@ -1832,7 +1842,7 @@
     </unit>
     <unit id="typeLabel">
       <segment>
-        <source>Type: {type}</source>
+        <source>Type:</source>
       </segment>
     </unit>
     <unit id="createdLabel">
@@ -5458,6 +5468,11 @@ This cannot be undone.</source>
     <unit id="applyChanges">
       <segment>
         <source>Apply Changes</source>
+      </segment>
+    </unit>
+    <unit id="workoutCode">
+      <segment>
+        <source>W{week}:D{day}</source>
       </segment>
     </unit>
   </file>

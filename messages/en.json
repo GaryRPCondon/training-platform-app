@@ -9,7 +9,8 @@
     "activities": "Activities",
     "sync": "Activity Sync",
     "chat": "AI Coach",
-    "profile": "Profile"
+    "profile": "Profile",
+    "skipToMain": "Skip to main content"
   },
   "settings": {
     "title": "Personal Preferences",
@@ -80,7 +81,8 @@
     "save": "Save Training Paces",
     "saving": "Saving...",
     "saved": "Training paces updated successfully",
-    "saveError": "Failed to update training paces"
+    "saveError": "Failed to update training paces",
+    "cardTitle": "Performance Metrics"
   },
   "aiSettings": {
     "title": "AI Configuration",
@@ -398,7 +400,7 @@
     "activePlansDesc": "Currently active training plans",
     "noActivePlans": "No active plans found.",
     "active": "Active",
-    "typeLabel": "Type: {type}",
+    "typeLabel": "Type:",
     "createdLabel": "Created: {date}",
     "completedLabel": "Completed: {date}",
     "exportToCalendar": "Export to Calendar",
@@ -1166,7 +1168,8 @@
     "noOriginalData": "No original week data",
     "modified": "Modified",
     "applyingChanges": "Applying Changes...",
-    "applyChanges": "Apply Changes"
+    "applyChanges": "Apply Changes",
+    "workoutCode": "W{week}:D{day}"
   },
   "header": {
     "loggedOut": "Logged out successfully",

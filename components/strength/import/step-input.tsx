@@ -217,6 +217,7 @@ export function StepInput({
           </TabsContent>
           <TabsContent value="json" className="mt-4">
             <Textarea
+              // eslint-disable-next-line no-restricted-syntax -- JSON schema example, not translatable prose
               placeholder='{"sessions": [...]}'
               value={text}
               onChange={e => setText(e.target.value)}

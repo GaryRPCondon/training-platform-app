@@ -1,8 +1,25 @@
 #!/bin/sh
 # node_modules has Linux binaries (installed in WSL).
-# When invoked from Windows Git (Cursor), delegate to WSL so the right Node is used.
-if [ -n "$WINDIR" ]; then
-  wsl node node_modules/vitest/vitest.mjs run
-else
-  node node_modules/vitest/vitest.mjs run
+# When invoked from Windows Git (Cursor), delegate to WSL so the right Node runs.
+set -e
+run() {
+  if [ -n "$WINDIR" ]; then wsl "$@"; else "$@"; fi
+}
+
+# 1. i18n externalization gate — user-facing strings must go through next-intl.
+#    Runs ONLY the i18n rules (eslint.config.i18n.mjs) so it can't be held up by
+#    unrelated findings in the full `npm run lint`. See CLAUDE.md › i18n.
+run node node_modules/eslint/bin/eslint.js --config eslint.config.i18n.mjs "app/**/*.{ts,tsx}" "components/**/*.{ts,tsx}"
+
+# 2. Pseudo-locale + XLIFF freshness — regenerate from messages/en.json and fail
+#    if the committed artifacts are stale (i.e. a key was added without rebuild).
+run npm run i18n:build
+if ! run git diff --exit-code -- messages/en-XA.json messages/en-XB.json i18n/xliff/en.xlf; then
+  echo ""
+  echo "✖ Pseudo-locales / XLIFF are out of date with messages/en.json."
+  echo "  Run 'npm run i18n:build' and stage the regenerated files, then re-commit."
+  exit 1
 fi
+
+# 3. Test suite.
+run node node_modules/vitest/vitest.mjs run

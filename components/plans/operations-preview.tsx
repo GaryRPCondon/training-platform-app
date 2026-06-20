@@ -234,7 +234,7 @@ export function OperationsPreview({
                 className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 text-sm"
               >
                 <div className="flex-shrink-0 text-muted-foreground">
-                  W{workout.weekNumber}:D{workout.day}
+                  {t('workoutCode', { week: workout.weekNumber, day: workout.day })}
                 </div>
                 <div className="flex-1 flex items-center gap-2">
                   {/* Before */}

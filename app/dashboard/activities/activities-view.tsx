@@ -447,7 +447,7 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
                                                                 href={getGarminActivityUrl(activity.garmin_id)}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
-                                                                title="Garmin Connect"
+                                                                title={t('garminConnect')}
                                                                 onClick={e => e.stopPropagation()}
                                                                 className="opacity-70 hover:opacity-100 transition-opacity"
                                                             >
@@ -459,7 +459,7 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
                                                                 href={getStravaActivityUrl(activity.strava_id)}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
-                                                                title="Strava"
+                                                                title={t('strava')}
                                                                 onClick={e => e.stopPropagation()}
                                                                 className="opacity-70 hover:opacity-100 transition-opacity"
                                                             >

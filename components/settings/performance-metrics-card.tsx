@@ -249,7 +249,7 @@ export function PerformanceMetricsCard({ initialData }: PerformanceMetricsCardPr
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <TrendingUp className="h-5 w-5" />
-          Performance Metrics
+          {t('cardTitle')}
         </CardTitle>
         <CardDescription>
           {t('description')}

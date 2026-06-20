@@ -251,7 +251,7 @@ export default function PlansPage() {
                                         <CardContent>
                                             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                                                 <div className="text-sm text-muted-foreground">
-                                                    <div>Type: {plan.plan_type}</div>
+                                                    <div>{t('typeLabel')} {plan.plan_type}</div>
                                                     {plan.completed_at && (
                                                         <div>{t('completedLabel', { date: format(parseISO(plan.completed_at), 'MMM d, yyyy') })}</div>
                                                     )}

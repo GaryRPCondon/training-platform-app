@@ -20,6 +20,20 @@ This is a Next.js-based AI-powered training platform for endurance athletes (pri
 - **Rationale**: The system uses LLMs to provide training guidance. Users must clearly understand they're interacting with AI, not a human coach.
 - This applies to all user-facing text: UI labels, navigation, help text, documentation, etc.
 
+## Internationalization (i18n)
+
+**MANDATE: every user-facing string MUST be externalized through next-intl — never hardcoded.** This is gate-enforced (see below), not a guideline. Whenever you add or change UI copy:
+
+1. **Externalize it.** Add a key to `messages/en.json` under the screen/feature namespace and render it via `useTranslations()` (client components) or `getTranslations()` (server components). This covers: visible JSX text, `placeholder` / `aria-label` / `title` / `alt` attributes, `toast.*()` messages, and any other text a user reads. Use ICU syntax for interpolation (`{name}`), plurals (`{count, plural, …}`), and rich text (`t.rich`).
+2. **Pseudo it.** Run `npm run i18n:build` to regenerate the pseudo-locales (`messages/en-XA.json`, `en-XB.json`) and XLIFF (`i18n/xliff/en.xlf`), and stage the result. These artifacts are committed and must stay in sync with `en.json`.
+3. **Fixed enum sets** (workout_type, completion_status, …) go through `lib/i18n/enum-labels.ts` (`useEnumLabels()`), not ad-hoc `capitalize()` / label maps.
+
+**Enforcement (gate'd):**
+- ESLint rules in `eslint.i18n.shared.mjs` (`i18next/no-literal-string` + targeted `no-restricted-syntax`) flag hardcoded user-facing strings in `app/**` + `components/**`. They run in your IDE and in `npm run lint`.
+- `npm run lint:i18n` runs **only** those rules (via `eslint.config.i18n.mjs`); the husky **pre-commit hook** runs it plus the pseudo-freshness check, so a commit that adds an un-externalized string or stale pseudo files is blocked. Keep `npm run lint:i18n` green.
+
+**Exemptions** (do not externalize): `components/ui/**` primitives, dev-only screens (`app/dashboard/dev/**`, `app/dashboard/plan-preview/**`), tests, LLM/system-prompt text, and DB/AI-generated content. **Deferred (separate workstream — leave as-is):** locale-aware date/number/measurement *formatting* and bare unit labels (`m`, `km`, `bpm`, …); these are allowlisted in the gate. When adding a genuinely non-translatable string in gated code, use a narrow `// eslint-disable-next-line` with a reason rather than weakening the rule.
+
 ## Build and Development Commands
 
 ```bash

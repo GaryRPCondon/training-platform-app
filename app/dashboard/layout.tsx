@@ -1,19 +1,21 @@
 import { Header } from '@/components/shared/header'
 import { Navigation } from '@/components/shared/navigation'
 import { AutoSync } from '@/components/dashboard/auto-sync'
+import { getTranslations } from 'next-intl/server'
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
     children,
 }: {
     children: React.ReactNode
 }) {
+    const t = await getTranslations('nav')
     return (
         <div className="flex min-h-screen flex-col">
             <a
                 href="#main-content"
                 className="sr-only focus:not-sr-only focus:absolute focus:start-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-background focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:shadow-md focus:outline-none focus:ring-2 focus:ring-ring"
             >
-                Skip to main content
+                {t('skipToMain')}
             </a>
             <Header />
             <div className="flex flex-1">
