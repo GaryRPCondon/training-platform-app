@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { GarminClient } from '@/lib/garmin/client'
 import { z } from 'zod'
+import { errorMessage } from '@/lib/utils/errors'
 
 const garminAuthSchema = z.object({
     username: z.string().min(1).max(200),
@@ -73,32 +74,33 @@ export async function POST(request: Request) {
           fullName: profile.fullName
         }
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Log the actual error from login
-      console.error('Garmin login failed:', error.message, error.stack)
+      console.error('Garmin login failed:', errorMessage(error), error instanceof Error ? error.stack : undefined)
       throw error
     }
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Garmin auth error:', error instanceof Error ? error.message : 'Unknown error')
 
     // Handle specific error types
-    if (error.message?.includes('credentials') || error.message?.includes('password')) {
+    const message = errorMessage(error)
+    if (message?.includes('credentials') || message?.includes('password')) {
       return NextResponse.json(
         { error: 'Invalid Garmin credentials' },
         { status: 401 }
       )
     }
 
-    if (error.message?.includes('MFA') || error.message?.includes('multi-factor')) {
+    if (message?.includes('MFA') || message?.includes('multi-factor')) {
       return NextResponse.json(
-        { error: error.message },
+        { error: message },
         { status: 401 }
       )
     }
 
     return NextResponse.json(
-      { error: 'Failed to connect Garmin', details: error.message },
+      { error: 'Failed to connect Garmin', details: message },
       { status: 500 }
     )
   }

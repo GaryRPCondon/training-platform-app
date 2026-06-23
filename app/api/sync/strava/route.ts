@@ -249,7 +249,7 @@ export async function POST(request: Request) {
                     const preference = athlete?.preferred_activity_data_source || 'most_recent'
                     const shouldUpdateDetails = preference === 'strava' || preference === 'most_recent'
 
-                    const updateData: any = {
+                    const updateData: Record<string, unknown> = {
                         strava_id: activity.id?.toString(),
                         synced_from_strava: new Date().toISOString(),
                         source: 'merged',
@@ -288,7 +288,7 @@ export async function POST(request: Request) {
 
                 // Insert new activity. HR columns are integer; Strava reports HR
                 // as a float, so round to avoid "invalid input syntax for integer".
-                const activityData: any = {
+                const activityData: Record<string, unknown> = {
                     athlete_id: athleteId,
                     strava_id: activity.id?.toString(),
                     source: 'strava',
@@ -380,7 +380,7 @@ export async function POST(request: Request) {
                                 const preference = athlete?.preferred_activity_data_source || 'most_recent'
                                 const shouldUpdateDetails = preference === 'strava' || preference === 'most_recent'
 
-                                const updateData: any = {
+                                const updateData: Record<string, unknown> = {
                                     strava_id: activity.id?.toString(),
                                     synced_from_strava: new Date().toISOString(),
                                     source: 'merged',

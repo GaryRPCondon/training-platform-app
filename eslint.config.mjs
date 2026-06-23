@@ -20,6 +20,24 @@ const eslintConfig = defineConfig([
   // works even while the wider `npm run lint` carries unrelated pre-existing
   // findings.
   ...i18nGate,
+
+  // `no-explicit-any` is a hard gate in app/lib/component code. Two zones are
+  // exempt because `any` is legitimately dynamic there, not a typing shortcut:
+  //  - tests: mock objects / partial fixtures.
+  //  - types/database.ts: JSONB columns (garmin_data, user_criteria, …) are
+  //    inherently schemaless; tightening them cascades casts onto every reader.
+  //  - lib/agent/providers/**: LLM SDK adapters; tools/tool_choice/message
+  //    shapes mismatch each vendor SDK's evolving types — typing them means
+  //    vendoring those types. `any` is the boundary, not a shortcut.
+  {
+    files: [
+      "**/__tests__/**",
+      "**/*.test.{ts,tsx}",
+      "types/database.ts",
+      "lib/agent/providers/**/*.ts",
+    ],
+    rules: { "@typescript-eslint/no-explicit-any": "off" },
+  },
 ]);
 
 export default eslintConfig;

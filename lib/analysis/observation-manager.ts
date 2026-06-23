@@ -5,7 +5,7 @@ export interface Observation {
     type: string
     severity: 'info' | 'warning' | 'concern'
     message: string
-    data?: any
+    data?: Record<string, unknown>
     acknowledged: boolean
     dismissed: boolean
     created_at: string
@@ -19,7 +19,7 @@ export async function createObservation(
     type: string,
     severity: 'info' | 'warning' | 'concern',
     message: string,
-    data: any,
+    data: Record<string, unknown>,
     supabase: SupabaseClient
 ): Promise<Observation> {
     // Check if similar observation already exists (within last 24 hours)

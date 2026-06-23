@@ -32,7 +32,7 @@ export class DeepSeekProvider implements LLMProvider {
             }
         }))
 
-        const requestBody: any = {
+        const requestBody: Record<string, unknown> = {
             model: this.modelName,
             messages,
             max_tokens: params.maxTokens || 2000,
@@ -125,7 +125,7 @@ export class DeepSeekProvider implements LLMProvider {
             function: { name: tool.name, description: tool.description, parameters: tool.parameters }
         }))
 
-        const body: any = {
+        const body: Record<string, unknown> = {
             model: this.modelName,
             messages,
             max_tokens: params.maxTokens || 2000,

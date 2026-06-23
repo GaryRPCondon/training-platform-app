@@ -1,4 +1,4 @@
-export function prepareContext(context: any, provider: string): string {
+export function prepareContext(context: unknown, provider: string): string {
     // Simple JSON stringify for now, but could be optimized for token limits
     // based on the provider
 

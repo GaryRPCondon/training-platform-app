@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { errorMessage } from '@/lib/utils/errors'
 import { createClient } from '@/lib/supabase/server'
 import { StravaClient } from '@/lib/strava/client'
 
@@ -43,10 +44,10 @@ export async function POST() {
       success: true,
       message: 'Strava disconnected',
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Strava disconnect error:', error)
     return NextResponse.json(
-      { error: 'Failed to disconnect Strava', details: error.message },
+      { error: 'Failed to disconnect Strava', details: errorMessage(error) },
       { status: 500 },
     )
   }

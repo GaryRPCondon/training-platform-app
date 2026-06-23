@@ -67,10 +67,11 @@ export async function proxy(request: NextRequest) {
     try {
         const { data } = await supabase.auth.getUser()
         user = data.user
-    } catch (err: any) {
+    } catch (err: unknown) {
         // Expired or invalidated refresh token — treat as unauthenticated.
         // The invalid cookies will be cleared below via the redirect path.
-        if (err?.code !== 'refresh_token_not_found' && err?.__isAuthError !== true) {
+        const authErr = err as { code?: string; __isAuthError?: boolean } | undefined
+        if (authErr?.code !== 'refresh_token_not_found' && authErr?.__isAuthError !== true) {
             throw err
         }
     }

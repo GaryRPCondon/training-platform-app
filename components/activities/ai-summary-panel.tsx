@@ -76,13 +76,16 @@ export function AISummaryPanel({
   const pollRef = useRef<NodeJS.Timeout | null>(null)
   const pollStartRef = useRef<number>(0)
 
-  // Sync with prop changes (e.g. activity dialog re-opened with fresh data)
+  // Sync local state when the activity props change (e.g. dialog re-opened with
+  // fresh data). Intentional prop→state reset; the values are mirrored on purpose.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setStatus(initialStatus)
     setSummary(initialSummary)
     setStarRating(initialStarRating)
     setGeneratedAt(initialGeneratedAt)
   }, [initialStatus, initialSummary, initialStarRating, initialGeneratedAt])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const stopPolling = useCallback(() => {
     if (pollRef.current) {

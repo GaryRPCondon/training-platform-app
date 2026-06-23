@@ -81,7 +81,7 @@ export class OpenAIProvider implements LLMProvider {
             function: { name: tool.name, description: tool.description, parameters: tool.parameters }
         }))
 
-        const body: any = {
+        const body: Record<string, unknown> = {
             model: this.modelName,
             messages,
             max_tokens: request.maxTokens,

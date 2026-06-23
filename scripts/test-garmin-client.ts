@@ -1,6 +1,7 @@
 // Run with: npx ts-node scripts/test-garmin-client.ts
 
 import { GarminClient } from '../lib/garmin/client'
+import { errorMessage } from '../lib/utils/errors'
 
 async function testGarminClient() {
   const client = new GarminClient()
@@ -24,10 +25,10 @@ async function testGarminClient() {
       console.log('✅ Login successful')
       console.log('   OAuth1 token:', tokens.oauth1.oauth_token.substring(0, 20) + '...')
       console.log('   OAuth2 expires:', new Date(tokens.oauth2.expires_at * 1000).toISOString())
-    } catch (error: any) {
-      if (error.message.includes('MFA')) {
+    } catch (error: unknown) {
+      if (errorMessage(error)?.includes('MFA')) {
         console.log('⚠️  MFA is enabled on this account')
-        console.log('   Error:', error.message)
+        console.log('   Error:', errorMessage(error))
         console.log('\nTo test this implementation, you need a Garmin account without MFA enabled.')
         console.log('Skipping remaining tests.')
         return
@@ -61,11 +62,12 @@ async function testGarminClient() {
 
     console.log('\n✅ All tests passed!')
 
-  } catch (error: any) {
-    console.error('\n❌ Test failed:', error.message)
-    if (error.response) {
-      console.error('Response status:', error.response.status)
-      console.error('Response data:', error.response.data)
+  } catch (error: unknown) {
+    console.error('\n❌ Test failed:', errorMessage(error))
+    const resp = (error as { response?: { status?: number; data?: unknown } }).response
+    if (resp) {
+      console.error('Response status:', resp.status)
+      console.error('Response data:', resp.data)
     }
     process.exit(1)
   }

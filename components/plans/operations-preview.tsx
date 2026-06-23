@@ -36,7 +36,7 @@ import { useTranslations } from 'next-intl'
 interface Operation {
   op: string
   description: string
-  [key: string]: any
+  [key: string]: unknown
 }
 
 interface AffectedWorkout {

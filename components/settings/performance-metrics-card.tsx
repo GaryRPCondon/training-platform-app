@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { errorMessage } from '@/lib/utils/errors'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
@@ -188,9 +189,9 @@ export function PerformanceMetricsCard({ initialData }: PerformanceMetricsCardPr
       setNewVDOT(null)
       setNewPaces(null)
       toast.success(t('saved'))
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to update VDOT:', error)
-      toast.error(error.message || t('saveError'))
+      toast.error(errorMessage(error) || t('saveError'))
     } finally {
       setSaving(false)
     }

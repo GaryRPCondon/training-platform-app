@@ -10,7 +10,7 @@ export interface Adjustment {
     rationale: string
     impact: string
     targetWorkoutId?: number
-    proposedChanges: any
+    proposedChanges: Record<string, unknown>
 }
 
 export async function proposeAdjustments(supabase: SupabaseClient, athleteId: string): Promise<Adjustment[]> {

@@ -73,7 +73,7 @@ export function getWorkoutTypeDefaults(
   distance_target_meters?: number
   duration_target_seconds?: number | null
 } {
-  const updates: any = {}
+  const updates: Record<string, unknown> = {}
 
   switch (newType) {
     case 'race': {

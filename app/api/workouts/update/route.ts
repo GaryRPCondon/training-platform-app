@@ -54,7 +54,7 @@ export async function PATCH(request: Request) {
     }
 
     // Build update data from validated fields
-    const updateData: Record<string, any> = {}
+    const updateData: Record<string, unknown> = {}
     for (const [key, value] of Object.entries(updates)) {
       if (value !== undefined) {
         updateData[key] = value
@@ -87,7 +87,7 @@ export async function PATCH(request: Request) {
     } else if (swChanged && !distChanged) {
       // Structured workout changed → recalculate distance from it
       const newSw = updateData.structured_workout as Record<string, unknown> | null
-      const effectiveType = typeChanged ? updateData.workout_type : currentType
+      const effectiveType = typeChanged ? (updateData.workout_type as string) : currentType
       if (newSw?.main_set !== undefined) {
         const total = calculateTotalWorkoutDistance(
           null, // force calculation from structure

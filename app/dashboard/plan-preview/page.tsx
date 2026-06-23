@@ -193,7 +193,7 @@ function RunsPanel({ runs, selected, onSelect, onRefresh }: { runs: RunListEntry
         <Button variant="ghost" size="sm" onClick={onRefresh}>↻</Button>
       </div>
       {runs === null && <div className="text-xs text-muted-foreground">Loading…</div>}
-      {runs && runs.length === 0 && <div className="text-xs text-muted-foreground">No runs yet. Click "Generate all plans".</div>}
+      {runs && runs.length === 0 && <div className="text-xs text-muted-foreground">No runs yet. Click &quot;Generate all plans&quot;.</div>}
       {runs && runs.map(r => (
         <button
           key={r.timestamp}

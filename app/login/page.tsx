@@ -11,6 +11,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { Clock } from 'lucide-react'
 import { useTranslations } from 'next-intl'
+import { errorMessage } from '@/lib/utils/errors'
 
 function LoginForm() {
     const t = useTranslations('auth')
@@ -41,8 +42,8 @@ function LoginForm() {
             toast.success(t('loggedIn'))
             router.push(redirectTo)
             router.refresh()
-        } catch (error: any) {
-            toast.error(error.message || t('loginFailed'))
+        } catch (error: unknown) {
+            toast.error(errorMessage(error) || t('loginFailed'))
         } finally {
             setLoading(false)
         }
@@ -90,8 +91,8 @@ function LoginForm() {
 
             setSignupComplete(true)
             toast.success(t('accountCreated'))
-        } catch (error: any) {
-            toast.error(error.message || t('signUpFailed'))
+        } catch (error: unknown) {
+            toast.error(errorMessage(error) || t('signUpFailed'))
         } finally {
             setLoading(false)
         }

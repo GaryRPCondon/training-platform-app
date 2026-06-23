@@ -17,7 +17,7 @@ interface ExistingMatch {
   start_time: string
   distance_meters: number | null
   duration_seconds: number | null
-  [key: string]: any
+  [key: string]: unknown
 }
 
 /**

@@ -197,7 +197,7 @@ export function PlanChatInterface({
 
     try {
       // Determine what to send based on mode
-      const bodyData: Record<string, any> = { planId }
+      const bodyData: Record<string, unknown> = { planId }
 
       if (previewMode === 'operations' && preview?.operations) {
         // Operations mode - send operations array

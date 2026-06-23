@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { errorMessage } from '@/lib/utils/errors'
 import { createClient } from '@/lib/supabase/server'
 import { GarminClient } from '@/lib/garmin/client'
 import { mapGarminLapToRow } from '@/lib/garmin/lap-mapper'
@@ -242,7 +243,7 @@ export async function POST(request: Request) {
           const preference = athlete?.preferred_activity_data_source || 'most_recent'
           const shouldUpdateDetails = preference === 'garmin' || preference === 'most_recent'
 
-          const updateData: any = {
+          const updateData: Record<string, unknown> = {
             garmin_id: activityIdStr,
             synced_from_garmin: new Date().toISOString(),
             source: 'merged',
@@ -337,7 +338,7 @@ export async function POST(request: Request) {
                 const preference = athlete?.preferred_activity_data_source || 'most_recent'
                 const shouldUpdateDetails = preference === 'garmin' || preference === 'most_recent'
 
-                const updateData: any = {
+                const updateData: Record<string, unknown> = {
                   garmin_id: activityIdStr,
                   synced_from_garmin: new Date().toISOString(),
                   source: 'merged',
@@ -413,10 +414,10 @@ export async function POST(request: Request) {
       await releaseSyncLock(supabase, athleteId)
     }
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Garmin sync error:', error)
     return NextResponse.json(
-      { error: 'Failed to sync with Garmin', details: error.message },
+      { error: 'Failed to sync with Garmin', details: errorMessage(error) },
       { status: 500 }
     )
   }

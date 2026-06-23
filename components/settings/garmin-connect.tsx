@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { errorMessage } from '@/lib/utils/errors'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -92,8 +93,8 @@ export function GarminConnect({
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || t('removeWorkoutsFailed'))
       toast.success(t('removedWorkouts', { count: data.deleted }))
-    } catch (err: any) {
-      toast.error(err.message || t('removeWorkoutsFailed'))
+    } catch (err: unknown) {
+      toast.error(errorMessage(err) || t('removeWorkoutsFailed'))
     } finally {
       setRemoving(false)
     }
@@ -130,8 +131,8 @@ export function GarminConnect({
         window.location.reload()
       }, 1500)
 
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      setError(errorMessage(err) ?? null)
     } finally {
       setLoading(false)
     }
@@ -154,7 +155,7 @@ export function GarminConnect({
       // Force full page reload to update connection status
       window.location.reload()
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Disconnect error:', err)
       alert(t('disconnectFailed'))
     } finally {

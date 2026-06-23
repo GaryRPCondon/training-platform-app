@@ -128,7 +128,7 @@ describe('proposeAdjustments', () => {
     const result = await proposeAdjustments(mockSupabase, 'athlete-1')
     const volumeAdjustment = result.find(a => a.type === 'reduce_volume')!
     expect(volumeAdjustment).toBeDefined()
-    const change = volumeAdjustment.proposedChanges.workouts[0]
+    const change = (volumeAdjustment.proposedChanges.workouts as Array<{ newDistance: number }>)[0]
     expect(change.newDistance).toBe(8000)  // 10000 * 0.8
   })
 

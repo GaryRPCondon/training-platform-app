@@ -86,6 +86,21 @@ export type BulkOperation =
 export type PlanOperation = ScheduleOperation | WorkoutModification | BulkOperation
 
 /**
+ * Permissive field access for operation payloads in grouped switch-cases where
+ * the discriminated `PlanOperation` union doesn't auto-narrow (several `op`
+ * variants handled in one `case` block). Cast to this instead of `any`.
+ */
+export type OperationFields = Partial<{
+  workoutIndex: string
+  workoutId: number
+  newType: string
+  newDistanceMeters: number
+  newDescription: string
+  newDate: string
+  factor: number
+}>
+
+/**
  * LLM response that requests fallback to full regeneration
  */
 export interface FallbackRequest {
@@ -140,6 +155,8 @@ export interface ApplyResult {
 /**
  * Check if a response from LLM is a fallback request
  */
-export function isFallbackRequest(response: any): response is FallbackRequest {
-  return response && response.fallback === true && typeof response.reason === 'string'
+export function isFallbackRequest(response: unknown): response is FallbackRequest {
+  if (!response || typeof response !== 'object') return false
+  const r = response as { fallback?: unknown; reason?: unknown }
+  return r.fallback === true && typeof r.reason === 'string'
 }

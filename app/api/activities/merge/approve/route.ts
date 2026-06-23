@@ -37,7 +37,7 @@ export async function POST(request: Request) {
         const [act1, act2] = activities
 
         // Merge: keep the first activity, add IDs from second
-        const mergedData: any = {}
+        const mergedData: Record<string, unknown> = {}
 
         if (act2.garmin_id) mergedData.garmin_id = act2.garmin_id
         if (act2.strava_id) mergedData.strava_id = act2.strava_id

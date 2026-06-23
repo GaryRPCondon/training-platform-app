@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { errorMessage } from '@/lib/utils/errors'
 import { NextRequest, NextResponse } from 'next/server'
 import { notifyAdminOfSignup } from '@/lib/email/notify-admin'
 import { z } from 'zod'
@@ -69,10 +70,10 @@ export async function POST(request: NextRequest) {
         })
 
         return NextResponse.json({ success: true, athlete: data })
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Unexpected error creating athlete:', error)
         return NextResponse.json(
-            { error: error.message || 'Internal server error' },
+            { error: errorMessage(error) || 'Internal server error' },
             { status: 500 }
         )
     }

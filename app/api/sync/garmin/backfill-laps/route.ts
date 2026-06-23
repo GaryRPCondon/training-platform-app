@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { errorMessage } from '@/lib/utils/errors'
 import { createClient } from '@/lib/supabase/server'
 import { GarminClient } from '@/lib/garmin/client'
 import { mapGarminLapToRow } from '@/lib/garmin/lap-mapper'
@@ -26,7 +27,7 @@ export async function POST() {
       .order('id', { ascending: false })
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: errorMessage(error) }, { status: 500 })
     }
 
     if (!activities?.length) {
@@ -47,9 +48,9 @@ export async function POST() {
         lapsInserted += n
         processed++
         console.log(`Backfilled activity ${activity.id} (Garmin ${garminId}): ${n} laps`)
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error(`Failed to backfill activity ${activity.id}:`, err)
-        errors.push(`activity ${activity.id}: ${err.message}`)
+        errors.push(`activity ${activity.id}: ${errorMessage(err)}`)
       }
       // 2 API calls per activity → stay well under 60/min limit
       await new Promise(resolve => setTimeout(resolve, 2000))
@@ -62,9 +63,9 @@ export async function POST() {
       ...(errors.length ? { errors } : {})
     })
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Backfill error:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: errorMessage(error) }, { status: 500 })
   }
 }
 

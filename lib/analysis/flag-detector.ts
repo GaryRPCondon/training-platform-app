@@ -7,7 +7,7 @@ export interface Flag {
     type: string
     severity: 'info' | 'warning' | 'concern'
     message: string
-    data?: any
+    data?: unknown
     created_at: string
 }
 

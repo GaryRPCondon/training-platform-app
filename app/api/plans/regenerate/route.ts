@@ -114,7 +114,7 @@ export async function POST(request: Request) {
 
     const userProviderName = athlete?.preferred_llm_provider || 'deepseek'
 
-    let providerName: string = userProviderName
+    const providerName: string = userProviderName
     let modelOverride: string | undefined
 
     if (providerName === 'deepseek') {

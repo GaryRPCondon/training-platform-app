@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { errorMessage } from '@/lib/utils/errors'
 import { createClient } from '@/lib/supabase/server'
 import { GarminClient } from '@/lib/garmin/client'
 
@@ -20,10 +21,10 @@ export async function POST() {
       message: 'Garmin disconnected'
     })
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Garmin disconnect error:', error)
     return NextResponse.json(
-      { error: 'Failed to disconnect Garmin', details: error.message },
+      { error: 'Failed to disconnect Garmin', details: errorMessage(error) },
       { status: 500 }
     )
   }

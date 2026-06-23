@@ -223,7 +223,7 @@ async function loadPlanContext(supabase: SupabaseClient, athleteId: string) {
 async function loadPersonalRecords(supabase: SupabaseClient, athleteId: string) {
     // Get fastest times at common distances — one query each, run in parallel.
     const distances = [5000, 10000, 21097, 42195] // 5k, 10k, half, full
-    const records: Record<string, any> = {}
+    const records: Record<string, unknown> = {}
 
     const results = await Promise.all(distances.map(distance =>
         supabase

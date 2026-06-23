@@ -9,7 +9,7 @@ import {
   rebuildStructuredWorkoutForType,
   updateStructuredWorkoutIntensity,
 } from '@/lib/plans/structured-workout-builder'
-import type { PlanOperation, ApplyResult } from './types'
+import type { PlanOperation, ApplyResult, OperationFields } from './types'
 import { validateOperations } from './validate'
 import {
   resolveWorkoutIndex,
@@ -67,7 +67,7 @@ export async function applyOperations(
     // Pre-resolve ALL workout indices to IDs before applying operations
     const resolvedOperations = await Promise.all(
       operations.map(async (op) => {
-        const opCopy = { ...op } as any
+        const opCopy = { ...op } as PlanOperation & OperationFields
         if ('workoutIndex' in opCopy && opCopy.workoutIndex && !opCopy.workoutId) {
           const resolvedId = await ensureWorkoutExists(opCopy.workoutIndex, planId, planContext, supabase)
           if (resolvedId) {
@@ -202,7 +202,7 @@ async function applySingleOperation(
       }
 
       default:
-        errors.push(`Unsupported operation: ${(op as any).op}`)
+        errors.push(`Unsupported operation: ${(op as PlanOperation).op}`)
     }
 
     return {
@@ -417,7 +417,7 @@ async function executeChangeWorkoutType(
     return { success: false, workoutsModified: 0, errors: [fetchError.message] }
   }
 
-  const update: Record<string, any> = { workout_type: op.newType }
+  const update: Record<string, unknown> = { workout_type: op.newType }
 
   if (op.newDescription) {
     update.description = op.newDescription
@@ -488,7 +488,7 @@ async function executeChangeDistance(
     return { success: false, workoutsModified: 0, errors: [fetchError?.message ?? 'Workout not found'] }
   }
 
-  const update: Record<string, any> = { distance_target_meters: op.newDistanceMeters }
+  const update: Record<string, unknown> = { distance_target_meters: op.newDistanceMeters }
 
   const sw = workout.structured_workout as Record<string, unknown> | null
   if (sw?.main_set !== undefined && workout.distance_target_meters && workout.distance_target_meters > 0) {
@@ -549,7 +549,7 @@ async function executeScaleDistance(
   }
 
   const newDistance = Math.round((workout.distance_target_meters || 0) * op.factor)
-  const update: Record<string, any> = { distance_target_meters: newDistance }
+  const update: Record<string, unknown> = { distance_target_meters: newDistance }
 
   const sw = workout.structured_workout as Record<string, unknown> | null
   if (sw?.main_set !== undefined) {
@@ -608,7 +608,7 @@ async function executeChangeIntensity(
     return { success: false, workoutsModified: 0, errors: [fetchError?.message ?? 'Workout not found'] }
   }
 
-  const update: Record<string, any> = { intensity_target: op.newIntensity }
+  const update: Record<string, unknown> = { intensity_target: op.newIntensity }
 
   const sw = workout.structured_workout as Record<string, unknown> | null
   if (sw?.main_set !== undefined) {
@@ -645,7 +645,7 @@ async function executeScaleWeekVolume(
   for (const workout of workoutsForWeek) {
     if (workout.distance_target_meters && workout.workout_type !== 'rest') {
       const newDistance = Math.round(workout.distance_target_meters * op.factor)
-      const update: Record<string, any> = { distance_target_meters: newDistance }
+      const update: Record<string, unknown> = { distance_target_meters: newDistance }
 
       const sw = workout.structured_workout as Record<string, unknown> | null
       if (sw?.main_set !== undefined) {
@@ -717,7 +717,7 @@ async function executeRemoveWorkoutType(
 
     for (const workout of workoutsForWeek) {
       if (workout.workout_type === op.workoutType) {
-        const update: Record<string, any> = {
+        const update: Record<string, unknown> = {
           workout_type: op.replacement,
           structured_workout: rebuildStructuredWorkoutForType(
             op.replacement,

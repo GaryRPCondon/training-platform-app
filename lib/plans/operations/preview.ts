@@ -205,7 +205,7 @@ export function previewOperations(
       case 'change_workout_distance':
       case 'scale_workout_distance':
       case 'reschedule_workout': {
-        const workoutIndex = (op as any).workoutIndex
+        const workoutIndex = op.workoutIndex
         if (!workoutIndex) break
 
         const parsed = parseWorkoutIndex(workoutIndex)
@@ -226,7 +226,7 @@ export function previewOperations(
           const after = { ...before }
 
           if (op.op === 'change_workout_type') {
-            const newType = (op as any).newType
+            const newType = op.newType
             after.type = newType
             const defaults = getWorkoutTypeDefaults(newType, workout.distance_km)
             if (defaults.description) after.description = defaults.description
@@ -234,11 +234,11 @@ export function previewOperations(
               after.distanceKm = defaults.distance_target_meters / 1000
             }
           } else if (op.op === 'change_workout_distance') {
-            after.distanceKm = (op as any).newDistanceMeters / 1000
+            after.distanceKm = op.newDistanceMeters / 1000
           } else if (op.op === 'scale_workout_distance') {
-            after.distanceKm = (workout.distance_km || 0) * (op as any).factor
+            after.distanceKm = (workout.distance_km || 0) * op.factor
           } else if (op.op === 'reschedule_workout') {
-            after.date = (op as any).newDate
+            after.date = op.newDate
           }
 
           preview.affectedWorkouts.push({
@@ -269,12 +269,12 @@ export function previewOperations(
           }
 
           if (op.op === 'change_workout_type') {
-            after.type = (op as any).newType
-            after.description = (op as any).newDescription || `${(op as any).newType} workout`
+            after.type = op.newType
+            after.description = op.newDescription || `${op.newType} workout`
           } else if (op.op === 'change_workout_distance') {
-            after.distanceKm = (op as any).newDistanceMeters / 1000
+            after.distanceKm = op.newDistanceMeters / 1000
           } else if (op.op === 'reschedule_workout') {
-            after.date = (op as any).newDate
+            after.date = op.newDate
           }
 
           preview.affectedWorkouts.push({

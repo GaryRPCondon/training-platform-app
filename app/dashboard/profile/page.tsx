@@ -1,6 +1,7 @@
 'use client'
 
 import { Suspense, useState } from 'react'
+import { errorMessage } from '@/lib/utils/errors'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { getAthleteProfile } from '@/lib/supabase/queries'
@@ -67,8 +68,8 @@ function ProfileContent() {
             toast.success(t('accountDeleted'))
             router.push('/login')
             router.refresh()
-        } catch (err: any) {
-            toast.error(err.message || t('deleteFailed'))
+        } catch (err: unknown) {
+            toast.error(errorMessage(err) || t('deleteFailed'))
         } finally {
             setDeleteLoading(false)
         }

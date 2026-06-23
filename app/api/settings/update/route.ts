@@ -64,7 +64,7 @@ export async function POST(request: Request) {
         }
 
         // Build update object with only provided fields
-        const updates: any = {}
+        const updates: Record<string, unknown> = {}
         if (provider !== undefined) updates.preferred_llm_provider = provider
         if (model !== undefined) updates.preferred_llm_model = model || null
         if (preferred_units !== undefined) updates.preferred_units = preferred_units
