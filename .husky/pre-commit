@@ -9,7 +9,10 @@ run() {
 # 1. i18n externalization gate — user-facing strings must go through next-intl.
 #    Runs ONLY the i18n rules (eslint.config.i18n.mjs) so it can't be held up by
 #    unrelated findings in the full `npm run lint`. See CLAUDE.md › i18n.
-run node node_modules/eslint/bin/eslint.js --config eslint.config.i18n.mjs "app/**/*.{ts,tsx}" "components/**/*.{ts,tsx}"
+#    NB: pass directories, not brace globs — `{ts,tsx}` can get shell-expanded
+#    across the Windows→WSL boundary into a zero-match pattern that ESLint
+#    errors on. ESLint selects files via the config's `files` patterns.
+run node node_modules/eslint/bin/eslint.js --config eslint.config.i18n.mjs app components
 
 # 2. Pseudo-locale + XLIFF freshness — regenerate from messages/en.json and fail
 #    if the committed artifacts are stale (i.e. a key was added without rebuild).

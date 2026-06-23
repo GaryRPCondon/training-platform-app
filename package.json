@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "lint:i18n": "eslint --config eslint.config.i18n.mjs \"app/**/*.{ts,tsx}\" \"components/**/*.{ts,tsx}\"",
+    "lint:i18n": "eslint --config eslint.config.i18n.mjs app components",
     "test": "vitest run",
     "test:watch": "vitest",
     "i18n:xliff:export": "tsx scripts/i18n/export-xliff.ts",
