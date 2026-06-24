@@ -22,7 +22,6 @@ export function TemplateCard({ recommendation, rank, onSelect }: TemplateCardPro
     fit_score,
     reasoning,
     characteristics,
-    match_quality,
     source_reference
   } = recommendation
 

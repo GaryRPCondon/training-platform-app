@@ -72,7 +72,7 @@ export function AutoSync() {
         }
 
         syncPlatforms()
-    }, [athlete, queryClient, router])
+    }, [athlete, queryClient, router, t])
 
     return null
 }

@@ -82,11 +82,9 @@ describe('POST /api/workouts/reschedule', () => {
   })
 
   it('returns 200 with success:true for valid reschedule', async () => {
-    let callCount = 0
     const supabase = makeMockSupabase(
       { id: 'user-1' },
       (_table) => {
-        callCount++
         const mock: any = {
           select: () => mock,
           eq: () => mock,

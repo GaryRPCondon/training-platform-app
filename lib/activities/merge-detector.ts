@@ -1,4 +1,4 @@
-import { differenceInMinutes, differenceInHours, isSameDay } from 'date-fns'
+import { differenceInMinutes, differenceInHours } from 'date-fns'
 
 export interface Activity {
     id?: number

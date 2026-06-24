@@ -38,6 +38,22 @@ const eslintConfig = defineConfig([
     ],
     rules: { "@typescript-eslint/no-explicit-any": "off" },
   },
+
+  // Honor the conventional leading-underscore "intentionally unused" prefix for
+  // args, vars, caught errors, and array destructures.
+  {
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+          destructuredArrayIgnorePattern: "^_",
+        },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;

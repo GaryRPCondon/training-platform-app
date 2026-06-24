@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { Dumbbell, Trash2 } from 'lucide-react'
@@ -17,9 +17,7 @@ export default function StrengthPage() {
   const [programs, setPrograms] = useState<StrengthProgram[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { fetchPrograms() }, [])
-
-  async function fetchPrograms() {
+  const fetchPrograms = useCallback(async () => {
     setLoading(true)
     try {
       const res = await fetch('/api/strength/programs')
@@ -32,7 +30,9 @@ export default function StrengthPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [t])
+
+  useEffect(() => { fetchPrograms() }, [fetchPrograms])
 
   async function handleDelete(programId: number, name: string) {
     const confirmed = confirm(t('deleteConfirm', { name }))

@@ -1,4 +1,4 @@
-import type { PlannedWorkout, WeeklyPlan, TrainingPhase } from './database'
+import type { PlannedWorkout, TrainingPhase } from './database'
 
 // Calendar event for react-big-calendar
 export interface WorkoutEvent {

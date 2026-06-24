@@ -78,7 +78,6 @@ export function PreferencesCard() {
                 setThemeRef.current(savedTheme.current)
             }
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     const themeChanged = savedTheme.current !== undefined && theme !== savedTheme.current

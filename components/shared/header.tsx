@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
     DropdownMenu,
@@ -13,10 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
-    LayoutDashboard,
-    Calendar,
     User,
-    Settings,
     LogOut
 } from 'lucide-react'
 import { MobileNavigation } from './navigation'

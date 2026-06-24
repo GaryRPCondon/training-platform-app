@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -53,12 +53,7 @@ export function AISettingsCard() {
         feedbackTone: FeedbackTone
     }>({ provider: 'deepseek', model: '', useFastModel: true, aiSummariesEnabled: false, feedbackTone: 'balanced' })
 
-    useEffect(() => {
-        fetchSettings()
-        fetchAvailableProviders()
-    }, [])
-
-    const fetchAvailableProviders = async () => {
+    const fetchAvailableProviders = useCallback(async () => {
         try {
             const response = await fetch('/api/settings/available-providers')
             if (response.ok) {
@@ -68,14 +63,14 @@ export function AISettingsCard() {
         } catch {
             // Silently fail — all providers will appear available
         }
-    }
+    }, [])
 
     const isProviderAvailable = (name: string) => {
         if (availableProviders.length === 0) return true // Not loaded yet, don't block
         return availableProviders.find(p => p.name === name)?.available ?? false
     }
 
-    const fetchSettings = async () => {
+    const fetchSettings = useCallback(async () => {
         try {
             const response = await fetch('/api/settings/get')
             if (response.ok) {
@@ -103,7 +98,12 @@ export function AISettingsCard() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [t])
+
+    useEffect(() => {
+        fetchSettings()
+        fetchAvailableProviders()
+    }, [fetchSettings, fetchAvailableProviders])
 
     const hasChanges = provider !== savedValues.current.provider ||
         model !== savedValues.current.model ||

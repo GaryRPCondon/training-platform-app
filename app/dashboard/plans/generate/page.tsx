@@ -25,7 +25,7 @@ function GeneratePageContent() {
   const [status, setStatus] = useState<'loading' | 'generating' | 'success' | 'error'>('loading')
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
-  const [planId, setPlanId] = useState<number | null>(null)
+  const [, setPlanId] = useState<number | null>(null)
   const [warnings, setWarnings] = useState<GenerationWarning[]>([])
   const generationStartedRef = useRef(false)
 
@@ -55,7 +55,6 @@ function GeneratePageContent() {
         const peakMileage = searchParams.get('peak')
         const daysPerWeek = searchParams.get('days')
         const weeksAvailable = searchParams.get('weeks')
-        const methodology = searchParams.get('methodology')
         const vdotDataRaw = searchParams.get('vdotData')
         const preferredRestDaysRaw = searchParams.get('preferredRestDays')
 
@@ -169,7 +168,7 @@ function GeneratePageContent() {
     }
 
     generatePlan()
-  }, [searchParams, router])
+  }, [searchParams, router, queryClient, t])
 
   return (
     <div className="flex items-center justify-center min-h-[400px]">

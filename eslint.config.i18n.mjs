@@ -8,7 +8,7 @@ import tseslint from "typescript-eslint";
 import reactHooks from "eslint-plugin-react-hooks";
 import { i18nGate } from "./eslint.i18n.shared.mjs";
 
-export default [
+const config = [
   {
     files: ["app/**/*.{ts,tsx}", "components/**/*.{ts,tsx}"],
     // This scoped config only runs the i18n rules, so it shouldn't police
@@ -28,3 +28,5 @@ export default [
   },
   ...i18nGate,
 ];
+
+export default config;

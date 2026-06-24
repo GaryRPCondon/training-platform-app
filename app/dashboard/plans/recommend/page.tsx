@@ -79,7 +79,7 @@ function RecommendPageContent() {
     }
 
     fetchRecommendations()
-  }, [searchParams])
+  }, [searchParams, t])
 
   function handleSelectTemplate(templateId: string) {
     // Navigate to Phase 2 (generation) with all form params

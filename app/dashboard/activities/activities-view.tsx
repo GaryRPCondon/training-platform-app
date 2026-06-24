@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
     Dialog,
@@ -111,7 +110,7 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
             if (type !== unknownLabel) types.add(type)
         })
         return Array.from(types).sort()
-    }, [initialActivities])
+    }, [initialActivities, unknownLabel])
 
     // Filter activities
     const filteredActivities = useMemo(() => {
@@ -156,7 +155,7 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
 
             return true
         })
-    }, [initialActivities, dateFilter, typeFilter, sourceFilter, nameFilter])
+    }, [initialActivities, dateFilter, typeFilter, sourceFilter, nameFilter, unknownLabel])
 
     // Calculate stats
     const stats = useMemo(() => {
@@ -177,7 +176,7 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
             totalDuration: (totalDuration / 3600).toFixed(1),
             thisWeekActivities
         }
-    }, [filteredActivities])
+    }, [filteredActivities, toDisplayDistance])
 
     // Selection helpers
     const filteredIds = useMemo(() => new Set(filteredActivities.map(a => a.id)), [filteredActivities])
@@ -233,7 +232,7 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
             } else {
                 toast.error(data.error || t('deleteError'))
             }
-        } catch (error) {
+        } catch {
             toast.error(t('deleteError'))
         } finally {
             setIsDeleting(false)

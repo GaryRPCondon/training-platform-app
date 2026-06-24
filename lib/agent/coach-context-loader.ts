@@ -15,7 +15,6 @@ import {
     addDays,
     differenceInWeeks,
     subDays,
-    startOfDay,
 } from 'date-fns'
 import type { StrengthExercise, Lap } from '@/types/database'
 import { loadFullTemplate } from '@/lib/templates/template-loader'

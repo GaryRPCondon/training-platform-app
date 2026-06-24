@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import {
   calculateVDOTFromRaceTime,
@@ -74,7 +74,7 @@ export function VDOTInput({ value, onChange }: Props) {
           calculated_vdot: vdot
         }
       })
-    } catch (error) {
+    } catch {
       setCalculatedVDOT(null)
       setCalculatedPaces(null)
       onChange(null)

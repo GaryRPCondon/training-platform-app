@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { findExistingMatch } from '../pre-insert-dedup'
 
 // ---------------------------------------------------------------------------
@@ -37,16 +37,6 @@ const garminActivity = {
   source: 'garmin',
   garmin_id: 'g1',
   strava_id: null,
-}
-
-const stravaActivity = {
-  id: 200,
-  start_time: BASE_TIME,        // Exact same time
-  distance_meters: 10000,       // Same distance
-  duration_seconds: 3600,
-  source: 'strava',
-  garmin_id: null,
-  strava_id: 's1',
 }
 
 // ---------------------------------------------------------------------------

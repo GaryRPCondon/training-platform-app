@@ -34,7 +34,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Activities not found' }, { status: 404 })
         }
 
-        const [act1, act2] = activities
+        const [, act2] = activities
 
         // Merge: keep the first activity, add IDs from second
         const mergedData: Record<string, unknown> = {}

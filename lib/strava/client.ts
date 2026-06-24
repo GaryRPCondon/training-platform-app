@@ -1,5 +1,4 @@
-import { StravaTokens, StravaActivity, StravaRateLimit } from './types'
-import { createClient } from '@/lib/supabase/server'
+import { StravaTokens, StravaActivity } from './types'
 import { SupabaseClient } from '@supabase/supabase-js'
 
 const STRAVA_API_URL = 'https://www.strava.com/api/v3'

@@ -17,8 +17,6 @@ interface ChatPanelProps {
 }
 
 export function ChatPanel({
-  planId,
-  sessionId,
   messages,
   onSendMessage,
   isLoading = false

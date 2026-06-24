@@ -43,10 +43,8 @@ interface GarminConnectProps {
 
 export function GarminConnect({
   isConnected,
-  onConnectionChange,
   stravaConnected,
   garminPreferred,
-  stravaPreferred,
   onPreferenceChange,
   pushSummaryToGarmin,
   onPushSummaryChange,

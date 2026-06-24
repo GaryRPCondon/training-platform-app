@@ -254,7 +254,7 @@ export function CoachInterface({ sessionId: propSessionId, onSessionChange, work
                         } else if (event.type === 'error') {
                             throw new Error(event.error)
                         }
-                    } catch (parseErr) {
+                    } catch {
                         // Skip malformed lines
                     }
                 }
@@ -268,7 +268,7 @@ export function CoachInterface({ sessionId: propSessionId, onSessionChange, work
             setIsSending(false)
             setLoadingStatus(null)
         }
-    }, [input, isSending, messages, activeSessionId, onSessionChange, workoutId, activityId, strengthSessionId])
+    }, [input, isSending, messages, activeSessionId, onSessionChange, workoutId, activityId, strengthSessionId, t])
 
     // -----------------------------------------------------------------------
     // Render

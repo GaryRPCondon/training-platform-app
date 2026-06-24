@@ -27,7 +27,6 @@ export function validateOperations(
     'progression', 'tempo', 'intervals', 'speed', 'race', 'cross_training'
   ]
 
-  const hardWorkoutTypes = ['tempo', 'intervals', 'speed', 'race', 'long_run']
 
   for (const op of operations) {
     switch (op.op) {

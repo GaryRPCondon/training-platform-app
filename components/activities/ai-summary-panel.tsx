@@ -72,7 +72,7 @@ export function AISummaryPanel({
   const [status, setStatus] = useState(initialStatus)
   const [summary, setSummary] = useState(initialSummary)
   const [starRating, setStarRating] = useState(initialStarRating)
-  const [generatedAt, setGeneratedAt] = useState(initialGeneratedAt)
+  const [, setGeneratedAt] = useState(initialGeneratedAt)
   const pollRef = useRef<NodeJS.Timeout | null>(null)
   const pollStartRef = useRef<number>(0)
 

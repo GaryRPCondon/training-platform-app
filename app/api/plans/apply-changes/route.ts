@@ -70,7 +70,6 @@ export async function POST(request: Request) {
 
     // Determine mode based on request body
     const isOperationsMode = Array.isArray(operations) && operations.length > 0
-    const isFullMode = Array.isArray(regeneratedWeeks) && regeneratedWeeks.length > 0
 
     // Verify plan ownership
     const { data: plan, error: planError } = await supabase

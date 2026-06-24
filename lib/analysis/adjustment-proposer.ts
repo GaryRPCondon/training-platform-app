@@ -95,7 +95,6 @@ export async function proposeAdjustments(supabase: SupabaseClient, athleteId: st
     }
 
     // Proposal 2: If high volume week and low completion, add recovery day
-    const actualVolume = (activities?.reduce((sum, a) => sum + (a.distance_meters || 0), 0) || 0) / 1000
     const plannedVolume = currentWeek.weekly_volume_target || 0
 
     if (plannedVolume > 60 && completedCount < totalWorkouts * 0.6) {

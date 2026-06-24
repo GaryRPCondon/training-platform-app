@@ -162,7 +162,6 @@ export function generateReasoning(
 ): TemplateRecommendation['reasoning'] {
   const { characteristics } = template
   const peakKm = characteristics.peak_weekly_mileage.km
-  const peakMiles = characteristics.peak_weekly_mileage.miles
 
   // Mileage fit
   let mileage_fit = ''

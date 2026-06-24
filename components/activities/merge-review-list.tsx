@@ -78,7 +78,7 @@ export function MergeReviewList({ conflicts }: { conflicts: MergeConflict[] }) {
 
             toast.success(t('keptSeparateAlt'))
             router.refresh()
-        } catch (error) {
+        } catch {
             toast.error(t('updateError'))
         } finally {
             setProcessingId(null)

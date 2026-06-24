@@ -70,8 +70,8 @@ function NewPlanPageContent() {
     // Update default goal date when goal type changes
     useEffect(() => {
         // Only update if user hasn't restored from URL params yet
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: reset the derived default goal date when goal type changes
         setGoalDate(getDefaultDate(goalType))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [goalType])
 
     const DAYS_OF_WEEK = [
@@ -96,6 +96,8 @@ function NewPlanPageContent() {
         const days = searchParams.get('days')
         const restDays = searchParams.get('preferredRestDays')
 
+        // Intentional: hydrate form state from URL params when returning from /recommend.
+        /* eslint-disable react-hooks/set-state-in-effect */
         if (name) setGoalName(name)
         if (date) setGoalDate(date)
         if (start) setStartDate(start)
@@ -111,6 +113,7 @@ function NewPlanPageContent() {
                 console.error('Failed to parse preferred rest days:', e)
             }
         }
+        /* eslint-enable react-hooks/set-state-in-effect */
     }, [searchParams])
 
     async function handleSubmit(e: React.FormEvent) {

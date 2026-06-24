@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { CalendarCheck, Coffee, CheckCircle2, AlertCircle } from 'lucide-react'
+import { CalendarCheck, CheckCircle2, AlertCircle } from 'lucide-react'
 import { getCurrentAthleteId } from '@/lib/supabase/client'
 import { createClient } from '@/lib/supabase/client'
 import { useUnits } from '@/lib/hooks/use-units'

@@ -7,9 +7,8 @@ import { createCalendarLocalizer } from '@/lib/utils/calendar-localizer'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getPlannedWorkoutsForDateRange, getAthleteProfile, getActivitiesForDateRange, getWorkoutsWithActivities } from '@/lib/supabase/queries'
+import { getAthleteProfile, getActivitiesForDateRange, getWorkoutsWithActivities } from '@/lib/supabase/queries'
 import { format, startOfMonth, endOfMonth, subDays, addDays, parseISO } from 'date-fns'
-import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { WorkoutCard } from '@/components/review/workout-card'
 import { ActivityDetail } from '@/components/activities/activity-detail'
@@ -21,7 +20,7 @@ import { toDisplayDistance, distanceLabel, type UnitSystem } from '@/lib/utils/u
 import { WeeklyTotals } from './weekly-totals'
 import { CustomToolbar } from './custom-toolbar'
 import { createClient } from '@/lib/supabase/client'
-import type { TrainingPaces, StrengthSession } from '@/types/database'
+import type { StrengthSession } from '@/types/database'
 import type { WorkoutWithDetails } from '@/types/review'
 import type { Activity, PlannedWorkout } from '@/types/database'
 import { useRouter } from 'next/navigation'
@@ -538,7 +537,7 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
         } finally {
             setIsAutoMatching(false)
         }
-    }, [queryStart, queryEnd, queryClient])
+    }, [queryStart, queryEnd, queryClient, t])
 
     // Phase 6: Combine workout and activity events
     const events = useMemo(() => {

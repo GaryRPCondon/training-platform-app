@@ -122,7 +122,7 @@ export class GeminiProvider implements LLMProvider {
         let text = ''
         try {
             text = response.text()
-        } catch (e) {
+        } catch {
             // If response.text() fails, it might be because there's only function calls
             text = ''
         }
