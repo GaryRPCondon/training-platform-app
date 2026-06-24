@@ -45,7 +45,7 @@ export interface GeneratedPlan {
         description: string
         distance_target_meters: number | null
         intensity_target: string
-        structured_workout: any | null
+        structured_workout: Record<string, unknown> | null
         status: 'scheduled'
     }>
 }

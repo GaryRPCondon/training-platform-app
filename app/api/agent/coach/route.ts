@@ -25,6 +25,7 @@ import { buildCoachSystemPrompt } from '@/lib/agent/coach-prompt'
 import { buildCoachTools, WorkoutProposal, StrengthSessionProposal, StrengthExerciseProposal } from '@/lib/agent/coach-tools'
 import { createChatSession, getChatSession, saveMessage } from '@/lib/agent/session-manager'
 import { calculateMaxTokens, estimateTokens } from '@/lib/chat/token-budget'
+import type { Lap } from '@/types/database'
 import { writeLLMLog } from '@/lib/agent/llm-logger'
 import { generateTitle } from '@/lib/agent/session-title'
 import { formatClock } from '@/lib/utils/units'
@@ -353,7 +354,7 @@ export async function POST(request: Request) {
                         if (avgPace) systemPrompt += `Average Pace: ${fmtPace(avgPace)}\n`
                         if (focusActivity.avg_hr) systemPrompt += `Average HR: ${focusActivity.avg_hr} bpm${focusActivity.max_hr ? ` (max ${focusActivity.max_hr})` : ''}\n`
 
-                        const laps = ((focusActivity.laps ?? []) as any[])
+                        const laps = ((focusActivity.laps ?? []) as unknown as Lap[])
                             .filter(l => l.distance_meters !== null || l.avg_pace !== null)
                         if (laps.length > 0) {
                             systemPrompt += `Laps (${laps.length}):\n`

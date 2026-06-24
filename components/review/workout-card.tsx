@@ -1047,13 +1047,13 @@ export function WorkoutCard({
     const sw = workout.structured_workout as Record<string, unknown> | null
     const mainSet = sw?.main_set
     if (!Array.isArray(mainSet)) return false
-    return mainSet.some((s: any) =>
-      Array.isArray(s.intervals) && s.intervals.some((i: any) => i.target_pace)
+    return (mainSet as Array<{ intervals?: unknown }>).some(s =>
+      Array.isArray(s.intervals) && (s.intervals as Array<{ target_pace?: unknown }>).some(i => i.target_pace)
     )
   })()
 
   // Extract accuracy display from completion metadata (workout-type-aware)
-  const accuracyScore: number | null = (workout.completion_metadata as any)?.accuracy_score ?? null
+  const accuracyScore: number | null = (workout.completion_metadata as { accuracy_score?: number | null } | null)?.accuracy_score ?? null
   const accuracyDisplay = interpretAccuracyScore(accuracyScore, workout.workout_type)
 
   // Calculate target pace and estimated duration if we have training paces

@@ -23,6 +23,7 @@ import { CustomToolbar } from './custom-toolbar'
 import { createClient } from '@/lib/supabase/client'
 import type { TrainingPaces, StrengthSession } from '@/types/database'
 import type { WorkoutWithDetails } from '@/types/review'
+import type { Activity, PlannedWorkout } from '@/types/database'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { getSessionsForDateRange } from '@/lib/supabase/strength-queries'
@@ -87,13 +88,24 @@ const calendarStyles = `
 
 const QUALITY_WORKOUT_TYPES = new Set(['tempo', 'intervals', 'race_pace', 'race', 'long_run'])
 
-const DnDCalendar = withDragAndDrop(Calendar)
+type CalendarEvent = {
+    id: string
+    start: Date
+    end: Date
+    title?: string
+    allDay?: boolean
+    resource:
+        | { type: 'workout'; data: WorkoutWithDetails }
+        | { type: 'activity'; data: Activity }
+}
+
+const DnDCalendar = withDragAndDrop<CalendarEvent>(Calendar)
 
 // Stable accessor identities so RBC isn't handed new functions every render.
-const eventStartAccessor = (event: any) => event.start
-const eventEndAccessor = (event: any) => event.end
+const eventStartAccessor = (event: CalendarEvent) => event.start
+const eventEndAccessor = (event: CalendarEvent) => event.end
 
-function formatWorkoutTitle(workout: any, units: UnitSystem = 'metric'): string {
+function formatWorkoutTitle(workout: WorkoutWithDetails, units: UnitSystem = 'metric'): string {
     const description = workout.description || 'Workout'
 
     // Add completion status indicator
@@ -199,7 +211,7 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
     const t = useTranslations('calendar')
     const [currentDate, setCurrentDate] = useState(new Date())
     const [selectedWorkout, setSelectedWorkout] = useState<WorkoutWithDetails | null>(null)
-    const [selectedActivity, setSelectedActivity] = useState<any | null>(null)
+    const [selectedActivity, setSelectedActivity] = useState<(Activity & { planned_workouts?: PlannedWorkout | null }) | null>(null)
     const [isWorkoutDialogOpen, setIsWorkoutDialogOpen] = useState(false)
     const [isActivityDialogOpen, setIsActivityDialogOpen] = useState(false)
     const [isAutoMatching, setIsAutoMatching] = useState(false)
@@ -544,7 +556,7 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
             end: parseISO(w.scheduled_date),
             allDay: true,
             resource: {
-                type: 'workout',
+                type: 'workout' as const,
                 data: w,
             },
         }))
@@ -559,7 +571,7 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
                 end: parseISO(a.start_time!),
                 allDay: true,
                 resource: {
-                    type: 'activity',
+                    type: 'activity' as const,
                     data: a,
                 },
             })) || []
@@ -567,7 +579,7 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
         return [...workoutEvents, ...activityEvents]
     }, [workouts, rawActivities, preferredUnits, runningOnly])
 
-    const handleSelectEvent = useCallback(async (event: any) => {
+    const handleSelectEvent = useCallback(async (event: CalendarEvent) => {
         // Phase 6: Handle both workouts and activities
         if (event.resource.type === 'workout') {
             setSelectedWorkout(event.resource.data)
@@ -575,7 +587,7 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
         } else if (event.resource.type === 'activity') {
             // Fetch linked workout if exists
             const activity = event.resource.data
-            const activityWithWorkout = { ...activity }
+            const activityWithWorkout: Activity & { planned_workouts?: PlannedWorkout | null } = { ...activity }
 
             if (activity.planned_workout_id) {
                 const { data: workout } = await supabase
@@ -594,11 +606,11 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
         }
     }, [supabase])
 
-    const onEventDrop = useCallback(({ event, start }: any) => {
+    const onEventDrop = useCallback(({ event, start }: { event: CalendarEvent; start: string | Date }) => {
         // Phase 6: Only allow dragging workouts, not activities
         if (event.resource.type !== 'workout') return
 
-        const newDate = format(start, 'yyyy-MM-dd')
+        const newDate = format(new Date(start), 'yyyy-MM-dd')
         if (newDate !== event.resource.data.scheduled_date) {
             rescheduleMutation.mutate({
                 workoutId: parseInt(event.id.split('-')[1]), // Extract ID from "workout-123"
@@ -614,7 +626,7 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
         [workouts]
     )
 
-    const eventStyleGetter = useCallback((event: any) => {
+    const eventStyleGetter = useCallback((event: CalendarEvent) => {
         // Phase 6: Different styling for activities vs workouts
         if (event.resource.type === 'activity') {
             const activity = event.resource.data
@@ -881,7 +893,7 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
                             startAccessor={eventStartAccessor}
                             endAccessor={eventEndAccessor}
                             onSelectEvent={handleSelectEvent}
-                            onSelectSlot={(slot: any) => {
+                            onSelectSlot={(slot: { start: Date }) => {
                                 if (strengthClickRef.current) return
                                 setCreateDate(slot.start)
                                 setIsCreateDialogOpen(true)

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { generateICS } from '@/lib/plans/ics-export'
 import type { ICSWorkout } from '@/lib/plans/ics-export'
+import type { TrainingPaces } from '@/types/database'
 
 interface RouteContext {
   params: Promise<{ planId: string }>
@@ -46,7 +47,7 @@ export async function GET(request: Request, context: RouteContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
-    const phaseIds = (plan.training_phases as any[]).map(p => p.id)
+    const phaseIds = (plan.training_phases as Array<{ id: string }>).map(p => p.id)
 
     if (phaseIds.length === 0) {
       return NextResponse.json({ error: 'Plan has no phases' }, { status: 400 })
@@ -79,7 +80,7 @@ export async function GET(request: Request, context: RouteContext) {
 
     // Flatten nested structure into a flat array of workouts
     const workouts: ICSWorkout[] = (weeklyPlans || []).flatMap(
-      week => (week.planned_workouts as any[]) || []
+      week => (week.planned_workouts as ICSWorkout[]) || []
     )
 
     // Get athlete preferred units
@@ -94,7 +95,7 @@ export async function GET(request: Request, context: RouteContext) {
     const icsContent = generateICS({
       planName: plan.name || 'Training Plan',
       workouts,
-      trainingPaces: plan.training_paces as any,
+      trainingPaces: plan.training_paces as TrainingPaces | null,
       units,
     })
 

@@ -42,8 +42,8 @@ function RecommendPageContent() {
       try {
         // Parse query params
         const criteria: UserCriteria = {
-          goal_type: searchParams.get('goalType') as any,
-          experience_level: searchParams.get('experience') as any,
+          goal_type: searchParams.get('goalType') as UserCriteria['goal_type'],
+          experience_level: searchParams.get('experience') as UserCriteria['experience_level'],
           current_weekly_mileage: Number(searchParams.get('current')),
           comfortable_peak_mileage: Number(searchParams.get('peak')),
           days_per_week: Number(searchParams.get('days')),

@@ -90,7 +90,7 @@ export async function getWorkoutsWithActivities(startDate: string, endDate: stri
     if (error) throw error
 
     // Flatten nested plan status into a top-level field
-    return (data as any[]).map(w => ({
+    return (data as unknown as Array<PlannedWorkout & { weekly_plans?: { training_phases?: { training_plans?: { status?: string | null } | null } | null } | null }>).map(w => ({
         ...w,
         plan_status: w.weekly_plans?.training_phases?.training_plans?.status ?? null,
         weekly_plans: undefined,

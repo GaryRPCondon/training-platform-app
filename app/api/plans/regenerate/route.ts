@@ -382,7 +382,7 @@ export async function POST(request: Request) {
 
     // Validate regenerated weeks against plan
     const validation = validateRegeneratedWeeks(
-      parsedResponse.regenerated_weeks,
+      parsedResponse.regenerated_weeks as Parameters<typeof validateRegeneratedWeeks>[0],
       planContext
     )
 

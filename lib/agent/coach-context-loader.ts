@@ -17,7 +17,7 @@ import {
     subDays,
     startOfDay,
 } from 'date-fns'
-import type { StrengthExercise } from '@/types/database'
+import type { StrengthExercise, Lap } from '@/types/database'
 import { loadFullTemplate } from '@/lib/templates/template-loader'
 import { resolveAllPaces, type ResolvedPace } from '@/lib/plans/pace-resolver'
 import { calculateTrainingPaces, calculateRacePaces } from '@/lib/training/vdot'
@@ -588,7 +588,13 @@ async function loadRecentFeedback(supabase: SupabaseClient, athleteId: string): 
         .order('created_at', { ascending: false })
         .limit(10)
 
-    return (data ?? []).map((f: any) => ({
+    return ((data ?? []) as unknown as Array<{
+        felt_difficulty: number | null
+        fatigue_level: number | null
+        injury_concern: boolean
+        feedback_text: string | null
+        planned_workout: { workout_type: string | null; scheduled_date: string | null } | null
+    }>).map(f => ({
         workout_type: f.planned_workout?.workout_type ?? null,
         workout_date: f.planned_workout?.scheduled_date ?? null,
         felt_difficulty: f.felt_difficulty,
@@ -631,7 +637,7 @@ async function loadRecentActivities(
             ? a.duration_seconds / (a.distance_meters / 1000)
             : null
 
-        const laps: CoachLapSummary[] = ((a.laps ?? []) as any[])
+        const laps: CoachLapSummary[] = ((a.laps ?? []) as unknown as Lap[])
             .filter(l => l.distance_meters !== null || l.avg_pace !== null)
             .map(l => ({
                 lap_index: l.lap_index,

@@ -204,7 +204,7 @@ export function WorkoutLinker({ activity, currentWorkout, onClose }: WorkoutLink
                   const variancePercent = (effectiveDistance && activity.distance_meters)
                     ? ((activity.distance_meters - effectiveDistance) / effectiveDistance) * 100
                     : null
-                  const hasAnyMetric = effectiveDistance || currentWorkout.duration_target_seconds || (currentWorkout.completion_metadata as any)?.accuracy_score != null
+                  const hasAnyMetric = effectiveDistance || currentWorkout.duration_target_seconds || (currentWorkout.completion_metadata as { accuracy_score?: number | null } | null)?.accuracy_score != null
                   if (!hasAnyMetric) return null
                   return (
                   <div className="text-sm border-t pt-2">
@@ -257,7 +257,7 @@ export function WorkoutLinker({ activity, currentWorkout, onClose }: WorkoutLink
                     )}
                     {(() => {
                       const display = interpretAccuracyScore(
-                        (currentWorkout.completion_metadata as any)?.accuracy_score ?? null,
+                        (currentWorkout.completion_metadata as { accuracy_score?: number | null } | null)?.accuracy_score ?? null,
                         currentWorkout.workout_type
                       )
                       if (!display?.show) return null

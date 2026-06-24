@@ -168,7 +168,7 @@ export async function POST(request: Request) {
         .eq('athlete_id', athleteId)
         .gte('start_time', windowStart)
         .lte('start_time', windowEnd)
-      const windowActivities: any[] = windowRows ?? []
+      const windowActivities = windowRows ?? []
 
       // Process activities
       for (const activity of garminActivities) {

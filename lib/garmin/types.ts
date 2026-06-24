@@ -115,8 +115,8 @@ export interface GarminSleepData {
       deepPercentage?: { value: number }
     }
   }
-  sleepMovement?: any[]
-  sleepLevels?: any[]
+  sleepMovement?: unknown[]
+  sleepLevels?: unknown[]
   restlessMomentsCount?: number
 }
 
@@ -131,7 +131,7 @@ export interface GarminHeartRateData {
   minHeartRate: number
   restingHeartRate: number
   lastSevenDaysAvgRestingHeartRate: number
-  heartRateValueDescriptors: any[]
+  heartRateValueDescriptors: unknown[]
   heartRateValues: [number, number][] // [timestamp, hr]
 }
 

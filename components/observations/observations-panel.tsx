@@ -136,7 +136,7 @@ export function ObservationsPanel() {
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            {observations.map((obs: any) => (
+                            {observations.map((obs: { id: string; severity: string; type: string; created_at: string; message: string }) => (
                                 <div key={obs.id} className="flex items-start gap-4 p-3 rounded-lg border bg-card text-card-foreground shadow-sm">
                                     <div className={`mt-1 h-2 w-2 rounded-full ${obs.severity === 'concern' ? 'bg-red-500' :
                                         obs.severity === 'warning' ? 'bg-yellow-500' :
@@ -181,7 +181,7 @@ export function ObservationsPanel() {
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
-                            {adjustments.map((adj: any) => (
+                            {adjustments.map((adj: { id: string; title: string; type: string; description: string; rationale: string; impact: string }) => (
                                 <div key={adj.id} className="p-4 rounded-lg border bg-muted/50">
                                     <div className="flex items-start justify-between mb-2">
                                         <div className="flex items-center gap-2">

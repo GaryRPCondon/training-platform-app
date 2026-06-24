@@ -117,8 +117,8 @@ export function CoachInterface({ sessionId: propSessionId, onSessionChange, work
                 if (!res.ok) return
                 const data = await res.json()
                 const loaded: CoachMessage[] = (data.messages ?? [])
-                    .filter((m: any) => m.role !== 'system')
-                    .map((m: any) => ({
+                    .filter((m: { role: string }) => m.role !== 'system')
+                    .map((m: { role: string; content: string; id: number; action_taken?: { proposals?: WorkoutProposal[]; strengthProposals?: StrengthSessionProposal[] } | null }) => ({
                         role: m.role as 'user' | 'assistant',
                         content: m.content,
                         messageId: m.id,

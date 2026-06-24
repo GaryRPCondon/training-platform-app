@@ -44,14 +44,14 @@ export async function POST(request: Request) {
 
         // Get or create session
         let currentSessionId = sessionId
-        let sessionHistory: any[] = []
+        let sessionHistory: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = []
         const userMessage = messages[messages.length - 1]
 
         if (sessionId) {
             try {
                 const session = await getChatSession(sessionId, supabase)
                 sessionHistory = session.messages.map(m => ({
-                    role: m.role,
+                    role: m.role as 'user' | 'assistant' | 'system',
                     content: m.content
                 }))
             } catch (error) {

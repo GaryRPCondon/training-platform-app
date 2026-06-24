@@ -9,6 +9,34 @@ import { createClient as createServerClient } from '@/lib/supabase/server'
 import { loadFullTemplate } from '@/lib/templates/template-loader'
 import type { FullTemplate } from '@/lib/templates/types'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { TrainingPaces } from '@/types/database'
+
+// Shapes of the nested training_plans → training_phases → weekly_plans →
+// planned_workouts relations returned by the Supabase select below (the generated
+// row types don't carry the nested joins).
+interface DbWorkoutRow {
+  workout_index: string
+  scheduled_date: string
+  workout_type: string
+  description: string | null
+  distance_target_meters: number | null
+  intensity_target: string | null
+  structured_workout: { pace_guidance?: string | null } | null
+  status: string
+}
+interface DbWeekRow {
+  week_number: number
+  week_start_date: string
+  weekly_volume_target: number | null
+  planned_workouts: DbWorkoutRow[]
+}
+interface DbPhaseRow {
+  phase_name: string
+  phase_order: number
+  start_date: string
+  end_date: string
+  weekly_plans: DbWeekRow[]
+}
 
 /**
  * Complete plan context for LLM regeneration
@@ -21,9 +49,9 @@ export interface FullPlanContext {
     start_date: string
     plan_type: string
     vdot: number | null
-    training_paces: any
+    training_paces: TrainingPaces | null
     template_id: string
-    user_criteria: any
+    user_criteria: Record<string, unknown> | null
     status: string
   }
   template: FullTemplate
@@ -146,7 +174,7 @@ export async function loadFullPlanContext(
   const template = await loadFullTemplate(plan.template_id)
 
   // Flatten phases structure
-  const phases = (plan.training_phases as any[]).map(p => ({
+  const phases = (plan.training_phases as DbPhaseRow[]).map(p => ({
     phase_name: p.phase_name,
     phase_order: p.phase_order,
     start_date: p.start_date,
@@ -154,14 +182,14 @@ export async function loadFullPlanContext(
   }))
 
   // Flatten weeks structure with workouts
-  const weeks = (plan.training_phases as any[])
+  const weeks = (plan.training_phases as DbPhaseRow[])
     .flatMap(phase =>
-      (phase.weekly_plans as any[]).map(week => ({
+      phase.weekly_plans.map(week => ({
         week_number: week.week_number,
         week_start_date: week.week_start_date,
         phase_name: phase.phase_name,
         weekly_volume_km: week.weekly_volume_target ? week.weekly_volume_target / 1000 : 0,
-        workouts: (week.planned_workouts as any[]).map(w => ({
+        workouts: week.planned_workouts.map(w => ({
           workout_index: w.workout_index,
           day: getDayNumber(w.scheduled_date, week.week_start_date),
           scheduled_date: w.scheduled_date,

@@ -116,7 +116,7 @@ export async function POST(request: Request) {
 
             console.log(`Fetching Strava activities from ${startDate} to ${endDate} (limit: ${limit || 'default'})`)
 
-            let stravaActivities: any[] = []
+            let stravaActivities: Awaited<ReturnType<typeof stravaClient.getActivities>> = []
             let page = 1
             const PER_PAGE = 200 // Maximize efficiency
             let keepFetching = true
@@ -216,7 +216,7 @@ export async function POST(request: Request) {
                 .eq('athlete_id', athleteId)
                 .gte('start_time', windowStart)
                 .lte('start_time', windowEnd)
-            const windowActivities: any[] = windowRows ?? []
+            const windowActivities = windowRows ?? []
 
             for (const activity of activitiesToProcess) {
                 console.log('Processing Strava activity:', {

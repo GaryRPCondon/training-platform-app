@@ -4,6 +4,7 @@
 
 import { formatClock } from '@/lib/utils/units'
 import { sanitizeUserText } from '@/lib/utils/sanitize'
+import type { Lap } from '@/types/database'
 
 const BASE_PROMPT = `You are an expert AI running coach with deep knowledge of training physiology, periodization, and injury prevention. You provide personalized, evidence-based training advice.
 
@@ -16,9 +17,31 @@ Guidelines:
 - Never recommend pushing through pain or ignoring warning signs
 - Use the athlete's preferred units (metric/imperial) from their profile`
 
+interface PromptContext {
+    athlete?: {
+        name?: string | null
+        preferred_units?: string | null
+        vo2_max?: number | null
+        threshold_pace?: number | null
+    } | null
+    daily?: {
+        todayWorkouts?: Array<{ description: string | null }>
+        yesterdayActivity?: { distance_meters: number } | null
+    } | null
+    weekly?: {
+        completedWorkouts?: number
+        totalWorkouts?: number
+        volumeTarget?: number
+        completedActivities?: Array<{ start_time?: string | null; activity_name?: string | null; laps?: unknown[] | null; [key: string]: unknown }> | null
+    } | null
+    monthly?: { totalDistance?: number; trend?: string } | null
+    phase?: { name?: string; currentWeek?: number; totalWeeks?: number; description?: string } | null
+    plan?: { name?: string; goalDate?: string; weeksRemaining?: number } | null
+}
+
 export function getSystemPrompt(
     sessionType: 'weekly_planning' | 'workout_modification' | 'feedback' | 'general',
-    context: any
+    context: PromptContext
 ): string {
     const contextString = formatContext(context)
 
@@ -85,7 +108,7 @@ ${contextString}
 Remember: Always prioritize the athlete's health and long-term development over short-term performance gains.`
 }
 
-function formatContext(context: any): string {
+function formatContext(context: PromptContext): string {
     if (!context) return 'No context available.'
 
     const parts: string[] = []
@@ -119,15 +142,15 @@ function formatContext(context: any): string {
 
         // Most recent activity's lap breakdown (only when lap detail is available)
         const activities = context.weekly?.completedActivities
-        if (activities?.length > 0) {
+        if (activities && activities.length > 0) {
             const mostRecent = [...activities].sort(
-                (a: any, b: any) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
+                (a, b) => new Date(b.start_time as string).getTime() - new Date(a.start_time as string).getTime()
             )[0]
-            if (mostRecent?.laps?.length > 0) {
-                const laps = mostRecent.laps as any[]
-                const warmup = laps.find((l: any) => l.intensity_type === 'WARMUP')
-                const cooldown = laps.find((l: any) => l.intensity_type === 'COOLDOWN')
-                const activeLaps = laps.filter((l: any) =>
+            if (mostRecent?.laps && mostRecent.laps.length > 0) {
+                const laps = mostRecent.laps as Lap[]
+                const warmup = laps.find(l => l.intensity_type === 'WARMUP')
+                const cooldown = laps.find(l => l.intensity_type === 'COOLDOWN')
+                const activeLaps = laps.filter(l =>
                     l.intensity_type === 'ACTIVE' || l.intensity_type === 'INTERVAL' || !l.intensity_type
                 )
                 const formatPace = (secsPerKm: number | null) =>
@@ -139,9 +162,9 @@ function formatContext(context: any): string {
                     parts.push(`  Warmup: ${formatDist(warmup.distance_meters)} @ ${formatPace(warmup.avg_pace)}, HR ${warmup.avg_hr ?? 'N/A'}`)
                 }
                 if (activeLaps.length > 0) {
-                    const hrVals = activeLaps.map((l: any) => l.avg_hr).filter(Boolean)
-                    const paceVals = activeLaps.map((l: any) => l.avg_pace).filter(Boolean)
-                    const complianceVals = activeLaps.map((l: any) => l.compliance_score).filter((v: any) => v != null)
+                    const hrVals = activeLaps.map(l => l.avg_hr).filter((v): v is number => v != null)
+                    const paceVals = activeLaps.map(l => l.avg_pace).filter((v): v is number => v != null)
+                    const complianceVals = activeLaps.map(l => l.compliance_score).filter(v => v != null)
                     const minHR = hrVals.length ? Math.min(...hrVals) : null
                     const maxHR = hrVals.length ? Math.max(...hrVals) : null
                     const minPace = paceVals.length ? Math.min(...paceVals) : null

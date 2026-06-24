@@ -66,7 +66,7 @@ export function PerformanceMetricsCard({ initialData }: PerformanceMetricsCardPr
   const [newVDOT, setNewVDOT] = useState<number | null>(null)
   const [newPaces, setNewPaces] = useState<TrainingPaces | null>(null)
   const [newSource, setNewSource] = useState<string | null>(null)
-  const [newSourceData, setNewSourceData] = useState<any>(null)
+  const [newSourceData, setNewSourceData] = useState<Record<string, unknown> | null>(null)
 
   useEffect(() => {
     if (!provided) {

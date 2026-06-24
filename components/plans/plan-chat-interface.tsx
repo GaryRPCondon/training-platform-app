@@ -57,6 +57,19 @@ import { useTranslations } from 'next-intl'
 
 type ResponseMode = 'operations' | 'full' | 'fallback_required'
 
+interface PreviewState {
+  summary?: string
+  intent_summary?: string
+  operations?: unknown[]
+  metadata: {
+    llm_duration_seconds: number
+    operations_count: number
+    weeks_to_replace: number
+    workouts_to_create: number
+    llm_provider: string
+  }
+}
+
 interface PlanChatInterfaceProps {
   planId: number
   planName: string
@@ -84,7 +97,7 @@ export function PlanChatInterface({
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [preview, setPreview] = useState<any>(null)
+  const [preview, setPreview] = useState<PreviewState | null>(null)
   const [previewMode, setPreviewMode] = useState<ResponseMode | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [showPreviewDialog, setShowPreviewDialog] = useState(false)
@@ -191,7 +204,7 @@ export function PlanChatInterface({
    *
    * @param data - Either operations array or regeneratedWeeks array
    */
-  const handleApprove = async (data: any[] | { operations: any[] }) => {
+  const handleApprove = async (data: unknown[] | { operations: unknown[] }) => {
     setLoading(true)
     setError(null)
 
@@ -470,7 +483,7 @@ export function PlanChatInterface({
           </DialogHeader>
           {preview && previewMode === 'operations' && (
             <OperationsPreview
-              preview={preview}
+              preview={preview as unknown as React.ComponentProps<typeof OperationsPreview>['preview']}
               onApprove={handleApproveOperations}
               onReject={handleReject}
               loading={loading}
@@ -478,7 +491,7 @@ export function PlanChatInterface({
           )}
           {preview && previewMode === 'full' && (
             <PlanDiffPreview
-              preview={preview}
+              preview={preview as unknown as React.ComponentProps<typeof PlanDiffPreview>['preview']}
               originalWeeks={currentWeeks}
               onApprove={handleApprove}
               onReject={handleReject}

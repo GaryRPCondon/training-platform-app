@@ -17,7 +17,7 @@ export interface ICSWorkout {
   distance_target_meters: number | null
   duration_target_seconds: number | null
   intensity_target: string | null
-  structured_workout: any | null
+  structured_workout: Record<string, unknown> | null
   status: string
   version: number
 }

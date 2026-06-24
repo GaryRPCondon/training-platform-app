@@ -47,7 +47,8 @@ export function parseLLMResponse(responseText: string): ParsedPlan {
     cleanJson = cleanJson.replace(/```\n?/, '').replace(/\n?```$/, '')
   }
 
-  // Parse JSON
+  // Parse JSON. Raw LLM output — normalized and validated field-by-field below.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped LLM JSON; every field is type-guarded before use
   let parsed: any
   try {
     parsed = JSON.parse(cleanJson)
@@ -63,7 +64,7 @@ export function parseLLMResponse(responseText: string): ParsedPlan {
   // Parse and validate pre_week_workouts if present
   let preWeekWorkouts: PreWeekWorkout[] | undefined
   if (parsed.pre_week_workouts && Array.isArray(parsed.pre_week_workouts)) {
-    preWeekWorkouts = parsed.pre_week_workouts.map((workout: any, index: number) => {
+    preWeekWorkouts = parsed.pre_week_workouts.map((workout: Record<string, unknown>, index: number) => {
       if (!workout.type || typeof workout.type !== 'string') {
         throw new Error(`Pre-week workout ${index + 1} missing or invalid type`)
       }
@@ -74,12 +75,12 @@ export function parseLLMResponse(responseText: string): ParsedPlan {
         throw new Error(`Pre-week workout ${index + 1} missing intensity`)
       }
       return {
-        type: workout.type,
-        distance_km: workout.distance_km ?? (workout.distance_meters ? workout.distance_meters / 1000 : undefined),
-        intensity: workout.intensity,
-        description: workout.description,
-        pace_guidance: workout.pace_guidance || null,
-        notes: workout.notes || null
+        type: workout.type as string,
+        distance_km: (workout.distance_km as number | undefined) ?? (workout.distance_meters ? (workout.distance_meters as number) / 1000 : undefined),
+        intensity: workout.intensity as string,
+        description: workout.description as string,
+        pace_guidance: (workout.pace_guidance as string | null) || null,
+        notes: (workout.notes as string | null) || null
       }
     })
   }

@@ -44,7 +44,7 @@ async function captureForActivity(
     id: number
     garmin_id: number | null
     strava_id: number | null
-    garmin_data: any
+    garmin_data: Record<string, unknown> | null
     garmin_description: string | null
     strava_description: string | null
   },

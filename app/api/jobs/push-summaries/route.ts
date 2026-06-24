@@ -78,10 +78,10 @@ export async function POST(request: Request) {
 
     // Filter to opted-in athletes
     const stravaActivities = (pendingStrava || []).filter(
-      (a: any) => a.athletes?.push_summary_to_strava === true
+      a => (a as { athletes?: { push_summary_to_strava?: boolean | null } | null }).athletes?.push_summary_to_strava === true
     ) as unknown as PendingActivity[]
     const garminActivities = (pendingGarmin || []).filter(
-      (a: any) => a.athletes?.push_summary_to_garmin === true
+      a => (a as { athletes?: { push_summary_to_garmin?: boolean | null } | null }).athletes?.push_summary_to_garmin === true
     ) as unknown as PendingActivity[]
 
     console.log(`[Push Job] Pending: ${stravaActivities.length} Strava, ${garminActivities.length} Garmin`)

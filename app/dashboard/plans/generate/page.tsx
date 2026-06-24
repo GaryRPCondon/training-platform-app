@@ -9,6 +9,14 @@ import { Progress } from '@/components/ui/progress'
 import { Loader2, CheckCircle, AlertCircle } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
+interface GenerationWarning {
+  workoutIndex: string
+  description: string
+  actualDistance: number
+  expectedRange: { min: number; max: number }
+  workoutType: string
+}
+
 function GeneratePageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -18,7 +26,7 @@ function GeneratePageContent() {
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [planId, setPlanId] = useState<number | null>(null)
-  const [warnings, setWarnings] = useState<any[]>([])
+  const [warnings, setWarnings] = useState<GenerationWarning[]>([])
   const generationStartedRef = useRef(false)
 
   useEffect(() => {
@@ -67,7 +75,7 @@ function GeneratePageContent() {
           }
         }
 
-        const userCriteria: any = {
+        const userCriteria: Record<string, unknown> = {
           goal_type: goalType,
           experience_level: experienceLevel,
           current_weekly_mileage: Number(currentMileage),
@@ -100,7 +108,7 @@ function GeneratePageContent() {
         }, 1000)
 
         // Call generation API
-        const requestBody: any = {
+        const requestBody: Record<string, unknown> = {
           template_id: templateId,
           goal_date: goalDate,
           start_date: startDate,

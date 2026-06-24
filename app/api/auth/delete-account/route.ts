@@ -34,7 +34,7 @@ export async function DELETE() {
                     await fetch('https://www.strava.com/oauth/deauthorize', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: `access_token=${(tokenData as any).access_token || ''}`,
+                        body: `access_token=${(tokenData as { access_token?: string }).access_token || ''}`,
                     }).catch(() => {
                         // Non-fatal — Strava token will expire eventually
                     })

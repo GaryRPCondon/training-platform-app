@@ -318,7 +318,12 @@ function buildUserPrompt(request: RegenerationRequest): string {
  * @returns Validation result with errors if any
  */
 export function validateRegeneratedWeeks(
-  regeneratedWeeks: any[],
+  regeneratedWeeks: Array<{
+    week_number: number
+    phase_name: string
+    weekly_volume_km: number
+    workouts: Array<{ workout_type: string; day: number; distance_km: number | null }>
+  }>,
   planContext: FullPlanContext
 ): { valid: boolean; errors: string[] } {
   const errors: string[] = []

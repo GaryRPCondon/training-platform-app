@@ -102,7 +102,7 @@ function NewPlanPageContent() {
         if (type) setGoalType(type)
         if (current) setCurrentVolume(Number(current))
         if (peak) setMaxVolume(Number(peak))
-        if (experience) setExperienceLevel(experience as any)
+        if (experience) setExperienceLevel(experience as 'complete_beginner' | 'beginner' | 'intermediate' | 'advanced')
         if (days) setDaysPerWeek(days)
         if (restDays) {
             try {
@@ -326,7 +326,7 @@ function NewPlanPageContent() {
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-3">
                                 <Label>{t('experienceLabel')}</Label>
-                                <RadioGroup value={experienceLevel} onValueChange={(value) => setExperienceLevel(value as any)}>
+                                <RadioGroup value={experienceLevel} onValueChange={(value) => setExperienceLevel(value as 'complete_beginner' | 'beginner' | 'intermediate' | 'advanced')}>
                                     <div className="flex items-start space-x-2">
                                         <RadioGroupItem value="complete_beginner" id="complete_beginner" className="mt-1" />
                                         <div className="space-y-0.5">

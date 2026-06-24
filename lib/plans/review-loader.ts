@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client'
 import type { PlanReviewContext, WeekViewData, WorkoutWithDetails } from '@/types/review'
+import type { TrainingPhase, PlannedWorkout } from '@/types/database'
 import { parseISO, format, endOfWeek } from 'date-fns'
 
 export async function loadPlanForReview(planId: number): Promise<PlanReviewContext> {
@@ -71,7 +72,7 @@ export async function loadPlanForReview(planId: number): Promise<PlanReviewConte
       )
     `)
     .eq('athlete_id', athleteId)
-    .in('phase_id', (plan.training_phases as any[]).map(p => p.id))
+    .in('phase_id', (plan.training_phases as TrainingPhase[]).map(p => p.id))
     .order('week_start_date', { ascending: true })
 
   if (weeksError) throw new Error(`Failed to load weeks: ${weeksError.message}`)
@@ -84,7 +85,7 @@ export async function loadPlanForReview(planId: number): Promise<PlanReviewConte
       .select('full_template')
       .eq('template_id', plan.template_id)
       .single()
-    const schedule = (templateRow?.full_template as any)?.weekly_schedule
+    const schedule = (templateRow?.full_template as { weekly_schedule?: unknown })?.weekly_schedule
     if (Array.isArray(schedule)) {
       for (let i = 0; i < schedule.length; i++) {
         const w = schedule[i]
@@ -99,9 +100,9 @@ export async function loadPlanForReview(planId: number): Promise<PlanReviewConte
 
   // Process weeks into structured format
   const weeks: WeekViewData[] = (weeklyPlans || []).map(week => {
-    const phase = (plan.training_phases as any[]).find(p => p.id === week.phase_id)
+    const phase = (plan.training_phases as TrainingPhase[]).find(p => p.id === week.phase_id)
 
-    const workoutsWithDetails: WorkoutWithDetails[] = ((week.planned_workouts as any[]) || []).map(workout => ({
+    const workoutsWithDetails: WorkoutWithDetails[] = ((week.planned_workouts as PlannedWorkout[]) || []).map(workout => ({
       ...workout,
       date: parseISO(workout.scheduled_date),
       formatted_date: format(parseISO(workout.scheduled_date), 'EEE, MMM d'),
@@ -129,7 +130,7 @@ export async function loadPlanForReview(planId: number): Promise<PlanReviewConte
   const currentWeek = 1  // For now, always start at week 1 during review
 
   // Get goal info from athlete_goals relation
-  const goalData = (plan.athlete_goals as any) || {}
+  const goalData = (plan.athlete_goals as { goal_name?: string; target_date?: string; goal_type?: string } | null) || {}
 
   return {
     plan_id: plan.id,
@@ -142,7 +143,7 @@ export async function loadPlanForReview(planId: number): Promise<PlanReviewConte
     current_week: currentWeek,
     vdot: plan.vdot || null,
     training_paces: plan.training_paces || null,
-    phases: (plan.training_phases as any[]).sort((a, b) => a.phase_order - b.phase_order),
+    phases: (plan.training_phases as TrainingPhase[]).sort((a, b) => a.phase_order - b.phase_order),
     weeks: weeks
   }
 }
