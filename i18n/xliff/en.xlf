@@ -10,6 +10,11 @@
         <source>Toggle menu</source>
       </segment>
     </unit>
+    <unit id="menuDescription">
+      <segment>
+        <source>Navigate to a section of the app.</source>
+      </segment>
+    </unit>
     <unit id="dashboard">
       <segment>
         <source>Dashboard</source>
@@ -1356,9 +1361,19 @@
         <source>Workout Details</source>
       </segment>
     </unit>
+    <unit id="workoutDetailsDescription">
+      <segment>
+        <source>View and edit the details of the selected workout.</source>
+      </segment>
+    </unit>
     <unit id="createWorkout">
       <segment>
         <source>Create Workout</source>
+      </segment>
+    </unit>
+    <unit id="createWorkoutDescription">
+      <segment>
+        <source>Add a new workout to the selected date.</source>
       </segment>
     </unit>
     <unit id="strengthSessionDetails">
@@ -1366,9 +1381,19 @@
         <source>Strength Session Details</source>
       </segment>
     </unit>
+    <unit id="strengthSessionDetailsDescription">
+      <segment>
+        <source>View and edit the details of the selected strength session.</source>
+      </segment>
+    </unit>
     <unit id="activityDetails">
       <segment>
         <source>Activity Details</source>
+      </segment>
+    </unit>
+    <unit id="activityDetailsDescription">
+      <segment>
+        <source>View the details of the selected activity.</source>
       </segment>
     </unit>
     <unit id="viewFullDetails">
@@ -1674,6 +1699,11 @@
     <unit id="editDialogTitle">
       <segment>
         <source>Edit Proposed Workout</source>
+      </segment>
+    </unit>
+    <unit id="editDialogDescription">
+      <segment>
+        <source>Review and adjust the proposed workout before applying it.</source>
       </segment>
     </unit>
     <unit id="createFailed">
@@ -4557,6 +4587,11 @@ This cannot be undone.</source>
     <unit id="workoutDetails">
       <segment>
         <source>Workout Details</source>
+      </segment>
+    </unit>
+    <unit id="workoutDetailsDescription">
+      <segment>
+        <source>View the details of the selected workout.</source>
       </segment>
     </unit>
   </file>

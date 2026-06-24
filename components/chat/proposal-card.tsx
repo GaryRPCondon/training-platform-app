@@ -5,7 +5,7 @@ import { format } from 'date-fns'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { CheckCircle, Star, X, Pencil, Plus, Loader2, Replace as ReplaceIcon } from 'lucide-react'
 import { WorkoutCard } from '@/components/review/workout-card'
 import type { WorkoutProposal } from '@/lib/agent/coach-tools'
@@ -472,6 +472,7 @@ export function ProposalCard({
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>{t('editDialogTitle')}</DialogTitle>
+                        <DialogDescription className="sr-only">{t('editDialogDescription')}</DialogDescription>
                     </DialogHeader>
                     <WorkoutCard
                         workout={proposalToWorkoutWithDetails(proposal, athleteId)}

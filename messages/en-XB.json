@@ -2,6 +2,7 @@
   "nav": {
     "mainLabel": "‮Ṁáíñ ñáṽíǧáţíóñ‬",
     "toggleMenu": "‮Ţóǧǧļé ɱéñú‬",
+    "menuDescription": "‮Ñáṽíǧáţé ţó á šéçţíóñ óƒ ţĥé áþþ.‬",
     "dashboard": "‮Ðášĥƀóáŕð‬",
     "calendar": "‮Çáļéñðáŕ‬",
     "running": "‮Ŕúññíñǧ‬",
@@ -292,9 +293,13 @@
     "moveAnyway": "‮Ṁóṽé áñýŵáý‬",
     "dismiss": "‮Ðíšɱíšš‬",
     "workoutDetails": "‮Ŵóŕķóúţ Ðéţáíļš‬",
+    "workoutDetailsDescription": "‮Ṽíéŵ áñð éðíţ ţĥé ðéţáíļš óƒ ţĥé šéļéçţéð ŵóŕķóúţ.‬",
     "createWorkout": "‮Çŕéáţé Ŵóŕķóúţ‬",
+    "createWorkoutDescription": "‮Áðð á ñéŵ ŵóŕķóúţ ţó ţĥé šéļéçţéð ðáţé.‬",
     "strengthSessionDetails": "‮Šţŕéñǧţĥ Šéššíóñ Ðéţáíļš‬",
+    "strengthSessionDetailsDescription": "‮Ṽíéŵ áñð éðíţ ţĥé ðéţáíļš óƒ ţĥé šéļéçţéð šţŕéñǧţĥ šéššíóñ.‬",
     "activityDetails": "‮Áçţíṽíţý Ðéţáíļš‬",
+    "activityDetailsDescription": "‮Ṽíéŵ ţĥé ðéţáíļš óƒ ţĥé šéļéçţéð áçţíṽíţý.‬",
     "viewFullDetails": "‮Ṽíéŵ Ƒúļļ Ðéţáíļš‬"
   },
   "splitDialog": {
@@ -364,6 +369,7 @@
     "editFirst": "‮Éðíţ Ƒíŕšţ‬",
     "dismiss": "‮Ðíšɱíšš‬",
     "editDialogTitle": "‮Éðíţ Þŕóþóšéð Ŵóŕķóúţ‬",
+    "editDialogDescription": "‮Ŕéṽíéŵ áñð áðĵúšţ ţĥé þŕóþóšéð ŵóŕķóúţ ƀéƒóŕé áþþļýíñǧ íţ.‬",
     "createFailed": "‮Ƒáíļéð ţó çŕéáţé ŵóŕķóúţ‬",
     "deleteFailed": "‮Ƒáíļéð ţó ðéļéţé éẋíšţíñǧ ŵóŕķóúţ‬",
     "warmup": "‮Ŵáŕɱúþ‬",
@@ -978,7 +984,8 @@
   },
   "reviewCalendar": {
     "workoutFallback": "‮Ŵóŕķóúţ‬",
-    "workoutDetails": "‮Ŵóŕķóúţ Ðéţáíļš‬"
+    "workoutDetails": "‮Ŵóŕķóúţ Ðéţáíļš‬",
+    "workoutDetailsDescription": "‮Ṽíéŵ ţĥé ðéţáíļš óƒ ţĥé šéļéçţéð ŵóŕķóúţ.‬"
   },
   "workoutCard": {
     "intensityPlaceholder": "‮Íñţéñšíţý‬",

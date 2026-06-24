@@ -14,7 +14,7 @@ import {
     Dumbbell,
     Menu,
 } from 'lucide-react'
-import { Dialog, DialogContent, DialogTrigger, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 
@@ -146,6 +146,7 @@ export function MobileNavigation() {
                             <span className="text-xl">TrAIner</span>
                         </Link>
                     </DialogTitle>
+                    <DialogDescription className="sr-only">{t('menuDescription')}</DialogDescription>
                 </div>
                 <NavContent onNavigate={() => setOpen(false)} isAdmin={isAdmin} />
             </DialogContent>

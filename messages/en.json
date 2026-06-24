@@ -2,6 +2,7 @@
   "nav": {
     "mainLabel": "Main navigation",
     "toggleMenu": "Toggle menu",
+    "menuDescription": "Navigate to a section of the app.",
     "dashboard": "Dashboard",
     "calendar": "Calendar",
     "running": "Running",
@@ -292,9 +293,13 @@
     "moveAnyway": "Move anyway",
     "dismiss": "Dismiss",
     "workoutDetails": "Workout Details",
+    "workoutDetailsDescription": "View and edit the details of the selected workout.",
     "createWorkout": "Create Workout",
+    "createWorkoutDescription": "Add a new workout to the selected date.",
     "strengthSessionDetails": "Strength Session Details",
+    "strengthSessionDetailsDescription": "View and edit the details of the selected strength session.",
     "activityDetails": "Activity Details",
+    "activityDetailsDescription": "View the details of the selected activity.",
     "viewFullDetails": "View Full Details"
   },
   "splitDialog": {
@@ -364,6 +369,7 @@
     "editFirst": "Edit First",
     "dismiss": "Dismiss",
     "editDialogTitle": "Edit Proposed Workout",
+    "editDialogDescription": "Review and adjust the proposed workout before applying it.",
     "createFailed": "Failed to create workout",
     "deleteFailed": "Failed to delete existing workout",
     "warmup": "Warmup",
@@ -978,7 +984,8 @@
   },
   "reviewCalendar": {
     "workoutFallback": "Workout",
-    "workoutDetails": "Workout Details"
+    "workoutDetails": "Workout Details",
+    "workoutDetailsDescription": "View the details of the selected workout."
   },
   "workoutCard": {
     "intensityPlaceholder": "Intensity",

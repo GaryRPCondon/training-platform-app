@@ -7,7 +7,7 @@ import 'react-big-calendar/lib/css/react-big-calendar.css'
 import type { WorkoutEvent, WorkoutWithDetails } from '@/types/review'
 import type { TrainingPaces } from '@/types/database'
 import { WorkoutCard } from './workout-card'
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { getWorkoutColor } from '@/lib/constants/workout-colors'
 import { toDisplayDistance, distanceLabel, type UnitSystem } from '@/lib/utils/units'
 import { WeeklyTotals } from '../calendar/weekly-totals'
@@ -196,6 +196,7 @@ export function TrainingCalendar({ workouts, trainingPaces, vdot, onWorkoutSelec
       <Dialog open={!!selectedWorkout} onOpenChange={() => setSelectedWorkout(null)}>
         <DialogContent className="max-w-2xl">
           <DialogTitle className="sr-only">{t('workoutDetails')}</DialogTitle>
+          <DialogDescription className="sr-only">{t('workoutDetailsDescription')}</DialogDescription>
           {selectedWorkout && (
             <WorkoutCard
               workout={selectedWorkout}

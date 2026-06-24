@@ -12,7 +12,7 @@ import { format, startOfMonth, endOfMonth, subDays, addDays, parseISO } from 'da
 import { Button } from '@/components/ui/button'
 import { WorkoutCard } from '@/components/review/workout-card'
 import { ActivityDetail } from '@/components/activities/activity-detail'
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { AlertTriangle, X as XIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { getWorkoutColor, normalizeActivityType, isRunningActivityType } from '@/lib/constants/workout-colors'
@@ -933,6 +933,7 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
             <Dialog open={isWorkoutDialogOpen} onOpenChange={setIsWorkoutDialogOpen}>
                 <DialogContent className="max-w-2xl">
                     <DialogTitle className="sr-only">{t('workoutDetails')}</DialogTitle>
+                    <DialogDescription className="sr-only">{t('workoutDetailsDescription')}</DialogDescription>
                     {selectedWorkout && (
                         <WorkoutCard
                             workout={selectedWorkout}
@@ -981,6 +982,7 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                 <DialogContent className="max-w-2xl">
                     <DialogTitle className="sr-only">{t('createWorkout')}</DialogTitle>
+                    <DialogDescription className="sr-only">{t('createWorkoutDescription')}</DialogDescription>
                     {createDate && (
                         <WorkoutCard
                             workout={makeNewWorkout(createDate)}
@@ -999,6 +1001,7 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
             <Dialog open={isStrengthDialogOpen} onOpenChange={setIsStrengthDialogOpen}>
                 <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
                     <DialogTitle className="sr-only">{t('strengthSessionDetails')}</DialogTitle>
+                    <DialogDescription className="sr-only">{t('strengthSessionDetailsDescription')}</DialogDescription>
                     {selectedStrengthSession && (
                         <SessionDetailDialog
                             session={selectedStrengthSession}
@@ -1021,6 +1024,7 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
             <Dialog open={isActivityDialogOpen} onOpenChange={setIsActivityDialogOpen}>
                 <DialogContent className="sm:max-w-[595px] max-h-[90vh] overflow-y-auto">
                     <DialogTitle className="sr-only">{t('activityDetails')}</DialogTitle>
+                    <DialogDescription className="sr-only">{t('activityDetailsDescription')}</DialogDescription>
                     {selectedActivity && (
                         <>
                             <ActivityDetail
