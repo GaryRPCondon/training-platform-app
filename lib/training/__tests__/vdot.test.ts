@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   calculateVDOT,
   calculateTrainingPaces,
+  calculateTotalWorkoutDistance,
   formatPace,
   formatTime,
   parseRaceTime
@@ -37,6 +38,31 @@ describe('VDOT Calculations', () => {
     const paces = calculateTrainingPaces(50)
     expect(paces.walk).toBe(600) // 10:00/km, fitness-independent
     expect(paces.walk).toBeGreaterThan(paces.easy) // Walking is slower than easy running
+  })
+})
+
+describe('calculateTotalWorkoutDistance', () => {
+  // Tempo session built entirely from time-based segments:
+  // warmup 10 min E, main 25 min T, cooldown 10 min E.
+  const tempoStructured = {
+    warmup: { duration_minutes: 10 },
+    main_set: [{ repeat: 1, intervals: [{ duration_seconds: 1500, intensity: 'tempo' }] }],
+    cooldown: { duration_minutes: 10 },
+  }
+
+  it('uses the athlete training paces to size time-based segments', () => {
+    const paces = { easy: 300, marathon: 255, tempo: 245, interval: 235, repetition: 220, walk: 600 }
+    const total = calculateTotalWorkoutDistance(7500, 'tempo', tempoStructured, paces)
+    // warmup 10min@5:00=2000 + main 25min@interval(235)≈6383 + cooldown 2000 ≈ 10.4 km
+    expect(total).toBeGreaterThan(10000)
+    expect(total).toBeLessThan(11000)
+  })
+
+  it('without paces falls back to 6:00/km and understates the distance (regression)', () => {
+    // This is the bug: null paces yields the 6:00/km default → 7.5 km, far below
+    // the ~10.4 km a faster athlete actually covers in the same time.
+    const total = calculateTotalWorkoutDistance(7500, 'tempo', tempoStructured, null)
+    expect(total).toBe(7500)
   })
 })
 

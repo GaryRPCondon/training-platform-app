@@ -10,7 +10,8 @@ import { Link2, Unlink, Calendar, Target, CheckCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { format, parseISO, subDays, addDays } from 'date-fns'
 import { useRouter } from 'next/navigation'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { createClient } from '@/lib/supabase/client'
 import { useUnits } from '@/lib/hooks/use-units'
 import { calculateTotalWorkoutDistance } from '@/lib/training/vdot'
 import { interpretAccuracyScore } from '@/lib/activities/scoring'
@@ -31,6 +32,25 @@ export function WorkoutLinker({ activity, currentWorkout, onClose }: WorkoutLink
   const { formatDistance } = useUnits()
   const t = useTranslations('workoutLinker')
   const { workoutType } = useEnumLabels()
+
+  // Active plan's training paces — needed to estimate distance for time-based
+  // segments (warmup/cooldown/tempo). Without these, calculateTotalWorkoutDistance
+  // falls back to a 6:00/km default and understates the target distance.
+  const athleteId = currentWorkout?.athlete_id ?? activity.athlete_id
+  const { data: trainingPaces } = useQuery({
+    queryKey: ['active-plan-paces', athleteId],
+    queryFn: async () => {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('training_plans')
+        .select('training_paces')
+        .eq('athlete_id', athleteId)
+        .eq('status', 'active')
+        .maybeSingle()
+      return data?.training_paces ?? null
+    },
+    enabled: !!athleteId,
+  })
 
   // Load nearby workouts for manual linking
   useEffect(() => {
@@ -199,7 +219,7 @@ export function WorkoutLinker({ activity, currentWorkout, onClose }: WorkoutLink
                     currentWorkout.distance_target_meters,
                     currentWorkout.workout_type,
                     currentWorkout.structured_workout as Record<string, unknown> | null,
-                    null
+                    trainingPaces
                   ) || currentWorkout.distance_target_meters
                   const variancePercent = (effectiveDistance && activity.distance_meters)
                     ? ((activity.distance_meters - effectiveDistance) / effectiveDistance) * 100

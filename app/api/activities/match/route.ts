@@ -9,7 +9,7 @@ import { NextResponse } from 'next/server'
 import { waitUntil } from '@vercel/functions'
 import { createClient } from '@/lib/supabase/server'
 import { matchActivitiesToWorkouts } from '@/lib/activities/workout-matcher'
-import { computeComplianceScore, buildScoringResult } from '@/lib/activities/scoring'
+import { computeComplianceScore, buildScoringResult, loadActivePlanPaces } from '@/lib/activities/scoring'
 import { captureDescriptionsForMatches } from '@/lib/activities/capture-descriptions'
 import { triggerSummaryGeneration } from '@/lib/activities/trigger-summary'
 import { z } from 'zod'
@@ -125,13 +125,15 @@ export async function PATCH() {
         let rescored = 0
         const errors: string[] = []
 
+        const trainingPaces = await loadActivePlanPaces(supabase, user.id)
+
         // Score in memory; run the per-row updates in parallel.
         await Promise.all(linkedWorkouts.map(async workout => {
             const activity = activitiesById.get(workout.completed_activity_id!)
             if (!activity) return
 
             const compliance = computeComplianceScore(lapsByActivity.get(activity.id) ?? [])
-            const result = buildScoringResult(activity, workout, compliance)
+            const result = buildScoringResult(activity, workout, compliance, trainingPaces)
 
             const { error } = await supabase
                 .from('planned_workouts')

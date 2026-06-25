@@ -9,7 +9,27 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { TrainingPaces } from '@/types/database'
 import { calculateTotalWorkoutDistance } from '@/lib/training/vdot'
+
+/**
+ * Load the athlete's active-plan training paces. Needed to estimate distance for
+ * time-based structured segments (warmup/cooldown/tempo); without them
+ * {@link calculateTotalWorkoutDistance} falls back to a 6:00/km default and
+ * understates the effective target distance.
+ */
+export async function loadActivePlanPaces(
+  supabase: SupabaseClient,
+  athleteId: string
+): Promise<TrainingPaces | null> {
+  const { data } = await supabase
+    .from('training_plans')
+    .select('training_paces')
+    .eq('athlete_id', athleteId)
+    .eq('status', 'active')
+    .maybeSingle()
+  return (data?.training_paces as TrainingPaces | null) ?? null
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -59,16 +79,19 @@ export interface ScoringResult {
  * estimated from structured_workout when distance_target_meters only covers
  * the main set (intervals, tempo).
  */
-export function getEffectiveDistance(workout: {
-  distance_target_meters: number | null
-  workout_type: string
-  structured_workout?: Record<string, unknown> | unknown | null
-}): number | null {
+export function getEffectiveDistance(
+  workout: {
+    distance_target_meters: number | null
+    workout_type: string
+    structured_workout?: Record<string, unknown> | unknown | null
+  },
+  trainingPaces: TrainingPaces | null = null
+): number | null {
   const total = calculateTotalWorkoutDistance(
     workout.distance_target_meters,
     workout.workout_type,
     workout.structured_workout as Record<string, unknown> | null,
-    null
+    trainingPaces
   )
   return total > 0 ? total : workout.distance_target_meters
 }
@@ -297,10 +320,13 @@ type ScorableWorkout = {
 export async function scoreWorkoutCompletion(
   supabase: SupabaseClient,
   activity: ScorableActivity,
-  workout: ScorableWorkout
+  workout: ScorableWorkout & { athlete_id: string }
 ): Promise<ScoringResult> {
-  const compliance = await calculateComplianceScore(supabase, activity.id)
-  return buildScoringResult(activity, workout, compliance)
+  const [compliance, trainingPaces] = await Promise.all([
+    calculateComplianceScore(supabase, activity.id),
+    loadActivePlanPaces(supabase, workout.athlete_id),
+  ])
+  return buildScoringResult(activity, workout, compliance, trainingPaces)
 }
 
 /**
@@ -310,9 +336,10 @@ export async function scoreWorkoutCompletion(
 export function buildScoringResult(
   activity: ScorableActivity,
   workout: ScorableWorkout,
-  compliance: ComplianceResult
+  compliance: ComplianceResult,
+  trainingPaces: TrainingPaces | null = null
 ): ScoringResult {
-  const effectiveDistance = getEffectiveDistance(workout)
+  const effectiveDistance = getEffectiveDistance(workout, trainingPaces)
 
   const distanceVariance = calculateDistanceDiff(activity.distance_meters, effectiveDistance)
   const durationVariance = calculateDurationDiff(activity.duration_seconds, workout.duration_target_seconds)

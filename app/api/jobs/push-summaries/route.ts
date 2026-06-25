@@ -15,19 +15,13 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { StravaClient } from '@/lib/strava/client'
 import { GarminClient } from '@/lib/garmin/client'
 import { timingSafeEqualStr } from '@/lib/utils/security'
+import { buildDescription, stripSummaryBlock } from '@/lib/activities/summary-description'
 
 function createServiceClient() {
   return createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   )
-}
-
-function buildDescription(ratingPrefix: string, aiSummary: string, existingDescription: string | null): string {
-  const summaryBlock = `trAIner Summary: ${ratingPrefix}${aiSummary}`
-  if (!existingDescription) return summaryBlock
-  // Preserve the athlete's own comment first, append the AI summary after it.
-  return `${existingDescription}\n${summaryBlock}`
 }
 
 interface PendingActivity {
@@ -105,7 +99,17 @@ export async function POST(request: Request) {
             const ratingPrefix = activity.ai_star_rating != null
               ? `⭐ ${activity.ai_star_rating}/5 — `
               : ''
-            const description = buildDescription(ratingPrefix, activity.ai_summary, activity.strava_description)
+            // Read the CURRENT live description so we preserve any comment the
+            // athlete added after match time. The captured snapshot is only a
+            // fallback for when the live read fails.
+            let existingDescription = activity.strava_description
+            try {
+              const live = await strava.getActivity(accessToken, Number(activity.strava_id))
+              existingDescription = live?.description ?? null
+            } catch (readErr) {
+              console.warn(`[Push Job] Could not read live Strava description for activity ${activity.id}, using snapshot:`, readErr instanceof Error ? readErr.message : readErr)
+            }
+            const description = buildDescription(ratingPrefix, activity.ai_summary, stripSummaryBlock(existingDescription))
             await strava.updateActivityDescription(accessToken, Number(activity.strava_id), description)
 
             await supabase
@@ -155,7 +159,17 @@ export async function POST(request: Request) {
             const ratingPrefix = activity.ai_star_rating != null
               ? `⭐ ${activity.ai_star_rating}/5 — `
               : ''
-            const description = buildDescription(ratingPrefix, activity.ai_summary, activity.garmin_description)
+            // Read the CURRENT live description so we preserve any comment the
+            // athlete added after match time. The captured snapshot is only a
+            // fallback for when the live read fails.
+            let existingDescription = activity.garmin_description
+            try {
+              const live = await garmin.getActivity(Number(activity.garmin_id))
+              existingDescription = live?.description ?? null
+            } catch (readErr) {
+              console.warn(`[Push Job] Could not read live Garmin description for activity ${activity.id}, using snapshot:`, readErr instanceof Error ? readErr.message : readErr)
+            }
+            const description = buildDescription(ratingPrefix, activity.ai_summary, stripSummaryBlock(existingDescription))
             await garmin.updateActivityDescription(Number(activity.garmin_id), description)
 
             await supabase

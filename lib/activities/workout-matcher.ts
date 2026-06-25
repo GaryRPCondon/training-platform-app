@@ -6,7 +6,7 @@
  */
 
 import { format, parseISO } from 'date-fns'
-import type { Activity, PlannedWorkout } from '@/types/database'
+import type { Activity, PlannedWorkout, TrainingPaces } from '@/types/database'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { normalizeActivityType } from '@/lib/constants/workout-colors'
 import {
@@ -14,6 +14,7 @@ import {
   calculateDistanceDiff,
   calculateDurationDiff,
   scoreWorkoutCompletion,
+  loadActivePlanPaces,
 } from '@/lib/activities/scoring'
 
 export interface MatchResult {
@@ -56,11 +57,13 @@ export async function matchActivitiesToWorkouts(
 
   if (!activities || !workouts) return []
 
+  const trainingPaces = await loadActivePlanPaces(supabase, athleteId)
+
   const matches: MatchResult[] = []
   const matchedWorkoutIds = new Set<number>()
 
   for (const activity of activities) {
-    const match = findBestWorkoutMatch(activity, workouts.filter(w => !matchedWorkoutIds.has(w.id)))
+    const match = findBestWorkoutMatch(activity, workouts.filter(w => !matchedWorkoutIds.has(w.id)), trainingPaces)
 
     if (match) {
       console.log('[AutoMatch] Match candidate:', {
@@ -86,6 +89,7 @@ export async function matchActivitiesToWorkouts(
 function findBestWorkoutMatch(
   activity: Activity,
   workouts: PlannedWorkout[],
+  trainingPaces: TrainingPaces | null,
 ): MatchResult | null {
   if (!activity.start_time) return null
 
@@ -101,7 +105,7 @@ function findBestWorkoutMatch(
 
   if (sameDayWorkouts.length === 1) {
     const workout = sameDayWorkouts[0]
-    const confidence = calculateConfidence(activity, workout)
+    const confidence = calculateConfidence(activity, workout, trainingPaces)
     console.log('[AutoMatch] Single-day scoring:', {
       activityId: activity.id, workoutId: workout.id,
       activityType: activity.activity_type, workoutType: workout.workout_type,
@@ -119,7 +123,7 @@ function findBestWorkoutMatch(
         confidence,
         method: 'auto_time',
         metadata: {
-          distance_diff_percent: activityDistanceDiff(activity, workout),
+          distance_diff_percent: activityDistanceDiff(activity, workout, trainingPaces),
           duration_diff_percent: activityDurationDiff(activity, workout),
         },
       }
@@ -129,7 +133,7 @@ function findBestWorkoutMatch(
   let bestMatch: MatchResult | null = null
 
   for (const workout of sameDayWorkouts) {
-    const confidence = calculateConfidence(activity, workout)
+    const confidence = calculateConfidence(activity, workout, trainingPaces)
 
     if (confidence > 0.75 && (!bestMatch || confidence > bestMatch.confidence)) {
       bestMatch = {
@@ -138,7 +142,7 @@ function findBestWorkoutMatch(
         confidence,
         method: 'auto_distance',
         metadata: {
-          distance_diff_percent: activityDistanceDiff(activity, workout),
+          distance_diff_percent: activityDistanceDiff(activity, workout, trainingPaces),
           duration_diff_percent: activityDurationDiff(activity, workout),
         },
       }
@@ -149,7 +153,7 @@ function findBestWorkoutMatch(
 }
 
 /** Match confidence (0.0 to 1.0) */
-function calculateConfidence(activity: Activity, workout: PlannedWorkout): number {
+function calculateConfidence(activity: Activity, workout: PlannedWorkout, trainingPaces: TrainingPaces | null): number {
   let score = 0.5
 
   const stravaData = typeof activity.strava_data === 'string'
@@ -164,7 +168,7 @@ function calculateConfidence(activity: Activity, workout: PlannedWorkout): numbe
     }
   }
 
-  const effectiveDistance = getEffectiveDistance(workout)
+  const effectiveDistance = getEffectiveDistance(workout, trainingPaces)
   if (activity.distance_meters && effectiveDistance) {
     const diff = Math.abs(activity.distance_meters - effectiveDistance)
     const percent = diff / effectiveDistance
@@ -182,8 +186,8 @@ function calculateConfidence(activity: Activity, workout: PlannedWorkout): numbe
 }
 
 /** Distance diff for match metadata (Activity → PlannedWorkout wrapper) */
-function activityDistanceDiff(activity: Activity, workout: PlannedWorkout): number {
-  return calculateDistanceDiff(activity.distance_meters, getEffectiveDistance(workout))
+function activityDistanceDiff(activity: Activity, workout: PlannedWorkout, trainingPaces: TrainingPaces | null): number {
+  return calculateDistanceDiff(activity.distance_meters, getEffectiveDistance(workout, trainingPaces))
 }
 
 /** Duration diff for match metadata */

@@ -6,9 +6,9 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Activity, PlannedWorkout, Lap } from '@/types/database'
+import type { Activity, PlannedWorkout, Lap, TrainingPaces } from '@/types/database'
 import { createLLMProvider } from '@/lib/agent/factory'
-import { getEffectiveDistance, calculateDistanceDiff, calculateDurationDiff } from '@/lib/activities/scoring'
+import { getEffectiveDistance, calculateDistanceDiff, calculateDurationDiff, loadActivePlanPaces } from '@/lib/activities/scoring'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -258,8 +258,9 @@ export function buildUserMessage(
   activity: Activity,
   workout: PlannedWorkout,
   laps: Lap[],
+  trainingPaces: TrainingPaces | null = null,
 ): string {
-  const effectiveDistance = getEffectiveDistance(workout)
+  const effectiveDistance = getEffectiveDistance(workout, trainingPaces)
   const distanceVariance = calculateDistanceDiff(activity.distance_meters, effectiveDistance)
   const durationVariance = calculateDurationDiff(activity.duration_seconds, workout.duration_target_seconds)
 
@@ -429,7 +430,8 @@ export async function generateActivitySummary(
     const tone: FeedbackTone = (athlete.feedback_tone as FeedbackTone | null | undefined) ?? 'balanced'
     const systemPrompt = buildSystemPrompt(tone)
     console.log(`[AI Summary] Activity ${activityId} — tone="${tone}" (athlete ${activity.athlete_id})`)
-    const userMessage = buildUserMessage(activity, workout, (laps || []) as Lap[])
+    const trainingPaces = await loadActivePlanPaces(supabase, activity.athlete_id)
+    const userMessage = buildUserMessage(activity, workout, (laps || []) as Lap[], trainingPaces)
     // For summaries, use Flash Lite when Gemini is selected — summarisation doesn't need thinking mode
     const summaryModel = (athlete.preferred_llm_provider === 'gemini' && !athlete.preferred_llm_model)
       ? 'gemini-2.5-flash-lite'
