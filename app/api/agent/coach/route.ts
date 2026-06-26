@@ -18,6 +18,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { withRateLimit } from '@/lib/rate-limit/with-rate-limit'
 import { ensureAthleteExists } from '@/lib/supabase/ensure-athlete'
 import { createLLMProvider } from '@/lib/agent/factory'
 import { loadCoachContext } from '@/lib/agent/coach-context-loader'
@@ -177,7 +178,7 @@ export async function PATCH(request: Request) {
     }
 }
 
-export async function POST(request: Request) {
+async function postHandler(request: Request) {
     const body = await request.json()
     const parsed = postSchema.safeParse(body)
     if (!parsed.success) {
@@ -582,3 +583,5 @@ export async function POST(request: Request) {
         headers: { 'Content-Type': 'application/x-ndjson; charset=utf-8' },
     })
 }
+
+export const POST = withRateLimit('chat', postHandler)

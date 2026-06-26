@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import { ensureAthleteExists } from '@/lib/supabase/ensure-athlete'
 import { generateTitle } from '@/lib/agent/session-title'
 import { truncateMessagesToBudget } from '@/lib/chat/token-budget'
+import { withRateLimit } from '@/lib/rate-limit/with-rate-limit'
 import { z } from 'zod'
 
 const chatSchema = z.object({
@@ -18,7 +19,7 @@ const chatSchema = z.object({
     sessionType: z.enum(['weekly_planning', 'workout_modification', 'feedback', 'general']).default('general'),
 })
 
-export async function POST(request: Request) {
+async function postHandler(request: Request) {
     try {
         const body = await request.json()
         const parsed = chatSchema.safeParse(body)
@@ -117,3 +118,5 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Agent failed' }, { status: 500 })
     }
 }
+
+export const POST = withRateLimit('chat', postHandler)

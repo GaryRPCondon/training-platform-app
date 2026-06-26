@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { errorMessage } from '@/lib/utils/errors'
+import { withRateLimit } from '@/lib/rate-limit/with-rate-limit'
 import { createClient } from '@/lib/supabase/server'
 import { GarminClient } from '@/lib/garmin/client'
 import { mapGarminLapToRow } from '@/lib/garmin/lap-mapper'
@@ -16,7 +17,7 @@ const syncSchema = z.object({
   limit: z.number().int().positive().optional(),
 })
 
-export async function POST(request: Request) {
+async function postHandler(request: Request) {
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -503,3 +504,5 @@ function mapGarminActivityType(typeKey: string | undefined): string {
 
   return mapping[typeKey.toLowerCase()] || typeKey.toLowerCase()
 }
+
+export const POST = withRateLimit('sync', postHandler)

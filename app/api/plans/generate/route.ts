@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { withRateLimit } from '@/lib/rate-limit/with-rate-limit'
 import { loadFullTemplate, getTemplateSummary } from '@/lib/templates/template-loader'
 import { buildGenerationSystemPrompt, buildGenerationUserMessage } from '@/lib/plans/llm-prompts'
 import { parseLLMResponse } from '@/lib/plans/response-parser'
@@ -32,7 +33,7 @@ const generateSchema = z.object({
   replace_active: z.boolean().optional(),
 })
 
-export async function POST(request: Request) {
+async function postHandler(request: Request) {
   try {
     const body = await request.json()
     const parsed = generateSchema.safeParse(body)
@@ -390,3 +391,5 @@ export async function POST(request: Request) {
     )
   }
 }
+
+export const POST = withRateLimit('generation', postHandler)

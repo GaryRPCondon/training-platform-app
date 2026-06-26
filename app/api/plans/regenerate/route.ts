@@ -25,6 +25,7 @@
  */
 
 import { NextResponse } from 'next/server'
+import { withRateLimit } from '@/lib/rate-limit/with-rate-limit'
 import { createClient } from '@/lib/supabase/server'
 import { createLLMProvider } from '@/lib/agent/factory'
 import { loadFullPlanContext } from '@/lib/chat/plan-context-loader'
@@ -66,7 +67,7 @@ interface ParsedRegenerateResponse {
   regenerated_weeks: Array<{ workouts: unknown[] } & Record<string, unknown>>
 }
 
-export async function POST(request: Request) {
+async function postHandler(request: Request) {
   try {
     const supabase = await createClient()
 
@@ -426,3 +427,5 @@ export async function POST(request: Request) {
     )
   }
 }
+
+export const POST = withRateLimit('generation', postHandler)

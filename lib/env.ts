@@ -11,11 +11,20 @@ const envSchema = z.object({
 })
 
 /**
- * Feature secrets required for production deployments (admin approval flow +
- * cron job) but optional in local dev. Missing values fail those routes closed
- * rather than crashing startup, so we warn instead of throwing.
+ * Feature secrets recommended for production deployments but optional in local
+ * dev. Missing values degrade the dependent feature safely (admin-approval / cron
+ * routes fail closed; rate limiting fails open) rather than crashing startup, so
+ * we warn instead of throwing.
+ *
+ * UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN back inbound API rate
+ * limiting (lib/rate-limit/limiter.ts). Without them the limiter is a no-op.
  */
-const PRODUCTION_SECRETS = ['CRON_SECRET', 'ADMIN_APPROVAL_SECRET'] as const
+const PRODUCTION_SECRETS = [
+  'CRON_SECRET',
+  'ADMIN_APPROVAL_SECRET',
+  'UPSTASH_REDIS_REST_URL',
+  'UPSTASH_REDIS_REST_TOKEN',
+] as const
 
 export function validateEnv() {
   const result = envSchema.safeParse(process.env)
@@ -29,7 +38,8 @@ export function validateEnv() {
     if (missingSecrets.length > 0) {
       console.warn(
         `[env] Production secrets not set: ${missingSecrets.join(', ')}. ` +
-        `The dependent routes (admin approval / cron) will reject all requests until configured.`
+        `Dependent features degrade until configured (admin-approval / cron routes reject ` +
+        `requests; API rate limiting is disabled).`
       )
     }
   }

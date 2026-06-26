@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { withRateLimit } from '@/lib/rate-limit/with-rate-limit'
 import { findMergeCandidates, shouldAutoMerge } from '@/lib/activities/merge-detector'
 import { findExistingMatchInMemory } from '@/lib/sync/pre-insert-dedup'
 import { acquireSyncLock, releaseSyncLock } from '@/lib/sync/sync-lock'
@@ -12,7 +13,7 @@ const syncSchema = z.object({
   limit: z.number().int().positive().optional(),
 })
 
-export async function POST(request: Request) {
+async function postHandler(request: Request) {
     try {
         const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()
@@ -478,3 +479,5 @@ export async function POST(request: Request) {
         )
     }
 }
+
+export const POST = withRateLimit('sync', postHandler)

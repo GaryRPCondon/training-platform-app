@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { withRateLimit } from '@/lib/rate-limit/with-rate-limit'
 import { z } from 'zod'
 
 const refineSchema = z.object({
@@ -19,7 +20,7 @@ const refineSchema = z.object({
  * - Plan modification logic
  * - Intelligent coach responses
  */
-export async function POST(request: NextRequest) {
+async function postHandler(request: NextRequest) {
   try {
     const rawBody = await request.json()
     const parsed = refineSchema.safeParse(rawBody)
@@ -88,3 +89,5 @@ For now, your message has been saved and the review interface is ready. Phase 4 
     )
   }
 }
+
+export const POST = withRateLimit('generation', postHandler)
