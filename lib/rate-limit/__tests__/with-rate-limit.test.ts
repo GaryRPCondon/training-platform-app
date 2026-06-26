@@ -5,7 +5,11 @@ import { getRateLimiter, type RateLimitResult } from '@/lib/rate-limit/limiter'
 import { withRateLimit } from '@/lib/rate-limit/with-rate-limit'
 
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
-vi.mock('@/lib/rate-limit/limiter', () => ({ getRateLimiter: vi.fn() }))
+// Keep getClientIp / rateLimitResponse real; only stub the limiter lookup.
+vi.mock('@/lib/rate-limit/limiter', async (importActual) => {
+  const actual = await importActual<typeof import('@/lib/rate-limit/limiter')>()
+  return { ...actual, getRateLimiter: vi.fn() }
+})
 
 const mockCreateClient = vi.mocked(createClient)
 const mockGetRateLimiter = vi.mocked(getRateLimiter)

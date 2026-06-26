@@ -1,5 +1,6 @@
 import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
+import { NextResponse } from 'next/server'
 
 /**
  * Inbound API rate limiting backed by Upstash Redis (serverless-native, atomic,
@@ -15,7 +16,7 @@ import { Redis } from '@upstash/redis'
  * test suite working without Upstash and degrades safely in an outage.
  */
 
-export type RateLimitTier = 'chat' | 'generation' | 'sync'
+export type RateLimitTier = 'chat' | 'generation' | 'sync' | 'ip'
 
 /** A single result shape regardless of whether Upstash is configured. */
 export interface RateLimitResult {
@@ -35,11 +36,15 @@ interface TierLimiter {
  *   chat       — interactive AI coach (a human types, so generous).
  *   generation — heavy LLM plan calls (slow + costly, so tight).
  *   sync       — external integrations (also self-guarded by a per-athlete lock).
+ *   ip         — coarse per-IP backstop for UNAUTHENTICATED requests, enforced in
+ *                proxy.ts (anti-DDOS / signup-spam). Authenticated traffic is keyed
+ *                per-user at the route level instead and is exempt from this tier.
  */
 const TIER_CONFIG: Record<RateLimitTier, { tokens: number; window: `${number} s` }> = {
   chat: { tokens: 30, window: '60 s' },
   generation: { tokens: 10, window: '60 s' },
   sync: { tokens: 12, window: '60 s' },
+  ip: { tokens: 60, window: '60 s' },
 }
 
 /** No-op limiter used when Upstash is not configured (fail-open). */
@@ -52,7 +57,7 @@ function buildLimiters(): Record<RateLimitTier, TierLimiter> {
   const token = process.env.UPSTASH_REDIS_REST_TOKEN
 
   if (!url || !token) {
-    return { chat: ALLOW_ALL, generation: ALLOW_ALL, sync: ALLOW_ALL }
+    return { chat: ALLOW_ALL, generation: ALLOW_ALL, sync: ALLOW_ALL, ip: ALLOW_ALL }
   }
 
   const redis = new Redis({ url, token })
@@ -64,7 +69,7 @@ function buildLimiters(): Record<RateLimitTier, TierLimiter> {
       analytics: false,
     })
 
-  return { chat: make('chat'), generation: make('generation'), sync: make('sync') }
+  return { chat: make('chat'), generation: make('generation'), sync: make('sync'), ip: make('ip') }
 }
 
 // Module-scoped singleton — reused across warm serverless invocations.
@@ -73,4 +78,28 @@ let limiters: Record<RateLimitTier, TierLimiter> | null = null
 export function getRateLimiter(tier: RateLimitTier): TierLimiter {
   if (!limiters) limiters = buildLimiters()
   return limiters[tier]
+}
+
+/** Best-effort client IP from the standard proxy headers (first hop wins). */
+export function getClientIp(request: Request): string {
+  const forwarded = request.headers.get('x-forwarded-for')
+  const ip = forwarded?.split(',')[0]?.trim() || request.headers.get('x-real-ip')?.trim()
+  return ip || 'unknown'
+}
+
+/** Standard 429 response shared by the route wrapper and the proxy IP backstop. */
+export function rateLimitResponse(result: RateLimitResult): NextResponse {
+  const retryAfter = Math.max(1, Math.ceil((result.reset - Date.now()) / 1000))
+  return NextResponse.json(
+    { error: 'Rate limit exceeded', details: `Too many requests. Retry in ${retryAfter}s.` },
+    {
+      status: 429,
+      headers: {
+        'Retry-After': String(retryAfter),
+        'X-RateLimit-Limit': String(result.limit),
+        'X-RateLimit-Remaining': String(result.remaining),
+        'X-RateLimit-Reset': String(result.reset),
+      },
+    }
+  )
 }

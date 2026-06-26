@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { getRateLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit/limiter'
 
 /**
  * Exact paths that never require authentication. Listed explicitly (rather than
@@ -73,6 +74,20 @@ export async function proxy(request: NextRequest) {
         const authErr = err as { code?: string; __isAuthError?: boolean } | undefined
         if (authErr?.code !== 'refresh_token_not_found' && authErr?.__isAuthError !== true) {
             throw err
+        }
+    }
+
+    // Coarse per-IP backstop for UNAUTHENTICATED /api access (anti-DDOS / signup
+    // spam). Runs before the public/401 branching so it also covers public API
+    // routes (e.g. create-athlete). Authenticated callers are exempt — they're
+    // limited per-user at the route level (lib/rate-limit/with-rate-limit.ts) so
+    // watches sharing a carrier NAT aren't throttled collectively. Fails open.
+    if (!user && pathname.startsWith('/api/')) {
+        try {
+            const result = await getRateLimiter('ip').limit(`ip:${getClientIp(request)}`)
+            if (!result.success) return rateLimitResponse(result)
+        } catch (err) {
+            console.error('[rate-limit] IP backstop error, allowing request:', err)
         }
     }
 

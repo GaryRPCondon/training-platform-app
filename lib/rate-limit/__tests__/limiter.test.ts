@@ -25,7 +25,7 @@ describe('getRateLimiter (unconfigured)', () => {
   it('allows all requests across every tier', async () => {
     const { getRateLimiter } = await import('@/lib/rate-limit/limiter')
 
-    for (const tier of ['chat', 'generation', 'sync'] as const) {
+    for (const tier of ['chat', 'generation', 'sync', 'ip'] as const) {
       const result = await getRateLimiter(tier).limit('user:anyone')
       expect(result.success).toBe(true)
     }
