@@ -9,6 +9,7 @@ A closed-loop training platform for runners. trAIner generates plans with founda
 - **Methodology-faithful**: plans encode the structural rules of different methodologies and approaches (e.g. Daniels Q1/Q2 days, Pfitz threshold logic, Magness's hard-easy patterns), rather than non-specific generalized "ramp volume + add some intervals" templates.
 - **Closed-loop**: completed activities are scored against planned workouts with lap-level fidelity. Missed workouts, volume gaps, and fatigue patterns surface as **observations** that the AI coach proposes specific adjustments for — accepted or rejected by you.
 - **Bidirectional Garmin integration**: sync activities in, push structured workouts (with pace targets and warmup/cooldown) out to your watch.
+- **Running + strength in one plan**: deterministic strength scheduling layered onto the running week, with an exercise catalog, structured sessions, and the same accept/reject AI-coach modification flow as runs.
 - **Multi-provider AI**: pick from Google Gemini, DeepSeek, Anthropic Claude, OpenAI, or Grok per user; plan-generation defaults to a high-throughput model independent of your chat preference.
 - **Multi-user with admin approval**: self-registration, admin-gated activation, per-user data isolation, account deletion.
 
@@ -44,6 +45,12 @@ trAIner is built on the assertion that LLMs are good at synthesising and interpr
 - **ICS calendar export** for use in Apple/Google/Outlook calendars.
 - **Workout reschedule**: inline drag, or pick a date from the workout card.
 
+### Strength training
+- **Strength programs** scheduled deterministically around your running load (hard-easy aware), not LLM-improvised.
+- **Exercise catalog** with structured sessions; supports non-standard/bespoke workouts via parsing.
+- **AI-coach modification** of strength sessions through the same proposal cards as runs.
+- **Garmin export** — the weekly "Send to Garmin" includes strength sessions.
+
 ### Activity tracking
 - **Garmin and Strava** sync, with **automatic deduplication** when both are connected.
 - **Lap-level detail** (Garmin) imported into a `laps` table with split type, intensity, and compliance scores.
@@ -57,9 +64,13 @@ trAIner is built on the assertion that LLMs are good at synthesising and interpr
 
 ### Multi-user
 - Self-registration with email-triggered admin approval.
-- Per-user training plans, integrations, AI provider preference, unit system (metric/imperial), week-start day, dark mode.
+- Per-user training plans, integrations, AI provider preference, display language, unit system (metric/imperial), week-start day, dark mode.
 - Admin-only user-management UI.
 - Self-service account deletion with full data wipe.
+
+## Internationalization
+
+trAIner is built i18n-ready: **every user-facing string is externalized** through next-intl (ICU message format), with a per-user **language selector** and **RTL** layout support. Two **pseudo-locales** (`en-XA`, `en-XB`, including an RTL pseudo) are generated for testing — they surface un-externalized copy and layout that breaks under longer strings or right-to-left flow. New hardcoded strings are blocked by an **ESLint i18n gate** plus a pre-commit hook. English ships today; the translation pipeline (XLIFF 2.0 export/import) is in place for adding real locales.
 
 ## Screenshots
 
@@ -123,7 +134,7 @@ Set the authorization callback domain in your Strava API app to match.
 
 ### Garmin
 
-Connect from **Profile → Integrations**. Credentials are exchanged for OAuth tokens (stored encrypted-at-rest by Supabase) and not retained.
+Connect from **Profile → Integrations**. Credentials are exchanged for OAuth tokens stored in your Supabase database (platform-level encryption at rest); they are not retained outside the database.
 
 > **MFA note**: the `garmin-connect` library does not currently support MFA. If your Garmin account has MFA enabled, either temporarily disable it or rely on Strava sync.
 
@@ -135,7 +146,7 @@ Connect from **Profile → Integrations**. Credentials are exchanged for OAuth t
 - **Supabase** (Postgres + auth + RLS); migrations under `supabase/migrations/`
 - **TanStack Query** for client state; React Server Components for server data
 - **Radix UI** primitives via shadcn/ui conventions
-- **Vitest** test suite (~230 tests; run as a pre-commit hook)
+- **Vitest** test suite (400+ tests; run as a pre-commit hook alongside the i18n string gate)
 
 ### Key modules
 
@@ -146,9 +157,11 @@ Connect from **Profile → Integrations**. Credentials are exchanged for OAuth t
 - `lib/strava/` — Strava OAuth + activity sync.
 - `lib/activities/` — auto-match, duplicate detection, scoring.
 - `lib/analysis/` — flag detector, observation manager, adjustment proposer/persistence, phase progress.
+- `lib/strength/` — strength parser, deterministic scheduler, exercise mapper, AI-coach tools.
+- `lib/rate-limit/` — Upstash-backed inbound rate limiting (per-user route tiers + per-IP backstop).
 - `app/api/workouts/{split,unsplit,reschedule,update}` — calendar workout mutations.
 - `app/api/garmin/workouts` — Garmin workout export (send / remove).
-- `proxy.ts` — global auth gate (Supabase SSR) for all dashboard routes.
+- `proxy.ts` — global auth gate (Supabase SSR) for dashboard + API routes, plus the unauthenticated per-IP rate-limit backstop.
 
 
 ## Development
@@ -169,6 +182,8 @@ Apply with `supabase db push` if your project is linked, or copy individual SQL 
 ## Security
 
 The codebase has been through a defensive audit covering: IDOR on observation/adjustment endpoints, CSRF on the Strava OAuth dance, account-creation hardening (admin-only with email verification), security headers (HSTS, X-Frame-Options, Permissions-Policy), and dependency audit. See migration history for individual fixes.
+
+Inbound rate limiting (Upstash) protects expensive LLM and sync endpoints (per-user) with a per-IP backstop on unauthenticated routes.
 
 ## License
 
