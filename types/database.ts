@@ -167,6 +167,10 @@ export interface TrainingPlan {
     template_id: string | null
     template_version: string | null
     user_criteria: any | null
+    // Provenance: set when this plan was materialized from an imported program
+    // (lib/plans/import). null for generated plans.
+    source: string | null
+    imported_run_plan_id: number | null
     vdot: number | null
     training_paces: TrainingPaces | null
     pace_source: string | null
@@ -484,5 +488,58 @@ export interface StrengthExerciseCatalog {
     garmin_exercise_name: string | null
     garmin_step_type: 'STRENGTH' | 'CARDIO' | 'OTHER'
     garmin_supported: boolean
+    created_at: string
+}
+
+// ---------------------------------------------------------------------------
+// Imported running plans (lib/plans/import) — a private, per-user library of
+// running programs the user owns. `definition` is a normalized ParsedRunningPlan
+// re-fitted onto a window/race on each apply. See migration
+// 20260628000000_add_imported_run_plans.sql.
+// ---------------------------------------------------------------------------
+export interface ImportedRunPlan {
+    id: number
+    athlete_id: string
+    name: string
+    source_type: 'free_text' | 'json' | 'image'
+    source_provider: string | null
+    source_model: string | null
+    parse_confidence: number | null
+    parse_metadata: Record<string, unknown> | null
+    definition: ImportedRunPlanDefinition
+    distance: string | null
+    default_days_per_week: number | null
+    total_weeks: number
+    status: 'active' | 'deleted'
+    created_at: string
+    updated_at: string
+}
+
+// Structural mirror of ParsedRunningPlan (lib/plans/import/schemas.ts). Kept as
+// a local interface so this types file stays free of lib imports; the two are
+// validated to match by the import pipeline's Zod schema.
+export interface ImportedRunPlanDefinition {
+    schema_version: '1.0'
+    name: string
+    description?: string | null
+    distance?: string | null
+    detected_race_week?: number | null
+    weeks: Array<{
+        week_index: number
+        phase?: 'base' | 'build' | 'peak' | 'taper' | null
+        label?: string | null
+        workouts: Array<Record<string, unknown>>
+    }>
+    parse_warnings: string[]
+}
+
+export interface ImportedRunPlanApplication {
+    id: number
+    imported_run_plan_id: number
+    training_plan_id: number
+    athlete_id: string
+    applied_start_date: string
+    applied_race_date: string | null
+    fit_mode: 'exact' | 'compress' | 'stretch' | 'llm_adapt'
     created_at: string
 }
