@@ -30,7 +30,11 @@ export function ImportWizard({
       const res = await fetch('/api/plans/import/parse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ source_type: values.format, text: values.text }),
+        body: JSON.stringify(
+          values.format === 'image'
+            ? { source_type: 'image', images: values.images.map(({ mimeType, dataBase64 }) => ({ mimeType, dataBase64 })) }
+            : { source_type: values.format, text: values.text },
+        ),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? t('parseError'))

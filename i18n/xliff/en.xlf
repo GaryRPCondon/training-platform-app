@@ -5951,5 +5951,25 @@ Week 1 / Tuesday: Easy 8 km
         <source>Schedule this plan again for a new race. A fresh draft plan will be created.</source>
       </segment>
     </unit>
+    <unit id="tabUploadImages">
+      <segment>
+        <source>Upload screenshots</source>
+      </segment>
+    </unit>
+    <unit id="imageHelp">
+      <segment>
+        <source>Upload one or more screenshots or photos of your plan (multiple pages in order). They are read by AI and discarded after you import.</source>
+      </segment>
+    </unit>
+    <unit id="imagePage">
+      <segment>
+        <source>Page {n}</source>
+      </segment>
+    </unit>
+    <unit id="remove">
+      <segment>
+        <source>Remove</source>
+      </segment>
+    </unit>
   </file>
 </xliff>

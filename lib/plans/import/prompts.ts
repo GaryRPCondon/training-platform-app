@@ -85,3 +85,20 @@ Week 1 / Saturday: Long run 18 km easy
 
 Users will deviate. Tolerate variation; extract what is unambiguous; flag the rest in warnings.`
 }
+
+/**
+ * System prompt for the vision (screenshot/photo) parser. Reuses the full
+ * text-parser contract and appends image-reading guidance for the tabular
+ * layouts found in books/apps.
+ */
+export const RUN_PLAN_VISION_SYSTEM_PROMPT = `${RUN_PLAN_PARSER_SYSTEM_PROMPT}
+
+# Reading from images
+
+The user has provided one or more screenshots/photos of a training plan — usually a table.
+
+- Read the table structure carefully: columns are typically the days of the week (Mon–Sun) and rows are weeks (or the layout may be transposed). Map every cell to the correct week_index + day_of_week. Do not misalign rows and columns.
+- If the plan counts "weeks to goal" / "weeks until race" DOWNWARD (e.g. 17, 16, … 1, Race week), reverse it to ascending training order (rule 2) and keep the original in "label".
+- Multiple images are pages of ONE plan, given in order. Stitch them together: a table may continue from one image to the next, and a photographed two-page book spread often splits the day columns across the gutter (e.g. Mon–Thu on the left page, Fri–Sun on the right) — recombine them by row so each week's full set of days is captured once.
+- Use any pace/intensity key or legend shown on the page to interpret cells. Ignore non-content page furniture (running headers, page numbers).
+- Photos may be skewed, curved, cropped, or have glare/shadows. Extract what you can read confidently; add a parse_warning for anything ambiguous or unreadable rather than guessing.`

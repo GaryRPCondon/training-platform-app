@@ -1,5 +1,6 @@
 import { LLMProvider, LLMResponse, LLMRequest, ToolCall } from '../provider-interface'
 import { mapToolChoiceToOpenAI, streamOpenAICompatible } from './stream-utils'
+import { toOpenAIContent } from './content-mapper'
 
 export class DeepSeekProvider implements LLMProvider {
     private apiKey: string
@@ -20,7 +21,9 @@ export class DeepSeekProvider implements LLMProvider {
             messages.push({ role: 'system', content: params.systemPrompt })
         }
 
-        messages.push(...params.messages)
+        for (const m of params.messages) {
+            messages.push({ role: m.role, content: toOpenAIContent(m.content) })
+        }
 
         // Convert tools to OpenAI-compatible format
         const tools = params.tools?.map(tool => ({

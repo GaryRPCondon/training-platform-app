@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { LLMProvider, LLMRequest, LLMResponse, ToolCall, ToolDefinition } from '../provider-interface'
+import { toGeminiParts } from './content-mapper'
 
 /**
  * Clean JSON Schema for Gemini compatibility
@@ -106,16 +107,16 @@ export class GeminiProvider implements LLMProvider {
                 .filter(m => m.role !== 'system')
                 .map(m => ({
                     role: m.role === 'assistant' ? 'model' : 'user',
-                    parts: [{ text: m.content }],
+                    parts: toGeminiParts(m.content),
                 })),
         })
 
-        let lastMessage = request.messages[request.messages.length - 1].content
-        if (request.systemPrompt) {
-            lastMessage = `${request.systemPrompt}\n\nUser: ${lastMessage}`
-        }
+        const lastParts = toGeminiParts(request.messages[request.messages.length - 1].content)
+        const sendParts = request.systemPrompt
+            ? [{ text: `${request.systemPrompt}\n\nUser: ` }, ...lastParts]
+            : lastParts
 
-        const result = await chat.sendMessage(lastMessage)
+        const result = await chat.sendMessage(sendParts)
         const response = await result.response
 
         // Extract text content
@@ -206,19 +207,17 @@ export class GeminiProvider implements LLMProvider {
                 .filter(m => m.role !== 'system')
                 .map(m => ({
                     role: m.role === 'assistant' ? 'model' : 'user',
-                    parts: [{ text: m.content }],
+                    parts: toGeminiParts(m.content),
                 })),
         })
 
-        let lastMessage = request.messages[request.messages.length - 1].content
+        const lastParts = toGeminiParts(request.messages[request.messages.length - 1].content)
         const directive = `\n\nReturn ONLY a JSON object matching the schema for the "${tool.name}" function. Do not include prose, markdown, or code fences.`
-        if (request.systemPrompt) {
-            lastMessage = `${request.systemPrompt}${directive}\n\nUser: ${lastMessage}`
-        } else {
-            lastMessage = `${lastMessage}${directive}`
-        }
+        const sendParts = request.systemPrompt
+            ? [{ text: `${request.systemPrompt}${directive}\n\nUser: ` }, ...lastParts]
+            : [...lastParts, { text: directive }]
 
-        const result = await chat.sendMessage(lastMessage)
+        const result = await chat.sendMessage(sendParts)
         const response = await result.response
 
         let text = ''
@@ -287,16 +286,16 @@ export class GeminiProvider implements LLMProvider {
                 .filter(m => m.role !== 'system')
                 .map(m => ({
                     role: m.role === 'assistant' ? 'model' : 'user',
-                    parts: [{ text: m.content }],
+                    parts: toGeminiParts(m.content),
                 })),
         })
 
-        let lastMessage = request.messages[request.messages.length - 1].content
-        if (request.systemPrompt) {
-            lastMessage = `${request.systemPrompt}\n\nUser: ${lastMessage}`
-        }
+        const lastParts = toGeminiParts(request.messages[request.messages.length - 1].content)
+        const sendParts = request.systemPrompt
+            ? [{ text: `${request.systemPrompt}\n\nUser: ` }, ...lastParts]
+            : lastParts
 
-        const result = await chat.sendMessageStream(lastMessage)
+        const result = await chat.sendMessageStream(sendParts)
 
         let fullText = ''
         const toolCalls: ToolCall[] = []

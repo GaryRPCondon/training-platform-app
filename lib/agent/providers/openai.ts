@@ -1,6 +1,7 @@
 import OpenAI from 'openai'
 import { LLMProvider, LLMRequest, LLMResponse, ToolCall } from '../provider-interface'
 import { mapToolChoiceToOpenAI, streamOpenAICompatible } from './stream-utils'
+import { toOpenAIContent } from './content-mapper'
 
 export class OpenAIProvider implements LLMProvider {
     private client: OpenAI
@@ -13,9 +14,9 @@ export class OpenAIProvider implements LLMProvider {
     }
 
     async generateResponse(request: LLMRequest): Promise<LLMResponse> {
-        const messages = request.messages.map(m => ({
+        const messages: any[] = request.messages.map(m => ({
             role: m.role as 'user' | 'assistant' | 'system',
-            content: m.content,
+            content: toOpenAIContent(m.content),
         }))
 
         if (request.systemPrompt) {

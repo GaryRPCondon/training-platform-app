@@ -12,9 +12,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { HelpCircle } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
+export interface ImportImage {
+  mimeType: string
+  dataBase64: string
+  fileName: string
+}
+
 export interface ImportInputValues {
   text: string
-  format: 'free_text' | 'json'
+  format: 'free_text' | 'json' | 'image'
+  images: ImportImage[]
   name: string | null
   raceDistance: string
   raceDate: string
@@ -41,8 +48,9 @@ export function StepInput({
   onCancel: () => void
 }) {
   const t = useTranslations('planImport')
-  const [tab, setTab] = useState<'free_text' | 'file' | 'json'>('free_text')
+  const [tab, setTab] = useState<'free_text' | 'file' | 'json' | 'image'>('free_text')
   const [text, setText] = useState('')
+  const [images, setImages] = useState<ImportImage[]>([])
   const [name, setName] = useState('')
   const [raceDistance, setRaceDistance] = useState<string>('marathon')
   const [raceDate, setRaceDate] = useState('')
@@ -56,11 +64,38 @@ export function StepInput({
     reader.readAsText(file)
   }
 
+  function handleImages(e: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    if (files.length === 0) return
+    Promise.all(
+      files.map(
+        file =>
+          new Promise<ImportImage>((resolve, reject) => {
+            const reader = new FileReader()
+            reader.onload = ev => {
+              const url = String(ev.target?.result ?? '')
+              // data URL: "data:<mime>;base64,<data>" — split off the prefix.
+              const comma = url.indexOf(',')
+              resolve({ mimeType: file.type || 'image/png', dataBase64: comma >= 0 ? url.slice(comma + 1) : url, fileName: file.name })
+            }
+            reader.onerror = () => reject(reader.error)
+            reader.readAsDataURL(file)
+          }),
+      ),
+    ).then(loaded => setImages(prev => [...prev, ...loaded]))
+  }
+
+  function removeImage(index: number) {
+    setImages(prev => prev.filter((_, i) => i !== index))
+  }
+
   function submit() {
     const trimmedName = name.trim()
+    const format = tab === 'image' ? 'image' : tab === 'json' ? 'json' : 'free_text'
     onParse({
       text: text.trim(),
-      format: tab === 'json' ? 'json' : 'free_text',
+      format,
+      images,
       name: trimmedName.length > 0 ? trimmedName : null,
       raceDistance,
       raceDate,
@@ -68,7 +103,8 @@ export function StepInput({
     })
   }
 
-  const canSubmit = text.trim().length > 0 && raceDate.length > 0 && startDate.length > 0 && raceDate > startDate
+  const hasContent = tab === 'image' ? images.length > 0 : text.trim().length > 0
+  const canSubmit = hasContent && raceDate.length > 0 && startDate.length > 0 && raceDate > startDate
 
   return (
     <Card>
@@ -145,6 +181,7 @@ export function StepInput({
             <TabsTrigger value="free_text">{t('tabPasteText')}</TabsTrigger>
             <TabsTrigger value="file">{t('tabUploadFile')}</TabsTrigger>
             <TabsTrigger value="json">{t('tabPasteJson')}</TabsTrigger>
+            <TabsTrigger value="image">{t('tabUploadImages')}</TabsTrigger>
           </TabsList>
           <TabsContent value="free_text" className="mt-4">
             <Textarea
@@ -170,6 +207,20 @@ export function StepInput({
               rows={16}
               className="font-mono text-sm"
             />
+          </TabsContent>
+          <TabsContent value="image" className="mt-4">
+            <p className="mb-2 text-sm text-muted-foreground">{t('imageHelp')}</p>
+            <input type="file" accept="image/*" multiple onChange={handleImages} className="block w-full text-sm" />
+            {images.length > 0 && (
+              <ul className="mt-4 space-y-1.5">
+                {images.map((img, i) => (
+                  <li key={i} className="flex items-center justify-between rounded border px-3 py-2 text-sm">
+                    <span className="truncate">{t('imagePage', { n: i + 1 })} — {img.fileName}</span>
+                    <Button variant="ghost" size="sm" onClick={() => removeImage(i)}>{t('remove')}</Button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </TabsContent>
         </Tabs>
       </CardContent>

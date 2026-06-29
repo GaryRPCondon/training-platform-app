@@ -4,13 +4,22 @@ import {
   parseLLMResultSchema,
   ParsedRunningPlan,
 } from '@/lib/plans/import/schemas'
-import { RUN_PLAN_PARSER_SYSTEM_PROMPT } from '@/lib/plans/import/prompts'
+import { RUN_PLAN_PARSER_SYSTEM_PROMPT, RUN_PLAN_VISION_SYSTEM_PROMPT } from '@/lib/plans/import/prompts'
 import { normalizeParsedPlan } from '@/lib/plans/import/normalize'
+import { resolveVisionModel } from '@/lib/agent/vision'
+import type { MessageContent } from '@/lib/agent/provider-interface'
+
+export interface ParseImage {
+  mimeType: string
+  dataBase64: string
+}
 
 export interface ParseRunningPlanInput {
-  /** 'free_text' | 'json' for the text path. (Image path handled in Phase 2.) */
-  source_type: 'free_text' | 'json'
-  text: string
+  source_type: 'free_text' | 'json' | 'image'
+  /** Required for free_text/json. */
+  text?: string
+  /** Required for image. One or more pages of a single plan, in order. */
+  images?: ParseImage[]
   providerName?: string
   modelName?: string
 }
@@ -42,16 +51,33 @@ const PARSE_MAX_TOKENS = 32000
 export async function parseRunningPlan(
   input: ParseRunningPlanInput,
 ): Promise<ParseRunningPlanOutput> {
-  const provider = createLLMProvider(input.providerName, input.modelName)
+  const isImage = input.source_type === 'image'
 
-  const userMessage =
-    input.source_type === 'json'
-      ? `The following is a running plan in JSON format. Parse and normalise it into the output contract.\n\n\`\`\`json\n${input.text}\n\`\`\``
-      : `Parse the following running plan into the output contract.\n\n${input.text}`
+  // Image imports route to a vision-capable model (the user's text default may
+  // not be one); text/json use the configured provider/model.
+  const vision = isImage ? resolveVisionModel(input.providerName) : null
+  const provider = vision
+    ? createLLMProvider(vision.provider, vision.model)
+    : createLLMProvider(input.providerName, input.modelName)
+
+  let content: MessageContent
+  if (isImage) {
+    if (!input.images || input.images.length === 0) {
+      throw new RunPlanParseError('No images supplied for image import', {})
+    }
+    content = [
+      { type: 'text', text: 'Parse this running plan from the image(s) into the output contract. The pages are in order.' },
+      ...input.images.map(img => ({ type: 'image' as const, mimeType: img.mimeType, dataBase64: img.dataBase64 })),
+    ]
+  } else if (input.source_type === 'json') {
+    content = `The following is a running plan in JSON format. Parse and normalise it into the output contract.\n\n\`\`\`json\n${input.text}\n\`\`\``
+  } else {
+    content = `Parse the following running plan into the output contract.\n\n${input.text}`
+  }
 
   const response = await provider.generateResponse({
-    messages: [{ role: 'user', content: userMessage }],
-    systemPrompt: RUN_PLAN_PARSER_SYSTEM_PROMPT,
+    messages: [{ role: 'user', content }],
+    systemPrompt: isImage ? RUN_PLAN_VISION_SYSTEM_PROMPT : RUN_PLAN_PARSER_SYSTEM_PROMPT,
     maxTokens: PARSE_MAX_TOKENS,
     temperature: 0.1,
   })
@@ -87,7 +113,8 @@ export async function parseRunningPlan(
 
   writeLLMLog('run-plan-parse', {
     sourceType: input.source_type,
-    inputLength: input.text.length,
+    inputLength: input.text?.length ?? 0,
+    imageCount: input.images?.length ?? 0,
     model: response.model,
     confidence: validated.data.confidence,
     contentType: validated.data.content_type,

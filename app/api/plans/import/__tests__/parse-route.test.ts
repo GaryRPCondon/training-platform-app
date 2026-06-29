@@ -35,12 +35,16 @@ describe('POST /api/plans/import/parse', () => {
     expect(res.status).toBe(400)
   })
 
-  it('400 when source_type is image (not yet supported)', async () => {
+  it('200 for image source — routes through the vision path', async () => {
     mockCreateClient.mockResolvedValue(makeMockSupabase({ id: 'u1' }) as any)
+    mockParse.mockResolvedValue({
+      plan: { schema_version: '1.0', name: 'P', weeks: [], parse_warnings: [] } as any,
+      confidence: 0.8, contentType: 'running', warnings: [], totalWeeks: 12,
+      model: 'vision-model', inputTokens: 5, outputTokens: 5,
+    })
     const res = await POST(req({ source_type: 'image', images: [{ mimeType: 'image/png', dataBase64: 'x' }] }))
-    expect(res.status).toBe(400)
-    const body = await res.json()
-    expect(body.error).toContain('not available yet')
+    expect(res.status).toBe(200)
+    expect(mockParse).toHaveBeenCalledWith(expect.objectContaining({ source_type: 'image' }))
   })
 
   it('401 when unauthenticated', async () => {

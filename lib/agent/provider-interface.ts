@@ -20,10 +20,16 @@ export interface LLMResponse {
     toolCalls?: ToolCall[]
 }
 
+export type TextPart = { type: 'text'; text: string }
+export type ImagePart = { type: 'image'; mimeType: string; dataBase64: string }
+// Message content is either a plain string (the common case — all existing
+// callers) or an array of parts for multimodal requests (text + images).
+export type MessageContent = string | Array<TextPart | ImagePart>
+
 export interface LLMRequest {
     messages: {
         role: 'user' | 'assistant' | 'system'
-        content: string
+        content: MessageContent
     }[]
     systemPrompt?: string
     maxTokens?: number

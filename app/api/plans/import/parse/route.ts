@@ -20,14 +20,6 @@ async function postHandler(request: Request) {
     )
   }
 
-  // Image (vision) import lands in a later phase. Text/JSON only for now.
-  if (parsed.data.source_type === 'image') {
-    return NextResponse.json(
-      { error: 'Screenshot import is not available yet — paste text or JSON for now.' },
-      { status: 400 },
-    )
-  }
-
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -48,7 +40,8 @@ async function postHandler(request: Request) {
   try {
     const result = await parseRunningPlan({
       source_type: parsed.data.source_type,
-      text: parsed.data.text!,
+      text: parsed.data.text,
+      images: parsed.data.images,
       providerName: athlete?.preferred_llm_provider ?? undefined,
       modelName: parseModel,
     })

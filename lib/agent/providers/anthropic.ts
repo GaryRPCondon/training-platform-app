@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { LLMProvider, LLMRequest, LLMResponse, ToolCall } from '../provider-interface'
 import { mapToolChoiceToAnthropic } from './stream-utils'
+import { toAnthropicContent } from './content-mapper'
 
 export class AnthropicProvider implements LLMProvider {
     private client: Anthropic
@@ -18,7 +19,7 @@ export class AnthropicProvider implements LLMProvider {
             .filter(m => m.role !== 'system')
             .map(m => ({
                 role: m.role as 'user' | 'assistant',
-                content: m.content,
+                content: toAnthropicContent(m.content),
             }))
 
         // Convert tools to Anthropic's format
@@ -35,7 +36,7 @@ export class AnthropicProvider implements LLMProvider {
             max_tokens: request.maxTokens || 1024,
             temperature: request.temperature,
             system: systemMessage,
-            messages: messages,
+            messages: messages as any,
             tools: tools as any,
             tool_choice: mapToolChoiceToAnthropic(request.toolChoice) as any,
         })
@@ -74,7 +75,7 @@ export class AnthropicProvider implements LLMProvider {
         const systemMessage = request.systemPrompt
         const messages = request.messages
             .filter(m => m.role !== 'system')
-            .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }))
+            .map(m => ({ role: m.role as 'user' | 'assistant', content: toAnthropicContent(m.content) }))
 
         const tools = request.tools?.map(tool => ({
             name: tool.name,
@@ -87,7 +88,7 @@ export class AnthropicProvider implements LLMProvider {
             max_tokens: request.maxTokens || 1024,
             temperature: request.temperature,
             system: systemMessage,
-            messages,
+            messages: messages as any,
             tools: tools as any,
             tool_choice: mapToolChoiceToAnthropic(request.toolChoice) as any,
         })

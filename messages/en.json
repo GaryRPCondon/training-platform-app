@@ -1267,6 +1267,10 @@
     "delete": "Delete",
     "deleteConfirm": "Delete imported plan \"{name}\"? Plans already created from it are kept.",
     "reapplyTitle": "Re-apply \"{name}\"",
-    "reapplyDescription": "Schedule this plan again for a new race. A fresh draft plan will be created."
+    "reapplyDescription": "Schedule this plan again for a new race. A fresh draft plan will be created.",
+    "tabUploadImages": "Upload screenshots",
+    "imageHelp": "Upload one or more screenshots or photos of your plan (multiple pages in order). They are read by AI and discarded after you import.",
+    "imagePage": "Page {n}",
+    "remove": "Remove"
   }
 }
