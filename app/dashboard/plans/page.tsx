@@ -95,9 +95,17 @@ export default function PlansPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
-                <Button asChild>
-                    <Link href="/dashboard/plans/new">{t('createNew')}</Link>
-                </Button>
+                <div className="flex gap-2">
+                    <Button asChild variant="outline">
+                        <Link href="/dashboard/plans/imported">{t('myImported')}</Link>
+                    </Button>
+                    <Button asChild variant="outline">
+                        <Link href="/dashboard/plans/import">{t('importPlan')}</Link>
+                    </Button>
+                    <Button asChild>
+                        <Link href="/dashboard/plans/new">{t('createNew')}</Link>
+                    </Button>
+                </div>
             </div>
 
             {/* Active Plans */}

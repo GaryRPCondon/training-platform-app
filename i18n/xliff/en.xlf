@@ -1989,6 +1989,16 @@ This cannot be undone.</source>
 Note: any workouts already sent to Garmin Connect will NOT be removed automatically. Use "Remove all from Garmin Connect" in your Profile before deleting if you want them cleared.</source>
       </segment>
     </unit>
+    <unit id="myImported">
+      <segment>
+        <source>My imported plans</source>
+      </segment>
+    </unit>
+    <unit id="importPlan">
+      <segment>
+        <source>Import plan</source>
+      </segment>
+    </unit>
   </file>
   <file id="planNew">
     <unit id="defaultGoalName">
@@ -5535,6 +5545,410 @@ This cannot be undone.</source>
     <unit id="logout">
       <segment>
         <source>Logout</source>
+      </segment>
+    </unit>
+  </file>
+  <file id="planImport">
+    <unit id="pageTitle">
+      <segment>
+        <source>Import a running plan</source>
+      </segment>
+    </unit>
+    <unit id="libraryTitle">
+      <segment>
+        <source>My imported plans</source>
+      </segment>
+    </unit>
+    <unit id="parseError">
+      <segment>
+        <source>Failed to parse plan</source>
+      </segment>
+    </unit>
+    <unit id="parseFailed">
+      <segment>
+        <source>Parse failed</source>
+      </segment>
+    </unit>
+    <unit id="importError">
+      <segment>
+        <source>Failed to import plan</source>
+      </segment>
+    </unit>
+    <unit id="imported">
+      <segment>
+        <source>Plan imported</source>
+      </segment>
+    </unit>
+    <unit id="importFailed">
+      <segment>
+        <source>Import failed</source>
+      </segment>
+    </unit>
+    <unit id="loadError">
+      <segment>
+        <source>Failed to load imported plans</source>
+      </segment>
+    </unit>
+    <unit id="deleteFailed">
+      <segment>
+        <source>Delete failed</source>
+      </segment>
+    </unit>
+    <unit id="deleted">
+      <segment>
+        <source>Imported plan deleted</source>
+      </segment>
+    </unit>
+    <unit id="loading">
+      <segment>
+        <source>Loading…</source>
+      </segment>
+    </unit>
+    <unit id="invalidJson">
+      <segment>
+        <source>Invalid JSON</source>
+      </segment>
+    </unit>
+    <unit id="inputTitle">
+      <segment>
+        <source>Paste your training plan</source>
+      </segment>
+    </unit>
+    <unit id="inputDescription">
+      <segment>
+        <source>Paste a running plan you own (from a book, app, or coach). It will be interpreted and shown for review before anything is saved.</source>
+      </segment>
+    </unit>
+    <unit id="showRecommendedFormat">
+      <segment>
+        <source>Show recommended format</source>
+      </segment>
+    </unit>
+    <unit id="recommendedFormat">
+      <segment>
+        <source>Recommended format</source>
+      </segment>
+    </unit>
+    <unit id="formatNote">
+      <segment>
+        <source>Variation is fine — the AI tolerates non-standard formatting and will flag anything ambiguous.</source>
+      </segment>
+    </unit>
+    <unit id="planNameLabel">
+      <segment>
+        <source>Plan name &lt;optional&gt;(optional)&lt;/optional&gt;</source>
+      </segment>
+    </unit>
+    <unit id="planNamePlaceholder">
+      <segment>
+        <source>e.g. Pfitzinger 18/55</source>
+      </segment>
+    </unit>
+    <unit id="raceLabel">
+      <segment>
+        <source>Goal race</source>
+      </segment>
+    </unit>
+    <unit id="raceHelp">
+      <segment>
+        <source>Imported plans are anchored to a goal race. The weeks are fitted between your start date and race day.</source>
+      </segment>
+    </unit>
+    <unit id="raceDistanceLabel">
+      <segment>
+        <source>Race distance</source>
+      </segment>
+    </unit>
+    <unit id="startDateLabel">
+      <segment>
+        <source>Start date</source>
+      </segment>
+    </unit>
+    <unit id="raceDateLabel">
+      <segment>
+        <source>Race date</source>
+      </segment>
+    </unit>
+    <unit id="raceAfterStart">
+      <segment>
+        <source>Race date must be after the start date.</source>
+      </segment>
+    </unit>
+    <unit id="distance_5k">
+      <segment>
+        <source>5K</source>
+      </segment>
+    </unit>
+    <unit id="distance_10k">
+      <segment>
+        <source>10K</source>
+      </segment>
+    </unit>
+    <unit id="distance_half_marathon">
+      <segment>
+        <source>Half marathon</source>
+      </segment>
+    </unit>
+    <unit id="distance_marathon">
+      <segment>
+        <source>Marathon</source>
+      </segment>
+    </unit>
+    <unit id="tabPasteText">
+      <segment>
+        <source>Paste text</source>
+      </segment>
+    </unit>
+    <unit id="tabUploadFile">
+      <segment>
+        <source>Upload file</source>
+      </segment>
+    </unit>
+    <unit id="tabPasteJson">
+      <segment>
+        <source>Paste JSON</source>
+      </segment>
+    </unit>
+    <unit id="pastePlaceholder">
+      <segment>
+        <source>Week 1 / Monday: Rest
+Week 1 / Tuesday: Easy 8 km
+…</source>
+      </segment>
+    </unit>
+    <unit id="cancel">
+      <segment>
+        <source>Cancel</source>
+      </segment>
+    </unit>
+    <unit id="parsing">
+      <segment>
+        <source>Parsing…</source>
+      </segment>
+    </unit>
+    <unit id="parse">
+      <segment>
+        <source>Parse plan</source>
+      </segment>
+    </unit>
+    <unit id="reviewMeta">
+      <segment>
+        <source>{weeks} weeks · {confidence}% confidence</source>
+      </segment>
+    </unit>
+    <unit id="notRunningPlan">
+      <segment>
+        <source>This doesn't look like a running plan.</source>
+      </segment>
+    </unit>
+    <unit id="lowConfidence">
+      <segment>
+        <source>Low confidence — please review carefully before importing.</source>
+      </segment>
+    </unit>
+    <unit id="reviewWarning">
+      <segment>
+        <source>Check the parsed weeks below and edit the JSON if anything is wrong.</source>
+      </segment>
+    </unit>
+    <unit id="closeJsonEditor">
+      <segment>
+        <source>Close JSON editor</source>
+      </segment>
+    </unit>
+    <unit id="editJson">
+      <segment>
+        <source>Edit JSON</source>
+      </segment>
+    </unit>
+    <unit id="validateApply">
+      <segment>
+        <source>Validate &amp; apply</source>
+      </segment>
+    </unit>
+    <unit id="weekLabel">
+      <segment>
+        <source>Week {index}</source>
+      </segment>
+    </unit>
+    <unit id="phase_base">
+      <segment>
+        <source>Base</source>
+      </segment>
+    </unit>
+    <unit id="phase_build">
+      <segment>
+        <source>Build</source>
+      </segment>
+    </unit>
+    <unit id="phase_peak">
+      <segment>
+        <source>Peak</source>
+      </segment>
+    </unit>
+    <unit id="phase_taper">
+      <segment>
+        <source>Taper</source>
+      </segment>
+    </unit>
+    <unit id="day_mon">
+      <segment>
+        <source>Mon</source>
+      </segment>
+    </unit>
+    <unit id="day_tue">
+      <segment>
+        <source>Tue</source>
+      </segment>
+    </unit>
+    <unit id="day_wed">
+      <segment>
+        <source>Wed</source>
+      </segment>
+    </unit>
+    <unit id="day_thu">
+      <segment>
+        <source>Thu</source>
+      </segment>
+    </unit>
+    <unit id="day_fri">
+      <segment>
+        <source>Fri</source>
+      </segment>
+    </unit>
+    <unit id="day_sat">
+      <segment>
+        <source>Sat</source>
+      </segment>
+    </unit>
+    <unit id="day_sun">
+      <segment>
+        <source>Sun</source>
+      </segment>
+    </unit>
+    <unit id="back">
+      <segment>
+        <source>Back</source>
+      </segment>
+    </unit>
+    <unit id="startOver">
+      <segment>
+        <source>Start over</source>
+      </segment>
+    </unit>
+    <unit id="continueToSchedule">
+      <segment>
+        <source>Continue</source>
+      </segment>
+    </unit>
+    <unit id="confirmTitle">
+      <segment>
+        <source>Confirm import</source>
+      </segment>
+    </unit>
+    <unit id="confirmDescription">
+      <segment>
+        <source>Review how the plan will be scheduled, then import it as a draft.</source>
+      </segment>
+    </unit>
+    <unit id="summaryPlan">
+      <segment>
+        <source>Plan</source>
+      </segment>
+    </unit>
+    <unit id="summaryStart">
+      <segment>
+        <source>Start date</source>
+      </segment>
+    </unit>
+    <unit id="summaryRace">
+      <segment>
+        <source>Race date</source>
+      </segment>
+    </unit>
+    <unit id="summaryWeeks">
+      <segment>
+        <source>Plan length (weeks)</source>
+      </segment>
+    </unit>
+    <unit id="fitExact">
+      <segment>
+        <source>Your window fits the plan exactly ({weeks} weeks) — no changes needed.</source>
+      </segment>
+    </unit>
+    <unit id="fitCompress">
+      <segment>
+        <source>This plan is {from} weeks; your window is {to}. {dropped, plural, one {# week} other {# weeks}} will be dropped to fit.</source>
+      </segment>
+    </unit>
+    <unit id="fitStretch">
+      <segment>
+        <source>This plan is {from} weeks; your window is {to}. {added, plural, one {# week} other {# weeks}} will be repeated to fill the time.</source>
+      </segment>
+    </unit>
+    <unit id="importing">
+      <segment>
+        <source>Importing…</source>
+      </segment>
+    </unit>
+    <unit id="importPlan">
+      <segment>
+        <source>Import plan</source>
+      </segment>
+    </unit>
+    <unit id="libraryEmptyTitle">
+      <segment>
+        <source>No imported plans yet</source>
+      </segment>
+    </unit>
+    <unit id="libraryEmptyDesc">
+      <segment>
+        <source>Import a plan you own to follow it in the app and reuse it later.</source>
+      </segment>
+    </unit>
+    <unit id="importFirst">
+      <segment>
+        <source>Import your first plan</source>
+      </segment>
+    </unit>
+    <unit id="weekCount">
+      <segment>
+        <source>{count, plural, one {# week} other {# weeks}}</source>
+      </segment>
+    </unit>
+    <unit id="appliedCount">
+      <segment>
+        <source>{count, plural, =0 {Never applied} one {Applied # time} other {Applied # times}}</source>
+      </segment>
+    </unit>
+    <unit id="importedOn">
+      <segment>
+        <source>Imported {date}</source>
+      </segment>
+    </unit>
+    <unit id="reapply">
+      <segment>
+        <source>Re-apply</source>
+      </segment>
+    </unit>
+    <unit id="delete">
+      <segment>
+        <source>Delete</source>
+      </segment>
+    </unit>
+    <unit id="deleteConfirm">
+      <segment>
+        <source>Delete imported plan "{name}"? Plans already created from it are kept.</source>
+      </segment>
+    </unit>
+    <unit id="reapplyTitle">
+      <segment>
+        <source>Re-apply "{name}"</source>
+      </segment>
+    </unit>
+    <unit id="reapplyDescription">
+      <segment>
+        <source>Schedule this plan again for a new race. A fresh draft plan will be created.</source>
       </segment>
     </unit>
   </file>
