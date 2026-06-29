@@ -4,6 +4,7 @@ import {
   ensureRaceWorkout,
   deriveAnchorDates,
   buildParsedPlan,
+  derivePhaseRanges,
 } from '../apply'
 import type { ImportedWeek } from '../schemas'
 import type { AllTrainingPaces } from '@/lib/training/vdot'
@@ -104,6 +105,30 @@ describe('buildParsedPlan', () => {
     expect((tempo.structured_workout as Record<string, unknown>).pace_source).toBe('literal')
   })
 
+})
+
+describe('derivePhaseRanges', () => {
+  function pweek(week_index: number, phase: 'base' | 'build' | 'peak' | 'taper' | null): ImportedWeek {
+    return { week_index, phase, workouts: [{ day_of_week: 2, type: 'easy_run', description: 'Easy', distance_meters: 8000, intensity: 'easy' }] }
+  }
+
+  it('collapses contiguous phase runs into ranges', () => {
+    const weeks = [pweek(1, 'base'), pweek(2, 'base'), pweek(3, 'build'), pweek(4, 'peak'), pweek(5, 'taper')]
+    expect(derivePhaseRanges(weeks)).toEqual([
+      { name: 'base', startWeek: 1, endWeek: 2 },
+      { name: 'build', startWeek: 3, endWeek: 3 },
+      { name: 'peak', startWeek: 4, endWeek: 4 },
+      { name: 'taper', startWeek: 5, endWeek: 5 },
+    ])
+  })
+
+  it('returns null when any week is unlabelled', () => {
+    expect(derivePhaseRanges([pweek(1, 'base'), pweek(2, null)])).toBeNull()
+    expect(derivePhaseRanges([])).toBeNull()
+  })
+})
+
+describe('buildParsedPlan extra', () => {
   it('leaves structured_workout null for a plain run when no athlete paces', () => {
     const plan = buildParsedPlan(
       [{ week_index: 1, workouts: [{ day_of_week: 2, type: 'easy_run', description: 'Easy', distance_meters: 8000, intensity: 'easy' }] }],

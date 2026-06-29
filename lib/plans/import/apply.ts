@@ -145,6 +145,32 @@ export function buildParsedPlan(
   }
 }
 
+/**
+ * Derive explicit phase ranges from the (fitted, re-indexed 1..N) weeks when
+ * every week carries a phase label — lets imported plans keep the source book's
+ * own mesocycle boundaries instead of the generic 25/70/85 split. Returns null
+ * when any week is unlabelled (caller falls back to the default distribution).
+ * Contiguous runs of the same phase collapse into one range.
+ */
+export function derivePhaseRanges(
+  weeks: ImportedWeek[],
+): Array<{ name: string; startWeek: number; endWeek: number }> | null {
+  if (weeks.length === 0 || !weeks.every(w => w.phase)) return null
+  const ranges: Array<{ name: string; startWeek: number; endWeek: number }> = []
+  let cur = { name: weeks[0].phase as string, startWeek: weeks[0].week_index, endWeek: weeks[0].week_index }
+  for (let i = 1; i < weeks.length; i++) {
+    const phase = weeks[i].phase as string
+    if (phase === cur.name) {
+      cur.endWeek = weeks[i].week_index
+    } else {
+      ranges.push(cur)
+      cur = { name: phase, startWeek: weeks[i].week_index, endWeek: weeks[i].week_index }
+    }
+  }
+  ranges.push(cur)
+  return ranges
+}
+
 // ---------------------------------------------------------------------------
 // Orchestrator (persists)
 // ---------------------------------------------------------------------------
@@ -228,6 +254,8 @@ export async function applyImportedPlan(
     // Pace already stamped in buildParsedPlan — keep the writer's stamping off.
     paceTargets: undefined,
     athletePaces: null,
+    // Keep the book's own phase boundaries when it labels every week.
+    phaseOverrides: derivePhaseRanges(weeks) ?? undefined,
   })
 
   const { error: appError } = await supabase

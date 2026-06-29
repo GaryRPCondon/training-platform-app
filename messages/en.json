@@ -430,7 +430,8 @@
     "confirmDeleteDraft": "Are you sure you want to delete this draft plan? This cannot be undone.",
     "garminDeleteNote": "\n\nNote: any workouts already sent to Garmin Connect will NOT be removed automatically. Use \"Remove all from Garmin Connect\" in your Profile before deleting if you want them cleared.",
     "myImported": "My imported plans",
-    "importPlan": "Import plan"
+    "importPlan": "Import plan",
+    "importedBadge": "Imported"
   },
   "planNew": {
     "defaultGoalName": "My Training Plan",

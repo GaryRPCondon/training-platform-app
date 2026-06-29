@@ -15,6 +15,10 @@ export interface PlanWriteOptions {
   paceTargets?: Record<string, PaceTarget>   // Template methodology pace targets
   athletePaces?: AllTrainingPaces | null      // Athlete's training + race paces
   templateId?: string        // Optional: included in pace_targets validation errors
+  // Optional explicit phase ranges (1-based week numbers). When provided, these
+  // replace the default 25/70/85 distribution — used by imported plans to keep
+  // the source book's own mesocycle boundaries. Generation leaves this unset.
+  phaseOverrides?: Array<{ name: string; startWeek: number; endWeek: number }>
 }
 
 /**
@@ -79,14 +83,17 @@ export async function writePlanToDatabase(
     }
   })
 
-  // Create phases (one phase per traditional period)
+  // Create phases. Imported plans may supply explicit ranges (the book's own
+  // mesocycle boundaries); otherwise use the default 25/70/85 distribution.
   const totalWeeks = parsedPlan.weeks.length
-  const phases = [
-    { name: 'base', start: 1, end: Math.ceil(totalWeeks * 0.25) },
-    { name: 'build', start: Math.ceil(totalWeeks * 0.25) + 1, end: Math.ceil(totalWeeks * 0.70) },
-    { name: 'peak', start: Math.ceil(totalWeeks * 0.70) + 1, end: Math.ceil(totalWeeks * 0.85) },
-    { name: 'taper', start: Math.ceil(totalWeeks * 0.85) + 1, end: totalWeeks }
-  ]
+  const phases = options.phaseOverrides && options.phaseOverrides.length > 0
+    ? options.phaseOverrides.map(p => ({ name: p.name, start: p.startWeek, end: p.endWeek }))
+    : [
+        { name: 'base', start: 1, end: Math.ceil(totalWeeks * 0.25) },
+        { name: 'build', start: Math.ceil(totalWeeks * 0.25) + 1, end: Math.ceil(totalWeeks * 0.70) },
+        { name: 'peak', start: Math.ceil(totalWeeks * 0.70) + 1, end: Math.ceil(totalWeeks * 0.85) },
+        { name: 'taper', start: Math.ceil(totalWeeks * 0.85) + 1, end: totalWeeks }
+      ]
 
   // Insert phases
   const phaseRecords = []

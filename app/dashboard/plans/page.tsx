@@ -130,7 +130,10 @@ export default function PlansPage() {
                                                         {format(parseISO(plan.start_date), 'MMM d, yyyy')} - {format(parseISO(plan.end_date), 'MMM d, yyyy')}
                                                     </CardDescription>
                                                 </div>
-                                                <Badge variant="default">{t('active')}</Badge>
+                                                <div className="flex items-center gap-2">
+                                                    {plan.source === 'import' && <Badge variant="outline">{t('importedBadge')}</Badge>}
+                                                    <Badge variant="default">{t('active')}</Badge>
+                                                </div>
                                             </div>
                                         </CardHeader>
                                         <CardContent>
@@ -191,7 +194,10 @@ export default function PlansPage() {
                                                         {format(parseISO(plan.start_date), 'MMM d, yyyy')} - {format(parseISO(plan.end_date), 'MMM d, yyyy')}
                                                     </CardDescription>
                                                 </div>
-                                                <Badge variant="secondary">{t('draft')}</Badge>
+                                                <div className="flex items-center gap-2">
+                                                    {plan.source === 'import' && <Badge variant="outline">{t('importedBadge')}</Badge>}
+                                                    <Badge variant="secondary">{t('draft')}</Badge>
+                                                </div>
                                             </div>
                                         </CardHeader>
                                         <CardContent>
@@ -250,10 +256,13 @@ export default function PlansPage() {
                                                         {format(parseISO(plan.start_date), 'MMM d, yyyy')} – {format(parseISO(plan.end_date), 'MMM d, yyyy')}
                                                     </CardDescription>
                                                 </div>
-                                                <Badge variant="outline" className="border-amber-400 text-amber-700 dark:text-amber-400">
-                                                    <Trophy className="me-1 h-3 w-3" />
-                                                    {t('completed')}
-                                                </Badge>
+                                                <div className="flex items-center gap-2">
+                                                    {plan.source === 'import' && <Badge variant="outline">{t('importedBadge')}</Badge>}
+                                                    <Badge variant="outline" className="border-amber-400 text-amber-700 dark:text-amber-400">
+                                                        <Trophy className="me-1 h-3 w-3" />
+                                                        {t('completed')}
+                                                    </Badge>
+                                                </div>
                                             </div>
                                         </CardHeader>
                                         <CardContent>

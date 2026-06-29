@@ -1999,6 +1999,11 @@ Note: any workouts already sent to Garmin Connect will NOT be removed automatica
         <source>Import plan</source>
       </segment>
     </unit>
+    <unit id="importedBadge">
+      <segment>
+        <source>Imported</source>
+      </segment>
+    </unit>
   </file>
   <file id="planNew">
     <unit id="defaultGoalName">
