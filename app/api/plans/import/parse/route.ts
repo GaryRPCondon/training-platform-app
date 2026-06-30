@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { withRateLimit } from '@/lib/rate-limit/with-rate-limit'
 import { parseRunningPlan, RunPlanParseError } from '@/lib/plans/import/parser'
+import { VisionUnavailableError } from '@/lib/agent/vision'
 import { parseRequestSchema } from '@/lib/plans/import/schemas'
 
 async function postHandler(request: Request) {
@@ -56,6 +57,9 @@ async function postHandler(request: Request) {
       usage: { inputTokens: result.inputTokens, outputTokens: result.outputTokens },
     })
   } catch (err) {
+    if (err instanceof VisionUnavailableError) {
+      return NextResponse.json({ error: err.message }, { status: 400 })
+    }
     if (err instanceof RunPlanParseError) {
       return NextResponse.json({ error: err.message, details: err.details }, { status: 422 })
     }

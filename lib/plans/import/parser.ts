@@ -55,7 +55,9 @@ export async function parseRunningPlan(
 
   // Image imports route to a vision-capable model (the user's text default may
   // not be one); text/json use the configured provider/model.
-  const vision = isImage ? resolveVisionModel(input.providerName) : null
+  // Vision is decoupled from the user's general provider — always its own
+  // dedicated vision model (resolveVisionModel ignores input.providerName).
+  const vision = isImage ? resolveVisionModel() : null
   const provider = vision
     ? createLLMProvider(vision.provider, vision.model)
     : createLLMProvider(input.providerName, input.modelName)

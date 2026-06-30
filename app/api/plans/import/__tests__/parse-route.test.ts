@@ -17,6 +17,7 @@ vi.mock('@/lib/plans/import/parser', () => ({
 
 import { createClient } from '@/lib/supabase/server'
 import { parseRunningPlan, RunPlanParseError } from '@/lib/plans/import/parser'
+import { VisionUnavailableError } from '@/lib/agent/vision'
 import { POST } from '../parse/route'
 
 const mockCreateClient = vi.mocked(createClient)
@@ -71,6 +72,14 @@ describe('POST /api/plans/import/parse', () => {
     expect(body.totalWeeks).toBe(16)
     expect(body.confidence).toBe(0.9)
     expect(mockParse).toHaveBeenCalledOnce()
+  })
+
+  it('400 when no vision provider is configured for an image import', async () => {
+    mockCreateClient.mockResolvedValue(makeMockSupabase({ id: 'u1' }) as any)
+    mockParse.mockRejectedValue(new VisionUnavailableError('Screenshot import needs a vision-capable provider.'))
+    const res = await POST(req({ source_type: 'image', images: [{ mimeType: 'image/png', dataBase64: 'x' }] }))
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toContain('vision-capable provider')
   })
 
   it('422 when the parser rejects the input', async () => {
