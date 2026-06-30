@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { AlertCircle, Code2 } from 'lucide-react'
+import { AlertCircle, Code2, Loader2 } from 'lucide-react'
 import { ParsedRunningPlan, parsedRunningPlanSchema, ImportedWorkout } from '@/lib/plans/import/schemas'
 import { useEnumLabels } from '@/lib/i18n/enum-labels'
 import { useTranslations } from 'next-intl'
@@ -21,9 +21,10 @@ export interface RunParseResult {
 const CONFIDENCE_THRESHOLD = 0.7
 
 export function StepReview({
-  result, onBack, onStartOver, onConfirm,
+  result, submitting, onBack, onStartOver, onConfirm,
 }: {
   result: RunParseResult
+  submitting: boolean
   onBack: () => void
   onStartOver: () => void
   onConfirm: (plan: ParsedRunningPlan) => void
@@ -130,10 +131,13 @@ export function StepReview({
       </CardContent>
       <CardFooter className="flex justify-between gap-2">
         <div className="flex gap-2">
-          <Button variant="outline" onClick={onBack}>{t('back')}</Button>
-          <Button variant="ghost" onClick={onStartOver}>{t('startOver')}</Button>
+          <Button variant="outline" onClick={onBack} disabled={submitting}>{t('back')}</Button>
+          <Button variant="ghost" onClick={onStartOver} disabled={submitting}>{t('startOver')}</Button>
         </div>
-        <Button onClick={() => onConfirm(editedPlan)}>{t('continueToSchedule')}</Button>
+        <Button onClick={() => onConfirm(editedPlan)} disabled={submitting}>
+          {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {submitting ? t('importing') : t('importPlan')}
+        </Button>
       </CardFooter>
     </Card>
   )

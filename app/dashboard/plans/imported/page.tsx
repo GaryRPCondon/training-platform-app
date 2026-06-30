@@ -1,21 +1,14 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { format } from 'date-fns'
-import { FileDown, Trash2, RotateCw, Loader2 } from 'lucide-react'
+import { FileDown, Trash2, CalendarPlus } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog'
 import { ImportedRunPlan } from '@/types/database'
 import { useTranslations } from 'next-intl'
 
@@ -23,14 +16,10 @@ interface LibraryItem extends ImportedRunPlan {
   application_count: number
 }
 
-const RACE_DISTANCES = ['5k', '10k', 'half_marathon', 'marathon'] as const
-
 export default function ImportedPlansPage() {
   const t = useTranslations('planImport')
-  const router = useRouter()
   const [plans, setPlans] = useState<LibraryItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [reapplyTarget, setReapplyTarget] = useState<LibraryItem | null>(null)
 
   const fetchPlans = useCallback(async () => {
     setLoading(true)
@@ -105,9 +94,11 @@ export default function ImportedPlansPage() {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setReapplyTarget(p)}>
-                      <RotateCw className="mr-2 h-4 w-4" />
-                      {t('reapply')}
+                    <Button asChild variant="outline" size="sm">
+                      <Link href={`/dashboard/plans/new?tab=imported&plan=${p.id}`}>
+                        <CalendarPlus className="mr-2 h-4 w-4" />
+                        {t('schedule')}
+                      </Link>
                     </Button>
                     <Button variant="destructive" size="sm" onClick={() => handleDelete(p.id, p.name)}>
                       <Trash2 className="mr-2 h-4 w-4" />
@@ -120,91 +111,6 @@ export default function ImportedPlansPage() {
           </CardContent>
         </Card>
       )}
-
-      {reapplyTarget && (
-        <ReapplyDialog
-          plan={reapplyTarget}
-          onClose={() => setReapplyTarget(null)}
-          onApplied={(planId) => router.push(`/dashboard/plans/review/${planId}`)}
-        />
-      )}
     </div>
-  )
-}
-
-function ReapplyDialog({
-  plan, onClose, onApplied,
-}: {
-  plan: LibraryItem
-  onClose: () => void
-  onApplied: (planId: number) => void
-}) {
-  const t = useTranslations('planImport')
-  const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10))
-  const [raceDate, setRaceDate] = useState('')
-  const [raceDistance, setRaceDistance] = useState<string>(
-    (RACE_DISTANCES as readonly string[]).includes(plan.distance ?? '') ? plan.distance! : 'marathon',
-  )
-  const [submitting, setSubmitting] = useState(false)
-
-  const canSubmit = raceDate.length > 0 && startDate.length > 0 && raceDate > startDate
-
-  async function submit() {
-    setSubmitting(true)
-    try {
-      const res = await fetch(`/api/plans/import/${plan.id}/apply`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ start_date: startDate, race_date: raceDate, race_distance: raceDistance }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? t('importError'))
-      toast.success(t('imported'))
-      onApplied(data.planId)
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('importFailed'))
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  return (
-    <Dialog open onOpenChange={(open) => { if (!open) onClose() }}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{t('reapplyTitle', { name: plan.name })}</DialogTitle>
-          <DialogDescription>{t('reapplyDescription')}</DialogDescription>
-        </DialogHeader>
-        <div className="flex flex-wrap items-end gap-4 py-2">
-          <div className="w-44">
-            <Label htmlFor="re-distance" className="text-xs text-muted-foreground">{t('raceDistanceLabel')}</Label>
-            <Select value={raceDistance} onValueChange={setRaceDistance}>
-              <SelectTrigger id="re-distance" className="mt-1"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {RACE_DISTANCES.map(d => <SelectItem key={d} value={d}>{t(`distance_${d}`)}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="w-40">
-            <Label htmlFor="re-start" className="text-xs text-muted-foreground">{t('startDateLabel')}</Label>
-            <Input id="re-start" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="mt-1" />
-          </div>
-          <div className="w-40">
-            <Label htmlFor="re-race" className="text-xs text-muted-foreground">{t('raceDateLabel')}</Label>
-            <Input id="re-race" type="date" value={raceDate} onChange={e => setRaceDate(e.target.value)} className="mt-1" />
-          </div>
-        </div>
-        {raceDate.length > 0 && startDate.length > 0 && raceDate <= startDate && (
-          <p className="text-xs text-destructive">{t('raceAfterStart')}</p>
-        )}
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={submitting}>{t('cancel')}</Button>
-          <Button onClick={submit} disabled={submitting || !canSubmit}>
-            {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {t('reapply')}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   )
 }

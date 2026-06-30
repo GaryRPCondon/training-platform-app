@@ -38,8 +38,9 @@ function GeneratePageContent() {
 
     async function generatePlan() {
       try {
+        const importedPlanId = searchParams.get('importedPlan')
         const templateId = searchParams.get('template')
-        if (!templateId) {
+        if (!importedPlanId && !templateId) {
           setError(t('errorNoTemplate'))
           setStatus('error')
           return
@@ -106,14 +107,36 @@ function GeneratePageContent() {
           setProgress(prev => Math.min(prev + 10, 90))
         }, 1000)
 
-        // Call generation API
-        const requestBody: Record<string, unknown> = {
-          template_id: templateId,
-          goal_date: goalDate,
-          start_date: startDate,
-          goal_type: goalType,
-          goal_name: goalName,
-          user_criteria: userCriteria
+        const replaceActive = searchParams.get('replace_active') === 'true'
+
+        // Call generation API. Imported plans go through the import generate
+        // route (definition as guidance, LLM-tailored); templates through the
+        // catalogue generate route. Both return { plan_id } and the 409
+        // active_plan_exists shape.
+        let apiUrl: string
+        let requestBody: Record<string, unknown>
+        if (importedPlanId) {
+          apiUrl = `/api/plans/import/${importedPlanId}/generate`
+          requestBody = {
+            goal_name: goalName,
+            goal_date: goalDate,
+            start_date: startDate,
+            goal_type: goalType,
+            current_weekly_mileage: Number(currentMileage),
+            comfortable_peak_mileage: Number(peakMileage),
+            days_per_week: Number(daysPerWeek),
+          }
+          if (preferredRestDays.length > 0) requestBody.preferred_rest_days = preferredRestDays
+        } else {
+          apiUrl = '/api/plans/generate'
+          requestBody = {
+            template_id: templateId,
+            goal_date: goalDate,
+            start_date: startDate,
+            goal_type: goalType,
+            goal_name: goalName,
+            user_criteria: userCriteria,
+          }
         }
 
         // Add VDOT data if present
@@ -122,11 +145,11 @@ function GeneratePageContent() {
         }
 
         // Forward replace_active flag if user confirmed replacement on /recommend
-        if (searchParams.get('replace_active') === 'true') {
+        if (replaceActive) {
           requestBody.replace_active = true
         }
 
-        const response = await fetch('/api/plans/generate', {
+        const response = await fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(requestBody)

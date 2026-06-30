@@ -18,7 +18,7 @@ export default function PlanImportPage() {
       <ImportWizard
         key={resetKey}
         onCancel={() => router.push('/dashboard/plans')}
-        onImported={(planId) => router.push(`/dashboard/plans/review/${planId}`)}
+        onImported={() => router.push('/dashboard/plans/imported')}
         onStartOver={() => setResetKey(k => k + 1)}
       />
     </div>

@@ -100,8 +100,9 @@ export type ParseRequest = z.infer<typeof parseRequestSchema>
 export const fitModeSchema = z.enum(['exact', 'compress', 'stretch', 'llm_adapt'])
 export type FitMode = z.infer<typeof fitModeSchema>
 
-// Accept: persist the (already reviewed, possibly edited) definition and
-// materialize a first instance.
+// Accept: persist the (already reviewed, possibly edited) definition only.
+// Scheduling onto a race window is a separate, LLM-tailored step (see the
+// imported-plan generate route) — import no longer materialises a plan.
 export const createImportRequestSchema = z.object({
   name: z.string().min(1).max(200),
   source_type: z.enum(['free_text', 'json', 'image']),
@@ -110,17 +111,25 @@ export const createImportRequestSchema = z.object({
   parse_confidence: z.number().min(0).max(1).nullable().optional(),
   parse_metadata: z.record(z.string(), z.unknown()).nullable().optional(),
   definition: parsedRunningPlanSchema,
-  // Apply parameters for the first materialization.
-  start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  race_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  race_distance: z.string().min(1),
 })
 export type CreateImportRequest = z.infer<typeof createImportRequestSchema>
 
-// Re-apply an existing definition.
-export const applyImportRequestSchema = z.object({
+// Schedule an existing definition onto a race window — the user's parameters
+// drive an LLM tailoring pass (mirrors template generation). VDOT optional.
+export const generateImportRequestSchema = z.object({
+  goal_name: z.string().min(1).max(200),
   start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  race_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  race_distance: z.string().min(1),
+  goal_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  goal_type: z.string().min(1), // race distance key
+  current_weekly_mileage: z.number().min(0),
+  comfortable_peak_mileage: z.number().min(0),
+  days_per_week: z.number().int().min(1).max(7),
+  preferred_rest_days: z.array(z.number().int().min(0).max(6)).optional(),
+  vdot_data: z.object({
+    vdot: z.number(),
+    source: z.string().optional(),
+    sourceData: z.record(z.string(), z.unknown()).optional(),
+  }).nullable().optional(),
+  replace_active: z.boolean().optional(),
 })
-export type ApplyImportRequest = z.infer<typeof applyImportRequestSchema>
+export type GenerateImportRequest = z.infer<typeof generateImportRequestSchema>

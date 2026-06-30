@@ -8,9 +8,11 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import { VDOTInput, type VDOTInputValue } from '@/components/plans/vdot-input'
+import { ImportedScheduleForm } from '@/components/plans/imported-schedule-form'
 import { useUnits } from '@/lib/hooks/use-units'
 import { computeWeeksAvailable } from '@/lib/utils/plan-dates'
 import { useTranslations } from 'next-intl'
@@ -211,10 +213,19 @@ function NewPlanPageContent() {
         }
     }
 
+    const defaultTab = searchParams.get('tab') === 'imported' ? 'imported' : 'templated'
+
     return (
         <div className="max-w-2xl mx-auto space-y-6">
             <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
 
+            <Tabs defaultValue={defaultTab}>
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="templated">{t('tabTemplated')}</TabsTrigger>
+                    <TabsTrigger value="imported">{t('tabImported')}</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="templated" className="mt-6">
             <Card>
                 <CardHeader>
                     <CardTitle>{t('cardTitle')}</CardTitle>
@@ -461,6 +472,12 @@ function NewPlanPageContent() {
                     </form>
                 </CardContent>
             </Card>
+                </TabsContent>
+
+                <TabsContent value="imported" className="mt-6">
+                    <ImportedScheduleForm />
+                </TabsContent>
+            </Tabs>
         </div>
     )
 }

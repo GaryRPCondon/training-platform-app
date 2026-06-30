@@ -37,191 +37,29 @@ function getNextDayOfWeek(date: Date, targetDay: number): Date {
   return result
 }
 
+interface OutputContractParams {
+  weeksNeeded: number
+  firstDayName: string
+  raceDayNumber: number
+  raceDayName: string
+  distanceLabel: string
+  partialDays: number
+  isTimeBased?: boolean
+  planStartDate: Date
+  goalDateObj: Date
+  template: { pace_targets?: FullTemplate['pace_targets'] }
+  goal_type: RaceDistance
+}
+
 /**
- * Build system prompt for LLM plan generation
+ * The static output contract shared by template and imported-plan generation:
+ * scheduling rules, OUTPUT FORMAT, WORKOUT TYPES, STRUCTURED WORKOUT, ROLE FIELD.
+ * Extracted verbatim from buildGenerationSystemPrompt so both prompts stay in
+ * sync with what writePlanToDatabase / the parser expect.
  */
-export function buildGenerationSystemPrompt(context: GenerationContext): string {
-  const { template, criteria, start_date, goal_date, goal_type, first_day_of_week = 1, preferred_units, isTimeBased } = context
-  const distanceLabel = getDistanceLabel(goal_type)
-
-  const startDateObj = new Date(start_date)
-  const goalDateObj = new Date(goal_date)
-
-  // Calculate when the structured plan officially begins (next Monday/Sunday)
-  const planStartDate = getNextDayOfWeek(startDateObj, first_day_of_week)
-
-  // Calculate partial days between user's start date and plan start
-  const partialDays = differenceInCalendarDays(planStartDate, startDateObj)
-
-  // Calculate full weeks from plan start to goal.
-  // The race falls on week `floor(days/7) + 1` because day 0 = W1D1, day 7 = W2D1, etc.
-  // Using Math.ceil here previously produced W9 for 63 days (Mon→Mon), which collapses
-  // the race into the final training week and misdates it by 7 days.
-  const daysFromPlanStartToGoal = differenceInCalendarDays(goalDateObj, planStartDate)
-  const weeksNeeded = Math.floor(daysFromPlanStartToGoal / 7) + 1
-
-  // Calculate which day of the week the race falls on
-  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-  const raceDayOfWeek = goalDateObj.getDay()
-  const raceDayName = dayNames[raceDayOfWeek]
-  const firstDayName = dayNames[first_day_of_week]
-
-  // Calculate which "day number" (1-7) the race should be in final week
-  const raceDayNumber = raceDayOfWeek === first_day_of_week ? 1 :
-    ((raceDayOfWeek - first_day_of_week + 7) % 7) + 1
-
-  const templateWeeks = template.duration_weeks || 18
-
-  // Build pre-week section if there are partial days
-  const preWeekSection = partialDays > 0 ? `
-PARTIAL WEEK (Pre-Week):
-Before the structured plan begins, generate ${partialDays} easy ramp-in runs for the days between ${format(startDateObj, 'MMM d')} and ${format(addDays(planStartDate, -1), 'MMM d')}:
-- Type: easy_run
-- Intensity: easy (conversational pace)
-- Purpose: Gentle ramp-in period before structured training begins
-- Distance: Keep these short and comfortable (relative to athlete's current mileage)
-- Format these in a separate "pre_week_workouts" array (see OUTPUT FORMAT section)
-` : ''
-
-  // Build race-week guidance section from template (optional — falls back to POST-RACE RULE)
-  const raceWeek = template.race_week
-  const shakeoutSuffix = raceWeek?.shakeout_distance_meters
-    ? ` (~${raceWeek.shakeout_distance_meters}m shakeout at easy pace)`
-    : ''
-  const volumeLine = raceWeek?.volume_pct_of_peak
-    ? `\n- Total race-week volume: approximately ${raceWeek.volume_pct_of_peak}% of the peak training week`
-    : ''
-  const raceWeekSection = raceWeek ? `
-RACE WEEK GUIDANCE (Week ${weeksNeeded} — from template):
-- Day before race (Week ${weeksNeeded}, Day ${raceDayNumber - 1 > 0 ? raceDayNumber - 1 : 7}): ${raceWeek.day_before_race}${shakeoutSuffix}${volumeLine}
-- ${raceWeek.guidance}
-- No workouts, cross-training, or runs after the race on Day ${raceDayNumber} — every later day MUST be type=rest.
-
-Apply these rules to Week ${weeksNeeded}. They override the template's generic weekly_schedule when compression forces deviation.
-` : ''
-
-  // Per-week prescribed workouts — only emit when template provides plan_week + total_km
-  // (currently used by JD 2Q templates). For each week we list the specific workouts
-  // the template author prescribes, including concrete per-day easy volumes from
-  // E_days_distribution. The LLM maps these onto the calendar — it does NOT
-  // compute or distribute mileage itself.
-  const perWeekRows = (template.weekly_schedule ?? [])
-    .filter(w => typeof w.plan_week === 'number' && typeof w.total_km === 'number')
-    .sort((a, b) => (a.plan_week ?? 0) - (b.plan_week ?? 0))
-  const hasPerDay = perWeekRows.some(w => Array.isArray(w.E_days_distribution) && w.E_days_distribution.length > 0)
-  const perWeekTargetsSection = perWeekRows.length > 0 ? (hasPerDay ? `
-PER-WEEK PRESCRIBED WORKOUTS (binding — from template author):
-For each week, generate exactly these workouts — no more, no less. Map them onto the calendar using the template's typical_week pattern and the user's rest-day preferences. Do NOT add mileage. Do NOT replace easy slots with quality work. Use the Q1/Q2 description verbatim for those workouts; use the prescribed type (in parentheses) as the workout's type field verbatim; use type=easy_run for each easy slot.
-
-For each Q-slot, the tags after the type indicate:
-- [SESSION]: emit a structured_workout with main_set covering the prescribed work.
-- (no [SESSION] tag): do NOT emit a structured_workout's main_set; emit a single-step main_set covering the easy run distance instead (see "Plain runs" below).
-- [W/C: included]: the description's leading/trailing easy segments (e.g. "6E + 6M + 2E") ARE the warmup/cooldown. Build main_set to cover the FULL description including those easy segments, and OMIT separate warmup/cooldown fields.
-- [W/C: add]: the description prescribes only the main work (e.g. "6 × 1mi T w/1min jog"). Emit separate warmup + cooldown fields around main_set.
-${perWeekRows.map(w => {
-  const lines: string[] = []
-  const frac = w.fraction_of_peak !== undefined ? `, fraction of peak ${w.fraction_of_peak}` : ''
-  const totalMi = (w.Q1_mileage ?? 0) + (w.Q2_mileage ?? 0) + (w.E_days_total ?? 0)
-  const totalLabel = totalMi > 0 ? `${totalMi} mi. (${w.total_km} km)` : `${w.total_km} km`
-  lines.push(`\nWeek ${w.plan_week} (total ${totalLabel}${frac}):`)
-  const tagsFor = (isSession?: boolean, wc?: 'included' | 'add'): string => {
-    const parts: string[] = []
-    if (isSession === true) parts.push('SESSION')
-    if (wc) parts.push(`W/C: ${wc}`)
-    return parts.length > 0 ? ` [${parts.join(', ')}]` : ''
-  }
-  if (w.Q1 && w.Q1_km !== undefined) {
-    const t = w.Q1_type ? ` (${w.Q1_type})` : ''
-    const dist = w.Q1_mileage !== undefined ? `${w.Q1_mileage} mi. (${w.Q1_km} km)` : `${w.Q1_km} km`
-    lines.push(`  - Q1${t}${tagsFor(w.Q1_is_session, w.Q1_warmup_cooldown)}: ${dist} — "${w.Q1}"`)
-  }
-  if (w.Q2 && w.Q2_km !== undefined) {
-    const t = w.Q2_type ? ` (${w.Q2_type})` : ''
-    const dist = w.Q2_mileage !== undefined ? `${w.Q2_mileage} mi. (${w.Q2_km} km)` : `${w.Q2_km} km`
-    lines.push(`  - Q2${t}${tagsFor(w.Q2_is_session, w.Q2_warmup_cooldown)}: ${dist} — "${w.Q2}"`)
-  }
-  for (const e of w.E_days_distribution ?? []) {
-    const notes = e.notes ? ` — ${e.notes}` : ''
-    const dist = e.mileage !== undefined ? `${e.mileage} mi. (${e.km} km)` : `${e.km} km`
-    lines.push(`  - Easy: ${dist}${notes}`)
-  }
-  const qCount = (w.Q1 ? 1 : 0) + (w.Q2 ? 1 : 0)
-  const eCount = (w.E_days_distribution ?? []).length
-  const restDays = Math.max(0, 7 - qCount - eCount)
-  for (let i = 0; i < restDays; i++) lines.push(`  - Rest`)
-  return lines.join('\n')
-}).join('\n')}
-` : `
-PER-WEEK TARGETS (binding — from template):
-plan_week | total_km${perWeekRows[0].Q1_km !== undefined ? ' | Q1_km | Q2_km' : ''}
-${perWeekRows.map(w => {
-  const q = w.Q1_km !== undefined ? ` | ${w.Q1_km ?? '—'} | ${w.Q2_km ?? '—'}` : ''
-  return `W${w.plan_week} | ${w.total_km}${q}`
-}).join('\n')}
-`) : ''
-
-  return `You are a ${distanceLabel} training coach, specializing in the template's training philosophy.
-
-SELECTED TEMPLATE: ${template.name}
-This template (normally ${templateWeeks} weeks) provides the training philosophy and workout structure to adapt.
-
-USER TIMELINE - CRITICAL:
-- Athlete selected start date: ${format(startDateObj, 'EEEE, MMMM d, yyyy')}
-- Plan officially begins: ${format(planStartDate, 'EEEE, MMMM d, yyyy')} (Week 1, Day 1)${partialDays > 0 ? `\n- Partial days before plan: ${partialDays} days` : ''}
-- Race date: ${format(goalDateObj, 'EEEE, MMMM d, yyyy')} (Week ${weeksNeeded}, Day ${raceDayNumber})
-- Full weeks of structured training: ${weeksNeeded} weeks
-${preWeekSection}
-
-USER CONSTRAINTS:
-- Current weekly mileage: ${criteria.current_weekly_mileage}km
-- Maximum comfortable weekly mileage: ${criteria.comfortable_peak_mileage}km
-- Training days per week: ${criteria.days_per_week}
-- Experience level: ${criteria.experience_level}${criteria.preferred_rest_days && criteria.preferred_rest_days.length > 0 ? `
-- Preferred non-training days: ${criteria.preferred_rest_days.map(d => dayNames[d]).join(', ')}` : ''}
-
-MEASUREMENT UNITS:
-- Athlete's preferred unit system: ${preferred_units === 'imperial' ? 'Imperial (miles)' : 'Metric (km)'}
-- distance_meters field: ALWAYS in meters regardless of preference
-- description field: follow the template's dual-unit style for continuous runs, mile-based for intervals
-  - Continuous runs: "Easy 8 mi. (13 km)", "Tempo 8 mi. (13 km)", "Long 16 mi. (27 km)"
-  - Intervals: use miles for rep distances, metres for short recoveries — "6 × 1 mi., 400 recovery"
-  - Sub-mile track distances always in metres: 400m, 800m, 1200m
-  Scale distances to fit the athlete's load, but always use this style — never raw metre conversions like "4828m"
-- pace_guidance field: use min/km for metric, min/mile for imperial
-
-TASK:
-Generate a ${weeksNeeded}-week personalized training plan that:
-1. Week 1, Day 1 starts on ${format(planStartDate, 'EEEE, MMMM d')}
-2. Week ${weeksNeeded}, Day ${raceDayNumber} is the ${distanceLabel} race on ${format(goalDateObj, 'EEEE, MMMM d')}
-3. Adapts the template's training philosophy to fit this timeline
-4. Includes ${weeksNeeded} full weeks${partialDays > 0 ? ` PLUS ${partialDays} pre-week ramp-in runs` : ''}
-
-CRITICAL INSTRUCTIONS:
-- Generate EXACTLY ${weeksNeeded} full weeks (Week 1 through Week ${weeksNeeded})
-- Week 1, Day 1 starts on ${firstDayName}, ${format(planStartDate, 'MMMM d')}
-- The ${distanceLabel} race MUST be on Week ${weeksNeeded}, Day ${raceDayNumber} (${raceDayName}, ${format(goalDateObj, 'MMMM d')})
-- Each week has EXACTLY 7 days (numbered 1-7, starting with ${firstDayName})
-- Do NOT create day 8, 9, 10, etc. - only days 1-7 exist per week${raceWeek ? '' : `
-- POST-RACE RULE: In the final week (Week ${weeksNeeded}), every day AFTER Day ${raceDayNumber} MUST be type=rest. Do NOT schedule any runs, cross-training, or other workouts after the race.`}${partialDays > 0 ? `
-- Generate ${partialDays} pre-week workouts in the "pre_week_workouts" array before the "weeks" array` : ''}
-${raceWeekSection}${perWeekTargetsSection}
-
-KEY PRINCIPLES:
-1. Follow the template's training philosophy throughout
-2. Maintain the core workout structure and progression patterns
-3. Adapt phase lengths proportionally to fit ${weeksNeeded} weeks
-4. HARD VOLUME CEILING: No week may exceed ${criteria.comfortable_peak_mileage}km total — not even by 1km
-5. WEEK 1 ANCHOR: Week 1 total must match the template's plan_week=1 total_km if the template provides it (athlete is already at that volume). Otherwise start at or below the athlete's current weekly mileage (${criteria.current_weekly_mileage}km).
-6. Schedule workouts on ${criteria.days_per_week} days per week (rest days on others)${criteria.preferred_rest_days && criteria.preferred_rest_days.length > 0 ? `
-7. MANDATORY: Schedule rest days on: ${criteria.preferred_rest_days.map(d => dayNames[d]).join(', ')}
-   - These are the athlete's REQUIRED non-training days
-   - You MUST place rest days on these specific days of the week
-   - Adjust the template's workout schedule to accommodate this requirement
-   - The athlete's schedule preferences override the template's default rest day placement
-8. Build progressively from the Week 1 base toward the peak, following the template's volume curve` : `
-7. Build progressively from the Week 1 base toward the peak, following the template's volume curve`}
-
-⚠️  CRITICAL WORKOUT SCHEDULING RULE - ABSOLUTE REQUIREMENT ⚠️
+export function buildOutputContractSection(p: OutputContractParams): string {
+  const { weeksNeeded, firstDayName, raceDayNumber, raceDayName, distanceLabel, partialDays, isTimeBased, planStartDate, goalDateObj, template, goal_type } = p
+  return `⚠️  CRITICAL WORKOUT SCHEDULING RULE - ABSOLUTE REQUIREMENT ⚠️
 
 YOU MUST NEVER PLACE HARD WORKOUTS ON CONSECUTIVE DAYS UNLESS THE TEMPLATE EXPLICITLY DOES THIS.
 
@@ -584,6 +422,193 @@ IMPORTANT:
 - Do not truncate or summarize - output the complete ${weeksNeeded}-week plan
 - Return ONLY the JSON object, no markdown formatting, no extra text
 - Ensure the JSON is valid and complete (all brackets closed)`
+}
+
+/**
+ * Build system prompt for LLM plan generation
+ */
+export function buildGenerationSystemPrompt(context: GenerationContext): string {
+  const { template, criteria, start_date, goal_date, goal_type, first_day_of_week = 1, preferred_units, isTimeBased } = context
+  const distanceLabel = getDistanceLabel(goal_type)
+
+  const startDateObj = new Date(start_date)
+  const goalDateObj = new Date(goal_date)
+
+  // Calculate when the structured plan officially begins (next Monday/Sunday)
+  const planStartDate = getNextDayOfWeek(startDateObj, first_day_of_week)
+
+  // Calculate partial days between user's start date and plan start
+  const partialDays = differenceInCalendarDays(planStartDate, startDateObj)
+
+  // Calculate full weeks from plan start to goal.
+  // The race falls on week `floor(days/7) + 1` because day 0 = W1D1, day 7 = W2D1, etc.
+  // Using Math.ceil here previously produced W9 for 63 days (Mon→Mon), which collapses
+  // the race into the final training week and misdates it by 7 days.
+  const daysFromPlanStartToGoal = differenceInCalendarDays(goalDateObj, planStartDate)
+  const weeksNeeded = Math.floor(daysFromPlanStartToGoal / 7) + 1
+
+  // Calculate which day of the week the race falls on
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+  const raceDayOfWeek = goalDateObj.getDay()
+  const raceDayName = dayNames[raceDayOfWeek]
+  const firstDayName = dayNames[first_day_of_week]
+
+  // Calculate which "day number" (1-7) the race should be in final week
+  const raceDayNumber = raceDayOfWeek === first_day_of_week ? 1 :
+    ((raceDayOfWeek - first_day_of_week + 7) % 7) + 1
+
+  const templateWeeks = template.duration_weeks || 18
+
+  // Build pre-week section if there are partial days
+  const preWeekSection = partialDays > 0 ? `
+PARTIAL WEEK (Pre-Week):
+Before the structured plan begins, generate ${partialDays} easy ramp-in runs for the days between ${format(startDateObj, 'MMM d')} and ${format(addDays(planStartDate, -1), 'MMM d')}:
+- Type: easy_run
+- Intensity: easy (conversational pace)
+- Purpose: Gentle ramp-in period before structured training begins
+- Distance: Keep these short and comfortable (relative to athlete's current mileage)
+- Format these in a separate "pre_week_workouts" array (see OUTPUT FORMAT section)
+` : ''
+
+  // Build race-week guidance section from template (optional — falls back to POST-RACE RULE)
+  const raceWeek = template.race_week
+  const shakeoutSuffix = raceWeek?.shakeout_distance_meters
+    ? ` (~${raceWeek.shakeout_distance_meters}m shakeout at easy pace)`
+    : ''
+  const volumeLine = raceWeek?.volume_pct_of_peak
+    ? `\n- Total race-week volume: approximately ${raceWeek.volume_pct_of_peak}% of the peak training week`
+    : ''
+  const raceWeekSection = raceWeek ? `
+RACE WEEK GUIDANCE (Week ${weeksNeeded} — from template):
+- Day before race (Week ${weeksNeeded}, Day ${raceDayNumber - 1 > 0 ? raceDayNumber - 1 : 7}): ${raceWeek.day_before_race}${shakeoutSuffix}${volumeLine}
+- ${raceWeek.guidance}
+- No workouts, cross-training, or runs after the race on Day ${raceDayNumber} — every later day MUST be type=rest.
+
+Apply these rules to Week ${weeksNeeded}. They override the template's generic weekly_schedule when compression forces deviation.
+` : ''
+
+  // Per-week prescribed workouts — only emit when template provides plan_week + total_km
+  // (currently used by JD 2Q templates). For each week we list the specific workouts
+  // the template author prescribes, including concrete per-day easy volumes from
+  // E_days_distribution. The LLM maps these onto the calendar — it does NOT
+  // compute or distribute mileage itself.
+  const perWeekRows = (template.weekly_schedule ?? [])
+    .filter(w => typeof w.plan_week === 'number' && typeof w.total_km === 'number')
+    .sort((a, b) => (a.plan_week ?? 0) - (b.plan_week ?? 0))
+  const hasPerDay = perWeekRows.some(w => Array.isArray(w.E_days_distribution) && w.E_days_distribution.length > 0)
+  const perWeekTargetsSection = perWeekRows.length > 0 ? (hasPerDay ? `
+PER-WEEK PRESCRIBED WORKOUTS (binding — from template author):
+For each week, generate exactly these workouts — no more, no less. Map them onto the calendar using the template's typical_week pattern and the user's rest-day preferences. Do NOT add mileage. Do NOT replace easy slots with quality work. Use the Q1/Q2 description verbatim for those workouts; use the prescribed type (in parentheses) as the workout's type field verbatim; use type=easy_run for each easy slot.
+
+For each Q-slot, the tags after the type indicate:
+- [SESSION]: emit a structured_workout with main_set covering the prescribed work.
+- (no [SESSION] tag): do NOT emit a structured_workout's main_set; emit a single-step main_set covering the easy run distance instead (see "Plain runs" below).
+- [W/C: included]: the description's leading/trailing easy segments (e.g. "6E + 6M + 2E") ARE the warmup/cooldown. Build main_set to cover the FULL description including those easy segments, and OMIT separate warmup/cooldown fields.
+- [W/C: add]: the description prescribes only the main work (e.g. "6 × 1mi T w/1min jog"). Emit separate warmup + cooldown fields around main_set.
+${perWeekRows.map(w => {
+  const lines: string[] = []
+  const frac = w.fraction_of_peak !== undefined ? `, fraction of peak ${w.fraction_of_peak}` : ''
+  const totalMi = (w.Q1_mileage ?? 0) + (w.Q2_mileage ?? 0) + (w.E_days_total ?? 0)
+  const totalLabel = totalMi > 0 ? `${totalMi} mi. (${w.total_km} km)` : `${w.total_km} km`
+  lines.push(`\nWeek ${w.plan_week} (total ${totalLabel}${frac}):`)
+  const tagsFor = (isSession?: boolean, wc?: 'included' | 'add'): string => {
+    const parts: string[] = []
+    if (isSession === true) parts.push('SESSION')
+    if (wc) parts.push(`W/C: ${wc}`)
+    return parts.length > 0 ? ` [${parts.join(', ')}]` : ''
+  }
+  if (w.Q1 && w.Q1_km !== undefined) {
+    const t = w.Q1_type ? ` (${w.Q1_type})` : ''
+    const dist = w.Q1_mileage !== undefined ? `${w.Q1_mileage} mi. (${w.Q1_km} km)` : `${w.Q1_km} km`
+    lines.push(`  - Q1${t}${tagsFor(w.Q1_is_session, w.Q1_warmup_cooldown)}: ${dist} — "${w.Q1}"`)
+  }
+  if (w.Q2 && w.Q2_km !== undefined) {
+    const t = w.Q2_type ? ` (${w.Q2_type})` : ''
+    const dist = w.Q2_mileage !== undefined ? `${w.Q2_mileage} mi. (${w.Q2_km} km)` : `${w.Q2_km} km`
+    lines.push(`  - Q2${t}${tagsFor(w.Q2_is_session, w.Q2_warmup_cooldown)}: ${dist} — "${w.Q2}"`)
+  }
+  for (const e of w.E_days_distribution ?? []) {
+    const notes = e.notes ? ` — ${e.notes}` : ''
+    const dist = e.mileage !== undefined ? `${e.mileage} mi. (${e.km} km)` : `${e.km} km`
+    lines.push(`  - Easy: ${dist}${notes}`)
+  }
+  const qCount = (w.Q1 ? 1 : 0) + (w.Q2 ? 1 : 0)
+  const eCount = (w.E_days_distribution ?? []).length
+  const restDays = Math.max(0, 7 - qCount - eCount)
+  for (let i = 0; i < restDays; i++) lines.push(`  - Rest`)
+  return lines.join('\n')
+}).join('\n')}
+` : `
+PER-WEEK TARGETS (binding — from template):
+plan_week | total_km${perWeekRows[0].Q1_km !== undefined ? ' | Q1_km | Q2_km' : ''}
+${perWeekRows.map(w => {
+  const q = w.Q1_km !== undefined ? ` | ${w.Q1_km ?? '—'} | ${w.Q2_km ?? '—'}` : ''
+  return `W${w.plan_week} | ${w.total_km}${q}`
+}).join('\n')}
+`) : ''
+
+  return `You are a ${distanceLabel} training coach, specializing in the template's training philosophy.
+
+SELECTED TEMPLATE: ${template.name}
+This template (normally ${templateWeeks} weeks) provides the training philosophy and workout structure to adapt.
+
+USER TIMELINE - CRITICAL:
+- Athlete selected start date: ${format(startDateObj, 'EEEE, MMMM d, yyyy')}
+- Plan officially begins: ${format(planStartDate, 'EEEE, MMMM d, yyyy')} (Week 1, Day 1)${partialDays > 0 ? `\n- Partial days before plan: ${partialDays} days` : ''}
+- Race date: ${format(goalDateObj, 'EEEE, MMMM d, yyyy')} (Week ${weeksNeeded}, Day ${raceDayNumber})
+- Full weeks of structured training: ${weeksNeeded} weeks
+${preWeekSection}
+
+USER CONSTRAINTS:
+- Current weekly mileage: ${criteria.current_weekly_mileage}km
+- Maximum comfortable weekly mileage: ${criteria.comfortable_peak_mileage}km
+- Training days per week: ${criteria.days_per_week}
+- Experience level: ${criteria.experience_level}${criteria.preferred_rest_days && criteria.preferred_rest_days.length > 0 ? `
+- Preferred non-training days: ${criteria.preferred_rest_days.map(d => dayNames[d]).join(', ')}` : ''}
+
+MEASUREMENT UNITS:
+- Athlete's preferred unit system: ${preferred_units === 'imperial' ? 'Imperial (miles)' : 'Metric (km)'}
+- distance_meters field: ALWAYS in meters regardless of preference
+- description field: follow the template's dual-unit style for continuous runs, mile-based for intervals
+  - Continuous runs: "Easy 8 mi. (13 km)", "Tempo 8 mi. (13 km)", "Long 16 mi. (27 km)"
+  - Intervals: use miles for rep distances, metres for short recoveries — "6 × 1 mi., 400 recovery"
+  - Sub-mile track distances always in metres: 400m, 800m, 1200m
+  Scale distances to fit the athlete's load, but always use this style — never raw metre conversions like "4828m"
+- pace_guidance field: use min/km for metric, min/mile for imperial
+
+TASK:
+Generate a ${weeksNeeded}-week personalized training plan that:
+1. Week 1, Day 1 starts on ${format(planStartDate, 'EEEE, MMMM d')}
+2. Week ${weeksNeeded}, Day ${raceDayNumber} is the ${distanceLabel} race on ${format(goalDateObj, 'EEEE, MMMM d')}
+3. Adapts the template's training philosophy to fit this timeline
+4. Includes ${weeksNeeded} full weeks${partialDays > 0 ? ` PLUS ${partialDays} pre-week ramp-in runs` : ''}
+
+CRITICAL INSTRUCTIONS:
+- Generate EXACTLY ${weeksNeeded} full weeks (Week 1 through Week ${weeksNeeded})
+- Week 1, Day 1 starts on ${firstDayName}, ${format(planStartDate, 'MMMM d')}
+- The ${distanceLabel} race MUST be on Week ${weeksNeeded}, Day ${raceDayNumber} (${raceDayName}, ${format(goalDateObj, 'MMMM d')})
+- Each week has EXACTLY 7 days (numbered 1-7, starting with ${firstDayName})
+- Do NOT create day 8, 9, 10, etc. - only days 1-7 exist per week${raceWeek ? '' : `
+- POST-RACE RULE: In the final week (Week ${weeksNeeded}), every day AFTER Day ${raceDayNumber} MUST be type=rest. Do NOT schedule any runs, cross-training, or other workouts after the race.`}${partialDays > 0 ? `
+- Generate ${partialDays} pre-week workouts in the "pre_week_workouts" array before the "weeks" array` : ''}
+${raceWeekSection}${perWeekTargetsSection}
+
+KEY PRINCIPLES:
+1. Follow the template's training philosophy throughout
+2. Maintain the core workout structure and progression patterns
+3. Adapt phase lengths proportionally to fit ${weeksNeeded} weeks
+4. HARD VOLUME CEILING: No week may exceed ${criteria.comfortable_peak_mileage}km total — not even by 1km
+5. WEEK 1 ANCHOR: Week 1 total must match the template's plan_week=1 total_km if the template provides it (athlete is already at that volume). Otherwise start at or below the athlete's current weekly mileage (${criteria.current_weekly_mileage}km).
+6. Schedule workouts on ${criteria.days_per_week} days per week (rest days on others)${criteria.preferred_rest_days && criteria.preferred_rest_days.length > 0 ? `
+7. MANDATORY: Schedule rest days on: ${criteria.preferred_rest_days.map(d => dayNames[d]).join(', ')}
+   - These are the athlete's REQUIRED non-training days
+   - You MUST place rest days on these specific days of the week
+   - Adjust the template's workout schedule to accommodate this requirement
+   - The athlete's schedule preferences override the template's default rest day placement
+8. Build progressively from the Week 1 base toward the peak, following the template's volume curve` : `
+7. Build progressively from the Week 1 base toward the peak, following the template's volume curve`}
+
+${buildOutputContractSection({ weeksNeeded, firstDayName, raceDayNumber, raceDayName, distanceLabel, partialDays, isTimeBased, planStartDate, goalDateObj, template, goal_type })}`
 }
 
 /**

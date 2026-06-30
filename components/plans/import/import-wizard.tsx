@@ -6,15 +6,14 @@ import { useTranslations } from 'next-intl'
 import { ParsedRunningPlan } from '@/lib/plans/import/schemas'
 import { StepInput, type ImportInputValues } from './step-input'
 import { StepReview, type RunParseResult } from './step-review'
-import { StepConfirm } from './step-confirm'
 
-type Step = 'input' | 'review' | 'confirm'
+type Step = 'input' | 'review'
 
 export function ImportWizard({
   onCancel, onImported, onStartOver,
 }: {
   onCancel: () => void
-  onImported: (planId: number) => void
+  onImported: () => void
   onStartOver: () => void
 }) {
   const t = useTranslations('planImport')
@@ -53,34 +52,28 @@ export function ImportWizard({
     }
   }
 
-  function handleReviewConfirm(editedPlan: ParsedRunningPlan) {
-    if (!parseResult) return
-    setParseResult({ ...parseResult, plan: editedPlan })
-    setStep('confirm')
-  }
-
-  async function handleImport() {
+  // Review confirm persists the definition only. Scheduling onto a race is a
+  // separate, LLM-tailored step the user does later from the library / new-plan.
+  async function handleReviewConfirm(editedPlan: ParsedRunningPlan) {
     if (!parseResult || !input) return
+    setParseResult({ ...parseResult, plan: editedPlan })
     setSubmitting(true)
     try {
       const res = await fetch('/api/plans/import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: parseResult.plan.name,
+          name: editedPlan.name,
           source_type: input.format,
           parse_confidence: parseResult.confidence,
           parse_metadata: { contentType: parseResult.contentType, warnings: parseResult.warnings },
-          definition: parseResult.plan,
-          start_date: input.startDate,
-          race_date: input.raceDate,
-          race_distance: input.raceDistance,
+          definition: editedPlan,
         }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? t('importError'))
       toast.success(t('imported'))
-      onImported(data.planId)
+      onImported()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('importFailed'))
     } finally {
@@ -95,21 +88,10 @@ export function ImportWizard({
     return (
       <StepReview
         result={parseResult}
+        submitting={submitting}
         onBack={() => setStep('input')}
         onStartOver={onStartOver}
         onConfirm={handleReviewConfirm}
-      />
-    )
-  }
-  if (step === 'confirm' && parseResult && input) {
-    return (
-      <StepConfirm
-        plan={parseResult.plan}
-        startDate={input.startDate}
-        raceDate={input.raceDate}
-        submitting={submitting}
-        onBack={() => setStep('review')}
-        onConfirm={handleImport}
       />
     )
   }

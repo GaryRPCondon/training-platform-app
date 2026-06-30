@@ -8,7 +8,6 @@ import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { HelpCircle } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
@@ -23,9 +22,6 @@ export interface ImportInputValues {
   format: 'free_text' | 'json' | 'image'
   images: ImportImage[]
   name: string | null
-  raceDistance: string
-  raceDate: string
-  startDate: string
 }
 
 const RECOMMENDED_FORMAT = `Week 1 / Monday: Rest
@@ -35,8 +31,6 @@ Week 1 / Saturday: Long run 18 km easy
 
 Week 2 / Tuesday: Tempo 6 km @ threshold
 Week 2 / Saturday: Long run 20 km easy`
-
-const RACE_DISTANCES = ['5k', '10k', 'half_marathon', 'marathon'] as const
 
 export function StepInput({
   submitting,
@@ -52,9 +46,6 @@ export function StepInput({
   const [text, setText] = useState('')
   const [images, setImages] = useState<ImportImage[]>([])
   const [name, setName] = useState('')
-  const [raceDistance, setRaceDistance] = useState<string>('marathon')
-  const [raceDate, setRaceDate] = useState('')
-  const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10))
 
   function handleFile(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -97,14 +88,10 @@ export function StepInput({
       format,
       images,
       name: trimmedName.length > 0 ? trimmedName : null,
-      raceDistance,
-      raceDate,
-      startDate,
     })
   }
 
-  const hasContent = tab === 'image' ? images.length > 0 : text.trim().length > 0
-  const canSubmit = hasContent && raceDate.length > 0 && startDate.length > 0 && raceDate > startDate
+  const canSubmit = tab === 'image' ? images.length > 0 : text.trim().length > 0
 
   return (
     <Card>
@@ -143,37 +130,6 @@ export function StepInput({
             placeholder={t('planNamePlaceholder')}
             maxLength={120}
           />
-        </div>
-
-        <div className="mb-6">
-          <Label className="text-sm font-medium">{t('raceLabel')}</Label>
-          <p className="mt-1 mb-3 text-xs text-muted-foreground">{t('raceHelp')}</p>
-          <div className="flex flex-wrap items-end gap-4">
-            <div className="w-44">
-              <Label htmlFor="race-distance" className="text-xs text-muted-foreground">{t('raceDistanceLabel')}</Label>
-              <Select value={raceDistance} onValueChange={setRaceDistance}>
-                <SelectTrigger id="race-distance" className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {RACE_DISTANCES.map(d => (
-                    <SelectItem key={d} value={d}>{t(`distance_${d}`)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="w-40">
-              <Label htmlFor="start-date" className="text-xs text-muted-foreground">{t('startDateLabel')}</Label>
-              <Input id="start-date" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="mt-1" />
-            </div>
-            <div className="w-40">
-              <Label htmlFor="race-date" className="text-xs text-muted-foreground">{t('raceDateLabel')}</Label>
-              <Input id="race-date" type="date" value={raceDate} onChange={e => setRaceDate(e.target.value)} className="mt-1" />
-            </div>
-          </div>
-          {raceDate.length > 0 && startDate.length > 0 && raceDate <= startDate && (
-            <p className="mt-2 text-xs text-destructive">{t('raceAfterStart')}</p>
-          )}
         </div>
 
         <Tabs value={tab} onValueChange={v => setTab(v as typeof tab)}>

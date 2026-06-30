@@ -27,12 +27,12 @@
     </unit>
     <unit id="running">
       <segment>
-        <source>Running</source>
+        <source>Running Plans</source>
       </segment>
     </unit>
     <unit id="strength">
       <segment>
-        <source>Strength</source>
+        <source>Strength Plans</source>
       </segment>
     </unit>
     <unit id="activities">
@@ -1867,7 +1867,7 @@
     </unit>
     <unit id="createNew">
       <segment>
-        <source>Create New Plan</source>
+        <source>Schedule a Plan</source>
       </segment>
     </unit>
     <unit id="activePlans">
@@ -2016,7 +2016,7 @@ Note: any workouts already sent to Garmin Connect will NOT be removed automatica
     </unit>
     <unit id="importPlan">
       <segment>
-        <source>Import plan</source>
+        <source>Import/Create a plan</source>
       </segment>
     </unit>
     <unit id="importedBadge">
@@ -2033,7 +2033,17 @@ Note: any workouts already sent to Garmin Connect will NOT be removed automatica
     </unit>
     <unit id="title">
       <segment>
-        <source>Create New Plan</source>
+        <source>Schedule a Plan</source>
+      </segment>
+    </unit>
+    <unit id="tabTemplated">
+      <segment>
+        <source>Templated Plans</source>
+      </segment>
+    </unit>
+    <unit id="tabImported">
+      <segment>
+        <source>Imported Plans</source>
       </segment>
     </unit>
     <unit id="cardTitle">
@@ -5576,7 +5586,7 @@ This cannot be undone.</source>
   <file id="planImport">
     <unit id="pageTitle">
       <segment>
-        <source>Import a running plan</source>
+        <source>Import or create a plan</source>
       </segment>
     </unit>
     <unit id="libraryTitle">
@@ -5669,34 +5679,59 @@ This cannot be undone.</source>
         <source>e.g. Pfitzinger 18/55</source>
       </segment>
     </unit>
-    <unit id="raceLabel">
-      <segment>
-        <source>Goal race</source>
-      </segment>
-    </unit>
-    <unit id="raceHelp">
-      <segment>
-        <source>Imported plans are anchored to a goal race. The weeks are fitted between your start date and race day.</source>
-      </segment>
-    </unit>
     <unit id="raceDistanceLabel">
       <segment>
         <source>Race distance</source>
       </segment>
     </unit>
-    <unit id="startDateLabel">
-      <segment>
-        <source>Start date</source>
-      </segment>
-    </unit>
-    <unit id="raceDateLabel">
-      <segment>
-        <source>Race date</source>
-      </segment>
-    </unit>
     <unit id="raceAfterStart">
       <segment>
         <source>Race date must be after the start date.</source>
+      </segment>
+    </unit>
+    <unit id="scheduleTitle">
+      <segment>
+        <source>Schedule an imported plan</source>
+      </segment>
+    </unit>
+    <unit id="scheduleDescription">
+      <segment>
+        <source>Pick a plan you imported and tell us about you — the AI tailors its volume and days to fit, then you review the draft.</source>
+      </segment>
+    </unit>
+    <unit id="selectPlanLabel">
+      <segment>
+        <source>Imported plan</source>
+      </segment>
+    </unit>
+    <unit id="selectPlanPlaceholder">
+      <segment>
+        <source>Select a plan</source>
+      </segment>
+    </unit>
+    <unit id="schedule">
+      <segment>
+        <source>Schedule</source>
+      </segment>
+    </unit>
+    <unit id="scheduleSubmit">
+      <segment>
+        <source>Generate plan</source>
+      </segment>
+    </unit>
+    <unit id="scheduleSubmitting">
+      <segment>
+        <source>Generating…</source>
+      </segment>
+    </unit>
+    <unit id="scheduleEmptyTitle">
+      <segment>
+        <source>No imported plans yet</source>
+      </segment>
+    </unit>
+    <unit id="scheduleEmptyDesc">
+      <segment>
+        <source>Import a plan you own, then come back here to schedule it for a race.</source>
       </segment>
     </unit>
     <unit id="distance_5k">
@@ -5861,56 +5896,6 @@ Week 1 / Tuesday: Easy 8 km
         <source>Start over</source>
       </segment>
     </unit>
-    <unit id="continueToSchedule">
-      <segment>
-        <source>Continue</source>
-      </segment>
-    </unit>
-    <unit id="confirmTitle">
-      <segment>
-        <source>Confirm import</source>
-      </segment>
-    </unit>
-    <unit id="confirmDescription">
-      <segment>
-        <source>Review how the plan will be scheduled, then import it as a draft.</source>
-      </segment>
-    </unit>
-    <unit id="summaryPlan">
-      <segment>
-        <source>Plan</source>
-      </segment>
-    </unit>
-    <unit id="summaryStart">
-      <segment>
-        <source>Start date</source>
-      </segment>
-    </unit>
-    <unit id="summaryRace">
-      <segment>
-        <source>Race date</source>
-      </segment>
-    </unit>
-    <unit id="summaryWeeks">
-      <segment>
-        <source>Plan length (weeks)</source>
-      </segment>
-    </unit>
-    <unit id="fitExact">
-      <segment>
-        <source>Your window fits the plan exactly ({weeks} weeks) — no changes needed.</source>
-      </segment>
-    </unit>
-    <unit id="fitCompress">
-      <segment>
-        <source>This plan is {from} weeks; your window is {to}. {dropped, plural, one {# week} other {# weeks}} will be dropped to fit.</source>
-      </segment>
-    </unit>
-    <unit id="fitStretch">
-      <segment>
-        <source>This plan is {from} weeks; your window is {to}. {added, plural, one {# week} other {# weeks}} will be repeated to fill the time.</source>
-      </segment>
-    </unit>
     <unit id="importing">
       <segment>
         <source>Importing…</source>
@@ -5951,11 +5936,6 @@ Week 1 / Tuesday: Easy 8 km
         <source>Imported {date}</source>
       </segment>
     </unit>
-    <unit id="reapply">
-      <segment>
-        <source>Re-apply</source>
-      </segment>
-    </unit>
     <unit id="delete">
       <segment>
         <source>Delete</source>
@@ -5964,16 +5944,6 @@ Week 1 / Tuesday: Easy 8 km
     <unit id="deleteConfirm">
       <segment>
         <source>Delete imported plan "{name}"? Plans already created from it are kept.</source>
-      </segment>
-    </unit>
-    <unit id="reapplyTitle">
-      <segment>
-        <source>Re-apply "{name}"</source>
-      </segment>
-    </unit>
-    <unit id="reapplyDescription">
-      <segment>
-        <source>Schedule this plan again for a new race. A fresh draft plan will be created.</source>
       </segment>
     </unit>
     <unit id="tabUploadImages">
