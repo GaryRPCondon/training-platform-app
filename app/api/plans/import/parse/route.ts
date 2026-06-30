@@ -27,7 +27,7 @@ async function postHandler(request: Request) {
 
   const { data: athlete } = await supabase
     .from('athletes')
-    .select('preferred_llm_provider, preferred_llm_model')
+    .select('preferred_llm_provider, preferred_llm_model, preferred_vision_provider, preferred_vision_model')
     .eq('id', user.id)
     .single()
 
@@ -45,6 +45,8 @@ async function postHandler(request: Request) {
       images: parsed.data.images,
       providerName: athlete?.preferred_llm_provider ?? undefined,
       modelName: parseModel,
+      visionProvider: athlete?.preferred_vision_provider ?? undefined,
+      visionModel: athlete?.preferred_vision_model ?? undefined,
     })
 
     return NextResponse.json({

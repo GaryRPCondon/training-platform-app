@@ -463,9 +463,29 @@
         <source>e.g., claude-3-5-sonnet-20240620</source>
       </segment>
     </unit>
-    <unit id="modelHelp">
+    <unit id="visionProvider">
       <segment>
-        <source>Override the default model. Leave empty to use default.</source>
+        <source>Vision LLM Provider</source>
+      </segment>
+    </unit>
+    <unit id="visionProviderInfoAria">
+      <segment>
+        <source>About the vision model</source>
+      </segment>
+    </unit>
+    <unit id="visionProviderTooltip">
+      <segment>
+        <source>Used only to read screenshots and photos when you import a training plan. It is kept separate from your main provider because reading images needs a vision-capable model.</source>
+      </segment>
+    </unit>
+    <unit id="visionModelName">
+      <segment>
+        <source>Vision Model Name (Optional)</source>
+      </segment>
+    </unit>
+    <unit id="visionModelPlaceholder">
+      <segment>
+        <source>e.g., gemini-2.5-flash</source>
       </segment>
     </unit>
     <unit id="fastModelLabel">

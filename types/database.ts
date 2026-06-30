@@ -18,6 +18,8 @@ export interface Athlete {
     strava_connected: boolean
     preferred_llm_provider: 'anthropic' | 'openai' | 'gemini' | 'deepseek' | 'grok'
     preferred_llm_model: string | null
+    preferred_vision_provider: 'anthropic' | 'openai' | 'gemini' // Vision import; decoupled from general provider
+    preferred_vision_model: string | null
     use_fast_model_for_operations: boolean // Use non-reasoning model for quick operations
     preferred_activity_data_source: 'strava' | 'garmin' | 'most_recent' // Priority for merged activity details
     vdot: number | null

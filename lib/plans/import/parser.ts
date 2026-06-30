@@ -22,6 +22,9 @@ export interface ParseRunningPlanInput {
   images?: ParseImage[]
   providerName?: string
   modelName?: string
+  /** Image-only: the athlete's configured vision provider/model override. */
+  visionProvider?: string
+  visionModel?: string
 }
 
 export interface ParseRunningPlanOutput {
@@ -56,8 +59,10 @@ export async function parseRunningPlan(
   // Image imports route to a vision-capable model (the user's text default may
   // not be one); text/json use the configured provider/model.
   // Vision is decoupled from the user's general provider — always its own
-  // dedicated vision model (resolveVisionModel ignores input.providerName).
-  const vision = isImage ? resolveVisionModel() : null
+  // dedicated vision model (per-user setting, then env/key fallback).
+  const vision = isImage
+    ? resolveVisionModel({ provider: input.visionProvider, model: input.visionModel })
+    : null
   const provider = vision
     ? createLLMProvider(vision.provider, vision.model)
     : createLLMProvider(input.providerName, input.modelName)

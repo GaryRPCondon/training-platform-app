@@ -15,6 +15,8 @@ const PROVIDER_ENV_MAP: Record<string, string> = {
 const settingsSchema = z.object({
     provider: z.enum(['deepseek', 'anthropic', 'openai', 'gemini', 'grok']).optional(),
     model: z.string().max(100).nullable().optional(),
+    vision_provider: z.enum(['anthropic', 'openai', 'gemini']).optional(),
+    vision_model: z.string().max(100).nullable().optional(),
     preferred_units: z.enum(['metric', 'imperial']).optional(),
     week_starts_on: z.number().int().min(0).max(6).optional(),
     useFastModelForOperations: z.boolean().optional(),
@@ -37,7 +39,7 @@ export async function POST(request: Request) {
         if (!parsed.success) {
             return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
         }
-        const { provider, model, preferred_units, week_starts_on, useFastModelForOperations, preferred_activity_data_source, first_name, last_name, profile_completed, sync_on_login, ai_summaries_enabled, push_summary_to_garmin, push_summary_to_strava, feedback_tone, locale } = parsed.data
+        const { provider, model, vision_provider, vision_model, preferred_units, week_starts_on, useFastModelForOperations, preferred_activity_data_source, first_name, last_name, profile_completed, sync_on_login, ai_summaries_enabled, push_summary_to_garmin, push_summary_to_strava, feedback_tone, locale } = parsed.data
 
         const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()
@@ -63,10 +65,22 @@ export async function POST(request: Request) {
             }
         }
 
+        if (vision_provider !== undefined) {
+            const envVar = PROVIDER_ENV_MAP[vision_provider]
+            if (envVar && !process.env[envVar]) {
+                return NextResponse.json(
+                    { error: `The ${vision_provider} provider is not available on this instance.` },
+                    { status: 400 }
+                )
+            }
+        }
+
         // Build update object with only provided fields
         const updates: Record<string, unknown> = {}
         if (provider !== undefined) updates.preferred_llm_provider = provider
         if (model !== undefined) updates.preferred_llm_model = model || null
+        if (vision_provider !== undefined) updates.preferred_vision_provider = vision_provider
+        if (vision_model !== undefined) updates.preferred_vision_model = vision_model || null
         if (preferred_units !== undefined) updates.preferred_units = preferred_units
         if (week_starts_on !== undefined) updates.week_starts_on = week_starts_on
         if (useFastModelForOperations !== undefined) updates.use_fast_model_for_operations = useFastModelForOperations

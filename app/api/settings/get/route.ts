@@ -19,7 +19,7 @@ export async function GET() {
 
         const { data: athlete } = await supabase
             .from('athletes')
-            .select('preferred_llm_provider, preferred_llm_model, use_fast_model_for_operations, ai_summaries_enabled, feedback_tone, vdot, training_paces, is_admin, account_status, profile_completed')
+            .select('preferred_llm_provider, preferred_llm_model, preferred_vision_provider, preferred_vision_model, use_fast_model_for_operations, ai_summaries_enabled, feedback_tone, vdot, training_paces, is_admin, account_status, profile_completed')
             .eq('id', athleteId)
             .single()
 
@@ -27,6 +27,8 @@ export async function GET() {
             athleteId,
             provider: athlete?.preferred_llm_provider || 'deepseek',
             model: athlete?.preferred_llm_model || '',
+            visionProvider: athlete?.preferred_vision_provider || 'gemini',
+            visionModel: athlete?.preferred_vision_model || '',
             useFastModelForOperations: athlete?.use_fast_model_for_operations ?? true,
             aiSummariesEnabled: athlete?.ai_summaries_enabled ?? false,
             feedbackTone: athlete?.feedback_tone ?? 'balanced',

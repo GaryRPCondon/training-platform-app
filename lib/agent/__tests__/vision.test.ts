@@ -25,6 +25,25 @@ describe('resolveVisionModel', () => {
     }
   })
 
+  it('uses an explicit per-user selection (provider + model) above everything', () => {
+    process.env.GEMINI_API_KEY = 'x'
+    process.env.IMPORT_VISION_PROVIDER = 'openai'
+    process.env.IMPORT_VISION_MODEL = 'gpt-4o'
+    expect(resolveVisionModel({ provider: 'anthropic', model: 'claude-opus-4-8' }))
+      .toEqual({ provider: 'anthropic', model: 'claude-opus-4-8' })
+  })
+
+  it('fills in the provider default model when the user leaves the model blank', () => {
+    expect(resolveVisionModel({ provider: 'gemini' }))
+      .toEqual({ provider: 'gemini', model: 'gemini-2.5-flash' })
+    expect(resolveVisionModel({ provider: 'openai' }))
+      .toEqual({ provider: 'openai', model: 'gpt-4o' })
+  })
+
+  it('throws when a per-user provider has no known default and no model', () => {
+    expect(() => resolveVisionModel({ provider: 'mystery' })).toThrow(VisionUnavailableError)
+  })
+
   it('uses the explicit env override when both provider and model are set', () => {
     process.env.IMPORT_VISION_PROVIDER = 'openai'
     process.env.IMPORT_VISION_MODEL = 'gpt-4o-mini'

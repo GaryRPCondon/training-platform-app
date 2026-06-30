@@ -17,14 +17,18 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Info } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
 interface ProviderAvailability {
     name: string
     available: boolean
 }
+
+const TEXT_INPUT_CLASS =
+    'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50'
 
 type FeedbackTone = 'critical' | 'balanced' | 'positive'
 const TONE_VALUES: FeedbackTone[] = ['critical', 'balanced', 'positive']
@@ -40,6 +44,8 @@ export function AISettingsCard() {
     const [saving, setSaving] = useState(false)
     const [provider, setProvider] = useState('deepseek')
     const [model, setModel] = useState('')
+    const [visionProvider, setVisionProvider] = useState('gemini')
+    const [visionModel, setVisionModel] = useState('')
     const [useFastModel, setUseFastModel] = useState(true)
     const [aiSummariesEnabled, setAiSummariesEnabled] = useState(false)
     const [feedbackTone, setFeedbackTone] = useState<FeedbackTone>('balanced')
@@ -48,10 +54,12 @@ export function AISettingsCard() {
     const savedValues = useRef<{
         provider: string
         model: string
+        visionProvider: string
+        visionModel: string
         useFastModel: boolean
         aiSummariesEnabled: boolean
         feedbackTone: FeedbackTone
-    }>({ provider: 'deepseek', model: '', useFastModel: true, aiSummariesEnabled: false, feedbackTone: 'balanced' })
+    }>({ provider: 'deepseek', model: '', visionProvider: 'gemini', visionModel: '', useFastModel: true, aiSummariesEnabled: false, feedbackTone: 'balanced' })
 
     const fetchAvailableProviders = useCallback(async () => {
         try {
@@ -81,12 +89,16 @@ export function AISettingsCard() {
                 const vals = {
                     provider: data.provider || 'deepseek',
                     model: data.model || '',
+                    visionProvider: data.visionProvider || 'gemini',
+                    visionModel: data.visionModel || '',
                     useFastModel: data.useFastModelForOperations ?? true,
                     aiSummariesEnabled: data.aiSummariesEnabled ?? false,
                     feedbackTone: tone,
                 }
                 setProvider(vals.provider)
                 setModel(vals.model)
+                setVisionProvider(vals.visionProvider)
+                setVisionModel(vals.visionModel)
                 setUseFastModel(vals.useFastModel)
                 setAiSummariesEnabled(vals.aiSummariesEnabled)
                 setFeedbackTone(vals.feedbackTone)
@@ -107,6 +119,8 @@ export function AISettingsCard() {
 
     const hasChanges = provider !== savedValues.current.provider ||
         model !== savedValues.current.model ||
+        visionProvider !== savedValues.current.visionProvider ||
+        visionModel !== savedValues.current.visionModel ||
         useFastModel !== savedValues.current.useFastModel ||
         aiSummariesEnabled !== savedValues.current.aiSummariesEnabled ||
         feedbackTone !== savedValues.current.feedbackTone
@@ -120,6 +134,8 @@ export function AISettingsCard() {
                 body: JSON.stringify({
                     provider,
                     model,
+                    vision_provider: visionProvider,
+                    vision_model: visionModel,
                     useFastModelForOperations: useFastModel,
                     ai_summaries_enabled: aiSummariesEnabled,
                     feedback_tone: feedbackTone,
@@ -128,7 +144,7 @@ export function AISettingsCard() {
 
             if (!response.ok) throw new Error('Failed to update settings')
 
-            savedValues.current = { provider, model, useFastModel, aiSummariesEnabled, feedbackTone }
+            savedValues.current = { provider, model, visionProvider, visionModel, useFastModel, aiSummariesEnabled, feedbackTone }
             toast.success(t('saved'))
         } catch (error) {
             console.error('Failed to save settings:', error)
@@ -162,53 +178,104 @@ export function AISettingsCard() {
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                <div className="space-y-2">
-                    <Label htmlFor="provider">{t('llmProvider')}</Label>
-                    <Select value={provider} onValueChange={setProvider}>
-                        <SelectTrigger id="provider">
-                            <SelectValue placeholder={t('providerPlaceholder')} />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {[
-                                { value: 'deepseek', label: t('providerDeepseek') },
-                                { value: 'gemini', label: t('providerGemini') },
-                                { value: 'anthropic', label: t('providerAnthropic') },
-                                { value: 'openai', label: t('providerOpenai') },
-                                { value: 'grok', label: t('providerGrok') },
-                            ].map(p => (
-                                <SelectItem
-                                    key={p.value}
-                                    value={p.value}
-                                    disabled={!isProviderAvailable(p.value)}
-                                >
-                                    {p.label}{!isProviderAvailable(p.value) ? t('notAvailableSuffix') : ''}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
+                <div className="space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="provider">{t('llmProvider')}</Label>
+                            <Select value={provider} onValueChange={setProvider}>
+                                <SelectTrigger id="provider">
+                                    <SelectValue placeholder={t('providerPlaceholder')} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {[
+                                        { value: 'deepseek', label: t('providerDeepseek') },
+                                        { value: 'gemini', label: t('providerGemini') },
+                                        { value: 'anthropic', label: t('providerAnthropic') },
+                                        { value: 'openai', label: t('providerOpenai') },
+                                        { value: 'grok', label: t('providerGrok') },
+                                    ].map(p => (
+                                        <SelectItem
+                                            key={p.value}
+                                            value={p.value}
+                                            disabled={!isProviderAvailable(p.value)}
+                                        >
+                                            {p.label}{!isProviderAvailable(p.value) ? t('notAvailableSuffix') : ''}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
 
-                {availableProviders.length > 0 && !isProviderAvailable(provider) && (
-                    <div className="p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md text-sm text-amber-800 dark:text-amber-200">
-                        {t('providerUnavailable')}
-                    </div>
-                )}
+                        <div className="space-y-2">
+                            <Label htmlFor="model">{t('modelName')}</Label>
+                            <input
+                                id="model"
+                                type="text"
+                                value={model}
+                                onChange={(e) => setModel(e.target.value)}
+                                placeholder={t('modelPlaceholder')}
+                                className={TEXT_INPUT_CLASS}
+                            />
+                        </div>
 
-                <div className="space-y-2">
-                    <Label htmlFor="model">{t('modelName')}</Label>
-                    <div className="flex gap-2">
-                        <input
-                            id="model"
-                            type="text"
-                            value={model}
-                            onChange={(e) => setModel(e.target.value)}
-                            placeholder={t('modelPlaceholder')}
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                        />
+                        <div className="space-y-2">
+                            <Label htmlFor="visionProvider" className="flex items-center gap-1.5">
+                                {t('visionProvider')}
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <button
+                                            type="button"
+                                            aria-label={t('visionProviderInfoAria')}
+                                            className="text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+                                        >
+                                            <Info className="h-3.5 w-3.5" />
+                                        </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent className="max-w-xs">
+                                        {t('visionProviderTooltip')}
+                                    </TooltipContent>
+                                </Tooltip>
+                            </Label>
+                            <Select value={visionProvider} onValueChange={setVisionProvider}>
+                                <SelectTrigger id="visionProvider">
+                                    <SelectValue placeholder={t('providerPlaceholder')} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {[
+                                        { value: 'gemini', label: t('providerGemini') },
+                                        { value: 'anthropic', label: t('providerAnthropic') },
+                                        { value: 'openai', label: t('providerOpenai') },
+                                    ].map(p => (
+                                        <SelectItem
+                                            key={p.value}
+                                            value={p.value}
+                                            disabled={!isProviderAvailable(p.value)}
+                                        >
+                                            {p.label}{!isProviderAvailable(p.value) ? t('notAvailableSuffix') : ''}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="visionModel">{t('visionModelName')}</Label>
+                            <input
+                                id="visionModel"
+                                type="text"
+                                value={visionModel}
+                                onChange={(e) => setVisionModel(e.target.value)}
+                                placeholder={t('visionModelPlaceholder')}
+                                className={TEXT_INPUT_CLASS}
+                            />
+                        </div>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                        {t('modelHelp')}
-                    </p>
+
+                    {availableProviders.length > 0 && (!isProviderAvailable(provider) || !isProviderAvailable(visionProvider)) && (
+                        <div className="p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md text-sm text-amber-800 dark:text-amber-200">
+                            {t('providerUnavailable')}
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex items-center justify-between p-3 sm:p-4 border rounded-lg">
