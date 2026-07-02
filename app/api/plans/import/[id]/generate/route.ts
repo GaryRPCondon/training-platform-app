@@ -7,31 +7,17 @@ import {
   buildImportedGenerationSystemPrompt,
   buildImportedGenerationUserMessage,
 } from '@/lib/plans/import/generation-prompts'
-import { parseLLMResponse } from '@/lib/plans/response-parser'
-import { writePlanToDatabase } from '@/lib/plans/plan-writer'
-import { deriveTotals } from '@/lib/plans/derive-totals'
-import {
-  assertWeekStructure,
-  assertRaceDay,
-  assertSessionsHaveMainSet,
-} from '@/lib/plans/structural-assertions'
-import { enrichParsedWorkouts, enrichPreWeekWorkouts } from '@/lib/plans/structured-workout-builder'
-import { createLLMProvider } from '@/lib/agent/factory'
+import { generatePlan, ActivePlanExistsError } from '@/lib/plans/plan-generation-engine'
 import { calculateTrainingPaces, calculateRacePaces, RACE_DISTANCES } from '@/lib/training/vdot'
 import type { RaceDistance } from '@/lib/templates/types'
 import type { TrainingPaces } from '@/types/database'
-import { writeLLMLog } from '@/lib/agent/llm-logger'
-import { archivePlanAndGoal } from '@/lib/supabase/plan-activation'
 
 interface Ctx { params: Promise<{ id: string }> }
 
-const MAX_TOKENS_MAP: Record<string, number> = {
-  gemini: 65536, anthropic: 64000, grok: 131072, openai: 16000, deepseek: 8192,
-}
-
 // Schedule (deploy) an imported plan: the stored definition is guidance; the LLM
 // tailors it to the athlete's volume / training days / timeline, mirroring
-// template generation. Produces a draft the user reviews.
+// template generation via the shared plan-generation engine. Produces a draft
+// the user reviews.
 async function postHandler(request: Request, { params }: Ctx) {
   const { id } = await params
   const planId = Number(id)
@@ -82,7 +68,7 @@ async function postHandler(request: Request, { params }: Ctx) {
       paceSourceData = data.vdot_data.sourceData || { vdot }
     }
 
-    const firstDayOfWeek = 1 // Monday — matches the template generation default
+    const firstDayOfWeek = 1 // Monday — matches template generation default
     const startDateObj = new Date(data.start_date)
     const currentDay = startDateObj.getDay()
     const daysUntilTarget = firstDayOfWeek === currentDay ? 0 : ((firstDayOfWeek - currentDay + 7) % 7)
@@ -96,32 +82,11 @@ async function postHandler(request: Request, { params }: Ctx) {
     const raceDayOfWeek = goalDateObj.getDay()
     const raceDayNumber = raceDayOfWeek === firstDayOfWeek ? 1 : ((raceDayOfWeek - firstDayOfWeek + 7) % 7) + 1
 
-    // Pre-flight: refuse to generate over an active plan unless opted in.
-    const { data: activePlan } = await supabase
-      .from('training_plans')
-      .select('id, name')
-      .eq('athlete_id', athleteId)
-      .eq('status', 'active')
-      .maybeSingle()
-    if (activePlan && !data.replace_active) {
-      return NextResponse.json(
-        { error: 'active_plan_exists', active_plan: { id: activePlan.id, name: activePlan.name } },
-        { status: 409 },
-      )
-    }
-
     const { data: athlete } = await supabase
       .from('athletes')
       .select('preferred_llm_provider, preferred_llm_model, preferred_units, vdot')
       .eq('id', athleteId)
       .single()
-
-    if (vdot && athlete && !athlete.vdot) {
-      await supabase
-        .from('athletes')
-        .update({ vdot, training_paces: trainingPaces, pace_source: paceSource, pace_source_data: paceSourceData })
-        .eq('id', athleteId)
-    }
 
     const systemPrompt = buildImportedGenerationSystemPrompt({
       definition,
@@ -139,137 +104,62 @@ async function postHandler(request: Request, { params }: Ctx) {
     })
     const userMessage = buildImportedGenerationUserMessage(definition)
 
-    // Provider selection mirrors the template generate route.
-    let planProviderName: string
-    let planModelName: string | undefined
-    if (athlete?.preferred_llm_provider) {
-      planProviderName = athlete.preferred_llm_provider
-      planModelName = (planProviderName === 'deepseek' && !athlete.preferred_llm_model)
-        ? 'deepseek-chat'
-        : (athlete.preferred_llm_model || undefined)
-    } else if (process.env.GEMINI_API_KEY) {
-      planProviderName = 'gemini'
-      planModelName = 'gemini-2.5-flash-lite'
-    } else {
-      planProviderName = 'deepseek'
-      planModelName = 'deepseek-chat'
-    }
-    const maxTokens = MAX_TOKENS_MAP[planProviderName] || 8192
-    const provider = createLLMProvider(planProviderName, planModelName)
-
-    const llmStart = Date.now()
-    const response = await provider.generateResponse({
-      messages: [{ role: 'user', content: userMessage }],
-      systemPrompt,
-      maxTokens,
-      temperature: 0.7,
-    })
-    writeLLMLog('imported-plan-generate', {
-      importedRunPlanId: imported.id,
-      provider: planProviderName,
-      model: planModelName,
-      generationTimeSeconds: (Date.now() - llmStart) / 1000,
+    const result = await generatePlan({
+      supabase,
+      athleteId,
+      athlete: athlete
+        ? { preferred_llm_provider: athlete.preferred_llm_provider, preferred_llm_model: athlete.preferred_llm_model, vdot: athlete.vdot }
+        : null,
       systemPrompt,
       userMessage,
-      response: response.content,
-      usage: response.usage,
-    })
-
-    const parsedPlan = parseLLMResponse(response.content)
-    for (const week of parsedPlan.weeks) enrichParsedWorkouts(week.workouts)
-    if (parsedPlan.preWeekWorkouts) enrichPreWeekWorkouts(parsedPlan.preWeekWorkouts)
-    deriveTotals(parsedPlan, trainingPaces)
-
-    // Blocking structural checks (no template needed; B2B advisory is skipped —
-    // imported books legitimately schedule consecutive hard days).
-    const blocking = [
-      ...assertWeekStructure(parsedPlan, weeksNeeded),
-      ...assertRaceDay(parsedPlan, weeksNeeded, raceDayNumber),
-      ...assertSessionsHaveMainSet(parsedPlan),
-    ]
-    if (blocking.length > 0) {
-      throw new Error(`Generated plan failed structural validation:\n${blocking.map(f => `  • ${f}`).join('\n')}`)
-    }
-
-    if (activePlan && data.replace_active) {
-      await archivePlanAndGoal(supabase, activePlan.id, athleteId)
-    }
-    const { data: existingDrafts } = await supabase
-      .from('training_plans')
-      .select('id')
-      .eq('athlete_id', athleteId)
-      .in('status', ['draft', 'draft_generated'])
-    if (existingDrafts && existingDrafts.length > 0) {
-      await supabase.from('training_plans').delete().in('id', existingDrafts.map(d => d.id))
-    }
-
-    const distanceMeters = RACE_DISTANCES[data.goal_type as keyof typeof RACE_DISTANCES] ?? null
-    const { data: goal, error: goalError } = await supabase
-      .from('athlete_goals')
-      .insert({
-        athlete_id: athleteId,
-        goal_type: 'race',
-        goal_name: data.goal_name,
-        target_date: data.goal_date,
-        target_value: { distance_meters: distanceMeters },
-        status: 'active',
-        priority: 1,
-      })
-      .select()
-      .single()
-    if (goalError) throw goalError
-
-    const { data: plan, error: planError } = await supabase
-      .from('training_plans')
-      .insert({
-        athlete_id: athleteId,
-        goal_id: goal.id,
-        name: data.goal_name,
-        start_date: data.start_date,
-        end_date: data.goal_date,
-        plan_type: data.goal_type,
-        status: 'draft_generated',
-        created_by: 'agent',
-        source: 'import',
-        imported_run_plan_id: imported.id,
-        vdot,
-        training_paces: trainingPaces,
-        pace_source: paceSource,
-        pace_source_data: paceSourceData,
-      })
-      .select()
-      .single()
-    if (planError) throw planError
-
-    const writeResult = await writePlanToDatabase(parsedPlan, {
-      planId: plan.id,
+      startDate: data.start_date,
       planStartDate,
-      userStartDate: data.start_date,
       goalDate: data.goal_date,
-      supabase,
-      paceTargets: undefined,
-      athletePaces: trainingPaces,
+      weeksNeeded,
+      raceDayNumber,
+      goalName: data.goal_name,
+      planName: data.goal_name,
+      goalType: data.goal_type,
+      distanceMeters: RACE_DISTANCES[data.goal_type as keyof typeof RACE_DISTANCES] ?? null,
+      vdot,
+      trainingPaces,
+      paceSource,
+      paceSourceData,
+      // No template → engine runs blocking structural asserts only (imported
+      // books legitimately schedule consecutive hard days).
+      planFields: { source: 'import', imported_run_plan_id: imported.id },
+      writeOptions: { paceTargets: undefined },
+      replaceActive: data.replace_active,
+      llmLogKey: 'imported-plan-generate',
+      llmLogExtra: { importedRunPlanId: imported.id },
+      onPlanCreated: async (createdPlanId) => {
+        const { error: appError } = await supabase
+          .from('imported_run_plan_applications')
+          .insert({
+            imported_run_plan_id: imported.id,
+            training_plan_id: createdPlanId,
+            athlete_id: athleteId,
+            applied_start_date: planStartDate,
+            applied_race_date: data.goal_date,
+            fit_mode: 'llm_adapt',
+          })
+        if (appError) throw appError
+      },
     })
-
-    const { error: appError } = await supabase
-      .from('imported_run_plan_applications')
-      .insert({
-        imported_run_plan_id: imported.id,
-        training_plan_id: plan.id,
-        athlete_id: athleteId,
-        applied_start_date: planStartDate,
-        applied_race_date: data.goal_date,
-        fit_mode: 'llm_adapt',
-      })
-    if (appError) throw appError
 
     return NextResponse.json({
-      plan_id: plan.id,
+      plan_id: result.planId,
       status: 'draft_generated',
-      summary: writeResult,
-      token_usage: response.usage,
+      summary: result.summary,
+      token_usage: result.tokenUsage,
     })
   } catch (err) {
+    if (err instanceof ActivePlanExistsError) {
+      return NextResponse.json(
+        { error: 'active_plan_exists', active_plan: err.activePlan },
+        { status: 409 },
+      )
+    }
     console.error('Imported run plan generate error:', err)
     return NextResponse.json(
       { error: 'Failed to generate plan', details: err instanceof Error ? err.message : 'Unknown error' },
