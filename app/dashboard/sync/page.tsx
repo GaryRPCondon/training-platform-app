@@ -12,6 +12,7 @@ import { toast } from 'sonner'
 import { format, startOfYear, endOfYear, subDays } from 'date-fns'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
+import { DemoNotice } from '@/components/demo/demo-notice'
 
 type DateRangeOption = 'latest' | 'week' | 'month' | 'year' | 'custom'
 
@@ -25,6 +26,7 @@ interface SyncResult {
 
 export default function ActivitySyncPage() {
     const t = useTranslations('sync')
+    const td = useTranslations('demo')
     const queryClient = useQueryClient()
     const [dateRange, setDateRange] = useState<DateRangeOption>('latest')
     const [customStartDate, setCustomStartDate] = useState<Date>()
@@ -172,6 +174,8 @@ export default function ActivitySyncPage() {
                 <h1 className="text-3xl font-bold tracking-tight">{t('pageTitle')}</h1>
                 <p className="text-muted-foreground">{t('pageSubtitle')}</p>
             </div>
+
+            <DemoNotice message={td('noticeSync')} />
 
             <div aria-live="polite" role="status" className="sr-only">
                 {garminLoading ? t('srGarmin') : ''}

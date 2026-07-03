@@ -6023,5 +6023,30 @@ Week 1 / Tuesday: Easy 8 km
         <source>Demo reset failed. Check the logs.</source>
       </segment>
     </unit>
+    <unit id="bannerText">
+      <segment>
+        <source>Demo mode — this is a shared, read-anything sandbox and its data resets every night.</source>
+      </segment>
+    </unit>
+    <unit id="bannerCta">
+      <segment>
+        <source>Request your own account</source>
+      </segment>
+    </unit>
+    <unit id="noticeSync">
+      <segment>
+        <source>In the full product this automatically syncs your Garmin and Strava activities. Activity sync is turned off in the demo.</source>
+      </segment>
+    </unit>
+    <unit id="noticeIntegrations">
+      <segment>
+        <source>In the full product you connect your own Garmin and Strava accounts here. Connecting is turned off in the demo.</source>
+      </segment>
+    </unit>
+    <unit id="noticeImport">
+      <segment>
+        <source>In the full product you can import an existing training plan from a screenshot or pasted text. Importing is turned off in the demo.</source>
+      </segment>
+    </unit>
   </file>
 </xliff>

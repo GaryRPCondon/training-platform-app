@@ -1283,6 +1283,11 @@
     "resetButton": "Reset demo data now",
     "resetRunning": "Resetting…",
     "resetSuccess": "Demo data reset from your live account.",
-    "resetFailed": "Demo reset failed. Check the logs."
+    "resetFailed": "Demo reset failed. Check the logs.",
+    "bannerText": "Demo mode — this is a shared, read-anything sandbox and its data resets every night.",
+    "bannerCta": "Request your own account",
+    "noticeSync": "In the full product this automatically syncs your Garmin and Strava activities. Activity sync is turned off in the demo.",
+    "noticeIntegrations": "In the full product you connect your own Garmin and Strava accounts here. Connecting is turned off in the demo.",
+    "noticeImport": "In the full product you can import an existing training plan from a screenshot or pasted text. Importing is turned off in the demo."
   }
 }
