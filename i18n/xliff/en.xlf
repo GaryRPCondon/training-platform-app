@@ -5602,6 +5602,11 @@ This cannot be undone.</source>
         <source>Logout</source>
       </segment>
     </unit>
+    <unit id="profileLogoutWithName">
+      <segment>
+        <source>{name} - Profile &amp; logout</source>
+      </segment>
+    </unit>
   </file>
   <file id="planImport">
     <unit id="pageTitle">
@@ -5984,6 +5989,38 @@ Week 1 / Tuesday: Easy 8 km
     <unit id="remove">
       <segment>
         <source>Remove</source>
+      </segment>
+    </unit>
+  </file>
+  <file id="demo">
+    <unit id="resetTitle">
+      <segment>
+        <source>Demo data</source>
+      </segment>
+    </unit>
+    <unit id="resetDescription">
+      <segment>
+        <source>Wipe the demo account and re-clone it from your live account. Runs automatically each night; use this to refresh it now.</source>
+      </segment>
+    </unit>
+    <unit id="resetButton">
+      <segment>
+        <source>Reset demo data now</source>
+      </segment>
+    </unit>
+    <unit id="resetRunning">
+      <segment>
+        <source>Resetting…</source>
+      </segment>
+    </unit>
+    <unit id="resetSuccess">
+      <segment>
+        <source>Demo data reset from your live account.</source>
+      </segment>
+    </unit>
+    <unit id="resetFailed">
+      <segment>
+        <source>Demo reset failed. Check the logs.</source>
       </segment>
     </unit>
   </file>

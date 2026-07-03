@@ -22,6 +22,7 @@ const PUBLIC_PATHS = new Set([
     '/api/auth/logout',
     '/api/auth/demo-login',
     '/api/jobs/push-summaries',
+    '/api/jobs/reset-demo',
 ])
 
 function isPublic(pathname: string): boolean {

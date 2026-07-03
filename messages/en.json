@@ -1196,7 +1196,8 @@
     "logoutFailed": "Failed to log out",
     "profileLogout": "Profile & logout",
     "profile": "Profile",
-    "logout": "Logout"
+    "logout": "Logout",
+    "profileLogoutWithName": "{name} - Profile & logout"
   },
   "planImport": {
     "pageTitle": "Import or create a plan",
@@ -1275,5 +1276,13 @@
     "imageHelp": "Upload one or more screenshots or photos of your plan (multiple pages in order). They are read by AI and discarded after you import.",
     "imagePage": "Page {n}",
     "remove": "Remove"
+  },
+  "demo": {
+    "resetTitle": "Demo data",
+    "resetDescription": "Wipe the demo account and re-clone it from your live account. Runs automatically each night; use this to refresh it now.",
+    "resetButton": "Reset demo data now",
+    "resetRunning": "Resetting…",
+    "resetSuccess": "Demo data reset from your live account.",
+    "resetFailed": "Demo reset failed. Check the logs."
   }
 }
