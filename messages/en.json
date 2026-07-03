@@ -342,7 +342,14 @@
     "dismissStrength": "Dismiss strength session context",
     "dismissActivity": "Dismiss activity context",
     "durationMin": "~{min, number} min",
-    "exerciseCount": "{count, plural, one {# exercise} other {# exercises}}"
+    "exerciseCount": "{count, plural, one {# exercise} other {# exercises}}",
+    "deleteChat": "Delete Chat",
+    "deleteChatConfirmTitle": "Delete this chat?",
+    "deleteChatConfirmBody": "This permanently deletes the selected conversation and all its messages. This cannot be undone.",
+    "deleteChatConfirmAction": "Delete",
+    "deleteChatCancel": "Cancel",
+    "chatDeleted": "Chat deleted",
+    "deleteChatFailed": "Failed to delete chat"
   },
   "coach": {
     "heading": "AI Coach",

@@ -342,7 +342,14 @@
     "dismissStrength": "⟦Ðíšɱíšš šţŕéñǧţĥ šéššíóñ çóñţéẋţ ············⟧",
     "dismissActivity": "⟦Ðíšɱíšš áçţíṽíţý çóñţéẋţ ·········⟧",
     "durationMin": "⟦~{min, number} ɱíñ ······⟧",
-    "exerciseCount": "⟦{count, plural, one {# éẋéŕçíšé} other {# éẋéŕçíšéš}} ··················⟧"
+    "exerciseCount": "⟦{count, plural, one {# éẋéŕçíšé} other {# éẋéŕçíšéš}} ··················⟧",
+    "deleteChat": "⟦Ðéļéţé Çĥáţ ····⟧",
+    "deleteChatConfirmTitle": "⟦Ðéļéţé ţĥíš çĥáţ? ······⟧",
+    "deleteChatConfirmBody": "⟦Ţĥíš þéŕɱáñéñţļý ðéļéţéš ţĥé šéļéçţéð çóñṽéŕšáţíóñ áñð áļļ íţš ɱéššáǧéš. Ţĥíš çáññóţ ƀé úñðóñé. ·································⟧",
+    "deleteChatConfirmAction": "⟦Ðéļéţé ··⟧",
+    "deleteChatCancel": "⟦Çáñçéļ ··⟧",
+    "chatDeleted": "⟦Çĥáţ ðéļéţéð ····⟧",
+    "deleteChatFailed": "⟦Ƒáíļéð ţó ðéļéţé çĥáţ ·······⟧"
   },
   "coach": {
     "heading": "⟦ÁÍ Çóáçĥ ···⟧",

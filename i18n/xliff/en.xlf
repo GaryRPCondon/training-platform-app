@@ -1587,6 +1587,41 @@
         <source>{count, plural, one {# exercise} other {# exercises}}</source>
       </segment>
     </unit>
+    <unit id="deleteChat">
+      <segment>
+        <source>Delete Chat</source>
+      </segment>
+    </unit>
+    <unit id="deleteChatConfirmTitle">
+      <segment>
+        <source>Delete this chat?</source>
+      </segment>
+    </unit>
+    <unit id="deleteChatConfirmBody">
+      <segment>
+        <source>This permanently deletes the selected conversation and all its messages. This cannot be undone.</source>
+      </segment>
+    </unit>
+    <unit id="deleteChatConfirmAction">
+      <segment>
+        <source>Delete</source>
+      </segment>
+    </unit>
+    <unit id="deleteChatCancel">
+      <segment>
+        <source>Cancel</source>
+      </segment>
+    </unit>
+    <unit id="chatDeleted">
+      <segment>
+        <source>Chat deleted</source>
+      </segment>
+    </unit>
+    <unit id="deleteChatFailed">
+      <segment>
+        <source>Failed to delete chat</source>
+      </segment>
+    </unit>
   </file>
   <file id="coach">
     <unit id="heading">

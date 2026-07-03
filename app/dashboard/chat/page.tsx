@@ -8,7 +8,18 @@ import { CoachInterface } from '@/components/chat/coach-interface'
 import { SessionList } from '@/components/chat/session-list'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { PlusCircle, X, Calendar, Ruler, Clock, TrendingUp, Dumbbell } from 'lucide-react'
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { toast } from 'sonner'
+import { PlusCircle, Trash2, X, Calendar, Ruler, Clock, TrendingUp, Dumbbell } from 'lucide-react'
 
 interface ActivityContext {
     id: number
@@ -88,6 +99,8 @@ function ChatPageInner() {
     const router = useRouter()
     const queryClient = useQueryClient()
     const [selectedSessionId, setSelectedSessionId] = useState<number | null>(null)
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+    const [deleting, setDeleting] = useState(false)
 
     // When a new session is created by the coach, refresh the sidebar list
     const handleSessionChange = useCallback((id: number) => {
@@ -166,6 +179,27 @@ function ChatPageInner() {
         router.replace('/dashboard/chat')
     }
 
+    const handleDeleteChat = async () => {
+        if (selectedSessionId == null) return
+        setDeleting(true)
+        try {
+            const res = await fetch(`/api/agent/sessions/${selectedSessionId}`, { method: 'DELETE' })
+            if (!res.ok) throw new Error('delete failed')
+            toast.success(t('chatDeleted'))
+            setSelectedSessionId(null)
+            setWorkoutContext(null)
+            setActivityContext(null)
+            setStrengthSessionContext(null)
+            queryClient.invalidateQueries({ queryKey: ['chat-sessions'] })
+            router.replace('/dashboard/chat')
+        } catch {
+            toast.error(t('deleteChatFailed'))
+        } finally {
+            setDeleting(false)
+            setDeleteDialogOpen(false)
+        }
+    }
+
     const dismissWorkoutContext = () => {
         setWorkoutContext(null)
         router.replace('/dashboard/chat')
@@ -192,11 +226,42 @@ function ChatPageInner() {
         <div className="space-y-4 h-full flex flex-col">
             <div className="flex items-center justify-between">
                 <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
-                <Button onClick={handleNewChat} variant="outline" size="sm" className="gap-2">
-                    <PlusCircle className="h-4 w-4" />
-                    {t('newChat')}
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button
+                        onClick={() => setDeleteDialogOpen(true)}
+                        disabled={selectedSessionId == null}
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                    >
+                        <Trash2 className="h-4 w-4" />
+                        {t('deleteChat')}
+                    </Button>
+                    <Button onClick={handleNewChat} variant="outline" size="sm" className="gap-2">
+                        <PlusCircle className="h-4 w-4" />
+                        {t('newChat')}
+                    </Button>
+                </div>
             </div>
+
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>{t('deleteChatConfirmTitle')}</AlertDialogTitle>
+                        <AlertDialogDescription>{t('deleteChatConfirmBody')}</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={deleting}>{t('deleteChatCancel')}</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={(e) => { e.preventDefault(); handleDeleteChat() }}
+                            disabled={deleting}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            {t('deleteChatConfirmAction')}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             {workoutContext && (
                 <div className="flex items-start gap-3 px-4 py-3 rounded-lg border bg-card shadow-sm">
