@@ -27,6 +27,8 @@ export function isDemoUser(userId: string | null | undefined): boolean {
  */
 const DEMO_BLOCKED_EXACT = new Set([
   '/api/plans/import/parse',
+  '/api/strength/parse',    // strength import: vision/LLM parse
+  '/api/strength/schedule', // strength import: LLM scheduling
   '/api/strava/auth',
   '/api/garmin/workouts',
   '/api/auth/create-athlete',

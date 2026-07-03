@@ -20,9 +20,18 @@ export function DemoBanner() {
         <Info className="h-4 w-4 shrink-0" />
         {t('bannerText')}
       </span>
-      <Link href="/login" className="font-medium underline underline-offset-4">
-        {t('bannerCta')}
-      </Link>
+      <span className="flex items-center gap-4">
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new Event('demo:tour-restart'))}
+          className="font-medium underline underline-offset-4"
+        >
+          {t('restartTour')}
+        </button>
+        <Link href="/login" className="font-medium underline underline-offset-4">
+          {t('bannerCta')}
+        </Link>
+      </span>
     </div>
   )
 }

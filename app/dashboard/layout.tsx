@@ -1,7 +1,9 @@
+import { Suspense } from 'react'
 import { Header } from '@/components/shared/header'
 import { Navigation } from '@/components/shared/navigation'
 import { AutoSync } from '@/components/dashboard/auto-sync'
 import { DemoBanner } from '@/components/demo/demo-banner'
+import { TourBar } from '@/components/demo/tour-bar'
 import { getTranslations } from 'next-intl/server'
 
 export default async function DashboardLayout({
@@ -26,6 +28,9 @@ export default async function DashboardLayout({
                 <main id="main-content" className="flex-1 p-4 md:p-6 md:ps-[216px] max-w-7xl md:border-e md:border-border/50">
                     <AutoSync />
                     <DemoBanner />
+                    <Suspense fallback={null}>
+                        <TourBar />
+                    </Suspense>
                     {children}
                 </main>
             </div>

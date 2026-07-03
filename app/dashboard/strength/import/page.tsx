@@ -4,10 +4,12 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ImportWizard } from '@/components/strength/import/import-wizard'
 import { useTranslations } from 'next-intl'
+import { DemoNotice } from '@/components/demo/demo-notice'
 
 export default function StrengthImportPage() {
   const router = useRouter()
   const t = useTranslations('strength')
+  const td = useTranslations('demo')
   const [resetKey, setResetKey] = useState(0)
 
   return (
@@ -15,6 +17,7 @@ export default function StrengthImportPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">{t('importPageTitle')}</h1>
       </div>
+      <DemoNotice message={td('noticeImportStrength')} />
       <ImportWizard
         key={resetKey}
         onCancel={() => router.push('/dashboard/strength')}

@@ -58,6 +58,8 @@ describe('demoProviderOverride', () => {
 describe('isDemoRestrictedPath', () => {
   it('blocks exact restricted routes', () => {
     expect(isDemoRestrictedPath('/api/plans/import/parse', 'POST')).toBe(true)
+    expect(isDemoRestrictedPath('/api/strength/parse', 'POST')).toBe(true)
+    expect(isDemoRestrictedPath('/api/strength/schedule', 'POST')).toBe(true)
     expect(isDemoRestrictedPath('/api/strava/auth', 'GET')).toBe(true)
     expect(isDemoRestrictedPath('/api/garmin/workouts', 'POST')).toBe(true)
     expect(isDemoRestrictedPath('/api/auth/create-athlete', 'POST')).toBe(true)

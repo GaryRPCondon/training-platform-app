@@ -168,6 +168,9 @@ function makeNewWorkout(date: Date): WorkoutWithDetails {
 interface TrainingCalendarProps {
     openWorkoutId?: number
     openStrengthSessionId?: number
+    // Demo tour: auto-open a representative card of the given kind. Uses a kind
+    // (not an id) so it survives the demo's nightly reclone, which remaps all ids.
+    tourOpen?: 'workout' | 'activity' | 'strength'
 }
 
 // Normalised result of one Garmin batch endpoint call (running or strength).
@@ -206,7 +209,7 @@ async function postGarminBatch(url: string, body: Record<string, unknown>): Prom
     }
 }
 
-export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: TrainingCalendarProps = {}) {
+export function TrainingCalendar({ openWorkoutId, openStrengthSessionId, tourOpen }: TrainingCalendarProps = {}) {
     const t = useTranslations('calendar')
     const [currentDate, setCurrentDate] = useState(new Date())
     const [selectedWorkout, setSelectedWorkout] = useState<WorkoutWithDetails | null>(null)
@@ -364,6 +367,82 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId }: Train
             setIsWorkoutDialogOpen(true)
         }
     }, [openWorkoutId, workouts])
+
+    // Demo tour: auto-open a representative card for the requested kind. Picks an
+    // item by kind (a quality workout / a linked completed activity / a strength
+    // session) rather than a fixed id, so it survives the nightly reclone. Closes
+    // the other cards so only one is ever open; clears them when the tour leaves.
+    const openedTourRef = useRef<string | undefined>(undefined)
+    const tourSeekRef = useRef<string | undefined>(undefined)
+    useEffect(() => {
+        const target = tourOpen ?? ''
+        if (openedTourRef.current === target) return
+
+        if (!tourOpen) {
+            setIsWorkoutDialogOpen(false)
+            setIsActivityDialogOpen(false)
+            setIsStrengthDialogOpen(false)
+            openedTourRef.current = target
+            tourSeekRef.current = undefined
+            return
+        }
+
+        // Fallback: when the visible month has no item of the requested kind, jump
+        // the calendar to the month of the most-recent one (i.e. look back through
+        // history), then let this effect re-run and open it. Runs at most once per
+        // tour stop, so a kind with NO data anywhere is a graceful no-op.
+        const seekMonth = async (table: 'planned_workouts' | 'activities' | 'strength_sessions', dateCol: string, excludeRest: boolean) => {
+            if (tourSeekRef.current === target || !athlete?.id) return
+            tourSeekRef.current = target
+            const base = supabase.from(table).select(dateCol).eq('athlete_id', athlete.id)
+            const filtered = excludeRest ? base.neq('workout_type', 'rest') : base
+            const { data } = await filtered.order(dateCol, { ascending: false }).limit(1)
+            const row = data?.[0] as Record<string, string> | undefined
+            if (row?.[dateCol]) setCurrentDate(new Date(row[dateCol]))
+        }
+
+        if (tourOpen === 'workout') {
+            if (!workouts.length) { void seekMonth('planned_workouts', 'scheduled_date', true); return }
+            const QUALITY = new Set<string>(['intervals', 'tempo', 'race'])
+            const workout = workouts.find(w => QUALITY.has(w.workout_type))
+                ?? workouts.find(w => w.workout_type !== 'rest')
+                ?? workouts[0]
+            setIsActivityDialogOpen(false)
+            setIsStrengthDialogOpen(false)
+            setSelectedWorkout(workout)
+            setIsWorkoutDialogOpen(true)
+            openedTourRef.current = target
+        } else if (tourOpen === 'activity') {
+            if (!rawActivities?.length) { void seekMonth('activities', 'start_time', false); return }
+            // Prefer the most recent activity linked to a planned workout (best for
+            // the "compared against the plan" story), else the most recent overall.
+            const linked = [...rawActivities].reverse().find(a => a.planned_workout_id)
+            const activity = linked ?? rawActivities[rawActivities.length - 1]
+            setIsWorkoutDialogOpen(false)
+            setIsStrengthDialogOpen(false)
+            openedTourRef.current = target
+            void (async () => {
+                const withWorkout: Activity & { planned_workouts?: PlannedWorkout | null } = { ...activity }
+                if (activity.planned_workout_id) {
+                    const { data: workout } = await supabase
+                        .from('planned_workouts')
+                        .select('*')
+                        .eq('id', activity.planned_workout_id)
+                        .single()
+                    if (workout) withWorkout.planned_workouts = workout
+                }
+                setSelectedActivity(withWorkout)
+                setIsActivityDialogOpen(true)
+            })()
+        } else if (tourOpen === 'strength') {
+            if (!strengthSessions?.length) { void seekMonth('strength_sessions', 'scheduled_date', false); return }
+            setIsWorkoutDialogOpen(false)
+            setIsActivityDialogOpen(false)
+            setSelectedStrengthSession(strengthSessions[0])
+            setIsStrengthDialogOpen(true)
+            openedTourRef.current = target
+        }
+    }, [tourOpen, workouts, rawActivities, strengthSessions, athlete?.id, supabase])
 
     const rescheduleMutation = useMutation({
         mutationFn: async ({ workoutId, newDate }: { workoutId: number, newDate: string }) => {
