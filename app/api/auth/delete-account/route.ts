@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { isDemoUser } from '@/lib/demo/demo'
 
 export async function DELETE() {
     try {
@@ -9,6 +10,12 @@ export async function DELETE() {
 
         if (!user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
+        // Self-guard: this route is public (see proxy.ts) so it bypasses the demo
+        // blocklist — reject deletion of the shared demo account here.
+        if (isDemoUser(user.id)) {
+            return NextResponse.json({ error: 'demo_restricted' }, { status: 403 })
         }
 
         // Fetch integration tokens for cleanup before deletion

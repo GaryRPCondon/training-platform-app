@@ -12,11 +12,12 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { generateActivitySummary } from '@/lib/activities/ai-summary'
+import { withRateLimit } from '@/lib/rate-limit/with-rate-limit'
 import { z } from 'zod'
 
 const bodySchema = z.object({ force: z.boolean().optional() })
 
-export async function POST(
+async function postHandler(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -109,3 +110,7 @@ export async function POST(
     )
   }
 }
+
+// Rate-limited under the 'generation' tier: bounds regenerate-spam for all users
+// and, for the demo account, counts against the shared daily LLM budget.
+export const POST = withRateLimit('generation', postHandler)

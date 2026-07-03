@@ -8,6 +8,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Activity, PlannedWorkout, Lap, TrainingPaces } from '@/types/database'
 import { createLLMProvider } from '@/lib/agent/factory'
+import { demoProviderOverride } from '@/lib/demo/demo'
 import { getEffectiveDistance, calculateDistanceDiff, calculateDurationDiff, loadActivePlanPaces } from '@/lib/activities/scoring'
 
 // ---------------------------------------------------------------------------
@@ -432,11 +433,16 @@ export async function generateActivitySummary(
     console.log(`[AI Summary] Activity ${activityId} — tone="${tone}" (athlete ${activity.athlete_id})`)
     const trainingPaces = await loadActivePlanPaces(supabase, activity.athlete_id)
     const userMessage = buildUserMessage(activity, workout, (laps || []) as Lap[], trainingPaces)
+    // Demo account: pin the cheap provider regardless of stored preference.
+    const demoOverride = demoProviderOverride(activity.athlete_id)
     // For summaries, use Flash Lite when Gemini is selected — summarisation doesn't need thinking mode
-    const summaryModel = (athlete.preferred_llm_provider === 'gemini' && !athlete.preferred_llm_model)
-      ? 'gemini-2.5-flash-lite'
-      : (athlete.preferred_llm_model ?? undefined)
-    const provider = createLLMProvider(athlete.preferred_llm_provider, summaryModel)
+    const summaryProvider = demoOverride ? demoOverride.providerName : athlete.preferred_llm_provider
+    const summaryModel = demoOverride
+      ? demoOverride.modelName
+      : (athlete.preferred_llm_provider === 'gemini' && !athlete.preferred_llm_model)
+        ? 'gemini-2.5-flash-lite'
+        : (athlete.preferred_llm_model ?? undefined)
+    const provider = createLLMProvider(summaryProvider, summaryModel)
 
     // Use two-message pattern: system instructions as first user message,
     // then a model ack, then the actual request. This avoids Gemini's

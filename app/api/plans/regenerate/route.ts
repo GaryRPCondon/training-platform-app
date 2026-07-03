@@ -28,6 +28,7 @@ import { NextResponse } from 'next/server'
 import { withRateLimit } from '@/lib/rate-limit/with-rate-limit'
 import { createClient } from '@/lib/supabase/server'
 import { createLLMProvider } from '@/lib/agent/factory'
+import { demoProviderOverride } from '@/lib/demo/demo'
 import { loadFullPlanContext } from '@/lib/chat/plan-context-loader'
 import { extractWorkoutReferences } from '@/lib/chat/intent-parser'
 import {
@@ -113,10 +114,12 @@ async function postHandler(request: Request) {
       .eq('id', user.id)
       .maybeSingle()
 
-    const userProviderName = athlete?.preferred_llm_provider || 'deepseek'
+    // Demo account: pin the cheap provider regardless of stored preference.
+    const demoOverride = demoProviderOverride(user.id)
+    const userProviderName = demoOverride ? demoOverride.providerName : (athlete?.preferred_llm_provider || 'deepseek')
 
     const providerName: string = userProviderName
-    let modelOverride: string | undefined
+    let modelOverride: string | undefined = demoOverride ? demoOverride.modelName : undefined
 
     if (providerName === 'deepseek') {
       // Always use deepseek-chat for both operations and full regeneration.

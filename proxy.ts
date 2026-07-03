@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { getRateLimiter, getClientIp, rateLimitResponse } from '@/lib/rate-limit/limiter'
+import { isDemoUser, isDemoRestrictedPath } from '@/lib/demo/demo'
 
 /**
  * Exact paths that never require authentication. Listed explicitly (rather than
@@ -19,6 +20,7 @@ const PUBLIC_PATHS = new Set([
     '/api/auth/garmin',
     '/api/auth/garmin/disconnect',
     '/api/auth/logout',
+    '/api/auth/demo-login',
     '/api/jobs/push-summaries',
 ])
 
@@ -117,6 +119,23 @@ export async function proxy(request: NextRequest) {
             redirectResponse.cookies.set(cookie.name, cookie.value)
         })
 
+        return redirectResponse
+    }
+
+    // Demo account: reject restricted routes (imports, integration connects,
+    // settings mutations, etc.). Real enforcement lives here on the server, not
+    // in the UI. isDemoUser() is a cheap env compare — no DB round-trip.
+    if (isDemoUser(user.id) && isDemoRestrictedPath(pathname, request.method)) {
+        if (pathname.startsWith('/api/')) {
+            return NextResponse.json({ error: 'demo_restricted' }, { status: 403 })
+        }
+        const dashUrl = request.nextUrl.clone()
+        dashUrl.pathname = '/dashboard'
+        dashUrl.search = ''
+        const redirectResponse = NextResponse.redirect(dashUrl)
+        supabaseResponse.cookies.getAll().forEach((cookie) => {
+            redirectResponse.cookies.set(cookie.name, cookie.value)
+        })
         return redirectResponse
     }
 

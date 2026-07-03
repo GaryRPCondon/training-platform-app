@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { withRateLimit } from '@/lib/rate-limit/with-rate-limit'
+import { demoProviderOverride } from '@/lib/demo/demo'
 import { loadFullTemplate, getTemplateSummary } from '@/lib/templates/template-loader'
 import { buildGenerationSystemPrompt, buildGenerationUserMessage } from '@/lib/plans/llm-prompts'
 import { generatePlan, ActivePlanExistsError } from '@/lib/plans/plan-generation-engine'
@@ -108,11 +109,18 @@ async function postHandler(request: Request) {
     })
     const userMessage = buildGenerationUserMessage(fullTemplate)
 
+    // Demo account: pin the cheap provider regardless of stored preference.
+    const demoOverride = demoProviderOverride(athleteId)
+
     const result = await generatePlan({
       supabase,
       athleteId,
       athlete: athlete
-        ? { preferred_llm_provider: athlete.preferred_llm_provider, preferred_llm_model: athlete.preferred_llm_model, vdot: athlete.vdot }
+        ? {
+            preferred_llm_provider: demoOverride ? demoOverride.providerName : athlete.preferred_llm_provider,
+            preferred_llm_model: demoOverride ? demoOverride.modelName ?? null : athlete.preferred_llm_model,
+            vdot: athlete.vdot,
+          }
         : null,
       systemPrompt,
       userMessage,

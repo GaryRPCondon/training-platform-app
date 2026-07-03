@@ -4316,6 +4316,26 @@ This cannot be undone.</source>
         <source>Logout</source>
       </segment>
     </unit>
+    <unit id="demoDivider">
+      <segment>
+        <source>or</source>
+      </segment>
+    </unit>
+    <unit id="demoButton">
+      <segment>
+        <source>Try the live demo</source>
+      </segment>
+    </unit>
+    <unit id="demoBlurb">
+      <segment>
+        <source>Explore a fully-populated account with real training data — no sign-up required.</source>
+      </segment>
+    </unit>
+    <unit id="demoFailed">
+      <segment>
+        <source>Could not start the demo. Please try again.</source>
+      </segment>
+    </unit>
   </file>
   <file id="observations">
     <unit id="pageTitle">

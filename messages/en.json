@@ -923,7 +923,11 @@
     "pendingTitle": "Account Pending Approval",
     "pendingBody": "Your account has been created and is awaiting admin approval. You'll be able to access the platform once your account is approved.",
     "checkStatus": "Check Status",
-    "logout": "Logout"
+    "logout": "Logout",
+    "demoDivider": "or",
+    "demoButton": "Try the live demo",
+    "demoBlurb": "Explore a fully-populated account with real training data — no sign-up required.",
+    "demoFailed": "Could not start the demo. Please try again."
   },
   "observations": {
     "pageTitle": "Intelligence & Analysis",

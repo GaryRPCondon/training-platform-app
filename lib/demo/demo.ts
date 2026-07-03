@@ -18,3 +18,48 @@ export function isDemoUser(userId: string | null | undefined): boolean {
   if (!demoUserId || !userId) return false
   return userId === demoUserId
 }
+
+/**
+ * Routes the shared demo account may not call. Enforced in proxy.ts for the demo
+ * user only. Some equally dangerous routes are public (and so bypass the proxy
+ * check) — those carry in-route demo self-guards instead: /api/auth/delete-account,
+ * /api/auth/garmin(/disconnect), /api/strava/callback.
+ */
+const DEMO_BLOCKED_EXACT = new Set([
+  '/api/plans/import/parse',
+  '/api/strava/auth',
+  '/api/garmin/workouts',
+  '/api/auth/create-athlete',
+])
+const DEMO_BLOCKED_PREFIXES = ['/api/plans/import/']
+/** Blocked only for mutating methods (reads stay allowed). */
+const DEMO_BLOCKED_MUTATION_PREFIXES = ['/api/settings']
+const MUTATION_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
+
+/** True when the demo account must be denied this path+method. Pure — safe to unit test. */
+export function isDemoRestrictedPath(pathname: string, method: string): boolean {
+  if (DEMO_BLOCKED_EXACT.has(pathname)) return true
+  if (DEMO_BLOCKED_PREFIXES.some(p => pathname.startsWith(p))) return true
+  if (MUTATION_METHODS.has(method.toUpperCase()) && DEMO_BLOCKED_MUTATION_PREFIXES.some(p => pathname.startsWith(p))) return true
+  return false
+}
+
+/** Hard-wired cheap provider the demo account is pinned to (ignores stored settings). */
+export const DEMO_LLM_PROVIDER = 'deepseek'
+
+/**
+ * LLM provider/model the demo account must use, or null for a non-demo user (the
+ * caller then falls back to the athlete's stored preference).
+ *
+ * Demo generations are pinned to the cheap default so that even if the nightly
+ * reclone copies an expensive stored preference — or a stored value is otherwise
+ * present — demo traffic can never run up cost on a premium provider. Settings
+ * mutations are already blocked for the demo user (see proxy.ts), so this is the
+ * runtime backstop on top of that.
+ */
+export function demoProviderOverride(
+  userId: string | null | undefined,
+): { providerName: string; modelName: string | undefined } | null {
+  if (!isDemoUser(userId)) return null
+  return { providerName: DEMO_LLM_PROVIDER, modelName: undefined }
+}
