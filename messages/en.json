@@ -1312,6 +1312,8 @@
     "noticeIntegrations": "In the full product you connect your own Garmin and Strava accounts here. Connecting is turned off in the demo.",
     "noticeImport": "In the full product you can import an existing training plan from a screenshot or pasted text. Importing is turned off in the demo.",
     "noticeImportStrength": "In the full product you can import an existing strength program from a screenshot or pasted text. Importing is turned off in the demo.",
+    "noticeAiSettings": "AI model and coaching settings are fixed in the demo. In the full product you choose which AI models power your coaching and how activity summaries are written.",
+    "nameLocked": "Name and email are fixed on the shared demo account. Units, week start, appearance, and language can still be changed.",
     "restartTour": "Take the tour"
   },
   "demoTour": {

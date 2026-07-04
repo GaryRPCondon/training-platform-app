@@ -31,11 +31,18 @@ const DEMO_BLOCKED_EXACT = new Set([
   '/api/strength/schedule', // strength import: LLM scheduling
   '/api/strava/auth',
   '/api/garmin/workouts',
+  '/api/garmin/strength-workouts', // Garmin strength export — sibling of /garmin/workouts
   '/api/auth/create-athlete',
 ])
 const DEMO_BLOCKED_PREFIXES = ['/api/plans/import/']
-/** Blocked only for mutating methods (reads stay allowed). */
-const DEMO_BLOCKED_MUTATION_PREFIXES = ['/api/settings']
+/**
+ * Blocked only for mutating methods (reads stay allowed). Currently empty:
+ * /api/settings/update used to be blocked wholesale here, but the demo account
+ * is now allowed to change harmless personal preferences (units, week start,
+ * language) — that route self-guards and strips identity/cost fields instead.
+ * Kept as a mechanism for future settings routes that must stay demo-read-only.
+ */
+const DEMO_BLOCKED_MUTATION_PREFIXES: string[] = []
 const MUTATION_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 
 /** True when the demo account must be denied this path+method. Pure — safe to unit test. */

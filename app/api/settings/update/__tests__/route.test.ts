@@ -96,4 +96,84 @@ describe('POST /api/settings/update', () => {
     const res = await POST(req)
     expect(res.status).toBe(200)
   })
+
+  // Capture the payload passed to .update() so we can assert what is/isn't written.
+  function makeCapturingSupabase(captured: { payload?: Record<string, unknown> }) {
+    return makeMockSupabase(
+      { id: 'user-1' },
+      (_table) => {
+        const mock: any = {
+          select: () => mock,
+          eq: () => mock,
+          update: (payload: Record<string, unknown>) => { captured.payload = payload; return mock },
+        }
+        mock.then = (fn: any) => Promise.resolve({ data: null, error: null }).then(fn)
+        return mock
+      }
+    )
+  }
+
+  it('demo account: strips identity/cost fields, keeps only safe preferences', async () => {
+    const origDemo = process.env.DEMO_USER_ID
+    const origKey = process.env.ANTHROPIC_API_KEY
+    process.env.DEMO_USER_ID = 'user-1' // makes isDemoUser('user-1') true
+    process.env.ANTHROPIC_API_KEY = 'test-key' // so provider passes availability check before being stripped
+
+    const captured: { payload?: Record<string, unknown> } = {}
+    mockCreateClient.mockResolvedValue(makeCapturingSupabase(captured) as any)
+
+    const req = createMockRequest('/api/settings/update', {
+      method: 'POST',
+      body: { provider: 'anthropic', first_name: 'Hacker', preferred_units: 'imperial', week_starts_on: 1, locale: 'en-XA' },
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(200)
+    expect(captured.payload).toEqual({ preferred_units: 'imperial', week_starts_on: 1, locale: 'en-XA' })
+    expect(captured.payload?.preferred_llm_provider).toBeUndefined()
+    expect(captured.payload?.first_name).toBeUndefined()
+
+    if (origDemo === undefined) delete process.env.DEMO_USER_ID; else process.env.DEMO_USER_ID = origDemo
+    if (origKey === undefined) delete process.env.ANTHROPIC_API_KEY; else process.env.ANTHROPIC_API_KEY = origKey
+  })
+
+  it('demo account: a request carrying only stripped fields succeeds without writing', async () => {
+    const origDemo = process.env.DEMO_USER_ID
+    process.env.DEMO_USER_ID = 'user-1'
+
+    const captured: { payload?: Record<string, unknown> } = {}
+    mockCreateClient.mockResolvedValue(makeCapturingSupabase(captured) as any)
+
+    const req = createMockRequest('/api/settings/update', {
+      method: 'POST',
+      body: { first_name: 'Hacker', ai_summaries_enabled: false },
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(200)
+    expect(captured.payload).toBeUndefined() // no UPDATE issued
+
+    if (origDemo === undefined) delete process.env.DEMO_USER_ID; else process.env.DEMO_USER_ID = origDemo
+  })
+
+  it('non-demo account: all provided fields are written unchanged', async () => {
+    const origDemo = process.env.DEMO_USER_ID
+    const origKey = process.env.ANTHROPIC_API_KEY
+    process.env.DEMO_USER_ID = 'a-different-user' // user-1 is NOT the demo user
+    process.env.ANTHROPIC_API_KEY = 'test-key'
+
+    const captured: { payload?: Record<string, unknown> } = {}
+    mockCreateClient.mockResolvedValue(makeCapturingSupabase(captured) as any)
+
+    const req = createMockRequest('/api/settings/update', {
+      method: 'POST',
+      body: { provider: 'anthropic', first_name: 'John', preferred_units: 'metric' },
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(200)
+    expect(captured.payload?.preferred_llm_provider).toBe('anthropic')
+    expect(captured.payload?.first_name).toBe('John')
+    expect(captured.payload?.preferred_units).toBe('metric')
+
+    if (origDemo === undefined) delete process.env.DEMO_USER_ID; else process.env.DEMO_USER_ID = origDemo
+    if (origKey === undefined) delete process.env.ANTHROPIC_API_KEY; else process.env.ANTHROPIC_API_KEY = origKey
+  })
 })

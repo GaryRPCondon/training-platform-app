@@ -13,13 +13,35 @@
  *
  * Public route (see proxy.ts PUBLIC_PATHS) and covered by the unauthenticated
  * per-IP backstop limiter. Returns 404 when the demo account is not provisioned.
+ *
+ * Optionally pings the owner (DEMO_LOGIN_ALERT_EMAIL) on each successful sign-in.
+ * That notification is best-effort and scheduled with after() so it never blocks
+ * or fails the login itself.
  */
 
-import { NextResponse } from 'next/server'
+import { NextResponse, after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { sendResendEmail, escapeHtml } from '@/lib/email/resend'
 
-export async function POST() {
+/**
+ * Best-effort "someone opened the demo" email. Gated on DEMO_LOGIN_ALERT_EMAIL
+ * (unset → no-op), and the sender is itself fail-safe, so this never throws.
+ */
+async function notifyDemoLogin(request: Request): Promise<void> {
+  const to = process.env.DEMO_LOGIN_ALERT_EMAIL
+  if (!to) return
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+  const ua = request.headers.get('user-agent') || 'unknown'
+  const when = new Date().toISOString()
+  await sendResendEmail({
+    to,
+    subject: 'Demo account login',
+    html: `<p>Someone signed into the demo account.</p><ul><li>Time (UTC): ${escapeHtml(when)}</li><li>IP: ${escapeHtml(ip)}</li><li>User agent: ${escapeHtml(ua)}</li></ul>`,
+  })
+}
+
+export async function POST(request: Request) {
   const email = process.env.DEMO_EMAIL
   const password = process.env.DEMO_PASSWORD
   const demoUserId = process.env.DEMO_USER_ID
@@ -34,6 +56,7 @@ export async function POST() {
   // First attempt.
   const { error } = await supabase.auth.signInWithPassword({ email, password })
   if (!error) {
+    after(() => notifyDemoLogin(request))
     return NextResponse.json({ redirectTo: '/dashboard' })
   }
 
@@ -63,5 +86,6 @@ export async function POST() {
     return NextResponse.json({ error: 'Demo is temporarily unavailable' }, { status: 503 })
   }
 
+  after(() => notifyDemoLogin(request))
   return NextResponse.json({ redirectTo: '/dashboard' })
 }

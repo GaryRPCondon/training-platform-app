@@ -62,6 +62,7 @@ describe('isDemoRestrictedPath', () => {
     expect(isDemoRestrictedPath('/api/strength/schedule', 'POST')).toBe(true)
     expect(isDemoRestrictedPath('/api/strava/auth', 'GET')).toBe(true)
     expect(isDemoRestrictedPath('/api/garmin/workouts', 'POST')).toBe(true)
+    expect(isDemoRestrictedPath('/api/garmin/strength-workouts', 'POST')).toBe(true)
     expect(isDemoRestrictedPath('/api/auth/create-athlete', 'POST')).toBe(true)
   })
 
@@ -70,9 +71,8 @@ describe('isDemoRestrictedPath', () => {
     expect(isDemoRestrictedPath('/api/plans/import/anything', 'GET')).toBe(true)
   })
 
-  it('blocks settings only for mutating methods, allowing reads', () => {
-    expect(isDemoRestrictedPath('/api/settings', 'POST')).toBe(true)
-    expect(isDemoRestrictedPath('/api/settings/available-providers', 'PATCH')).toBe(true)
+  it('does not proxy-block settings — the update route self-guards (allows safe prefs, strips the rest)', () => {
+    expect(isDemoRestrictedPath('/api/settings/update', 'POST')).toBe(false)
     expect(isDemoRestrictedPath('/api/settings', 'GET')).toBe(false)
   })
 

@@ -2,7 +2,17 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { ensureAthleteExists } from '@/lib/supabase/ensure-athlete'
 import { isLocale } from '@/i18n/config'
+import { isDemoUser } from '@/lib/demo/demo'
 import { z } from 'zod'
+
+/**
+ * Personal-preference fields the shared demo account is allowed to change.
+ * Everything else (name/identity, LLM provider + model = cost, vision, push /
+ * summary settings) is stripped for the demo user so the account can't be
+ * defaced or made to run up cost. This is the server-side guarantee — the
+ * Settings UI additionally disables those inputs for the demo account.
+ */
+const DEMO_ALLOWED_FIELDS = new Set(['preferred_units', 'week_starts_on', 'locale'])
 
 const PROVIDER_ENV_MAP: Record<string, string> = {
     deepseek: 'DEEPSEEK_API_KEY',
@@ -94,6 +104,22 @@ export async function POST(request: Request) {
         if (push_summary_to_strava !== undefined) updates.push_summary_to_strava = push_summary_to_strava
         if (feedback_tone !== undefined) updates.feedback_tone = feedback_tone
         if (locale !== undefined) updates.locale = locale
+
+        // Demo account: keep only the harmless personal preferences. Strip
+        // identity/cost fields even if the request carries them (e.g. crafted
+        // directly against the API). Keyed off the env-based isDemoUser check,
+        // not the DB is_demo column, so it can't be bypassed via supabase-js.
+        if (isDemoUser(user.id)) {
+            for (const key of Object.keys(updates)) {
+                if (!DEMO_ALLOWED_FIELDS.has(key)) delete updates[key]
+            }
+        }
+
+        // Nothing left to write (e.g. a demo request that carried only stripped
+        // fields) — succeed without issuing an empty UPDATE.
+        if (Object.keys(updates).length === 0) {
+            return NextResponse.json({ success: true })
+        }
 
         const { error } = await supabase
             .from('athletes')
