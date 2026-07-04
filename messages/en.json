@@ -218,6 +218,21 @@
     "noPlan": "None",
     "createPlanPrompt": "Create a plan to get started"
   },
+  "gettingStarted": {
+    "title": "Getting started",
+    "progress": "{done, number} of {total, number} steps done",
+    "dismiss": "Dismiss checklist",
+    "connectTitle": "Connect Garmin or Strava",
+    "connectDesc": "Link an account to bring in your activities automatically.",
+    "syncTitle": "Sync your first activities",
+    "syncDesc": "Pull in recent runs so your AI Coach has data to work with.",
+    "planTitle": "Create or import a training plan",
+    "planDesc": "Generate a periodized plan or import one you already follow.",
+    "activateTitle": "Activate your plan",
+    "activateDesc": "Make a plan active to see it on your calendar and dashboard.",
+    "coachTitle": "Ask your AI Coach anything",
+    "coachDesc": "Start a chat to get guidance tailored to your training."
+  },
   "phaseProgress": {
     "title": "Training Phase Progress",
     "phaseTitle": "{phase} Phase",

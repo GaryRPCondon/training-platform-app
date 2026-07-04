@@ -1022,6 +1022,73 @@
       </segment>
     </unit>
   </file>
+  <file id="gettingStarted">
+    <unit id="title">
+      <segment>
+        <source>Getting started</source>
+      </segment>
+    </unit>
+    <unit id="progress">
+      <segment>
+        <source>{done, number} of {total, number} steps done</source>
+      </segment>
+    </unit>
+    <unit id="dismiss">
+      <segment>
+        <source>Dismiss checklist</source>
+      </segment>
+    </unit>
+    <unit id="connectTitle">
+      <segment>
+        <source>Connect Garmin or Strava</source>
+      </segment>
+    </unit>
+    <unit id="connectDesc">
+      <segment>
+        <source>Link an account to bring in your activities automatically.</source>
+      </segment>
+    </unit>
+    <unit id="syncTitle">
+      <segment>
+        <source>Sync your first activities</source>
+      </segment>
+    </unit>
+    <unit id="syncDesc">
+      <segment>
+        <source>Pull in recent runs so your AI Coach has data to work with.</source>
+      </segment>
+    </unit>
+    <unit id="planTitle">
+      <segment>
+        <source>Create or import a training plan</source>
+      </segment>
+    </unit>
+    <unit id="planDesc">
+      <segment>
+        <source>Generate a periodized plan or import one you already follow.</source>
+      </segment>
+    </unit>
+    <unit id="activateTitle">
+      <segment>
+        <source>Activate your plan</source>
+      </segment>
+    </unit>
+    <unit id="activateDesc">
+      <segment>
+        <source>Make a plan active to see it on your calendar and dashboard.</source>
+      </segment>
+    </unit>
+    <unit id="coachTitle">
+      <segment>
+        <source>Ask your AI Coach anything</source>
+      </segment>
+    </unit>
+    <unit id="coachDesc">
+      <segment>
+        <source>Start a chat to get guidance tailored to your training.</source>
+      </segment>
+    </unit>
+  </file>
   <file id="phaseProgress">
     <unit id="title">
       <segment>
