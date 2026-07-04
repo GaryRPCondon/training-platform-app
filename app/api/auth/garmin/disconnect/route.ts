@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { errorMessage } from '@/lib/utils/errors'
 import { createClient } from '@/lib/supabase/server'
 import { GarminClient } from '@/lib/garmin/client'
+import { isDemoUser } from '@/lib/demo/demo'
 
 export async function POST() {
   try {
@@ -10,6 +11,11 @@ export async function POST() {
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Self-guard: public route — the demo account has no integrations to touch.
+    if (isDemoUser(user.id)) {
+      return NextResponse.json({ error: 'demo_restricted' }, { status: 403 })
     }
 
     const garminClient = new GarminClient()

@@ -5,6 +5,8 @@ import { PhaseProgressCard } from '@/components/progress/phase-progress-card'
 import { WeeklyProgressChart } from '@/components/progress/weekly-progress-chart'
 import { TodaysWorkoutCard } from '@/components/progress/todays-workout-card'
 import { PlanCompletionBanner } from '@/components/progress/plan-completion-banner'
+import { GettingStartedCard, type GettingStartedState } from '@/components/dashboard/getting-started-card'
+import { isDemoUser } from '@/lib/demo/demo'
 import { toDisplayDistance, distanceLabel, type UnitSystem } from '@/lib/utils/units'
 
 export default async function DashboardPage() {
@@ -63,12 +65,37 @@ export default async function DashboardPage() {
     const today = new Date().toISOString().slice(0, 10)
     const planIsOverdue = activePlan && activePlan.end_date < today
 
+    // Getting-started checklist is new-user onboarding — never show it on the
+    // shared demo account (which is already fully populated). Gate on the
+    // authoritative env-based isDemoUser() check, not the client is_demo signal,
+    // so it's decided server-side with no hydration race. When demo, skip the
+    // state queries entirely and don't render the card.
+    const showGettingStarted = !isDemoUser(user.id)
+    let gettingStartedState: GettingStartedState | null = null
+    if (showGettingStarted) {
+        // Derived from real account data (no extra tracking columns). Head-only
+        // counts so we transfer no rows.
+        const [{ count: integrationCount }, { count: planCount }, { count: chatCount }] = await Promise.all([
+            supabase.from('athlete_integrations').select('id', { count: 'exact', head: true }).eq('athlete_id', athleteId),
+            supabase.from('training_plans').select('id', { count: 'exact', head: true }).eq('athlete_id', athleteId),
+            supabase.from('chat_sessions').select('id', { count: 'exact', head: true }).eq('athlete_id', athleteId),
+        ])
+        gettingStartedState = {
+            hasIntegration: (integrationCount ?? 0) > 0,
+            hasActivities: totalActivities > 0,
+            hasPlan: (planCount ?? 0) > 0,
+            hasActivePlan: !!activePlan,
+            hasChat: (chatCount ?? 0) > 0,
+        }
+    }
+
     return (
         <div className="space-y-6">
             <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
             {planIsOverdue && (
                 <PlanCompletionBanner planId={activePlan.id} planName={activePlan.name} />
             )}
+            {gettingStartedState && <GettingStartedCard state={gettingStartedState} />}
             <div className="grid gap-6 md:grid-cols-2">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

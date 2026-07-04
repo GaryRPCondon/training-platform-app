@@ -21,6 +21,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { toast } from 'sonner'
 import { Loader2, Info } from 'lucide-react'
 import { useTranslations } from 'next-intl'
+import { useIsDemo } from '@/lib/demo/use-is-demo'
+import { DemoNotice } from '@/components/demo/demo-notice'
 
 interface ProviderAvailability {
     name: string
@@ -40,6 +42,8 @@ const TONE_KEYS: Record<FeedbackTone, string> = {
 
 export function AISettingsCard() {
     const t = useTranslations('aiSettings')
+    const tDemo = useTranslations('demo')
+    const isDemo = useIsDemo()
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [provider, setProvider] = useState('deepseek')
@@ -178,6 +182,7 @@ export function AISettingsCard() {
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+                {isDemo && <DemoNotice message={tDemo('noticeAiSettings')} />}
                 <div className="space-y-3">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
@@ -362,7 +367,7 @@ export function AISettingsCard() {
                     </AlertDialogContent>
                 </AlertDialog>
 
-                <Button onClick={handleSave} disabled={saving || !hasChanges} className="w-full">
+                <Button onClick={handleSave} disabled={saving || !hasChanges || isDemo} className="w-full">
                     {saving && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
                     {saving ? t('saving') : t('save')}
                 </Button>

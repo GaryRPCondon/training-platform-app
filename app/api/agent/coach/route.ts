@@ -21,6 +21,7 @@ import { createClient } from '@/lib/supabase/server'
 import { withRateLimit } from '@/lib/rate-limit/with-rate-limit'
 import { ensureAthleteExists } from '@/lib/supabase/ensure-athlete'
 import { createLLMProvider } from '@/lib/agent/factory'
+import { demoProviderOverride } from '@/lib/demo/demo'
 import { loadCoachContext } from '@/lib/agent/coach-context-loader'
 import { buildCoachSystemPrompt } from '@/lib/agent/coach-prompt'
 import { buildCoachTools, WorkoutProposal, StrengthSessionProposal, StrengthExerciseProposal } from '@/lib/agent/coach-tools'
@@ -258,8 +259,9 @@ async function postHandler(request: Request) {
                     loadCoachContext(supabase, athleteId),
                 ])
 
-                const providerName = athleteSettings?.preferred_llm_provider ?? 'deepseek'
-                const modelName = athleteSettings?.preferred_llm_model ?? undefined
+                const demoOverride = demoProviderOverride(athleteId)
+                const providerName = demoOverride ? demoOverride.providerName : (athleteSettings?.preferred_llm_provider ?? 'deepseek')
+                const modelName = demoOverride ? demoOverride.modelName : (athleteSettings?.preferred_llm_model ?? undefined)
                 const provider = createLLMProvider(providerName, modelName)
 
                 // Build system prompt

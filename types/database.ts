@@ -31,6 +31,7 @@ export interface Athlete {
     account_status: 'pending_approval' | 'approved' | 'suspended'
     sync_on_login: boolean
     profile_completed: boolean
+    is_demo: boolean // Shared public demo account; gates server-side restrictions + demo-mode UI
     ai_summaries_enabled: boolean
     push_summary_to_garmin: boolean
     push_summary_to_strava: boolean

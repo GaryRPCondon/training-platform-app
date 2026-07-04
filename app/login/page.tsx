@@ -49,6 +49,22 @@ function LoginForm() {
         }
     }
 
+    const handleDemo = async () => {
+        setLoading(true)
+
+        try {
+            const res = await fetch('/api/auth/demo-login', { method: 'POST' })
+            if (!res.ok) throw new Error('demo-login failed')
+
+            const { redirectTo } = await res.json()
+            router.push(redirectTo || '/dashboard')
+            router.refresh()
+        } catch {
+            toast.error(t('demoFailed'))
+            setLoading(false)
+        }
+    }
+
     const handleSignUp = async () => {
         setLoading(true)
 
@@ -152,6 +168,28 @@ function LoginForm() {
                             </Button>
                         </div>
                     </form>
+
+                    <div className="relative my-6">
+                        <div className="absolute inset-0 flex items-center">
+                            <span className="w-full border-t" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                            <span className="bg-card px-2 text-muted-foreground">{t('demoDivider')}</span>
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={handleDemo}
+                            disabled={loading}
+                            className="w-full"
+                        >
+                            {loading ? t('loading') : t('demoButton')}
+                        </Button>
+                        <p className="text-center text-xs text-muted-foreground">{t('demoBlurb')}</p>
+                    </div>
                 </CardContent>
             </Card>
         </div>

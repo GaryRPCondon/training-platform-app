@@ -1,5 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
-import { getClientIp, getRateLimiter, rateLimitResponse, type RateLimitTier } from './limiter'
+import {
+  getClientIp,
+  getRateLimiter,
+  rateLimitResponse,
+  checkDemoDailyBudget,
+  demoBudgetResponse,
+  type RateLimitTier,
+  type DemoDailyTier,
+} from './limiter'
+import { isDemoUser } from '@/lib/demo/demo'
 
 /**
  * Wraps an App Router route handler with inbound rate limiting.
@@ -17,7 +26,16 @@ export function withRateLimit<R extends Request, A extends unknown[]>(
   handler: (request: R, ...args: A) => Promise<Response>
 ): (request: R, ...args: A) => Promise<Response> {
   return async (request: R, ...args: A): Promise<Response> => {
-    const key = await resolveKey(request)
+    const { key, userId } = await resolveKey(request)
+
+    // Demo account: enforce a hard daily budget on LLM tiers ON TOP of the
+    // per-minute limit. Fail-closed (see checkDemoDailyBudget) so a limiter
+    // outage can't uncap the shared account's cost.
+    const demoTier = toDemoTier(tier)
+    if (demoTier && userId && isDemoUser(userId)) {
+      const daily = await checkDemoDailyBudget(demoTier, `demo:${demoTier}:${userId}`)
+      if (!daily.success) return demoBudgetResponse(daily)
+    }
 
     try {
       const result = await getRateLimiter(tier).limit(key)
@@ -31,14 +49,19 @@ export function withRateLimit<R extends Request, A extends unknown[]>(
   }
 }
 
-/** user.id when authenticated, else client IP. */
-async function resolveKey(request: Request): Promise<string> {
+/** The two LLM tiers that carry a demo daily budget; null for tiers that don't. */
+function toDemoTier(tier: RateLimitTier): DemoDailyTier | null {
+  return tier === 'chat' || tier === 'generation' ? tier : null
+}
+
+/** Resolve the rate-limit key and the authenticated user id (null if unauthenticated). */
+async function resolveKey(request: Request): Promise<{ key: string; userId: string | null }> {
   try {
     const supabase = await createClient()
     const { data } = await supabase.auth.getUser()
-    if (data.user) return `user:${data.user.id}`
+    if (data.user) return { key: `user:${data.user.id}`, userId: data.user.id }
   } catch {
     // Fall through to IP keying.
   }
-  return `ip:${getClientIp(request)}`
+  return { key: `ip:${getClientIp(request)}`, userId: null }
 }

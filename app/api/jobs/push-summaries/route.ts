@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     // and athlete has opted in. Query both platforms in one go.
     const { data: pendingStrava, error: stravaError } = await supabase
       .from('activities')
-      .select('id, athlete_id, ai_summary, ai_star_rating, strava_id, strava_description, athletes!inner(push_summary_to_strava)')
+      .select('id, athlete_id, ai_summary, ai_star_rating, strava_id, strava_description, athletes!inner(push_summary_to_strava, is_demo)')
       .eq('ai_summary_status', 'generated')
       .is('strava_summary_pushed_at', null)
       .is('strava_push_failed_at', null)
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
 
     const { data: pendingGarmin, error: garminError } = await supabase
       .from('activities')
-      .select('id, athlete_id, ai_summary, ai_star_rating, garmin_id, garmin_description, athletes!inner(push_summary_to_garmin)')
+      .select('id, athlete_id, ai_summary, ai_star_rating, garmin_id, garmin_description, athletes!inner(push_summary_to_garmin, is_demo)')
       .eq('ai_summary_status', 'generated')
       .is('garmin_summary_pushed_at', null)
       .is('garmin_push_failed_at', null)
@@ -70,12 +70,19 @@ export async function POST(request: Request) {
     if (stravaError) console.error('[Push Job] Strava query error:', stravaError)
     if (garminError) console.error('[Push Job] Garmin query error:', garminError)
 
-    // Filter to opted-in athletes
+    // Filter to opted-in athletes, excluding the shared demo account (it has no
+    // real integrations and must never push to the owner's Strava/Garmin).
     const stravaActivities = (pendingStrava || []).filter(
-      a => (a as { athletes?: { push_summary_to_strava?: boolean | null } | null }).athletes?.push_summary_to_strava === true
+      a => {
+        const at = (a as { athletes?: { push_summary_to_strava?: boolean | null; is_demo?: boolean | null } | null }).athletes
+        return at?.push_summary_to_strava === true && at?.is_demo !== true
+      }
     ) as unknown as PendingActivity[]
     const garminActivities = (pendingGarmin || []).filter(
-      a => (a as { athletes?: { push_summary_to_garmin?: boolean | null } | null }).athletes?.push_summary_to_garmin === true
+      a => {
+        const at = (a as { athletes?: { push_summary_to_garmin?: boolean | null; is_demo?: boolean | null } | null }).athletes
+        return at?.push_summary_to_garmin === true && at?.is_demo !== true
+      }
     ) as unknown as PendingActivity[]
 
     console.log(`[Push Job] Pending: ${stravaActivities.length} Strava, ${garminActivities.length} Garmin`)

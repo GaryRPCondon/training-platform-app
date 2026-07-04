@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { StravaClient } from '@/lib/strava/client'
 import { createClient } from '@/lib/supabase/server'
+import { isDemoUser } from '@/lib/demo/demo'
 
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
@@ -28,6 +29,13 @@ export async function GET(request: NextRequest) {
 
         if (!user) {
             return NextResponse.redirect(new URL('/login', request.url))
+        }
+
+        // Self-guard: public route — never attach a Strava account to the shared
+        // demo account (the initiating /api/strava/auth is blocked, but guard the
+        // callback too in case it is reached directly).
+        if (isDemoUser(user.id)) {
+            return NextResponse.redirect(new URL('/dashboard?error=demo_restricted', request.url))
         }
 
         // Ensure athlete record exists - check by ID first

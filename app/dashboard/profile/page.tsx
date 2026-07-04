@@ -14,6 +14,7 @@ import { AISettingsCard } from '@/components/settings/ai-settings-card'
 import { ConnectionsCard } from '@/components/settings/connections-card'
 import { PreferencesCard } from '@/components/settings/preferences-card'
 import { PerformanceMetricsCard } from '@/components/settings/performance-metrics-card'
+import { ResetDemoCard } from '@/components/demo/reset-demo-card'
 import {
     Dialog,
     DialogContent,
@@ -159,6 +160,8 @@ function ProfileContent() {
                     </Button>
                 </div>
             )}
+
+            {athlete?.is_admin && <ResetDemoCard />}
 
             {/* Delete Account */}
             <Card className="border-destructive/50">

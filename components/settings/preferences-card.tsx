@@ -15,9 +15,12 @@ import { useTheme } from 'next-themes'
 import { useTranslations } from 'next-intl'
 import { LanguageSelector } from './language-selector'
 import { LOCALE_COOKIE, type Locale } from '@/i18n/config'
+import { useIsDemo } from '@/lib/demo/use-is-demo'
 
 export function PreferencesCard() {
     const t = useTranslations('settings')
+    const tDemo = useTranslations('demo')
+    const isDemo = useIsDemo()
     const router = useRouter()
     const queryClient = useQueryClient()
     const { theme, setTheme } = useTheme()
@@ -134,7 +137,7 @@ export function PreferencesCard() {
             </CardHeader>
             <CardContent className="flex flex-col flex-1">
                 <div className="space-y-6 flex-1">
-                    {/* Name Fields */}
+                    {/* Name Fields — locked on the shared demo account */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="first-name">{t('firstName')}</Label>
@@ -143,6 +146,7 @@ export function PreferencesCard() {
                                 value={firstName}
                                 onChange={(e) => setFirstName(e.target.value)}
                                 placeholder={t('firstNamePlaceholder')}
+                                disabled={isDemo}
                             />
                         </div>
                         <div className="space-y-2">
@@ -152,9 +156,13 @@ export function PreferencesCard() {
                                 value={lastName}
                                 onChange={(e) => setLastName(e.target.value)}
                                 placeholder={t('lastNamePlaceholder')}
+                                disabled={isDemo}
                             />
                         </div>
                     </div>
+                    {isDemo && (
+                        <p className="text-xs text-muted-foreground">{tDemo('nameLocked')}</p>
+                    )}
 
                     {/* Email (read-only) */}
                     <div className="space-y-2">

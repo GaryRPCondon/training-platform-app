@@ -3,8 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 import { parseStrengthProgram, ParseFailedError } from '@/lib/strength/parser'
 import { loadExerciseCatalog } from '@/lib/supabase/strength-queries'
 import { parseRequestSchema } from '@/lib/strength/schemas'
+import { withRateLimit } from '@/lib/rate-limit/with-rate-limit'
 
-export async function POST(request: Request) {
+async function postHandler(request: Request) {
   let body: unknown
   try {
     body = await request.json()
@@ -74,3 +75,8 @@ export async function POST(request: Request) {
     )
   }
 }
+
+// Vision/LLM route: bound cost + abuse with the generation tier (also applies
+// the demo daily budget as defence-in-depth, though the demo is already blocked
+// from this route at the proxy).
+export const POST = withRateLimit('generation', postHandler)

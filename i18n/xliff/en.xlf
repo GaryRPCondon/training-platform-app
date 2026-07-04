@@ -1022,6 +1022,73 @@
       </segment>
     </unit>
   </file>
+  <file id="gettingStarted">
+    <unit id="title">
+      <segment>
+        <source>Getting started</source>
+      </segment>
+    </unit>
+    <unit id="progress">
+      <segment>
+        <source>{done, number} of {total, number} steps done</source>
+      </segment>
+    </unit>
+    <unit id="dismiss">
+      <segment>
+        <source>Dismiss checklist</source>
+      </segment>
+    </unit>
+    <unit id="connectTitle">
+      <segment>
+        <source>Connect Garmin or Strava</source>
+      </segment>
+    </unit>
+    <unit id="connectDesc">
+      <segment>
+        <source>Link an account to bring in your activities automatically.</source>
+      </segment>
+    </unit>
+    <unit id="syncTitle">
+      <segment>
+        <source>Sync your first activities</source>
+      </segment>
+    </unit>
+    <unit id="syncDesc">
+      <segment>
+        <source>Pull in recent runs so your AI Coach has data to work with.</source>
+      </segment>
+    </unit>
+    <unit id="planTitle">
+      <segment>
+        <source>Create or import a training plan</source>
+      </segment>
+    </unit>
+    <unit id="planDesc">
+      <segment>
+        <source>Generate a periodized plan or import one you already follow.</source>
+      </segment>
+    </unit>
+    <unit id="activateTitle">
+      <segment>
+        <source>Activate your plan</source>
+      </segment>
+    </unit>
+    <unit id="activateDesc">
+      <segment>
+        <source>Make a plan active to see it on your calendar and dashboard.</source>
+      </segment>
+    </unit>
+    <unit id="coachTitle">
+      <segment>
+        <source>Ask your AI Coach anything</source>
+      </segment>
+    </unit>
+    <unit id="coachDesc">
+      <segment>
+        <source>Start a chat to get guidance tailored to your training.</source>
+      </segment>
+    </unit>
+  </file>
   <file id="phaseProgress">
     <unit id="title">
       <segment>
@@ -1585,6 +1652,41 @@
     <unit id="exerciseCount">
       <segment>
         <source>{count, plural, one {# exercise} other {# exercises}}</source>
+      </segment>
+    </unit>
+    <unit id="deleteChat">
+      <segment>
+        <source>Delete Chat</source>
+      </segment>
+    </unit>
+    <unit id="deleteChatConfirmTitle">
+      <segment>
+        <source>Delete this chat?</source>
+      </segment>
+    </unit>
+    <unit id="deleteChatConfirmBody">
+      <segment>
+        <source>This permanently deletes the selected conversation and all its messages. This cannot be undone.</source>
+      </segment>
+    </unit>
+    <unit id="deleteChatConfirmAction">
+      <segment>
+        <source>Delete</source>
+      </segment>
+    </unit>
+    <unit id="deleteChatCancel">
+      <segment>
+        <source>Cancel</source>
+      </segment>
+    </unit>
+    <unit id="chatDeleted">
+      <segment>
+        <source>Chat deleted</source>
+      </segment>
+    </unit>
+    <unit id="deleteChatFailed">
+      <segment>
+        <source>Failed to delete chat</source>
       </segment>
     </unit>
   </file>
@@ -4316,6 +4418,26 @@ This cannot be undone.</source>
         <source>Logout</source>
       </segment>
     </unit>
+    <unit id="demoDivider">
+      <segment>
+        <source>or</source>
+      </segment>
+    </unit>
+    <unit id="demoButton">
+      <segment>
+        <source>Try the live demo</source>
+      </segment>
+    </unit>
+    <unit id="demoBlurb">
+      <segment>
+        <source>Explore a fully-populated account with real training data — no sign-up required.</source>
+      </segment>
+    </unit>
+    <unit id="demoFailed">
+      <segment>
+        <source>Could not start the demo. Please try again.</source>
+      </segment>
+    </unit>
   </file>
   <file id="observations">
     <unit id="pageTitle">
@@ -5582,6 +5704,11 @@ This cannot be undone.</source>
         <source>Logout</source>
       </segment>
     </unit>
+    <unit id="profileLogoutWithName">
+      <segment>
+        <source>{name} - Profile &amp; logout</source>
+      </segment>
+    </unit>
   </file>
   <file id="planImport">
     <unit id="pageTitle">
@@ -5964,6 +6091,250 @@ Week 1 / Tuesday: Easy 8 km
     <unit id="remove">
       <segment>
         <source>Remove</source>
+      </segment>
+    </unit>
+  </file>
+  <file id="demo">
+    <unit id="resetTitle">
+      <segment>
+        <source>Demo data</source>
+      </segment>
+    </unit>
+    <unit id="resetDescription">
+      <segment>
+        <source>Wipe the demo account and re-clone it from your live account. Runs automatically each night; use this to refresh it now.</source>
+      </segment>
+    </unit>
+    <unit id="resetButton">
+      <segment>
+        <source>Reset demo data now</source>
+      </segment>
+    </unit>
+    <unit id="resetRunning">
+      <segment>
+        <source>Resetting…</source>
+      </segment>
+    </unit>
+    <unit id="resetSuccess">
+      <segment>
+        <source>Demo data reset from your live account.</source>
+      </segment>
+    </unit>
+    <unit id="resetFailed">
+      <segment>
+        <source>Demo reset failed. Check the logs.</source>
+      </segment>
+    </unit>
+    <unit id="bannerText">
+      <segment>
+        <source>Demo mode — a shared sandbox. Data resets nightly.</source>
+      </segment>
+    </unit>
+    <unit id="bannerCta">
+      <segment>
+        <source>Request your own account</source>
+      </segment>
+    </unit>
+    <unit id="noticeSync">
+      <segment>
+        <source>In the full product this automatically syncs your Garmin and Strava activities. Activity sync is turned off in the demo.</source>
+      </segment>
+    </unit>
+    <unit id="noticeIntegrations">
+      <segment>
+        <source>In the full product you connect your own Garmin and Strava accounts here. Connecting is turned off in the demo.</source>
+      </segment>
+    </unit>
+    <unit id="noticeImport">
+      <segment>
+        <source>In the full product you can import an existing training plan from a screenshot or pasted text. Importing is turned off in the demo.</source>
+      </segment>
+    </unit>
+    <unit id="noticeImportStrength">
+      <segment>
+        <source>In the full product you can import an existing strength program from a screenshot or pasted text. Importing is turned off in the demo.</source>
+      </segment>
+    </unit>
+    <unit id="noticeAiSettings">
+      <segment>
+        <source>AI model and coaching settings are fixed in the demo. In the full product you choose which AI models power your coaching and how activity summaries are written.</source>
+      </segment>
+    </unit>
+    <unit id="nameLocked">
+      <segment>
+        <source>Name and email are fixed on the shared demo account. Units, week start, appearance, and language can still be changed.</source>
+      </segment>
+    </unit>
+    <unit id="restartTour">
+      <segment>
+        <source>Take the tour</source>
+      </segment>
+    </unit>
+  </file>
+  <file id="demoTour">
+    <unit id="stepCounter">
+      <segment>
+        <source>Step {current} of {total}</source>
+      </segment>
+    </unit>
+    <unit id="back">
+      <segment>
+        <source>Back</source>
+      </segment>
+    </unit>
+    <unit id="next">
+      <segment>
+        <source>Next</source>
+      </segment>
+    </unit>
+    <unit id="dismiss">
+      <segment>
+        <source>Dismiss tour</source>
+      </segment>
+    </unit>
+    <unit id="finishCta">
+      <segment>
+        <source>Create your own account</source>
+      </segment>
+    </unit>
+    <unit id="dashboardTitle">
+      <segment>
+        <source>Demo Walkthrough</source>
+      </segment>
+    </unit>
+    <unit id="dashboardBody">
+      <segment>
+        <source>This demo experience has been populated with real user training and plan data. This dashboard summarises the current phase, weekly volume, and progress at a glance. Click Next to take a quick tour.</source>
+      </segment>
+    </unit>
+    <unit id="calendarTitle">
+      <segment>
+        <source>The training calendar</source>
+      </segment>
+    </unit>
+    <unit id="calendarBody">
+      <segment>
+        <source>The calendar page highlights the athlete's entire program, training history, and upcoming workouts. Each workout is colour-coded by type, with completed runs matched against the plan. You can drag and drop workouts to re-schedule them, and in the full product, route them to your Garmin watch.</source>
+      </segment>
+    </unit>
+    <unit id="runningWorkoutTitle">
+      <segment>
+        <source>A running workout</source>
+      </segment>
+    </unit>
+    <unit id="runningWorkoutBody">
+      <segment>
+        <source>Click any run on the calendar to open its full detail — structured warm-up, intervals, and cool-down with target paces for each step. From there you can send the workout to Garmin or discuss it with your AI Coach.</source>
+      </segment>
+    </unit>
+    <unit id="activitiesTitle">
+      <segment>
+        <source>Activities</source>
+      </segment>
+    </unit>
+    <unit id="activitiesBody">
+      <segment>
+        <source>Every run synced from Garmin and Strava, with pace, heart rate, and lap-by-lap detail.</source>
+      </segment>
+    </unit>
+    <unit id="completedActivityTitle">
+      <segment>
+        <source>A completed activity</source>
+      </segment>
+    </unit>
+    <unit id="completedActivityBody">
+      <segment>
+        <source>Open any activity to see the full breakdown. The AI Coach compares these against the expected results from the plan, to evaluate how the athlete performed against the planned session.</source>
+      </segment>
+    </unit>
+    <unit id="activitySyncTitle">
+      <segment>
+        <source>Activity sync</source>
+      </segment>
+    </unit>
+    <unit id="activitySyncBody">
+      <segment>
+        <source>In the full product your runs sync automatically from Garmin and Strava — on login or on demand — so your training history stays up to date without any manual entry.</source>
+      </segment>
+    </unit>
+    <unit id="plansTitle">
+      <segment>
+        <source>Running plans</source>
+      </segment>
+    </unit>
+    <unit id="plansBody">
+      <segment>
+        <source>AI-generated, periodised training plans built around a goal race, structured into Base, Build, Peak, and Taper phases.</source>
+      </segment>
+    </unit>
+    <unit id="schedulePlanTitle">
+      <segment>
+        <source>Schedule a plan</source>
+      </segment>
+    </unit>
+    <unit id="schedulePlanBody">
+      <segment>
+        <source>Pick a goal race and target date, and the AI Coach generates a complete periodised plan built around it — automatically fitted to the number of weeks available.</source>
+      </segment>
+    </unit>
+    <unit id="importPlanTitle">
+      <segment>
+        <source>Import a plan</source>
+      </segment>
+    </unit>
+    <unit id="importPlanBody">
+      <segment>
+        <source>Already following a program? Bring it in by pasting the text, uploading a file, or dropping in screenshots — the AI Coach interprets it and rebuilds it as a structured, editable plan.</source>
+      </segment>
+    </unit>
+    <unit id="strengthTitle">
+      <segment>
+        <source>Strength plans</source>
+      </segment>
+    </unit>
+    <unit id="strengthBody">
+      <segment>
+        <source>Strength programs run independently of the running plan, but are scheduled around it so they don't clash with hard running sessions.</source>
+      </segment>
+    </unit>
+    <unit id="strengthWorkoutTitle">
+      <segment>
+        <source>A strength workout</source>
+      </segment>
+    </unit>
+    <unit id="strengthWorkoutBody">
+      <segment>
+        <source>Open any strength session to see its exercises, sets, and reps. Sessions are placed on easy or rest days so they complement the running rather than competing with it.</source>
+      </segment>
+    </unit>
+    <unit id="importStrengthTitle">
+      <segment>
+        <source>Import a strength program</source>
+      </segment>
+    </unit>
+    <unit id="importStrengthBody">
+      <segment>
+        <source>Bring an existing strength program into TrAIner the same way as a running plan — paste it, upload a file, or drop in screenshots, and the AI Coach structures it and schedules it around your running.</source>
+      </segment>
+    </unit>
+    <unit id="profileTitle">
+      <segment>
+        <source>Your profile</source>
+      </segment>
+    </unit>
+    <unit id="profileBody">
+      <segment>
+        <source>The profile page holds your personal details, training paces, and connected accounts. The AI settings let you choose which AI models power your coaching, determine the AI tone when summarising your activities, and whether AI summaries are written to your connected apps. You can also update your stats for your latest race performance or VDOT, which will drive your training paces for future workouts.</source>
+      </segment>
+    </unit>
+    <unit id="coachTitle">
+      <segment>
+        <source>Your AI Coach</source>
+      </segment>
+    </unit>
+    <unit id="coachBody">
+      <segment>
+        <source>The AI Coach has the required context to analyse your general progress against the plan, analyse the performance of a single session, suggest alternative sessions, or make adaptations to running or strength workouts. Ask it anything, or try one of the starter questions. When you're ready, create your own account to get a plan built around your goals.</source>
       </segment>
     </unit>
   </file>

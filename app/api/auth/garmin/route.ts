@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { GarminClient } from '@/lib/garmin/client'
 import { z } from 'zod'
 import { errorMessage } from '@/lib/utils/errors'
+import { isDemoUser } from '@/lib/demo/demo'
 
 const garminAuthSchema = z.object({
     username: z.string().min(1).max(200),
@@ -16,6 +17,12 @@ export async function POST(request: Request) {
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Self-guard: public route — reject connecting an integration to the shared
+    // demo account (a visitor must not OAuth their own Garmin into it).
+    if (isDemoUser(user.id)) {
+      return NextResponse.json({ error: 'demo_restricted' }, { status: 403 })
     }
 
     const body = await request.json()

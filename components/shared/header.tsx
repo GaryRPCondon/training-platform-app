@@ -18,10 +18,24 @@ import {
 import { MobileNavigation } from './navigation'
 import { toast } from 'sonner'
 import { useTranslations } from 'next-intl'
+import { useQuery } from '@tanstack/react-query'
+import { getAthleteProfile } from '@/lib/supabase/queries'
+import { queryKeys } from '@/lib/query-keys'
 
 export function Header() {
     const router = useRouter()
     const t = useTranslations('header')
+
+    const { data: athlete } = useQuery({
+        queryKey: queryKeys.athlete(),
+        queryFn: getAthleteProfile,
+    })
+
+    // Prefer first/last name, fall back to the legacy `name` field, else nothing.
+    const displayName = [athlete?.first_name, athlete?.last_name].filter(Boolean).join(' ').trim()
+        || athlete?.name?.trim()
+        || ''
+    const profileLabel = displayName ? t('profileLogoutWithName', { name: displayName }) : t('profileLogout')
 
     async function handleLogout() {
         try {
@@ -57,12 +71,12 @@ export function Header() {
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" aria-label={t('profileLogout')}>
+                                    <Button variant="ghost" size="icon" aria-label={profileLabel}>
                                         <User className="h-5 w-5" />
                                     </Button>
                                 </DropdownMenuTrigger>
                             </TooltipTrigger>
-                            <TooltipContent side="bottom">{t('profileLogout')}</TooltipContent>
+                            <TooltipContent side="bottom">{profileLabel}</TooltipContent>
                         </Tooltip>
                         <DropdownMenuContent align="end">
                             <DropdownMenuItem asChild>

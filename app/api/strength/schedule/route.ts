@@ -7,8 +7,9 @@ import {
   SchedulingFailedError,
 } from '@/lib/strength/scheduler'
 import { scheduleRequestSchema } from '@/lib/strength/schemas'
+import { withRateLimit } from '@/lib/rate-limit/with-rate-limit'
 
-export async function POST(request: Request) {
+async function postHandler(request: Request) {
   let body: unknown
   try {
     body = await request.json()
@@ -118,3 +119,8 @@ export async function POST(request: Request) {
     )
   }
 }
+
+// LLM route: bound cost + abuse with the generation tier (also applies the demo
+// daily budget as defence-in-depth, though the demo is already blocked from this
+// route at the proxy).
+export const POST = withRateLimit('generation', postHandler)

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createLLMProvider } from '@/lib/agent/factory'
+import { demoProviderOverride } from '@/lib/demo/demo'
 import { loadAgentContext } from '@/lib/agent/context-loader'
 import { getSystemPrompt } from '@/lib/agent/prompts'
 import { createChatSession, getChatSession, saveMessage } from '@/lib/agent/session-manager'
@@ -79,8 +80,9 @@ async function postHandler(request: Request) {
             .eq('id', athleteId)
             .single()
 
-        const providerName = athlete?.preferred_llm_provider || 'deepseek'
-        const modelName = athlete?.preferred_llm_model || undefined
+        const demoOverride = demoProviderOverride(athleteId)
+        const providerName = demoOverride ? demoOverride.providerName : (athlete?.preferred_llm_provider || 'deepseek')
+        const modelName = demoOverride ? demoOverride.modelName : (athlete?.preferred_llm_model || undefined)
         const provider = createLLMProvider(providerName, modelName)
 
         // Generate system prompt with context

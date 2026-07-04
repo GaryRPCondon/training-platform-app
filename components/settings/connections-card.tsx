@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { GarminConnect } from './garmin-connect'
 import { getAthleteProfile } from '@/lib/supabase/queries'
+import { DemoNotice } from '@/components/demo/demo-notice'
 
 interface ConnectionsCardProps {
     stravaConnected: boolean
@@ -36,6 +37,7 @@ interface TestResult {
 
 export function ConnectionsCard({ stravaConnected, garminConnected, onRefresh }: ConnectionsCardProps) {
     const t = useTranslations('connections')
+    const td = useTranslations('demo')
     const router = useRouter()
     const queryClient = useQueryClient()
     const [loading, setLoading] = useState<string | null>(null)
@@ -191,6 +193,7 @@ export function ConnectionsCard({ stravaConnected, garminConnected, onRefresh }:
                 <CardDescription>{t('description')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+                <DemoNotice message={td('noticeIntegrations')} />
                 {/* Sync on login toggle - only show when at least one integration connected */}
                 {(garminConnected || stravaConnected) && (
                     <div className="flex items-center justify-between p-3 sm:p-4 border rounded-lg">

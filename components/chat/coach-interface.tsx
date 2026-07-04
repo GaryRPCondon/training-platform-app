@@ -189,6 +189,14 @@ export function CoachInterface({ sessionId: propSessionId, onSessionChange, work
                 body: JSON.stringify({ messages: outgoing, sessionId: activeSessionId, workoutId, activityId, strengthSessionId }),
             })
 
+            // Rate-limit / demo-budget responses are JSON, not a stream. Surface the
+            // server's `details` message (e.g. the demo daily budget notice) instead
+            // of the generic error.
+            if (res.status === 429) {
+                const body = await res.json().catch(() => null)
+                setMessages(prev => [...prev, { role: 'assistant', content: body?.details || t('somethingWrong') }])
+                return
+            }
             if (!res.ok || !res.body) throw new Error('Stream unavailable')
 
             const reader = res.body.getReader()
