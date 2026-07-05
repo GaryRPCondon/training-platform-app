@@ -2,12 +2,14 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { ensureAthleteExists } from '@/lib/supabase/ensure-athlete'
 import { calculateTrainingPaces, calculateRacePaces } from '@/lib/training/vdot'
+import { recalcActivePlanFuturePaces } from '@/lib/plans/recalc-future-paces'
 import { z } from 'zod'
 
 const vdotSchema = z.object({
   vdot: z.number().min(20).max(100),
   source: z.string().optional(),
   sourceData: z.record(z.string(), z.unknown()).optional(),
+  recalcFuturePaces: z.boolean().optional(),
 })
 
 export async function GET() {
@@ -54,7 +56,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const { vdot, source, sourceData } = parsed.data
+    const { vdot, source, sourceData, recalcFuturePaces } = parsed.data
 
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -109,10 +111,18 @@ export async function POST(request: Request) {
         .eq('id', plan.id)
     }
 
+    // Opt-in: re-stamp paces on the athlete's upcoming workouts using the new VDOT.
+    let repaced = 0
+    if (recalcFuturePaces && plan) {
+      const result = await recalcActivePlanFuturePaces(supabase, athleteId)
+      repaced = result.repaced
+    }
+
     return NextResponse.json({
       success: true,
       vdot,
       training_paces: trainingPaces,
+      repaced,
     })
   } catch (error) {
     console.error('Update VDOT error:', error)

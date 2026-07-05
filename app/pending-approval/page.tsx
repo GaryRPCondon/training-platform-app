@@ -4,17 +4,20 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Clock } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useTranslations } from 'next-intl'
 
 export default function PendingApprovalPage() {
     const router = useRouter()
     const t = useTranslations('auth')
+    const queryClient = useQueryClient()
 
     async function handleLogout() {
         try {
             const response = await fetch('/api/auth/logout', { method: 'POST' })
             if (!response.ok) throw new Error('Logout failed')
+            queryClient.clear()
             toast.success(t('loggedOut'))
             router.push('/login')
             router.refresh()

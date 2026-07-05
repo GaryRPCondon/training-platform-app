@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { Loader2, TrendingUp } from 'lucide-react'
@@ -62,6 +63,8 @@ export function PerformanceMetricsCard({ initialData }: PerformanceMetricsCardPr
   const [currentPaces, setCurrentPaces] = useState<TrainingPaces | null>(
     (provided && initialData?.training_paces) ? initialData.training_paces : null
   )
+
+  const [recalcFuture, setRecalcFuture] = useState(false)
 
   const [newVDOT, setNewVDOT] = useState<number | null>(null)
   const [newPaces, setNewPaces] = useState<TrainingPaces | null>(null)
@@ -175,6 +178,7 @@ export function PerformanceMetricsCard({ initialData }: PerformanceMetricsCardPr
           vdot: newVDOT,
           source: newSource,
           sourceData: newSourceData,
+          recalcFuturePaces: recalcFuture,
         }),
       })
 
@@ -188,7 +192,11 @@ export function PerformanceMetricsCard({ initialData }: PerformanceMetricsCardPr
       setCurrentPaces(data.training_paces)
       setNewVDOT(null)
       setNewPaces(null)
+      setRecalcFuture(false)
       toast.success(t('saved'))
+      if (data.repaced > 0) {
+        toast.success(t('recalcedToast', { count: data.repaced }))
+      }
     } catch (error: unknown) {
       console.error('Failed to update VDOT:', error)
       toast.error(errorMessage(error) || t('saveError'))
@@ -365,6 +373,24 @@ export function PerformanceMetricsCard({ initialData }: PerformanceMetricsCardPr
             </p>
           )}
         </div>
+
+        {/* Opt-in: re-pace upcoming workouts — only relevant when VDOT changed */}
+        {hasChanges && (
+          <div className="flex items-start gap-2">
+            <Checkbox
+              id="perf-recalc-future"
+              checked={recalcFuture}
+              onCheckedChange={(val) => setRecalcFuture(val === true)}
+              className="mt-0.5"
+            />
+            <div className="grid gap-1 leading-none">
+              <Label htmlFor="perf-recalc-future" className="font-normal cursor-pointer">
+                {t('recalcFutureLabel')}
+              </Label>
+              <p className="text-xs text-muted-foreground">{t('recalcFutureHint')}</p>
+            </div>
+          </div>
+        )}
 
         {/* Save Button - always at the bottom */}
         <Button
