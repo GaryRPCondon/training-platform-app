@@ -59,97 +59,93 @@ export async function matchActivitiesToWorkouts(
 
   const trainingPaces = await loadActivePlanPaces(supabase, athleteId)
 
+  const plan = buildMatchPlan(activities, workouts, trainingPaces)
+
   const matches: MatchResult[] = []
-  const matchedWorkoutIds = new Set<number>()
-
-  for (const activity of activities) {
-    const match = findBestWorkoutMatch(activity, workouts.filter(w => !matchedWorkoutIds.has(w.id)), trainingPaces)
-
-    if (match) {
-      console.log('[AutoMatch] Match candidate:', {
-        activityId: match.activityId, workoutId: match.workoutId,
-        confidence: match.confidence, method: match.method,
-        accepted: match.confidence >= 0.6
-      })
-    }
-
-    if (match && match.confidence >= 0.6) {
-      await linkActivityToWorkout(supabase, activity, workouts.find(w => w.id === match.workoutId)!, match)
-      matches.push(match)
-      matchedWorkoutIds.add(match.workoutId)
-    }
+  for (const match of plan) {
+    await linkActivityToWorkout(
+      supabase,
+      activities.find(a => a.id === match.activityId)!,
+      workouts.find(w => w.id === match.workoutId)!,
+      match,
+    )
+    matches.push(match)
   }
 
   return matches
 }
 
+interface Candidate {
+  match: MatchResult
+  /** Absolute distance diff (%) — tiebreaker so the closest activity wins ties. */
+  distanceDiffAbs: number
+}
+
 /**
- * Find best matching workout for an activity
+ * Decide which activities link to which workouts.
+ *
+ * A day can have several activities (e.g. warm-up + parkrun + cooldown) competing
+ * for the same planned workout. Assigning greedily per-activity lets whichever
+ * activity is processed first claim the workout, even when a later activity is a
+ * much better fit. Instead, score every viable activity↔workout pair, then assign
+ * globally best-first — each activity and workout used at most once — so the
+ * closest match wins the workout.
+ *
+ * Exported for testing.
  */
-function findBestWorkoutMatch(
-  activity: Activity,
+export function buildMatchPlan(
+  activities: Activity[],
   workouts: PlannedWorkout[],
   trainingPaces: TrainingPaces | null,
-): MatchResult | null {
-  if (!activity.start_time) return null
+): MatchResult[] {
+  const candidates: Candidate[] = []
 
-  const activityDate = parseISO(activity.start_time)
-  const activityDay = format(activityDate, 'yyyy-MM-dd')
+  for (const activity of activities) {
+    if (!activity.start_time) continue
+    const activityDay = format(parseISO(activity.start_time), 'yyyy-MM-dd')
+    const sameDayWorkouts = workouts.filter(w => w.scheduled_date === activityDay)
+    if (sameDayWorkouts.length === 0) continue
 
-  const sameDayWorkouts = workouts.filter(w => w.scheduled_date === activityDay)
+    // A day with a single planned workout is unambiguous (0.6 bar); a day with
+    // several workouts needs a higher bar (0.75) to auto-link with confidence.
+    const threshold = sameDayWorkouts.length === 1 ? 0.6 : 0.75
+    const method: MatchResult['method'] = sameDayWorkouts.length === 1 ? 'auto_time' : 'auto_distance'
 
-  if (sameDayWorkouts.length === 0) return null
-
-  console.log('[AutoMatch] Day check: activity', activity.id,
-    'parsed day=', activityDay, 'same-day matches=', sameDayWorkouts.length)
-
-  if (sameDayWorkouts.length === 1) {
-    const workout = sameDayWorkouts[0]
-    const confidence = calculateConfidence(activity, workout, trainingPaces)
-    console.log('[AutoMatch] Single-day scoring:', {
-      activityId: activity.id, workoutId: workout.id,
-      activityType: activity.activity_type, workoutType: workout.workout_type,
-      normalizedType: normalizeActivityType(activity.activity_type,
-        typeof activity.strava_data === 'string' ? JSON.parse(activity.strava_data) : activity.strava_data),
-      distance: activity.distance_meters,
-      target: workout.distance_target_meters,
-      confidence
-    })
-
-    if (confidence > 0.6) {
-      return {
-        activityId: activity.id,
-        workoutId: workout.id,
-        confidence,
-        method: 'auto_time',
-        metadata: {
-          distance_diff_percent: activityDistanceDiff(activity, workout, trainingPaces),
-          duration_diff_percent: activityDurationDiff(activity, workout),
+    for (const workout of sameDayWorkouts) {
+      const confidence = calculateConfidence(activity, workout, trainingPaces)
+      if (confidence <= threshold) continue
+      const distanceDiff = activityDistanceDiff(activity, workout, trainingPaces)
+      candidates.push({
+        distanceDiffAbs: Math.abs(distanceDiff),
+        match: {
+          activityId: activity.id,
+          workoutId: workout.id,
+          confidence,
+          method,
+          metadata: {
+            distance_diff_percent: distanceDiff,
+            duration_diff_percent: activityDurationDiff(activity, workout),
+          },
         },
-      }
+      })
     }
   }
 
-  let bestMatch: MatchResult | null = null
+  // Best confidence first; break ties by the closest distance match.
+  candidates.sort((a, b) =>
+    b.match.confidence - a.match.confidence || a.distanceDiffAbs - b.distanceDiffAbs
+  )
 
-  for (const workout of sameDayWorkouts) {
-    const confidence = calculateConfidence(activity, workout, trainingPaces)
-
-    if (confidence > 0.75 && (!bestMatch || confidence > bestMatch.confidence)) {
-      bestMatch = {
-        activityId: activity.id,
-        workoutId: workout.id,
-        confidence,
-        method: 'auto_distance',
-        metadata: {
-          distance_diff_percent: activityDistanceDiff(activity, workout, trainingPaces),
-          duration_diff_percent: activityDurationDiff(activity, workout),
-        },
-      }
-    }
+  const usedActivities = new Set<number>()
+  const usedWorkouts = new Set<number>()
+  const plan: MatchResult[] = []
+  for (const { match } of candidates) {
+    if (usedActivities.has(match.activityId) || usedWorkouts.has(match.workoutId)) continue
+    usedActivities.add(match.activityId)
+    usedWorkouts.add(match.workoutId)
+    plan.push(match)
   }
-
-  return bestMatch
+  return plan
 }
 
 /** Match confidence (0.0 to 1.0) */
