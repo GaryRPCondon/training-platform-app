@@ -83,7 +83,10 @@
     "saving": "Saving...",
     "saved": "Training paces updated successfully",
     "saveError": "Failed to update training paces",
-    "cardTitle": "Performance Metrics"
+    "cardTitle": "Performance Metrics",
+    "recalcFutureLabel": "Also update paces on my upcoming workouts",
+    "recalcFutureHint": "Re-paces future scheduled workouts to your new VDOT. May overwrite custom paces you set manually.",
+    "recalcedToast": "{count, plural, one {# upcoming workout re-paced} other {# upcoming workouts re-paced}}"
   },
   "aiSettings": {
     "title": "AI Configuration",

@@ -18,13 +18,14 @@ import {
 import { MobileNavigation } from './navigation'
 import { toast } from 'sonner'
 import { useTranslations } from 'next-intl'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { getAthleteProfile } from '@/lib/supabase/queries'
 import { queryKeys } from '@/lib/query-keys'
 
 export function Header() {
     const router = useRouter()
     const t = useTranslations('header')
+    const queryClient = useQueryClient()
 
     const { data: athlete } = useQuery({
         queryKey: queryKeys.athlete(),
@@ -48,6 +49,10 @@ export function Header() {
             }
 
             sessionStorage.removeItem('auto_sync_done')
+            // Drop the previous account's cached data so it can't bleed into the
+            // next session (logout is a server-side route, so the client auth
+            // listener never sees it — clear explicitly here).
+            queryClient.clear()
             toast.success(t('loggedOut'))
             router.push('/login')
             router.refresh()

@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Clock } from 'lucide-react'
 import { useTranslations } from 'next-intl'
@@ -22,6 +23,7 @@ function LoginForm() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const supabase = createClient()
+    const queryClient = useQueryClient()
 
     // Only honour relative redirects to prevent open-redirect attacks
     const rawRedirect = searchParams.get('redirectTo') || ''
@@ -39,6 +41,8 @@ function LoginForm() {
 
             if (error) throw error
 
+            // Start the new session with a clean cache (no prior-account bleed).
+            queryClient.clear()
             toast.success(t('loggedIn'))
             router.push(redirectTo)
             router.refresh()
@@ -57,6 +61,8 @@ function LoginForm() {
             if (!res.ok) throw new Error('demo-login failed')
 
             const { redirectTo } = await res.json()
+            // Demo sign-in runs server-side, so clear the cache here.
+            queryClient.clear()
             router.push(redirectTo || '/dashboard')
             router.refresh()
         } catch {

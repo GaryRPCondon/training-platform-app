@@ -396,6 +396,21 @@
         <source>Performance Metrics</source>
       </segment>
     </unit>
+    <unit id="recalcFutureLabel">
+      <segment>
+        <source>Also update paces on my upcoming workouts</source>
+      </segment>
+    </unit>
+    <unit id="recalcFutureHint">
+      <segment>
+        <source>Re-paces future scheduled workouts to your new VDOT. May overwrite custom paces you set manually.</source>
+      </segment>
+    </unit>
+    <unit id="recalcedToast">
+      <segment>
+        <source>{count, plural, one {# upcoming workout re-paced} other {# upcoming workouts re-paced}}</source>
+      </segment>
+    </unit>
   </file>
   <file id="aiSettings">
     <unit id="title">

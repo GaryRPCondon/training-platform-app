@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from 'react'
 import { errorMessage } from '@/lib/utils/errors'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { getAthleteProfile } from '@/lib/supabase/queries'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -43,6 +43,7 @@ function ProfileContent() {
     const [deleteConfirm, setDeleteConfirm] = useState('')
     const [deleteLoading, setDeleteLoading] = useState(false)
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+    const queryClient = useQueryClient()
 
     const { data: athlete, isLoading, error } = useQuery({
         queryKey: ['athlete'],
@@ -66,6 +67,7 @@ function ProfileContent() {
                 const data = await res.json()
                 throw new Error(data.error || t('deleteFailed'))
             }
+            queryClient.clear()
             toast.success(t('accountDeleted'))
             router.push('/login')
             router.refresh()
@@ -103,6 +105,7 @@ function ProfileContent() {
             }
 
             sessionStorage.removeItem('auto_sync_done')
+            queryClient.clear()
             toast.success(t('loggedOut'))
             router.push('/login')
             router.refresh()
