@@ -399,6 +399,94 @@ export function calculateTotalWorkoutDistance(
   return distanceTargetMeters ?? 0
 }
 
+/** Parse one "M:SS" clock token (optionally with a "/km" suffix) into seconds. */
+function parseClockPart(token: string): number | null {
+  const parts = token.trim().split('/')[0].split(':')
+  if (parts.length !== 2) return null
+  const minutes = Number(parts[0])
+  const seconds = Number(parts[1])
+  if (!Number.isInteger(minutes) || !Number.isInteger(seconds)) return null
+  return minutes * 60 + seconds
+}
+
+/**
+ * Parse a stored target_pace string into a representative sec/km value.
+ * Handles single "M:SS" and "M:SS-M:SS" ranges (returns the midpoint).
+ */
+function parseTargetPaceSecPerKm(raw: string): number | null {
+  const clean = raw.trim()
+  const dash = clean.indexOf('-', 1)
+  if (dash > 0) {
+    const a = parseClockPart(clean.slice(0, dash))
+    const b = parseClockPart(clean.slice(dash + 1))
+    if (a != null && b != null) return (a + b) / 2
+    return a ?? b
+  }
+  return parseClockPart(clean)
+}
+
+/** Resolve the pace (sec/km) for a single structured part, preferring its explicit target_pace. */
+function resolvePartPaceSecPerKm(
+  part: { target_pace?: string; intensity?: string },
+  trainingPaces: TrainingPaces | null | undefined,
+  fallbackPaceSecPerKm: number
+): number {
+  if (typeof part.target_pace === 'string') {
+    const parsed = parseTargetPaceSecPerKm(part.target_pace)
+    if (parsed != null) return parsed
+  }
+  if (part.intensity && trainingPaces) {
+    const pace = trainingPaces[getIntensityPaceType(part.intensity)]
+    if (pace) return pace
+  }
+  return fallbackPaceSecPerKm
+}
+
+/**
+ * Estimate total workout duration (seconds) including warmup, cooldown, and all
+ * main_set intervals. Each structured part is timed with its own pace — an
+ * explicit target_pace when present, otherwise its intensity's training pace —
+ * so a custom-pace interval isn't mis-timed with a workout-type guess.
+ *
+ * Fallback: for a simple (non-structured) workout, times distanceTargetMeters at
+ * fallbackPaceSecPerKm. Returns 0 when no duration can be determined.
+ */
+export function estimateWorkoutDurationSeconds(
+  distanceTargetMeters: number | null | undefined,
+  structuredWorkout: Record<string, unknown> | null | undefined,
+  trainingPaces: TrainingPaces | null | undefined,
+  fallbackPaceSecPerKm?: number | null
+): number {
+  const fallback = fallbackPaceSecPerKm ?? trainingPaces?.easy ?? DEFAULT_EASY_PACE_SEC_PER_KM
+  const mainSet = structuredWorkout?.main_set
+
+  const partSeconds = (part: { duration_seconds?: number; duration_minutes?: number; distance_meters?: number; target_pace?: string; intensity?: string } | undefined): number => {
+    if (!part) return 0
+    if (part.duration_seconds) return part.duration_seconds
+    if (part.duration_minutes) return part.duration_minutes * 60
+    if (part.distance_meters) {
+      const pace = resolvePartPaceSecPerKm(part, trainingPaces, fallback)
+      return (part.distance_meters / 1000) * pace
+    }
+    return 0
+  }
+
+  if (structuredWorkout && Array.isArray(mainSet)) {
+    let seconds = partSeconds(structuredWorkout.warmup as Parameters<typeof partSeconds>[0])
+    for (const group of mainSet as Array<{ repeat?: number; intervals?: Array<Parameters<typeof partSeconds>[0]> }>) {
+      const repeats = group.repeat ?? 1
+      for (const interval of group.intervals ?? []) {
+        seconds += repeats * partSeconds(interval)
+      }
+    }
+    seconds += partSeconds(structuredWorkout.cooldown as Parameters<typeof partSeconds>[0])
+    return Math.round(seconds)
+  }
+
+  if (distanceTargetMeters) return estimateDuration(distanceTargetMeters, fallback)
+  return 0
+}
+
 /**
  * Map workout intensity to pace type (fallback method)
  * @deprecated Use getWorkoutPaceType instead

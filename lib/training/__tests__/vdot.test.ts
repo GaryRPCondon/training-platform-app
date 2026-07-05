@@ -3,6 +3,7 @@ import {
   calculateVDOT,
   calculateTrainingPaces,
   calculateTotalWorkoutDistance,
+  estimateWorkoutDurationSeconds,
   formatPace,
   formatTime,
   parseRaceTime
@@ -63,6 +64,34 @@ describe('calculateTotalWorkoutDistance', () => {
     // the ~10.4 km a faster athlete actually covers in the same time.
     const total = calculateTotalWorkoutDistance(7500, 'tempo', tempoStructured, null)
     expect(total).toBe(7500)
+  })
+})
+
+describe('estimateWorkoutDurationSeconds', () => {
+  const paces = { easy: 330, marathon: 275, tempo: 253, interval: 224, repetition: 210, walk: 600 }
+
+  it('times a structured interval at its own custom pace, not a workout-type guess', () => {
+    // Regression: a custom-pace structured race (10km @ 3:45) showed ~43 min because
+    // the estimate used the VDOT marathon fallback (275 sec/km) instead of 225.
+    const structured = {
+      main_set: [{ repeat: 1, intervals: [{ distance_meters: 10000, target_pace: '3:45-3:45', intensity: 'easy' }] }],
+    }
+    // Fallback pace deliberately marathon to prove the explicit pace wins.
+    const seconds = estimateWorkoutDurationSeconds(10000, structured, paces, paces.marathon)
+    expect(seconds).toBe(2250) // 10km @ 225 sec/km = 37.5 min
+  })
+
+  it('resolves a part with no explicit pace from its intensity', () => {
+    const structured = {
+      main_set: [{ repeat: 4, intervals: [{ distance_meters: 1000, intensity: 'interval' }] }],
+    }
+    const seconds = estimateWorkoutDurationSeconds(4000, structured, paces, paces.easy)
+    expect(seconds).toBe(4 * 224) // 4×1km @ interval 224 sec/km
+  })
+
+  it('times a simple (non-structured) workout at the fallback pace', () => {
+    const seconds = estimateWorkoutDurationSeconds(10000, null, paces, 235)
+    expect(seconds).toBe(2350) // 10km @ 3:55/km = 39:10
   })
 })
 

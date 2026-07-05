@@ -172,27 +172,99 @@ function buildLapTable(laps: Lap[], showAdherence: boolean, targetBand: TargetPa
   return `\nLap breakdown:\n${header}\n${divider}\n${rows.join('\n')}`
 }
 
-function extractTargetPaceBand(workout: PlannedWorkout): TargetPaceBand | null {
+/** Parse a "M:SS" or "M:SS-M:SS" pace string into a sec/km band (lower = faster). */
+function parsePaceBandString(raw: string): TargetPaceBand | null {
+  const parseClock = (token: string): number | null => {
+    const parts = token.trim().split('/')[0].split(':')
+    if (parts.length !== 2) return null
+    const minutes = Number(parts[0])
+    const seconds = Number(parts[1])
+    if (!Number.isInteger(minutes) || !Number.isInteger(seconds)) return null
+    return minutes * 60 + seconds
+  }
+  const clean = raw.trim()
+  const dash = clean.indexOf('-', 1)
+  if (dash > 0) {
+    const a = parseClock(clean.slice(0, dash))
+    const b = parseClock(clean.slice(dash + 1))
+    if (a != null && b != null) return { lower: Math.min(a, b), upper: Math.max(a, b) }
+    const single = a ?? b
+    return single != null ? { lower: single, upper: null } : null
+  }
+  const single = parseClock(clean)
+  return single != null ? { lower: single, upper: null } : null
+}
+
+const RECOVERY_ROLES = new Set(['recovery', 'rest', 'warmup', 'cooldown'])
+
+/**
+ * Derive a work-rep target band from athlete-specified per-interval `target_pace`
+ * strings (custom-pace structured workouts store the pace only as a string, not the
+ * numeric target_pace_sec_per_km stamp). Skips intervals tagged as recovery/rest/
+ * warmup/cooldown so the band reflects the work reps being evaluated.
+ */
+function extractStructuredWorkPaceBand(workout: PlannedWorkout): TargetPaceBand | null {
   const sw = workout.structured_workout as Record<string, unknown> | null
   if (!sw) return null
+  const mainSetRaw = sw.main_set
+  const mainSet: Array<Record<string, unknown>> = Array.isArray(mainSetRaw)
+    ? (mainSetRaw as Array<Record<string, unknown>>)
+    : mainSetRaw && typeof mainSetRaw === 'object'
+      ? [mainSetRaw as Record<string, unknown>]
+      : []
+
+  for (const entry of mainSet) {
+    const intervals = Array.isArray(entry.intervals)
+      ? (entry.intervals as Array<Record<string, unknown>>)
+      : typeof entry.target_pace === 'string'
+        ? [entry]
+        : []
+    for (const iv of intervals) {
+      if (typeof iv.target_pace !== 'string') continue
+      const role = typeof iv.role === 'string' ? iv.role.toLowerCase() : ''
+      if (RECOVERY_ROLES.has(role)) continue
+      const band = parsePaceBandString(iv.target_pace)
+      if (band) return band
+    }
+  }
+  return null
+}
+
+/**
+ * Resolve the workout's target pace band. Order: numeric stamp (plan generation /
+ * athlete override) → custom per-interval pace on structured work reps → custom
+ * top-level pace on a simple workout.
+ */
+function resolveTargetPaceBand(workout: PlannedWorkout): TargetPaceBand | null {
+  const sw = workout.structured_workout as Record<string, unknown> | null
+  if (!sw) return null
+
   const lower = sw.target_pace_sec_per_km as number | undefined
-  if (!lower) return null
-  const upper = sw.target_pace_upper_sec_per_km as number | undefined
-  return { lower, upper: upper ?? null }
+  if (lower) {
+    const upper = sw.target_pace_upper_sec_per_km as number | undefined
+    return { lower, upper: upper ?? null }
+  }
+
+  const structuredBand = extractStructuredWorkPaceBand(workout)
+  if (structuredBand) return structuredBand
+
+  if (typeof sw.target_pace === 'string') {
+    return parsePaceBandString(sw.target_pace)
+  }
+  return null
+}
+
+function extractTargetPaceBand(workout: PlannedWorkout): TargetPaceBand | null {
+  return resolveTargetPaceBand(workout)
 }
 
 function extractTargetPace(workout: PlannedWorkout): string {
-  const sw = workout.structured_workout as Record<string, unknown> | null
-  if (!sw) return 'N/A'
-
-  const lower = sw.target_pace_sec_per_km as number | undefined
-  const upper = sw.target_pace_upper_sec_per_km as number | undefined
-  if (!lower) return 'N/A'
-
-  if (upper) {
-    return `${formatPace(lower)} – ${formatPace(upper)}`
+  const band = resolveTargetPaceBand(workout)
+  if (!band) return 'N/A'
+  if (band.upper != null && band.upper !== band.lower) {
+    return `${formatPace(band.lower)} – ${formatPace(band.upper)}`
   }
-  return formatPace(lower)
+  return formatPace(band.lower)
 }
 
 type StructuredPart = {
@@ -200,24 +272,28 @@ type StructuredPart = {
   duration_seconds?: number
   distance_meters?: number
   intensity?: string
+  target_pace?: string
 }
 
 type MainSetEntry = { repeat?: number; intervals?: StructuredPart[] }
 
 function formatStructuredPart(part: StructuredPart): string {
   const intensity = part.intensity || 'unspecified'
+  // Surface an athlete-specified custom pace so the LLM can assess compliance.
+  const paceSuffix = part.target_pace ? ` (${part.target_pace})` : ''
   if (part.distance_meters) {
     const km = part.distance_meters / 1000
     const dist = km >= 1 ? `${km.toFixed(km >= 10 ? 1 : 2)} km` : `${part.distance_meters} m`
-    return `${dist} @ ${intensity}`
+    return `${dist} @ ${intensity}${paceSuffix}`
   }
-  if (part.duration_minutes) return `${part.duration_minutes} min @ ${intensity}`
+  if (part.duration_minutes) return `${part.duration_minutes} min @ ${intensity}${paceSuffix}`
   if (part.duration_seconds) {
-    return part.duration_seconds >= 60 && part.duration_seconds % 60 === 0
+    const base = part.duration_seconds >= 60 && part.duration_seconds % 60 === 0
       ? `${part.duration_seconds / 60} min @ ${intensity}`
       : `${part.duration_seconds} s @ ${intensity}`
+    return `${base}${paceSuffix}`
   }
-  return `(open) @ ${intensity}`
+  return `(open) @ ${intensity}${paceSuffix}`
 }
 
 function formatMainSetEntry(entry: MainSetEntry): string | null {

@@ -200,6 +200,44 @@ describe('buildUserMessage — intervals workout', () => {
   })
 })
 
+describe('buildUserMessage — custom per-interval pace (no numeric stamp)', () => {
+  // Regression: a structured workout with an athlete-specified custom pace stores it
+  // only as a `target_pace` string on the interval, not target_pace_sec_per_km. The
+  // summary reported "No target pace was provided" and couldn't assess compliance.
+  function customWorkout(): PlannedWorkout {
+    return makeWorkout({
+      workout_type: 'tempo',
+      intensity_target: 'custom',
+      distance_target_meters: 10000,
+      structured_workout: {
+        main_set: [{ repeat: 1, intervals: [{ distance_meters: 10000, intensity: 'custom', target_pace: '3:45' }] }],
+      },
+    })
+  }
+
+  it('resolves the target pace from the interval target_pace string', () => {
+    const msg = buildUserMessage(makeActivity(), customWorkout(), intervalLaps())
+    expect(msg).toContain('Target pace (work reps only): 3:45/km')
+    expect(msg).not.toContain('Target pace (work reps only): N/A')
+  })
+
+  it('shows the custom pace in the structure block', () => {
+    const msg = buildUserMessage(makeActivity(), customWorkout(), intervalLaps())
+    expect(msg).toContain('10.0 km @ custom (3:45)')
+  })
+
+  it('resolves a simple workout custom pace from the top-level target_pace string', () => {
+    const simple = makeWorkout({
+      workout_type: 'race',
+      intensity_target: 'custom',
+      distance_target_meters: 10000,
+      structured_workout: { target_pace: '3:55' },
+    })
+    const msg = buildUserMessage(makeActivity(), simple, intervalLaps())
+    expect(msg).toContain('3:55/km')
+  })
+})
+
 describe('buildUserMessage — easy run', () => {
   function easyWorkout(): PlannedWorkout {
     return makeWorkout({

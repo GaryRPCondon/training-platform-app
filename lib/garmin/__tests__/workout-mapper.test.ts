@@ -266,6 +266,26 @@ describe('mapToGarminWorkout — simple workouts', () => {
 
     expect(result.workoutName).toBe('5×1km @ 10K race pace')
   })
+
+  it('honours a custom pace on a simple race instead of the VDOT marathon default', () => {
+    // Regression: a race workout with intensity=custom and a custom pace (3:55/km,
+    // stored only as structured_workout.target_pace) was sending the VDOT marathon
+    // pace (275 sec/km) to Garmin instead of the athlete's 235 sec/km target.
+    const result = mapToGarminWorkout(makeWorkout({
+      workout_type: 'race',
+      distance_target_meters: 10000,
+      intensity_target: 'custom',
+      structured_workout: { target_pace: '3:55' },
+    }), PACES)
+
+    const step = result.workoutSegments[0].workoutSteps[0]
+    expect(step.targetType.workoutTargetTypeKey).toBe('pace.zone')
+    // Center 235 sec/km ±15 → NOT marathon (275 sec/km).
+    expect(step.targetValueOne).toBeCloseTo(1000 / (235 + 15), 2)
+    expect(step.targetValueTwo).toBeCloseTo(1000 / (235 - 15), 2)
+    // Sanity: must not be the marathon pace band.
+    expect(step.targetValueOne).not.toBeCloseTo(1000 / (275 + 15), 2)
+  })
 })
 
 describe('mapToGarminWorkout — template pace_targets drive label resolution', () => {

@@ -20,7 +20,7 @@ import { format, parseISO } from 'date-fns'
 import { Calendar as CalendarPicker } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Checkbox } from '@/components/ui/checkbox'
-import { estimateDuration, getWorkoutPaceType, calculateTotalWorkoutDistance } from '@/lib/training/vdot'
+import { getWorkoutPaceType, calculateTotalWorkoutDistance, estimateWorkoutDurationSeconds } from '@/lib/training/vdot'
 import { interpretAccuracyScore } from '@/lib/activities/scoring'
 import { useUnits } from '@/lib/hooks/use-units'
 import { formatDistance as fmtDist, formatClock, paceParts, type UnitSystem } from '@/lib/utils/units'
@@ -1064,9 +1064,19 @@ export function WorkoutCard({
   if (workout.distance_target_meters && workout.workout_type) {
     // Prefer methodology-specific stamped pace from structured_workout (e.g. Hansons "strength" → marathon-6)
     const sw = workout.structured_workout as Record<string, unknown> | null
+    // An athlete-specified custom pace on a simple (non-structured) workout is stored
+    // only as a "M:SS" string in structured_workout.target_pace (see handleSave / the
+    // POST /api/workouts custom branch). Parse it so it wins over the VDOT fallback.
+    const customPaceSec = typeof sw?.target_pace === 'string' ? parseSinglePaceSec(sw.target_pace) : null
     if (sw?.target_pace_sec_per_km && typeof sw.target_pace_sec_per_km === 'number') {
       targetPace = sw.target_pace_sec_per_km as number
       const label = typeof sw.pace_label === 'string' ? sw.pace_label : 'target'
+      paceLabel = label.charAt(0).toUpperCase() + label.slice(1)
+    } else if (customPaceSec !== null) {
+      // Custom pace: respect the athlete's value instead of guessing from workout
+      // type (e.g. a custom-pace race would otherwise default to VDOT marathon pace).
+      targetPace = customPaceSec
+      const label = typeof workout.intensity_target === 'string' ? workout.intensity_target : 'target'
       paceLabel = label.charAt(0).toUpperCase() + label.slice(1)
     } else if (trainingPaces) {
       const paceType = getWorkoutPaceType(workout.workout_type)
@@ -1075,12 +1085,15 @@ export function WorkoutCard({
     }
 
     if (targetPace) {
-      // For intervals/tempo: estimate full session duration including warmup/cooldown minutes
-      const swDur = workout.structured_workout as Record<string, unknown> | null
-      const warmupMin = (swDur?.warmup as { duration_minutes?: number } | undefined)?.duration_minutes ?? 0
-      const cooldownMin = (swDur?.cooldown as { duration_minutes?: number } | undefined)?.duration_minutes ?? 0
-      const mainSeconds = estimateDuration(workout.distance_target_meters, targetPace)
-      estimatedDurationMinutes = Math.round(mainSeconds / 60) + warmupMin + cooldownMin
+      // Sum each structured part at its own pace (falling back to targetPace for
+      // simple workouts) so a custom-pace interval isn't timed with a VDOT guess.
+      const estSeconds = estimateWorkoutDurationSeconds(
+        workout.distance_target_meters,
+        workout.structured_workout as Record<string, unknown> | null,
+        trainingPaces,
+        targetPace
+      )
+      if (estSeconds > 0) estimatedDurationMinutes = Math.round(estSeconds / 60)
     }
   }
 

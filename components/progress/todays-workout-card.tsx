@@ -14,6 +14,8 @@ import { format } from 'date-fns'
 function extractPaceSummary(sw: Record<string, unknown> | null): string | null {
     if (!sw) return null
     if (sw.pace_guidance) return sw.pace_guidance as string
+    // Custom pace on a simple (non-structured) workout is stored as a "M:SS" string.
+    if (typeof sw.target_pace === 'string') return sw.target_pace
     if (sw.main_set && Array.isArray(sw.main_set)) {
         const firstSet = sw.main_set[0] as Record<string, unknown> | undefined
         if (firstSet?.intervals && Array.isArray(firstSet.intervals)) {
