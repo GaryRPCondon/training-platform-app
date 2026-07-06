@@ -25,7 +25,7 @@ export default async function DashboardLayout({
                 <aside className="hidden w-[200px] flex-col bg-background/80 backdrop-blur-xl border-e border-border/50 md:flex fixed inset-y-0 start-0 top-14 h-[calc(100vh-3.5rem)]">
                     <Navigation />
                 </aside>
-                <main id="main-content" className="flex-1 p-4 md:p-6 md:ps-[216px] max-w-7xl md:border-e md:border-border/50">
+                <main id="main-content" className="flex-1 min-w-0 p-4 md:p-6 md:ps-[216px] max-w-7xl md:border-e md:border-border/50">
                     <AutoSync />
                     <DemoBanner />
                     <Suspense fallback={null}>

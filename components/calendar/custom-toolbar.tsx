@@ -20,8 +20,8 @@ interface CustomToolbarProps {
 export function CustomToolbar({ date, onNavigate, onAutoMatch, isAutoMatching, runningOnly, onRunningOnlyChange }: CustomToolbarProps) {
     const t = useTranslations('calendar')
     return (
-        <div className="flex items-center justify-between mb-4 px-2">
-            <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4 px-2">
+            <div className="flex items-center gap-2 flex-wrap">
                 <div className="flex items-center rounded-md border bg-background p-1">
                     <Button
                         variant="ghost"

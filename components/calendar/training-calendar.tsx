@@ -19,6 +19,7 @@ import { getWorkoutColor, normalizeActivityType, isRunningActivityType } from '@
 import { toDisplayDistance, distanceLabel, type UnitSystem } from '@/lib/utils/units'
 import { WeeklyTotals } from './weekly-totals'
 import { CustomToolbar } from './custom-toolbar'
+import { useMediaQuery } from '@/lib/hooks/use-media-query'
 import { createClient } from '@/lib/supabase/client'
 import type { StrengthSession } from '@/types/database'
 import type { WorkoutWithDetails } from '@/types/review'
@@ -212,6 +213,11 @@ async function postGarminBatch(url: string, body: Record<string, unknown>): Prom
 export function TrainingCalendar({ openWorkoutId, openStrengthSessionId, tourOpen }: TrainingCalendarProps = {}) {
     const t = useTranslations('calendar')
     const [currentDate, setCurrentDate] = useState(new Date())
+    // On mobile the month grid squeezes 7 columns into ~390px, making workout
+    // details unreadable. Below this breakpoint we render a custom day-grouped
+    // list (see `mobileDays` + the render branch) instead of the calendar grid;
+    // desktop keeps the month view unchanged.
+    const isMobile = useMediaQuery('(max-width: 767px)')
     const [selectedWorkout, setSelectedWorkout] = useState<WorkoutWithDetails | null>(null)
     const [selectedActivity, setSelectedActivity] = useState<(Activity & { planned_workouts?: PlannedWorkout | null }) | null>(null)
     const [isWorkoutDialogOpen, setIsWorkoutDialogOpen] = useState(false)
@@ -657,6 +663,21 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId, tourOpe
         return [...workoutEvents, ...activityEvents]
     }, [workouts, rawActivities, preferredUnits, runningOnly])
 
+    // This month's events grouped by day, for the mobile list view. Chronological.
+    const mobileDays = useMemo(() => {
+        const monthStart = startOfMonth(currentDate)
+        const monthEnd = endOfMonth(currentDate)
+        const groups = new Map<string, CalendarEvent[]>()
+        for (const ev of [...events].sort((a, b) => a.start.getTime() - b.start.getTime())) {
+            if (ev.start < monthStart || ev.start > monthEnd) continue
+            const key = format(ev.start, 'yyyy-MM-dd')
+            const list = groups.get(key)
+            if (list) list.push(ev)
+            else groups.set(key, [ev])
+        }
+        return [...groups.entries()]
+    }, [events, currentDate])
+
     const handleSelectEvent = useCallback(async (event: CalendarEvent) => {
         // Phase 6: Handle both workouts and activities
         if (event.resource.type === 'workout') {
@@ -907,6 +928,44 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId, tourOpe
                 onRunningOnlyChange={handleRunningOnlyChange}
             />
 
+            {isMobile ? (
+                <div className="flex-1 min-h-0 overflow-y-auto mt-1 pb-4">
+                    {mobileDays.length === 0 ? (
+                        <p className="px-1 py-10 text-center text-sm text-muted-foreground">{t('noWorkoutsThisMonth')}</p>
+                    ) : (
+                        <div className="space-y-4">
+                            {mobileDays.map(([key, dayEvents]) => (
+                                <div key={key}>
+                                    <div className="mb-1.5 px-1 text-sm font-semibold text-muted-foreground">
+                                        {format(parseISO(key), 'EEEE, MMM d')}
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        {dayEvents.map(ev => {
+                                            const s = eventStyleGetter(ev).style
+                                            return (
+                                                <button
+                                                    key={ev.id}
+                                                    type="button"
+                                                    onClick={() => handleSelectEvent(ev)}
+                                                    className="block w-full rounded-lg px-3 py-2.5 text-left text-sm font-medium shadow-sm transition-opacity active:opacity-80"
+                                                    style={{
+                                                        backgroundColor: s.backgroundColor,
+                                                        borderLeft: s.borderLeft,
+                                                        opacity: s.opacity,
+                                                        color: s.color,
+                                                    }}
+                                                >
+                                                    {ev.title}
+                                                </button>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            ) : (
             <div className="flex-1 w-full flex flex-col landscape:grid landscape:grid-cols-[1fr_220px] md:grid md:grid-cols-[1fr_220px] overflow-visible landscape:overflow-hidden md:overflow-hidden rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] ring-1 ring-black/8 dark:ring-white/20 dark:shadow-[0_8px_30px_rgb(0,0,0,0.35)]">
                 <div className="h-[550px] landscape:h-full md:h-full w-full bg-background overflow-visible relative min-w-0 border-b landscape:border-b-0 landscape:border-r md:border-b-0 md:border-r">
                     <style>{calendarStyles}</style>
@@ -1007,10 +1066,11 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId, tourOpe
                     runningOnly={runningOnly}
                 />
             </div>
+            )}
 
             {/* Workout Dialog */}
             <Dialog open={isWorkoutDialogOpen} onOpenChange={setIsWorkoutDialogOpen}>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="sm:max-w-2xl">
                     <DialogTitle className="sr-only">{t('workoutDetails')}</DialogTitle>
                     <DialogDescription className="sr-only">{t('workoutDetailsDescription')}</DialogDescription>
                     {selectedWorkout && (
@@ -1059,7 +1119,7 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId, tourOpe
 
             {/* Create Workout Dialog */}
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="sm:max-w-2xl">
                     <DialogTitle className="sr-only">{t('createWorkout')}</DialogTitle>
                     <DialogDescription className="sr-only">{t('createWorkoutDescription')}</DialogDescription>
                     {createDate && (
@@ -1078,7 +1138,7 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId, tourOpe
 
             {/* Strength Session Dialog */}
             <Dialog open={isStrengthDialogOpen} onOpenChange={setIsStrengthDialogOpen}>
-                <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+                <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
                     <DialogTitle className="sr-only">{t('strengthSessionDetails')}</DialogTitle>
                     <DialogDescription className="sr-only">{t('strengthSessionDetailsDescription')}</DialogDescription>
                     {selectedStrengthSession && (

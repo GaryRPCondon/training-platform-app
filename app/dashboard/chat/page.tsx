@@ -6,6 +6,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
 import { CoachInterface } from '@/components/chat/coach-interface'
 import { SessionList } from '@/components/chat/session-list'
+import { MobileSessionSwitcher } from '@/components/chat/mobile-session-switcher'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -224,7 +225,7 @@ function ChatPageInner() {
 
     return (
         <div className="space-y-4 h-full flex flex-col">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
                 <div className="flex items-center gap-2">
                     <Button
@@ -402,7 +403,16 @@ function ChatPageInner() {
                 </div>
             )}
 
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-6 min-h-0 h-[calc(100vh-12rem)]">
+            {/* Mobile-only session switcher — the sidebar below is hidden on mobile,
+                so this exposes recent chat history via a dropdown instead. */}
+            <div className="md:hidden">
+                <MobileSessionSwitcher
+                    currentSessionId={selectedSessionId}
+                    onSelectSession={setSelectedSessionId}
+                />
+            </div>
+
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-6 min-h-0 h-[calc(100dvh-12rem)]">
                 {/* Sidebar */}
                 <div className="hidden md:block border rounded-lg p-2 bg-card">
                     <div className="mb-2 px-2 py-1 text-sm font-semibold text-muted-foreground">

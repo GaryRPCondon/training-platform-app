@@ -235,7 +235,7 @@ function NewPlanPageContent() {
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="goalName">{t('goalNameLabel')}</Label>
                                 <Input
@@ -265,7 +265,7 @@ function NewPlanPageContent() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <div>
                                     <Label htmlFor="goalDate">{t('goalDateLabel')}</Label>
@@ -297,7 +297,7 @@ function NewPlanPageContent() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="currentVolume">{t('currentVolumeLabel', { unit: distanceLabel() })}</Label>
                                 <Input
@@ -337,7 +337,7 @@ function NewPlanPageContent() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-3">
                                 <Label>{t('experienceLabel')}</Label>
                                 <RadioGroup value={experienceLevel} onValueChange={(value) => setExperienceLevel(value as 'complete_beginner' | 'beginner' | 'intermediate' | 'advanced')}>

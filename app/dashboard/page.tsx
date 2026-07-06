@@ -96,7 +96,7 @@ export default async function DashboardPage() {
                 <PlanCompletionBanner planId={activePlan.id} planName={activePlan.name} />
             )}
             {gettingStartedState && <GettingStartedCard state={gettingStartedState} />}
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -149,7 +149,7 @@ export default async function DashboardPage() {
             </div>
 
             {/* Phase Progress */}
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <PhaseProgressCard />
                 <WeeklyProgressChart />
             </div>

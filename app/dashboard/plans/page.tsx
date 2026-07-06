@@ -122,9 +122,9 @@ export default function PlansPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                     <Button asChild variant="outline">
                         <Link href="/dashboard/plans/imported">{t('myImported')}</Link>
                     </Button>
