@@ -19,7 +19,7 @@ export type ProviderName = 'deepseek' | 'gemini' | 'anthropic' | 'openai' | 'gro
  * to leave headroom for context and avoid hitting hard limits.
  */
 const PROVIDER_OUTPUT_LIMITS: Record<ProviderName, number> = {
-  'deepseek': 32768,  // deepseek-reasoner (V3.2 thinking): 32K default, 64K max. deepseek-chat (V3.2 non-thinking): 8K max.
+  'deepseek': 32768,  // deepseek-v4-flash supports up to 384K output; capped at 32K here for chat headroom.
   'gemini': 65536,    // Gemini Flash supports up to 65K output
   'anthropic': 8192,  // Claude models typically 8K output
   'openai': 16000,    // GPT-4 Turbo supports 16K output
@@ -32,7 +32,7 @@ const PROVIDER_OUTPUT_LIMITS: Record<ProviderName, number> = {
  * Used to validate that context size doesn't exceed provider capacity
  */
 const PROVIDER_CONTEXT_LIMITS: Record<ProviderName, number> = {
-  'deepseek': 128000,  // 128K context window
+  'deepseek': 128000,  // deepseek-v4-flash context window is 1M; kept conservative at 128K
   'gemini': 1000000,   // 1M context window
   'anthropic': 200000, // 200K context window (Claude Sonnet 4.5)
   'openai': 128000,    // 128K context window (GPT-4 Turbo)

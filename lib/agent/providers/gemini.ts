@@ -92,12 +92,17 @@ export class GeminiProvider implements LLMProvider {
 
         const toolConfig = mapToolChoiceToGeminiConfig(request.toolChoice)
 
+        // gemini-2.5-flash/flash-lite are "thinking" models: hidden reasoning
+        // tokens count against maxOutputTokens, so on a large JSON response they
+        // truncate the visible output mid-string. Callers doing pure extraction
+        // set disableThinking to reclaim the whole budget for the answer.
         const model = this.client.getGenerativeModel({
             model: this.modelName,
             generationConfig: {
                 maxOutputTokens: request.maxTokens || 8192,
                 temperature: request.temperature ?? 1.0,
-            },
+                ...(request.disableThinking ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
+            } as any,
             tools: tools as any,
             toolConfig: toolConfig as any,
         })
@@ -276,7 +281,8 @@ export class GeminiProvider implements LLMProvider {
             generationConfig: {
                 maxOutputTokens: request.maxTokens || 8192,
                 temperature: request.temperature ?? 1.0,
-            },
+                ...(request.disableThinking ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
+            } as any,
             tools: tools as any,
             toolConfig: toolConfig as any,
         })

@@ -87,6 +87,8 @@ export async function parseRunningPlan(
     systemPrompt: isImage ? RUN_PLAN_VISION_SYSTEM_PROMPT : RUN_PLAN_PARSER_SYSTEM_PROMPT,
     maxTokens: PARSE_MAX_TOKENS,
     temperature: 0.1,
+    // Extraction only — keep the whole output budget for JSON, no thinking.
+    disableThinking: true,
   })
 
   let raw: unknown

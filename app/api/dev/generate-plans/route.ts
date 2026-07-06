@@ -151,6 +151,7 @@ async function runOne(
       systemPrompt,
       maxTokens,
       temperature: 0.7,
+      disableThinking: true,
     })
     const parsedPlan = parseLLMResponse(response.content)
     for (const week of parsedPlan.weeks) enrichParsedWorkouts(week.workouts)

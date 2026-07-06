@@ -90,7 +90,8 @@ const MAX_TOKENS_MAP: Record<string, number> = {
   anthropic: 64000,
   grok: 131072,
   openai: 16000,
-  deepseek: 8192,
+  deepseek: 65536, // deepseek-v4-flash: up to 384K output. The old 8192 cap was
+                   // deepseek-chat's ceiling and truncated multi-week plans.
 }
 
 export async function generatePlan(input: PlanGenerationInput): Promise<PlanGenerationResult> {
@@ -133,7 +134,9 @@ export async function generatePlan(input: PlanGenerationInput): Promise<PlanGene
   // Provider selection:
   //   1. User's explicitly preferred provider → respect it.
   //   2. Else GEMINI_API_KEY → Gemini Flash Lite (fast, high output budget, cheap).
-  //   3. Else deepseek-chat.
+  //   3. Else DeepSeek (provider default: deepseek-v4-flash).
+  // Model is left unset for DeepSeek so the provider's current default id applies
+  // (avoids pinning the retired deepseek-chat). Thinking is disabled below.
   const userProviderName = athlete?.preferred_llm_provider || null
   const userModelName = athlete?.preferred_llm_model || undefined
 
@@ -141,13 +144,13 @@ export async function generatePlan(input: PlanGenerationInput): Promise<PlanGene
   let planModelName: string | undefined
   if (userProviderName) {
     planProviderName = userProviderName
-    planModelName = (userProviderName === 'deepseek' && !userModelName) ? 'deepseek-chat' : userModelName
+    planModelName = userModelName
   } else if (process.env.GEMINI_API_KEY) {
     planProviderName = 'gemini'
     planModelName = 'gemini-2.5-flash-lite'
   } else {
     planProviderName = 'deepseek'
-    planModelName = 'deepseek-chat'
+    planModelName = undefined
   }
 
   const provider = createLLMProvider(planProviderName, planModelName)
@@ -159,6 +162,9 @@ export async function generatePlan(input: PlanGenerationInput): Promise<PlanGene
     systemPrompt,
     maxTokens,
     temperature: 0.7,
+    // Pure JSON generation — reasoning tokens would only steal from the output
+    // budget and truncate the plan. Keeps DeepSeek/Gemini in fast non-thinking mode.
+    disableThinking: true,
   })
   const llmDurationSec = ((Date.now() - llmStartTime) / 1000).toFixed(2)
 

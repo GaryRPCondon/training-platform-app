@@ -36,6 +36,15 @@ export interface LLMRequest {
     temperature?: number
     tools?: ToolDefinition[]
     toolChoice?: 'auto' | 'none' | { type: 'function'; function: { name: string } }
+    /**
+     * Disable the model's internal "thinking"/reasoning for this call. Thinking
+     * models (Gemini 2.5, DeepSeek v4) spend hidden reasoning tokens that count
+     * against the output budget, which truncates large JSON responses mid-stream.
+     * Set true for pure JSON-extraction/generation calls (plan gen, parsing,
+     * summaries); leave unset for chat where reasoning helps. Providers without a
+     * thinking mode ignore it.
+     */
+    disableThinking?: boolean
 }
 
 export interface LLMProvider {

@@ -377,6 +377,8 @@ export async function placeSessionsWithLLM(input: ScheduleInput): Promise<Placem
     toolChoice: { type: 'function', function: { name: PLACE_STRENGTH_SESSIONS_TOOL.name } },
     maxTokens: 8000,
     temperature: 0.1,
+    // Deterministic placement via a forced tool call — no reasoning needed.
+    disableThinking: true,
   })
 
   const toolCall = response.toolCalls?.find(tc => tc.name === PLACE_STRENGTH_SESSIONS_TOOL.name)

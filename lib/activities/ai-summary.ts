@@ -531,6 +531,8 @@ export async function generateActivitySummary(
       ],
       maxTokens: 8192,
       temperature: 0.3,
+      // JSON rating + summary — non-thinking keeps output within budget and fast.
+      disableThinking: true,
     }
 
     const response = await provider.generateResponse(llmRequest)

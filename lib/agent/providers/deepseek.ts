@@ -2,6 +2,18 @@ import { LLMProvider, LLMResponse, LLMRequest, ToolCall } from '../provider-inte
 import { mapToolChoiceToOpenAI, streamOpenAICompatible } from './stream-utils'
 import { toOpenAIContent } from './content-mapper'
 
+/**
+ * Apply DeepSeek's runtime thinking toggle to a request body. On deepseek-v4-*,
+ * `thinking: { type: 'disabled' }` gives fast non-thinking output (the old
+ * deepseek-chat behaviour) and frees the whole output budget for the answer —
+ * important for large JSON. Left untouched when the caller expresses no
+ * preference, so the model default applies.
+ */
+function applyThinking(body: Record<string, unknown>, params: LLMRequest): void {
+    if (params.disableThinking === undefined) return
+    body.thinking = { type: params.disableThinking ? 'disabled' : 'enabled' }
+}
+
 export class DeepSeekProvider implements LLMProvider {
     private apiKey: string
     private baseURL = 'https://api.deepseek.com/v1'
@@ -10,7 +22,11 @@ export class DeepSeekProvider implements LLMProvider {
 
     constructor(apiKey: string, modelName?: string) {
         this.apiKey = apiKey
-        this.modelName = modelName || 'deepseek-reasoner'
+        // deepseek-v4-flash replaces the legacy deepseek-chat/deepseek-reasoner
+        // IDs (retired 2026-07-24). Thinking is now a runtime parameter
+        // (see applyThinking) rather than a model choice: Flash serves the old
+        // non-thinking "chat" and thinking "reasoner" behaviours from one id.
+        this.modelName = modelName || 'deepseek-v4-flash'
     }
 
     async generateResponse(params: LLMRequest): Promise<LLMResponse> {
@@ -47,6 +63,7 @@ export class DeepSeekProvider implements LLMProvider {
         }
         const toolChoice = mapToolChoiceToOpenAI(params.toolChoice)
         if (toolChoice) requestBody.tool_choice = toolChoice
+        applyThinking(requestBody, params)
 
         const response = await fetch(`${this.baseURL}/chat/completions`, {
             method: 'POST',
@@ -137,6 +154,7 @@ export class DeepSeekProvider implements LLMProvider {
         if (tools) body.tools = tools
         const toolChoice = mapToolChoiceToOpenAI(params.toolChoice)
         if (toolChoice) body.tool_choice = toolChoice
+        applyThinking(body, params)
 
         return streamOpenAICompatible(
             `${this.baseURL}/chat/completions`,

@@ -52,6 +52,9 @@ export async function parseStrengthProgram(input: ParseInput): Promise<ParseOutp
     systemPrompt: STRENGTH_PARSER_SYSTEM_PROMPT,
     maxTokens: PARSE_MAX_TOKENS,
     temperature: 0.1,
+    // Extraction only — thinking tokens would eat the JSON output budget and
+    // truncate long programs mid-stream (the Gemini failure mode this fixes).
+    disableThinking: true,
   })
 
   let raw: unknown

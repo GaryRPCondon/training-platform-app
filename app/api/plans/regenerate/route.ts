@@ -119,15 +119,12 @@ async function postHandler(request: Request) {
     const userProviderName = demoOverride ? demoOverride.providerName : (athlete?.preferred_llm_provider || 'deepseek')
 
     const providerName: string = userProviderName
-    let modelOverride: string | undefined = demoOverride ? demoOverride.modelName : undefined
+    const modelOverride: string | undefined = demoOverride ? demoOverride.modelName : undefined
 
-    if (providerName === 'deepseek') {
-      // Always use deepseek-chat for both operations and full regeneration.
-      // deepseek-reasoner is too slow (5-20 min, Vercel timeout). deepseek-chat
-      // correctly follows format instructions and has 8K output tokens — sufficient
-      // for ~18-week plans (~3-4K tokens in the regenerated_weeks format).
-      modelOverride = 'deepseek-chat'
-    }
+    // DeepSeek uses the provider default (deepseek-v4-flash) with thinking
+    // disabled on each call below — fast non-thinking output like the old
+    // deepseek-chat, but without pinning the retired id or its 8K ceiling.
+    // (Thinking mode / deepseek-reasoner was too slow: 5-20 min, Vercel timeout.)
 
     console.log(`[Regenerate] Using LLM provider: ${providerName}${modelOverride ? ` (${modelOverride})` : ''}`)
 
@@ -165,7 +162,8 @@ async function postHandler(request: Request) {
         tools: OPERATION_TOOLS,
         toolChoice: 'auto',
         maxTokens,
-        temperature: 0.2 // Lower temperature for consistent operations
+        temperature: 0.2, // Lower temperature for consistent operations
+        disableThinking: true, // fast non-thinking output, full budget for the ops list
       })
 
       const llmDuration = ((Date.now() - llmStartTime) / 1000).toFixed(2)
@@ -321,7 +319,8 @@ async function postHandler(request: Request) {
         { role: 'user', content: userPrompt }
       ],
       maxTokens,
-      temperature: 0.3 // Lower temperature for consistency
+      temperature: 0.3, // Lower temperature for consistency
+      disableThinking: true, // JSON regeneration — keep output within budget, no thinking
     })
 
     const llmDuration = ((Date.now() - llmStartTime) / 1000).toFixed(2)
