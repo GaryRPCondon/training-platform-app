@@ -183,15 +183,15 @@ export function WorkoutLinker({ activity, currentWorkout, onClose }: WorkoutLink
             <CheckCircle className="h-4 w-4 text-green-500" />
             <AlertDescription>
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
                     <div className="font-medium">
                       {t('linkedTo', { type: workoutType(currentWorkout.workout_type) })}
                     </div>
                     <div className="text-sm text-muted-foreground">
                       {t('scheduled', { date: format(parseISO(currentWorkout.scheduled_date), 'PPP') })}
                     </div>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
                       {activity.match_confidence && getConfidenceBadge(activity.match_confidence)}
                       {activity.match_method && (
                         <Badge variant="outline" className="text-xs">
@@ -207,6 +207,7 @@ export function WorkoutLinker({ activity, currentWorkout, onClose }: WorkoutLink
                     size="sm"
                     onClick={handleUnlink}
                     disabled={isLoading}
+                    className="shrink-0"
                   >
                     <Unlink className="h-4 w-4 mr-2" />
                     {t('unlink')}

@@ -87,7 +87,7 @@ export function ActivityDetail({ activity, onClose }: ActivityDetailProps) {
   )
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 min-w-0">
       {/* Activity Header */}
       <div>
         <div className="flex items-start justify-between mb-2">

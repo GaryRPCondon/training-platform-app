@@ -139,7 +139,7 @@ export function MobileNavigation() {
                     <span className="sr-only">{t('toggleMenu')}</span>
                 </Button>
             </DialogTrigger>
-            <DialogContent className="p-0 w-[240px] fixed start-0 top-0 bottom-0 translate-x-0 translate-y-0 data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left rtl:data-[state=closed]:slide-out-to-right rtl:data-[state=open]:slide-in-from-right h-full border-e rounded-none">
+            <DialogContent className="p-0 w-[240px] fixed left-0 start-0 top-0 bottom-0 translate-x-0 translate-y-0 content-start gap-0 overflow-y-auto data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left rtl:data-[state=closed]:slide-out-to-right rtl:data-[state=open]:slide-in-from-right h-full border-e rounded-none">
                 <div className="border-b p-4">
                     <DialogTitle className="flex items-center gap-2 font-semibold">
                         <Link href="/dashboard" onClick={() => setOpen(false)}>

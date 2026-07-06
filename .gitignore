@@ -76,3 +76,9 @@ build_log.txt
 build_output.txt
 remote_schema.sql
 *.code-workspace
+
+# mobile-shots harness: downloaded Chromium cache + generated screenshots
+/.cache/
+docs/mobile_review/after/
+# isolated dev-server build dirs (NEXT_DIST_DIR) used to avoid .next collisions
+/.next-*/

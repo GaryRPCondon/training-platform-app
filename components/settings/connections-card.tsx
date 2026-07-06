@@ -243,7 +243,7 @@ export function ConnectionsCard({ stravaConnected, garminConnected, onRefresh }:
                                 </div>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
                             {stravaConnected ? (
                                 <>
                                     {stravaTest.status === 'success' ? (

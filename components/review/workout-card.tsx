@@ -1594,7 +1594,7 @@ export function WorkoutCard({
             </>
           )}
 
-          <div className="flex gap-2 pt-2">
+          <div className="flex flex-wrap gap-2 pt-2">
             {onClose && (
               <Button onClick={onClose} variant="outline">
                 {t('close')}

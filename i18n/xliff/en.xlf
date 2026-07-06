@@ -1293,6 +1293,11 @@
         <source>Weekly Totals</source>
       </segment>
     </unit>
+    <unit id="noWorkoutsThisMonth">
+      <segment>
+        <source>No workouts scheduled this month</source>
+      </segment>
+    </unit>
     <unit id="intent">
       <segment>
         <source>Intent:</source>
@@ -1607,6 +1612,11 @@
     <unit id="recentChats">
       <segment>
         <source>Recent Chats</source>
+      </segment>
+    </unit>
+    <unit id="selectChatHistory">
+      <segment>
+        <source>Select chat history…</source>
       </segment>
     </unit>
     <unit id="loadingHistory">

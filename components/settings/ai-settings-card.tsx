@@ -338,11 +338,11 @@ export function AISettingsCard() {
                         onValueChange={(v) => setFeedbackTone(TONE_VALUES[v[0]])}
                         aria-label={t('feedbackToneAria')}
                     />
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                        {TONE_VALUES.map((tone) => (
+                    <div className="flex justify-between gap-1 text-xs text-muted-foreground">
+                        {TONE_VALUES.map((tone, i) => (
                             <span
                                 key={tone}
-                                className={feedbackTone === tone ? 'font-medium text-foreground' : ''}
+                                className={`flex-1 ${i === 0 ? 'text-start' : i === TONE_VALUES.length - 1 ? 'text-end' : 'text-center'} ${feedbackTone === tone ? 'font-medium text-foreground' : ''}`}
                             >
                                 {t(TONE_KEYS[tone])}
                             </span>

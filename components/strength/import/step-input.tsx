@@ -185,7 +185,7 @@ export function StepInput({
         </div>
 
         <Tabs value={tab} onValueChange={v => setTab(v as typeof tab)}>
-          <TabsList>
+          <TabsList className="grid h-auto w-full grid-cols-3 sm:inline-flex sm:h-9 sm:w-fit">
             <TabsTrigger value="free_text">{t('tabPasteText')}</TabsTrigger>
             <TabsTrigger value="file">{t('tabUploadFile')}</TabsTrigger>
             <TabsTrigger value="json">{t('tabPasteJson')}</TabsTrigger>
