@@ -6,10 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { useEffect, useState } from 'react'
 import { TrainingPlan } from '@/types/database'
-import { activatePlan } from '@/lib/supabase/plan-activation'
-import { getCurrentAthleteId } from '@/lib/supabase/client'
+import { activatePlan, archivePlanAndGoal } from '@/lib/supabase/plan-activation'
+import { getCurrentAthleteId, createClient } from '@/lib/supabase/client'
 import { format, parseISO } from 'date-fns'
-import { Trash2, Download, Trophy } from 'lucide-react'
+import { Trash2, Download, Trophy, Archive, RotateCcw } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslations } from 'next-intl'
 
@@ -50,14 +50,42 @@ export default function PlansPage() {
         }
     }
 
-    async function handleDelete(planId: number, type: 'active' | 'draft' | 'completed') {
+    async function handleArchive(planId: number) {
+        if (!athleteId) return
+        if (!confirm(t('confirmArchive'))) return
+
+        try {
+            await archivePlanAndGoal(createClient(), planId, athleteId)
+            toast.success(t('archiveSuccess'))
+            await fetchPlans() // Refresh the list
+        } catch (error) {
+            console.error('Error archiving plan:', error)
+            toast.error(t('archiveFailed'))
+        }
+    }
+
+    async function handleReactivate(planId: number) {
+        if (!athleteId) return
+
+        try {
+            await activatePlan(planId, athleteId)
+            toast.success(t('reactivateSuccess'))
+            await fetchPlans() // Refresh the list
+        } catch (error) {
+            console.error('Error reactivating plan:', error)
+            toast.error(t('reactivateFailed'))
+        }
+    }
+
+    async function handleDelete(planId: number, type: 'active' | 'draft' | 'completed' | 'archived') {
+        const historyLike = type === 'completed' || type === 'archived'
         const base =
-            type === 'completed'
+            historyLike
                 ? t('confirmDeleteCompleted')
                 : type === 'active'
                 ? t('confirmDeleteActive')
                 : t('confirmDeleteDraft')
-        const message = type === 'completed'
+        const message = historyLike
             ? base
             : base + t('garminDeleteNote')
 
@@ -90,6 +118,7 @@ export default function PlansPage() {
     const activePlans = plans.filter(p => p.status === 'active')
     const draftPlans = plans.filter(p => p.status === 'draft' || p.status === 'draft_generated')
     const completedPlans = plans.filter(p => p.status === 'completed')
+    const archivedPlans = plans.filter(p => p.status === 'archived')
 
     return (
         <div className="space-y-6">
@@ -155,6 +184,13 @@ export default function PlansPage() {
                                                     >
                                                         <Download className="me-2 h-4 w-4" />
                                                         {t('exportToCalendar')}
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline"
+                                                        onClick={() => handleArchive(plan.id)}
+                                                    >
+                                                        <Archive className="me-2 h-4 w-4" />
+                                                        {t('archiveBtn')}
                                                     </Button>
                                                     <Button
                                                         variant="destructive"
@@ -280,6 +316,67 @@ export default function PlansPage() {
                                                     <Trash2 className="me-2 h-4 w-4" />
                                                     {t('deleteHistoryBtn')}
                                                 </Button>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+
+            {/* Archived Plans */}
+            {archivedPlans.length > 0 && (
+                <div className="grid gap-4">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Archive className="h-5 w-5 text-muted-foreground" />
+                                {t('archivedPlans')}
+                            </CardTitle>
+                            <CardDescription>{t('archivedPlansDesc')}</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-4">
+                                {archivedPlans.map(plan => (
+                                    <Card key={plan.id} className="opacity-80">
+                                        <CardHeader>
+                                            <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+                                                <div>
+                                                    <CardTitle className="text-lg">{plan.name}</CardTitle>
+                                                    <CardDescription>
+                                                        {format(parseISO(plan.start_date), 'MMM d, yyyy')} – {format(parseISO(plan.end_date), 'MMM d, yyyy')}
+                                                    </CardDescription>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    {plan.source === 'import' && <Badge variant="outline">{t('importedBadge')}</Badge>}
+                                                    <Badge variant="secondary">{t('archived')}</Badge>
+                                                </div>
+                                            </div>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                                <div className="text-sm text-muted-foreground">
+                                                    <div>{t('typeLabel', { type: plan.plan_type ?? '' })}</div>
+                                                    <div>{t('createdLabel', { date: format(parseISO(plan.created_at), 'MMM d, yyyy') })}</div>
+                                                </div>
+                                                <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        onClick={() => handleReactivate(plan.id)}
+                                                    >
+                                                        <RotateCcw className="me-2 h-4 w-4" />
+                                                        {t('reactivateBtn')}
+                                                    </Button>
+                                                    <Button
+                                                        variant="destructive"
+                                                        onClick={() => handleDelete(plan.id, 'archived')}
+                                                    >
+                                                        <Trash2 className="me-2 h-4 w-4" />
+                                                        {t('deleteHistoryBtn')}
+                                                    </Button>
+                                                </div>
                                             </div>
                                         </CardContent>
                                     </Card>

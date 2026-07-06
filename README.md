@@ -10,6 +10,8 @@ A closed-loop training platform for runners. trAIner generates plans with founda
 - **Closed-loop**: completed activities are scored against planned workouts with lap-level fidelity. Missed workouts, volume gaps, and fatigue patterns surface as **observations** that the AI coach proposes specific adjustments for — accepted or rejected by you.
 - **Bidirectional Garmin integration**: sync activities in, push structured workouts (with pace targets and warmup/cooldown) out to your watch.
 - **Running + strength in one plan**: deterministic strength scheduling layered onto the running week, with an exercise catalog, structured sessions, and the same accept/reject AI-coach modification flow as runs.
+- **Bring your own plan**: import a plan you already follow — paste free text or JSON, or drop in screenshots/photos and let a vision-capable model parse it — normalized into structured, editable workouts.
+- **Try before you sign up**: a public, writable demo account seeded with real training data lets anyone explore the full app; it resets nightly.
 - **Multi-provider AI**: pick from Google Gemini, DeepSeek, Anthropic Claude, OpenAI, or Grok per user; plan-generation defaults to a high-throughput model independent of your chat preference.
 - **Multi-user with admin approval**: self-registration, admin-gated activation, per-user data isolation, account deletion.
 
@@ -28,14 +30,21 @@ trAIner is built on the assertion that LLMs are good at synthesising and interpr
 ### Plan generation
 - Multiple methodologies and distances (**5K, 10K, half-marathon, marathon**); peak mileage tiers from beginner up to 120+ mpw.
 - **VDOT-based pacing** stamped into each workout at generation time (race-time, time-trial, or self-reported).
+- **Recalculate future paces on fitness change**: opt-in re-stamp of your still-upcoming prescribed paces when your VDOT updates — same math as fresh generation, past/completed workouts untouched.
 - **Time-based and distance-based plans** — supports run/walk programmes (e.g. C25K) alongside conventional distance plans.
 - Automatic **periodization** (Base / Build / Peak / Taper) aligned with your goal date.
+
+### Import existing plans
+- Bring a plan you already follow instead of generating one: **paste free text or JSON, or upload screenshots/photos** (parsed by a vision model).
+- Parsed into structured, **editable** workouts with intensities and pace guidance; low-confidence or non-running content is flagged for review before you commit.
+- Saved as a **private plan with no fixed goal date** — schedule it whenever you like. Strength plans can be imported the same way.
 
 ### AI coaching
 - **Context-aware**: plan, recent activities, lap detail, pace targets, observations, athlete profile.
 - **Plan refinement**: chat to reschedule, swap, or restructure workouts; proposed changes appear as accept/reject cards.
 - **Per-workout discussion**: jump from a workout in the calendar straight into a coach session about that workout.
 - **AI activity summaries**: every imported run gets a generated summary (with lap analysis) stored on the activity card.
+- **Session management**: multiple named chat sessions; delete ones you no longer need.
 
 ### Workout management
 - **Drag-and-drop calendar** (month view) with running-only filter and weekly totals.
@@ -67,6 +76,10 @@ trAIner is built on the assertion that LLMs are good at synthesising and interpr
 - Per-user training plans, integrations, AI provider preference, display language, unit system (metric/imperial), week-start day, dark mode.
 - Admin-only user-management UI.
 - Self-service account deletion with full data wipe.
+
+### Onboarding & demo
+- **Getting-started wizard** guides new users from an empty account to their first plan.
+- **Public demo account**: a shared sandbox seeded with real training data so anyone can explore the full app without signing up, with an in-app **guided tour**.
 
 ## Internationalization
 
@@ -114,6 +127,8 @@ Open <http://localhost:3000> and create the first user; that account becomes adm
 
 Each user picks their preferred chat provider in **Profile → AI Settings**. Plan generation uses your preference if set, falling back to Gemini Flash Lite when no preference is set and `GEMINI_API_KEY` is present (chosen for output token capacity, not chat quality).
 
+**Vision is configured separately.** Screenshot/photo parsing (plan import) uses its own per-user vision provider/model — decoupled from your chat provider, since some chat providers are text-only or ill-suited to images. It defaults through a cost-ordered candidate list (Gemini Flash → GPT-4o → Claude) based on which API keys are present, and can be overridden per user in settings or via `IMPORT_VISION_PROVIDER` / `IMPORT_VISION_MODEL`.
+
 ```env
 ANTHROPIC_API_KEY=...
 OPENAI_API_KEY=...
@@ -146,18 +161,20 @@ Connect from **Profile → Integrations**. Credentials are exchanged for OAuth t
 - **Supabase** (Postgres + auth + RLS); migrations under `supabase/migrations/`
 - **TanStack Query** for client state; React Server Components for server data
 - **Radix UI** primitives via shadcn/ui conventions
-- **Vitest** test suite (400+ tests; run as a pre-commit hook alongside the i18n string gate)
+- **Vitest** test suite (500+ tests; run as a pre-commit hook alongside the i18n string gate)
 
 ### Key modules
 
-- `lib/agent/` — provider-agnostic LLM factory + context loader (athlete, plan, week, recent activities, lap detail, observations).
-- `lib/plans/` — plan generation, structured-workout builder, pace stamping, response parser, validation. Templates live in the `plan_templates` Supabase table.
+- `lib/agent/` — provider-agnostic LLM factory + context loader (athlete, plan, week, recent activities, lap detail, observations); `vision.ts` routes multimodal (screenshot) parsing to a separately-configured vision model.
+- `lib/plans/` — plan generation, structured-workout builder, pace stamping, response parser, validation, future-pace recalculation. Templates live in the `plan_templates` Supabase table.
+- `lib/plans/import/` — parse an imported plan (free text / JSON / images) into normalized structured workouts.
 - `lib/training/vdot.ts` — VDOT/race-time → training paces.
 - `lib/garmin/` — Garmin Connect client (OAuth1+2), workout mapper (Garmin JSON), lap importer.
 - `lib/strava/` — Strava OAuth + activity sync.
 - `lib/activities/` — auto-match, duplicate detection, scoring.
 - `lib/analysis/` — flag detector, observation manager, adjustment proposer/persistence, phase progress.
 - `lib/strength/` — strength parser, deterministic scheduler, exercise mapper, AI-coach tools.
+- `lib/demo/` — public demo-account gating, restricted-route rules, and reset/reseed.
 - `lib/rate-limit/` — Upstash-backed inbound rate limiting (per-user route tiers + per-IP backstop).
 - `app/api/workouts/{split,unsplit,reschedule,update}` — calendar workout mutations.
 - `app/api/garmin/workouts` — Garmin workout export (send / remove).

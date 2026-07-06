@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { ArrowLeft, AlertCircle, Loader2 } from 'lucide-react'
 import { getActiveTrainingPlan } from '@/lib/supabase/queries'
+import { plansOverlap } from '@/lib/supabase/plan-activation'
 import type { TrainingPlan } from '@/types/database'
 import type { RecommendationResponse, UserCriteria } from '@/lib/templates/types'
 import { useTranslations } from 'next-intl'
@@ -81,6 +82,14 @@ function RecommendPageContent() {
     fetchRecommendations()
   }, [searchParams, t])
 
+  // A newly scheduled plan only needs the active plan out of the way when their
+  // date ranges overlap; otherwise it's held as a draft alongside it.
+  const newStart = searchParams.get('startDate') || ''
+  const newEnd = searchParams.get('goalDate') || ''
+  const overlapsActivePlan =
+    !!activePlan && !!newStart && !!newEnd &&
+    plansOverlap(newStart, newEnd, activePlan.start_date, activePlan.end_date)
+
   function handleSelectTemplate(templateId: string) {
     // Navigate to Phase 2 (generation) with all form params
     const generateParams = new URLSearchParams({
@@ -108,9 +117,10 @@ function RecommendPageContent() {
       generateParams.set('preferredRestDays', preferredRestDays)
     }
 
-    // If the user confirmed they want to replace an existing active plan,
-    // forward the flag so /generate → API will archive the old plan.
-    if (replaceConfirmed) {
+    // Only when the new plan overlaps the active one (and the user confirmed)
+    // do we forward the flag to truncate + archive the outgoing plan. Consecutive
+    // plans are generated as a held draft and leave the active plan untouched.
+    if (overlapsActivePlan && replaceConfirmed) {
       generateParams.set('replace_active', 'true')
     }
 
@@ -206,7 +216,7 @@ function RecommendPageContent() {
 
   return (
     <div className="space-y-6">
-      <AlertDialog open={!!activePlan && !replaceConfirmed}>
+      <AlertDialog open={overlapsActivePlan && !replaceConfirmed}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t('replaceTitle')}</AlertDialogTitle>

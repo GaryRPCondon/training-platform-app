@@ -2141,6 +2141,56 @@ Note: any workouts already sent to Garmin Connect will NOT be removed automatica
         <source>Imported</source>
       </segment>
     </unit>
+    <unit id="archiveBtn">
+      <segment>
+        <source>Archive</source>
+      </segment>
+    </unit>
+    <unit id="confirmArchive">
+      <segment>
+        <source>Archive this plan? It will become inactive and move to your Archived Plans, keeping all its workouts and history. You can reactivate it at any time.</source>
+      </segment>
+    </unit>
+    <unit id="archiveSuccess">
+      <segment>
+        <source>Plan archived</source>
+      </segment>
+    </unit>
+    <unit id="archiveFailed">
+      <segment>
+        <source>Failed to archive plan</source>
+      </segment>
+    </unit>
+    <unit id="archivedPlans">
+      <segment>
+        <source>Archived Plans</source>
+      </segment>
+    </unit>
+    <unit id="archivedPlansDesc">
+      <segment>
+        <source>Inactive plans kept for reference — reactivate one to make it your active plan again</source>
+      </segment>
+    </unit>
+    <unit id="archived">
+      <segment>
+        <source>Archived</source>
+      </segment>
+    </unit>
+    <unit id="reactivateBtn">
+      <segment>
+        <source>Reactivate</source>
+      </segment>
+    </unit>
+    <unit id="reactivateSuccess">
+      <segment>
+        <source>Plan reactivated</source>
+      </segment>
+    </unit>
+    <unit id="reactivateFailed">
+      <segment>
+        <source>Failed to reactivate plan</source>
+      </segment>
+    </unit>
   </file>
   <file id="planNew">
     <unit id="defaultGoalName">
@@ -2574,12 +2624,12 @@ Note: any workouts already sent to Garmin Connect will NOT be removed automatica
     </unit>
     <unit id="replaceBodyNamed">
       <segment>
-        <source>You already have an active plan “&lt;strong&gt;{name}&lt;/strong&gt;”. Creating a new one will archive it. Completed workouts from the old plan will stay in your activity history.</source>
+        <source>Your new plan overlaps your active plan “&lt;strong&gt;{name}&lt;/strong&gt;”. Scheduling it will shorten that plan to end where the new one begins and archive it. Completed workouts stay in your history, and you can reactivate it later.</source>
       </segment>
     </unit>
     <unit id="replaceBodyUnnamed">
       <segment>
-        <source>You already have an active plan. Creating a new one will archive it. Completed workouts from the old plan will stay in your activity history.</source>
+        <source>Your new plan overlaps your active plan. Scheduling it will shorten that plan to end where the new one begins and archive it. Completed workouts stay in your history, and you can reactivate it later.</source>
       </segment>
     </unit>
     <unit id="cancel">

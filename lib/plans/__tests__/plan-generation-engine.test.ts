@@ -28,19 +28,24 @@ vi.mock('@/lib/plans/structural-assertions', () => ({
 vi.mock('@/lib/plans/plan-writer', () => ({
   writePlanToDatabase: vi.fn().mockResolvedValue({ workoutsCreated: 42 }),
 }))
-vi.mock('@/lib/supabase/plan-activation', () => ({ archivePlanAndGoal: vi.fn() }))
+vi.mock('@/lib/supabase/plan-activation', () => ({
+  // Real overlap logic (pure) so the guard behaves correctly; archive mocked out.
+  plansOverlap: (aStart: string, aEnd: string, bStart: string, bEnd: string) =>
+    aStart <= bEnd && bStart <= aEnd,
+  truncateAndArchivePlan: vi.fn(),
+}))
 
 import { generatePlan, ActivePlanExistsError } from '@/lib/plans/plan-generation-engine'
 import { createLLMProvider } from '@/lib/agent/factory'
 import { writePlanToDatabase } from '@/lib/plans/plan-writer'
-import { archivePlanAndGoal } from '@/lib/supabase/plan-activation'
+import { truncateAndArchivePlan } from '@/lib/supabase/plan-activation'
 import {
   runStructuralAssertions,
   assertWeekStructure,
 } from '@/lib/plans/structural-assertions'
 
 function makeSupabase(ctx: {
-  activePlan?: { id: number; name: string } | null
+  activePlan?: { id: number; name: string; start_date: string; end_date: string } | null
   existingDrafts?: Array<{ id: number }>
   goalId?: number
   planId?: number
@@ -118,16 +123,35 @@ describe('generatePlan (shared engine)', () => {
     expect(onPlanCreated).toHaveBeenCalledWith(99)
   })
 
-  it('throws ActivePlanExistsError when an active plan exists and replace is off', async () => {
-    const { supabase } = makeSupabase({ activePlan: { id: 5, name: 'Current' } })
+  it('throws ActivePlanExistsError when an OVERLAPPING active plan exists and replace is off', async () => {
+    // Active plan Jan 1 – Mar 1 overlaps the new plan's Jan 5 – Apr 19 window.
+    const { supabase } = makeSupabase({
+      activePlan: { id: 5, name: 'Current', start_date: '2026-01-01', end_date: '2026-03-01' },
+    })
     await expect(generatePlan(baseInput(supabase))).rejects.toBeInstanceOf(ActivePlanExistsError)
     expect(createLLMProvider).not.toHaveBeenCalled() // guard is before the billable call
   })
 
-  it('archives the active plan when replaceActive is true', async () => {
-    const { supabase } = makeSupabase({ activePlan: { id: 5, name: 'Current' }, planId: 77 })
+  it('generates a held draft (no truncation) when the new plan does NOT overlap the active plan', async () => {
+    // Active plan ended Dec 31; the new plan starts Jan 5 → consecutive, no overlap.
+    const { supabase } = makeSupabase({
+      activePlan: { id: 5, name: 'Current', start_date: '2025-09-01', end_date: '2025-12-31' },
+      planId: 88,
+    })
+    const result = await generatePlan(baseInput(supabase))
+    expect(result.planId).toBe(88)
+    expect(truncateAndArchivePlan).not.toHaveBeenCalled()
+    expect(createLLMProvider).toHaveBeenCalledOnce()
+  })
+
+  it('truncates + archives the active plan when it overlaps and replaceActive is true', async () => {
+    const { supabase } = makeSupabase({
+      activePlan: { id: 5, name: 'Current', start_date: '2026-01-01', end_date: '2026-03-01' },
+      planId: 77,
+    })
     const result = await generatePlan(baseInput(supabase, { replaceActive: true }))
-    expect(archivePlanAndGoal).toHaveBeenCalledWith(supabase, 5, 'athlete-1')
+    // Cutoff is the new plan's start date.
+    expect(truncateAndArchivePlan).toHaveBeenCalledWith(supabase, 5, 'athlete-1', '2026-01-05')
     expect(result.planId).toBe(77)
   })
 

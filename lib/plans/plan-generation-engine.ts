@@ -13,7 +13,7 @@ import {
   assertSessionsHaveMainSet,
 } from '@/lib/plans/structural-assertions'
 import { enrichParsedWorkouts, enrichPreWeekWorkouts } from '@/lib/plans/structured-workout-builder'
-import { archivePlanAndGoal } from '@/lib/supabase/plan-activation'
+import { plansOverlap, truncateAndArchivePlan } from '@/lib/supabase/plan-activation'
 
 /**
  * Shared plan-generation engine used by BOTH template generation
@@ -103,18 +103,23 @@ export async function generatePlan(input: PlanGenerationInput): Promise<PlanGene
     llmLogKey, llmLogExtra, onPlanCreated,
   } = input
 
-  // Pre-flight: refuse to generate over an active plan unless the caller opted in
-  // (kept before the billable LLM call). Without this the plan-writer hits a
-  // unique-constraint violation on weekly_plans when week dates collide.
+  // Pre-flight (kept before the billable LLM call): a new plan may be generated
+  // and held as a draft alongside the active plan, as long as their date ranges
+  // don't overlap — consecutive plans have distinct week_start_dates so they
+  // won't collide on the weekly_plans (athlete_id, week_start_date) unique index.
+  // Only an OVERLAPPING new plan needs the active one out of the way; that
+  // requires the caller to opt in (replaceActive), which truncates+archives it.
   const { data: activePlan, error: activePlanError } = await supabase
     .from('training_plans')
-    .select('id, name')
+    .select('id, name, start_date, end_date')
     .eq('athlete_id', athleteId)
     .eq('status', 'active')
     .maybeSingle()
   if (activePlanError) throw activePlanError
-  if (activePlan && !replaceActive) {
-    throw new ActivePlanExistsError({ id: activePlan.id, name: activePlan.name })
+  const overlapsActive =
+    !!activePlan && plansOverlap(startDate, goalDate, activePlan.start_date, activePlan.end_date)
+  if (overlapsActive && !replaceActive) {
+    throw new ActivePlanExistsError({ id: activePlan!.id, name: activePlan!.name })
   }
 
   // If athlete has no VDOT in profile but one was provided for this plan, save it.
@@ -217,8 +222,10 @@ export async function generatePlan(input: PlanGenerationInput): Promise<PlanGene
   }
 
   // LLM succeeded — now mutate the database.
-  if (activePlan && replaceActive) {
-    await archivePlanAndGoal(supabase, activePlan.id, athleteId)
+  // Overlapping replacement: shorten the outgoing plan to end the day before the
+  // new one starts and free its colliding weeks, keeping earlier history intact.
+  if (overlapsActive && replaceActive) {
+    await truncateAndArchivePlan(supabase, activePlan!.id, athleteId, startDate)
   }
 
   const { data: existingDrafts } = await supabase
