@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { format } from 'date-fns'
 
 // ---------------------------------------------------------------------------
 // Supabase mock (overrides vitest.setup.ts global mock)
@@ -179,8 +180,12 @@ describe('getWeeklyProgress', () => {
   })
 
   it('returns status "completed" for day with matching activity', async () => {
+    // Local date, matching how getWeeklyProgress builds its week (date-fns format).
+    // toISOString() is UTC, so between midnight and the UTC offset the two disagree
+    // and the lookup misses — and when the local date is a week boundary the UTC one
+    // falls in the previous week entirely, so find() returns undefined.
     const today = new Date()
-    const dateStr = today.toISOString().split('T')[0]
+    const dateStr = format(today, 'yyyy-MM-dd')
 
     mockFrom
       .mockReturnValueOnce(makeQueryMock({ week_starts_on: 1 }))
@@ -202,7 +207,7 @@ describe('getWeeklyProgress', () => {
     // Use a date 3 days in the future
     const future = new Date()
     future.setDate(future.getDate() + 3)
-    const dateStr = future.toISOString().split('T')[0]
+    const dateStr = format(future, 'yyyy-MM-dd')
 
     mockFrom
       .mockReturnValueOnce(makeQueryMock({ week_starts_on: 1 }))
