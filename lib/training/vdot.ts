@@ -340,12 +340,102 @@ export function getWorkoutPaceType(workoutType: string): keyof TrainingPaces {
 // Default easy pace (6:00/km) used when no training paces are available
 const DEFAULT_EASY_PACE_SEC_PER_KM = 360
 
+/** A single structured_workout component (warmup, cooldown, or a main_set interval). */
+export type StructuredPart = {
+  role?: string
+  intensity?: string
+  target_pace?: string
+  distance_meters?: number
+  duration_seconds?: number
+  duration_minutes?: number
+}
+
+/**
+ * Roles that cover no ground: a standing rest between reps is time on the clock,
+ * not distance. Sizing these at a running pace invents kilometres that were never
+ * planned (a 4 × 60 s rest set added ~1.1 km to one long run before this rule).
+ */
+function isStandingRest(part: StructuredPart): boolean {
+  return (part.role ?? '').toLowerCase() === 'rest' || (part.intensity ?? '').toLowerCase() === 'rest'
+}
+
+/** Seconds prescribed for a part, accepting either duration_seconds or duration_minutes. */
+function partDurationSeconds(part: StructuredPart): number {
+  if (part.duration_seconds) return part.duration_seconds
+  if (part.duration_minutes) return part.duration_minutes * 60
+  return 0
+}
+
+/**
+ * Distance covered by one structured part. Distance-based parts are taken as-is;
+ * time-based parts are converted at that part's OWN pace — its explicit target_pace
+ * when present, otherwise the training pace for its intensity — so an easy float
+ * inside a quality session is sized at E pace, not at the session's hardest pace.
+ */
+function structuredPartDistanceMeters(
+  part: StructuredPart | undefined,
+  trainingPaces: TrainingPaces | null | undefined,
+  fallbackPaceSecPerKm: number
+): number {
+  if (!part) return 0
+  if (part.distance_meters) return part.distance_meters
+  if (isStandingRest(part)) return 0
+  const seconds = partDurationSeconds(part)
+  if (!seconds) return 0
+  const pace = resolvePartPaceSecPerKm(part, trainingPaces, fallbackPaceSecPerKm)
+  return (seconds / pace) * 1000
+}
+
+/** Every structured part of a workout: warmup, each main_set interval, cooldown. */
+function allStructuredParts(structuredWorkout: Record<string, unknown> | null | undefined): StructuredPart[] {
+  const mainSet = structuredWorkout?.main_set
+  if (!structuredWorkout || !Array.isArray(mainSet)) return []
+  const parts: StructuredPart[] = []
+  const warmup = structuredWorkout.warmup as StructuredPart | undefined
+  if (warmup) parts.push(warmup)
+  for (const group of mainSet as Array<{ intervals?: StructuredPart[] }>) {
+    for (const interval of group.intervals ?? []) parts.push(interval)
+  }
+  const cooldown = structuredWorkout.cooldown as StructuredPart | undefined
+  if (cooldown) parts.push(cooldown)
+  return parts
+}
+
+/**
+ * True when a workout prescribes only time — every part carries a duration and none
+ * carries a distance (e.g. Daniels' "steady E run of 90-120 min"). Such a workout has
+ * no distance target of its own: any distance is an estimate derived from pace, so it
+ * must be scored on the clock rather than on that estimate.
+ */
+export function isTimePrescribedWorkout(structuredWorkout: Record<string, unknown> | null | undefined): boolean {
+  const parts = allStructuredParts(structuredWorkout)
+  if (parts.length === 0) return false
+  return parts.every(p => !p.distance_meters && partDurationSeconds(p) > 0)
+}
+
+/** Total prescribed clock time across every structured part, honouring repeat counts. */
+export function totalPrescribedSeconds(structuredWorkout: Record<string, unknown> | null | undefined): number {
+  const mainSet = structuredWorkout?.main_set
+  if (!structuredWorkout || !Array.isArray(mainSet)) return 0
+  let seconds = partDurationSeconds((structuredWorkout.warmup as StructuredPart | undefined) ?? {})
+  for (const group of mainSet as Array<{ repeat?: number; intervals?: StructuredPart[] }>) {
+    const repeats = group.repeat ?? 1
+    for (const interval of group.intervals ?? []) seconds += repeats * partDurationSeconds(interval)
+  }
+  seconds += partDurationSeconds((structuredWorkout.cooldown as StructuredPart | undefined) ?? {})
+  return Math.round(seconds)
+}
+
 /**
  * Calculate total workout distance including warmup, cooldown, and all main_set intervals.
  *
  * When a structured_workout with a main_set array is present, distance is always derived
  * from the structured parts (warmup + all intervals × repeats + cooldown). This is the
  * single source of truth shared by the workout card view, edit mode, and proposal card.
+ *
+ * Each part is sized at its own pace via {@link structuredPartDistanceMeters}, matching
+ * {@link estimateWorkoutDurationSeconds} — the two must agree, or a card can show a
+ * distance and a duration that imply a pace the workout never prescribed.
  *
  * Fallback: returns distanceTargetMeters as-is for non-structured workouts.
  *
@@ -366,29 +456,19 @@ export function calculateTotalWorkoutDistance(
   // Only compute from parts when there is a structured main_set to sum
   if (structuredWorkout && Array.isArray(mainSet)) {
     const easyPace = trainingPaces?.easy ?? DEFAULT_EASY_PACE_SEC_PER_KM
-    const intervalPace = trainingPaces?.interval ?? DEFAULT_EASY_PACE_SEC_PER_KM
-    const metersPerMin = (1000 / easyPace) * 60
 
-    const warmup = structuredWorkout.warmup as { duration_minutes?: number; distance_meters?: number } | undefined
-    const cooldown = structuredWorkout.cooldown as { duration_minutes?: number; distance_meters?: number } | undefined
-    const warmupMeters = warmup?.distance_meters ?? (warmup?.duration_minutes ?? 0) * metersPerMin
-    const cooldownMeters = cooldown?.distance_meters ?? (cooldown?.duration_minutes ?? 0) * metersPerMin
+    const warmupMeters = structuredPartDistanceMeters(
+      structuredWorkout.warmup as StructuredPart | undefined, trainingPaces, easyPace
+    )
+    const cooldownMeters = structuredPartDistanceMeters(
+      structuredWorkout.cooldown as StructuredPart | undefined, trainingPaces, easyPace
+    )
 
     let mainSetMeters = 0
-    for (const group of mainSet as Array<{
-      repeat?: number
-      intervals?: Array<{ distance_meters?: number; duration_seconds?: number; intensity?: string }>
-    }>) {
+    for (const group of mainSet as Array<{ repeat?: number; intervals?: StructuredPart[] }>) {
       const repeats = group.repeat ?? 1
       for (const interval of group.intervals ?? []) {
-        if (interval.distance_meters) {
-          mainSetMeters += repeats * interval.distance_meters
-        } else if (interval.duration_seconds) {
-          // Time-based interval: estimate distance from pace (recovery uses easy, work uses interval)
-          const isRecovery = (interval.intensity ?? '').toLowerCase().includes('recovery')
-          const paceSecPerKm = isRecovery ? easyPace : intervalPace
-          mainSetMeters += repeats * (interval.duration_seconds / paceSecPerKm) * 1000
-        }
+        mainSetMeters += repeats * structuredPartDistanceMeters(interval, trainingPaces, easyPace)
       }
     }
 
@@ -460,10 +540,12 @@ export function estimateWorkoutDurationSeconds(
   const fallback = fallbackPaceSecPerKm ?? trainingPaces?.easy ?? DEFAULT_EASY_PACE_SEC_PER_KM
   const mainSet = structuredWorkout?.main_set
 
-  const partSeconds = (part: { duration_seconds?: number; duration_minutes?: number; distance_meters?: number; target_pace?: string; intensity?: string } | undefined): number => {
+  const partSeconds = (part: StructuredPart | undefined): number => {
     if (!part) return 0
-    if (part.duration_seconds) return part.duration_seconds
-    if (part.duration_minutes) return part.duration_minutes * 60
+    // A prescribed duration wins — including standing rests, which cost clock time
+    // even though they cover no distance.
+    const seconds = partDurationSeconds(part)
+    if (seconds) return seconds
     if (part.distance_meters) {
       const pace = resolvePartPaceSecPerKm(part, trainingPaces, fallback)
       return (part.distance_meters / 1000) * pace
@@ -472,14 +554,14 @@ export function estimateWorkoutDurationSeconds(
   }
 
   if (structuredWorkout && Array.isArray(mainSet)) {
-    let seconds = partSeconds(structuredWorkout.warmup as Parameters<typeof partSeconds>[0])
-    for (const group of mainSet as Array<{ repeat?: number; intervals?: Array<Parameters<typeof partSeconds>[0]> }>) {
+    let seconds = partSeconds(structuredWorkout.warmup as StructuredPart | undefined)
+    for (const group of mainSet as Array<{ repeat?: number; intervals?: StructuredPart[] }>) {
       const repeats = group.repeat ?? 1
       for (const interval of group.intervals ?? []) {
         seconds += repeats * partSeconds(interval)
       }
     }
-    seconds += partSeconds(structuredWorkout.cooldown as Parameters<typeof partSeconds>[0])
+    seconds += partSeconds(structuredWorkout.cooldown as StructuredPart | undefined)
     return Math.round(seconds)
   }
 

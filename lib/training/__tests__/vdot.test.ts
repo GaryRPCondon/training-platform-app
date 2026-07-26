@@ -4,6 +4,8 @@ import {
   calculateTrainingPaces,
   calculateTotalWorkoutDistance,
   estimateWorkoutDurationSeconds,
+  isTimePrescribedWorkout,
+  totalPrescribedSeconds,
   formatPace,
   formatTime,
   parseRaceTime
@@ -51,19 +53,119 @@ describe('calculateTotalWorkoutDistance', () => {
     cooldown: { duration_minutes: 10 },
   }
 
-  it('uses the athlete training paces to size time-based segments', () => {
+  it('sizes each time-based segment at its own intensity pace', () => {
     const paces = { easy: 300, marathon: 255, tempo: 245, interval: 235, repetition: 220, walk: 600 }
     const total = calculateTotalWorkoutDistance(7500, 'tempo', tempoStructured, paces)
-    // warmup 10min@5:00=2000 + main 25min@interval(235)≈6383 + cooldown 2000 ≈ 10.4 km
-    expect(total).toBeGreaterThan(10000)
-    expect(total).toBeLessThan(11000)
+    // warmup 10min@easy(300)=2000 + main 25min@tempo(245)=6122 + cooldown 2000
+    expect(total).toBe(2000 + Math.round((1500 / 245) * 1000) + 2000)
   })
 
   it('without paces falls back to 6:00/km and understates the distance (regression)', () => {
     // This is the bug: null paces yields the 6:00/km default → 7.5 km, far below
-    // the ~10.4 km a faster athlete actually covers in the same time.
+    // the ~10.1 km a faster athlete actually covers in the same time.
     const total = calculateTotalWorkoutDistance(7500, 'tempo', tempoStructured, null)
     expect(total).toBe(7500)
+  })
+
+  it('sizes an easy float inside a quality session at E pace, not the session pace', () => {
+    // Regression (workout 11668): a 30 min E block inside a long run with T reps was
+    // priced at interval pace, inflating a 12 mi (19 km) long run to 22.1 km.
+    const paces = { easy: 309, marathon: 256, tempo: 242, interval: 222, repetition: 208, walk: 600 }
+    const longRun = {
+      main_set: [
+        { repeat: 1, intervals: [{ role: 'warmup', intensity: 'easy', distance_meters: 3218 }] },
+        { repeat: 2, intervals: [
+          { role: 'work', intensity: 'tempo', distance_meters: 1609 },
+          { role: 'rest', intensity: 'rest', duration_seconds: 60 },
+        ] },
+        { repeat: 1, intervals: [{ role: 'recovery', intensity: 'easy', duration_seconds: 1800 }] },
+        { repeat: 2, intervals: [
+          { role: 'work', intensity: 'tempo', distance_meters: 1609 },
+          { role: 'rest', intensity: 'rest', duration_seconds: 60 },
+        ] },
+        { repeat: 1, intervals: [{ role: 'cooldown', intensity: 'easy', distance_meters: 3218 }] },
+      ],
+    }
+    const total = calculateTotalWorkoutDistance(null, 'long_run', longRun, paces)
+    // 12872 m of distance-based parts + 1800 s @ easy(309) = 5825 m; rests contribute 0.
+    expect(total).toBe(12872 + Math.round((1800 / 309) * 1000))
+    // The old behaviour priced the float and the rests at interval pace → 22061.
+    expect(total).toBeLessThan(19000)
+  })
+
+  it('treats standing rests as zero distance but keeps jogged recoveries', () => {
+    const paces = { easy: 300, marathon: 255, tempo: 245, interval: 235, repetition: 220, walk: 600 }
+    const withRest = {
+      main_set: [{ repeat: 4, intervals: [
+        { role: 'work', intensity: 'interval', distance_meters: 400 },
+        { role: 'rest', intensity: 'rest', duration_seconds: 90 },
+      ] }],
+    }
+    const withJog = {
+      main_set: [{ repeat: 4, intervals: [
+        { role: 'work', intensity: 'interval', distance_meters: 400 },
+        { role: 'recovery', intensity: 'easy', duration_seconds: 90 },
+      ] }],
+    }
+    expect(calculateTotalWorkoutDistance(null, 'intervals', withRest, paces)).toBe(1600)
+    expect(calculateTotalWorkoutDistance(null, 'intervals', withJog, paces)).toBe(1600 + 4 * 300)
+  })
+
+  it('converts duration_minutes on a main_set interval', () => {
+    const paces = { easy: 300, marathon: 255, tempo: 245, interval: 235, repetition: 220, walk: 600 }
+    const structured = {
+      main_set: [{ repeat: 1, intervals: [{ role: 'work', intensity: 'easy', duration_minutes: 20 }] }],
+    }
+    // Previously duration_minutes was ignored on intervals, yielding 0 m.
+    expect(calculateTotalWorkoutDistance(null, 'easy_run', structured, paces)).toBe(4000)
+  })
+})
+
+describe('isTimePrescribedWorkout / totalPrescribedSeconds', () => {
+  // Daniels "steady E run of 90-120 min": no distance anywhere in the structure.
+  const steadyEasy = {
+    main_set: [{ repeat: 1, intervals: [{ role: 'work', intensity: 'easy', duration_seconds: 5400 }] }],
+  }
+
+  it('identifies a workout prescribed purely by time', () => {
+    expect(isTimePrescribedWorkout(steadyEasy)).toBe(true)
+    expect(totalPrescribedSeconds(steadyEasy)).toBe(5400)
+  })
+
+  it('does not treat a mixed distance/time workout as time-prescribed', () => {
+    const mixed = {
+      main_set: [{ repeat: 2, intervals: [
+        { role: 'work', intensity: 'tempo', distance_meters: 1609 },
+        { role: 'rest', intensity: 'rest', duration_seconds: 60 },
+      ] }],
+    }
+    expect(isTimePrescribedWorkout(mixed)).toBe(false)
+  })
+
+  it('does not treat a distance-only workout as time-prescribed', () => {
+    const distanceOnly = {
+      main_set: [{ repeat: 1, intervals: [{ role: 'work', intensity: 'easy', distance_meters: 9654 }] }],
+    }
+    expect(isTimePrescribedWorkout(distanceOnly)).toBe(false)
+    expect(totalPrescribedSeconds(distanceOnly)).toBe(0)
+  })
+
+  it('counts repeats and warmup/cooldown toward the prescribed total', () => {
+    const structured = {
+      warmup: { duration_minutes: 10 },
+      main_set: [{ repeat: 4, intervals: [
+        { role: 'work', intensity: 'interval', duration_seconds: 120 },
+        { role: 'recovery', intensity: 'easy', duration_seconds: 90 },
+      ] }],
+      cooldown: { duration_minutes: 10 },
+    }
+    expect(isTimePrescribedWorkout(structured)).toBe(true)
+    expect(totalPrescribedSeconds(structured)).toBe(600 + 4 * 210 + 600)
+  })
+
+  it('returns false for a workout with no structured main_set', () => {
+    expect(isTimePrescribedWorkout(null)).toBe(false)
+    expect(isTimePrescribedWorkout({ target_pace: '4:00' })).toBe(false)
   })
 })
 

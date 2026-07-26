@@ -113,9 +113,11 @@ export async function POST(request: Request) {
 
     // Opt-in: re-stamp paces on the athlete's upcoming workouts using the new VDOT.
     let repaced = 0
+    let weeksUpdated = 0
     if (recalcFuturePaces && plan) {
       const result = await recalcActivePlanFuturePaces(supabase, athleteId)
       repaced = result.repaced
+      weeksUpdated = result.weeksUpdated
     }
 
     return NextResponse.json({
@@ -123,6 +125,7 @@ export async function POST(request: Request) {
       vdot,
       training_paces: trainingPaces,
       repaced,
+      weeks_updated: weeksUpdated,
     })
   } catch (error) {
     console.error('Update VDOT error:', error)
