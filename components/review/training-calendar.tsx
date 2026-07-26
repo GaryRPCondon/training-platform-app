@@ -194,7 +194,7 @@ export function TrainingCalendar({ workouts, trainingPaces, vdot, onWorkoutSelec
       </div>
 
       <Dialog open={!!selectedWorkout} onOpenChange={() => setSelectedWorkout(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto">
           <DialogTitle className="sr-only">{t('workoutDetails')}</DialogTitle>
           <DialogDescription className="sr-only">{t('workoutDetailsDescription')}</DialogDescription>
           {selectedWorkout && (

@@ -13,7 +13,9 @@ import { Button } from '@/components/ui/button'
 import { WorkoutCard } from '@/components/review/workout-card'
 import { ActivityDetail } from '@/components/activities/activity-detail'
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import { AlertTriangle, X as XIcon } from 'lucide-react'
+import { Activity as ActivityIcon, AlertTriangle, Dumbbell, X as XIcon } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
 import { getWorkoutColor, normalizeActivityType, isRunningActivityType } from '@/lib/constants/workout-colors'
 import { toDisplayDistance, distanceLabel, type UnitSystem } from '@/lib/utils/units'
@@ -29,6 +31,7 @@ import { useTranslations } from 'next-intl'
 import { getSessionsForDateRange } from '@/lib/supabase/strength-queries'
 import { queryKeys } from '@/lib/query-keys'
 import { StrengthCellContext, StrengthDayCellWrapper } from './strength-day-cell-wrapper'
+import { strengthStatusClasses } from './strength-icon-strip'
 import { SessionDetailDialog } from '@/components/strength/session-detail-dialog'
 
 // Custom styles to enable text wrapping in calendar events (max 2 lines)
@@ -98,6 +101,12 @@ type CalendarEvent = {
         | { type: 'workout'; data: WorkoutWithDetails }
         | { type: 'activity'; data: Activity }
 }
+
+// One line in the mobile agenda: a workout/activity event (activities linked to the
+// workout above are `nested` → indented) or a strength session.
+type MobileRow =
+    | { kind: 'event'; id: string; event: CalendarEvent; nested: boolean }
+    | { kind: 'strength'; id: string; session: StrengthSession }
 
 const DnDCalendar = withDragAndDrop<CalendarEvent>(Calendar)
 
@@ -234,16 +243,33 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId, tourOpe
         return false
     })
 
+    // Mobile-only: hide synced activities so the list reads as the plan for the month.
+    // Defaults to on — the day rows still show completion state (✓ / ⚠ / ✗) without them.
+    const [plannedOnly, setPlannedOnly] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('calendar-planned-only') !== 'false'
+        }
+        return true
+    })
+
     const handleRunningOnlyChange = useCallback((value: boolean) => {
         setRunningOnly(value)
         localStorage.setItem('calendar-running-only', String(value))
     }, [])
+
+    const handlePlannedOnlyChange = useCallback((value: boolean) => {
+        setPlannedOnly(value)
+        localStorage.setItem('calendar-planned-only', String(value))
+    }, [])
+
+    // Stable for the lifetime of the mount — the agenda highlight/scroll anchor.
+    const todayKey = useMemo(() => format(new Date(), 'yyyy-MM-dd'), [])
     const queryClient = useQueryClient()
     const supabase = createClient()
     const router = useRouter()
 
     // Get athlete profile for week start preference
-    const { data: athlete } = useQuery({
+    const { data: athlete, isLoading: isAthleteLoading } = useQuery({
         queryKey: ['athlete'],
         queryFn: getAthleteProfile,
     })
@@ -664,19 +690,82 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId, tourOpe
     }, [workouts, rawActivities, preferredUnits, runningOnly])
 
     // This month's events grouped by day, for the mobile list view. Chronological.
+    //
+    // Each day's rows are ordered planned-workout-first with any activity that is
+    // linked to that workout nested underneath it (`nested: true` → indented), so the
+    // plan/actual relationship is readable without the desktop side-by-side layout.
+    // Unlinked activities land at the end of the day, un-indented.
+    // Strength sessions get their own row per day (the desktop icon strip has no
+    // equivalent here — a list row is a bigger tap target and can show the title).
     const mobileDays = useMemo(() => {
-        const monthStart = startOfMonth(currentDate)
-        const monthEnd = endOfMonth(currentDate)
+        const monthStartKey = format(startOfMonth(currentDate), 'yyyy-MM-dd')
+        const monthEndKey = format(endOfMonth(currentDate), 'yyyy-MM-dd')
+        const inMonth = (key: string) => key >= monthStartKey && key <= monthEndKey
+
         const groups = new Map<string, CalendarEvent[]>()
         for (const ev of [...events].sort((a, b) => a.start.getTime() - b.start.getTime())) {
-            if (ev.start < monthStart || ev.start > monthEnd) continue
             const key = format(ev.start, 'yyyy-MM-dd')
+            if (!inMonth(key)) continue
             const list = groups.get(key)
             if (list) list.push(ev)
             else groups.set(key, [ev])
         }
-        return [...groups.entries()]
-    }, [events, currentDate])
+
+        const dayKeys = new Set(groups.keys())
+        // Strength-only days would otherwise be missing from the list entirely.
+        for (const key of sessionsByDate.keys()) if (inMonth(key)) dayKeys.add(key)
+        // Always emit a row for today (even when empty) so the "today" highlight and
+        // the auto-scroll below have something to anchor on.
+        if (inMonth(todayKey)) dayKeys.add(todayKey)
+
+        return [...dayKeys]
+            .sort((a, b) => a.localeCompare(b))
+            .map(key => {
+                const dayEvents = groups.get(key) ?? []
+                const workoutEvents = dayEvents.filter(ev => ev.resource.type === 'workout')
+                const activityEvents = plannedOnly
+                    ? []
+                    : dayEvents.filter(ev => ev.resource.type === 'activity')
+
+                const rows: MobileRow[] = []
+                const nestedIds = new Set<string>()
+                for (const workout of workoutEvents) {
+                    rows.push({ kind: 'event', id: workout.id, event: workout, nested: false })
+                    const workoutId = workout.resource.data.id
+                    for (const activity of activityEvents) {
+                        if ((activity.resource.data as Activity).planned_workout_id === workoutId) {
+                            nestedIds.add(activity.id)
+                            rows.push({ kind: 'event', id: activity.id, event: activity, nested: true })
+                        }
+                    }
+                }
+                for (const activity of activityEvents) {
+                    if (!nestedIds.has(activity.id)) {
+                        rows.push({ kind: 'event', id: activity.id, event: activity, nested: false })
+                    }
+                }
+                for (const session of sessionsByDate.get(key) ?? []) {
+                    rows.push({ kind: 'strength', id: `strength-${session.id}`, session })
+                }
+
+                return { key, rows, isToday: key === todayKey }
+            })
+    }, [events, sessionsByDate, currentDate, todayKey, plannedOnly])
+
+    // Centre the mobile list on today whenever the visible month changes to one that
+    // contains today (including first paint), so the user never has to hunt for it.
+    const todayRowRef = useRef<HTMLDivElement | null>(null)
+    const scrolledMonthRef = useRef<string | null>(null)
+    useEffect(() => {
+        // Wait for both queries to resolve: mobileDays is never empty when today is in
+        // view (it synthesises a row for today), so scrolling before the data lands
+        // would centre a one-row list and then mark the month as done.
+        if (!isMobile || !rawWorkouts || !rawActivities) return
+        const monthKey = format(currentDate, 'yyyy-MM')
+        if (scrolledMonthRef.current === monthKey) return
+        scrolledMonthRef.current = monthKey
+        todayRowRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    }, [isMobile, currentDate, mobileDays, rawWorkouts, rawActivities])
 
     const handleSelectEvent = useCallback(async (event: CalendarEvent) => {
         // Phase 6: Handle both workouts and activities
@@ -799,6 +888,9 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId, tourOpe
         const newDate = new Date(currentDate)
         if (action === 'TODAY') {
             setCurrentDate(new Date())
+            // Already on this month? The scroll effect below won't re-run, so re-centre
+            // the mobile agenda on today explicitly.
+            requestAnimationFrame(() => todayRowRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' }))
         } else if (action === 'PREV') {
             newDate.setMonth(newDate.getMonth() - 1)
             setCurrentDate(newDate)
@@ -917,6 +1009,13 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId, tourOpe
         }
     }, [queryClient, t])
 
+    // Hold the first paint until the athlete's week-start preference is known —
+    // rendering with the Sunday default first makes the grid visibly re-flow to
+    // Monday once the profile query resolves.
+    if (isAthleteLoading) {
+        return <Skeleton className="h-full min-h-[500px] w-full rounded-md" />
+    }
+
     return (
         <div className="h-full w-full flex flex-col overflow-hidden">
             <CustomToolbar
@@ -926,6 +1025,8 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId, tourOpe
                 isAutoMatching={isAutoMatching}
                 runningOnly={runningOnly}
                 onRunningOnlyChange={handleRunningOnlyChange}
+                plannedOnly={isMobile ? plannedOnly : undefined}
+                onPlannedOnlyChange={isMobile ? handlePlannedOnlyChange : undefined}
             />
 
             {isMobile ? (
@@ -934,32 +1035,84 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId, tourOpe
                         <p className="px-1 py-10 text-center text-sm text-muted-foreground">{t('noWorkoutsThisMonth')}</p>
                     ) : (
                         <div className="space-y-4">
-                            {mobileDays.map(([key, dayEvents]) => (
-                                <div key={key}>
-                                    <div className="mb-1.5 px-1 text-sm font-semibold text-muted-foreground">
-                                        {format(parseISO(key), 'EEEE, MMM d')}
+                            {mobileDays.map(({ key, rows, isToday }) => (
+                                <div
+                                    key={key}
+                                    ref={isToday ? todayRowRef : undefined}
+                                    className={cn(
+                                        'scroll-mt-4',
+                                        isToday && 'rounded-xl bg-primary/10 p-2 ring-2 ring-primary'
+                                    )}
+                                >
+                                    <div className="mb-1.5 flex items-center gap-2 px-1 text-sm font-semibold">
+                                        {isToday && (
+                                            <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-primary-foreground">
+                                                {t('today')}
+                                            </span>
+                                        )}
+                                        <span className={isToday ? 'text-foreground' : 'text-muted-foreground'}>
+                                            {format(parseISO(key), 'EEEE, MMM d')}
+                                        </span>
                                     </div>
-                                    <div className="space-y-1.5">
-                                        {dayEvents.map(ev => {
-                                            const s = eventStyleGetter(ev).style
-                                            return (
-                                                <button
-                                                    key={ev.id}
-                                                    type="button"
-                                                    onClick={() => handleSelectEvent(ev)}
-                                                    className="block w-full rounded-lg px-3 py-2.5 text-left text-sm font-medium shadow-sm transition-opacity active:opacity-80"
-                                                    style={{
-                                                        backgroundColor: s.backgroundColor,
-                                                        borderLeft: s.borderLeft,
-                                                        opacity: s.opacity,
-                                                        color: s.color,
-                                                    }}
-                                                >
-                                                    {ev.title}
-                                                </button>
-                                            )
-                                        })}
-                                    </div>
+                                    {rows.length === 0 ? (
+                                        <p className="px-1 py-1 text-sm text-muted-foreground">{t('nothingScheduled')}</p>
+                                    ) : (
+                                        <div className="space-y-1.5">
+                                            {rows.map(row => {
+                                                if (row.kind === 'strength') {
+                                                    const { session } = row
+                                                    return (
+                                                        <button
+                                                            key={row.id}
+                                                            type="button"
+                                                            onClick={() => handleOpenStrengthSession(session.id)}
+                                                            className={cn(
+                                                                'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition-opacity active:opacity-80',
+                                                                strengthStatusClasses(session.completion_status)
+                                                            )}
+                                                        >
+                                                            <Dumbbell className="h-4 w-4 shrink-0" aria-hidden="true" />
+                                                            <span className="min-w-0 flex-1 truncate">{session.title}</span>
+                                                            {session.estimated_duration_minutes != null && (
+                                                                <span className="shrink-0 text-xs opacity-80">
+                                                                    {t('durationMin', { min: session.estimated_duration_minutes })}
+                                                                </span>
+                                                            )}
+                                                        </button>
+                                                    )
+                                                }
+                                                const { event: ev, nested } = row
+                                                const s = eventStyleGetter(ev).style
+                                                const isActivity = ev.resource.type === 'activity'
+                                                return (
+                                                    <button
+                                                        key={row.id}
+                                                        type="button"
+                                                        onClick={() => handleSelectEvent(ev)}
+                                                        className={cn(
+                                                            'flex w-full items-center gap-1.5 rounded-lg px-3 text-left shadow-sm transition-opacity active:opacity-80',
+                                                            isActivity ? 'py-2 text-xs font-normal' : 'py-2.5 text-sm font-medium',
+                                                            nested && 'ms-6 w-[calc(100%-1.5rem)]'
+                                                        )}
+                                                        style={{
+                                                            backgroundColor: s.backgroundColor,
+                                                            borderLeft: s.borderLeft,
+                                                            opacity: s.opacity,
+                                                            color: s.color,
+                                                        }}
+                                                    >
+                                                        {isActivity && (
+                                                            <>
+                                                                <ActivityIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                                                <span className="sr-only">{t('activityLabel')}</span>
+                                                            </>
+                                                        )}
+                                                        <span className="min-w-0 truncate">{ev.title}</span>
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
@@ -1070,7 +1223,9 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId, tourOpe
 
             {/* Workout Dialog */}
             <Dialog open={isWorkoutDialogOpen} onOpenChange={setIsWorkoutDialogOpen}>
-                <DialogContent className="sm:max-w-2xl">
+                {/* max-h + scroll: in mobile landscape the card is taller than the viewport,
+                    and without this the header controls and footer buttons are unreachable. */}
+                <DialogContent className="sm:max-w-2xl max-h-[90dvh] overflow-y-auto">
                     <DialogTitle className="sr-only">{t('workoutDetails')}</DialogTitle>
                     <DialogDescription className="sr-only">{t('workoutDetailsDescription')}</DialogDescription>
                     {selectedWorkout && (
@@ -1119,7 +1274,7 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId, tourOpe
 
             {/* Create Workout Dialog */}
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-                <DialogContent className="sm:max-w-2xl">
+                <DialogContent className="sm:max-w-2xl max-h-[90dvh] overflow-y-auto">
                     <DialogTitle className="sr-only">{t('createWorkout')}</DialogTitle>
                     <DialogDescription className="sr-only">{t('createWorkoutDescription')}</DialogDescription>
                     {createDate && (
@@ -1138,7 +1293,7 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId, tourOpe
 
             {/* Strength Session Dialog */}
             <Dialog open={isStrengthDialogOpen} onOpenChange={setIsStrengthDialogOpen}>
-                <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+                <DialogContent className="sm:max-w-2xl max-h-[90dvh] flex flex-col overflow-hidden">
                     <DialogTitle className="sr-only">{t('strengthSessionDetails')}</DialogTitle>
                     <DialogDescription className="sr-only">{t('strengthSessionDetailsDescription')}</DialogDescription>
                     {selectedStrengthSession && (
@@ -1161,7 +1316,7 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId, tourOpe
 
             {/* Activity Dialog */}
             <Dialog open={isActivityDialogOpen} onOpenChange={setIsActivityDialogOpen}>
-                <DialogContent className="sm:max-w-[595px] max-h-[90vh] overflow-y-auto">
+                <DialogContent className="sm:max-w-[595px] max-h-[90dvh] overflow-y-auto">
                     <DialogTitle className="sr-only">{t('activityDetails')}</DialogTitle>
                     <DialogDescription className="sr-only">{t('activityDetailsDescription')}</DialogDescription>
                     {selectedActivity && (

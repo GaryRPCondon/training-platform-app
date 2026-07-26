@@ -25,7 +25,8 @@ import { interpretAccuracyScore } from '@/lib/activities/scoring'
 import { useUnits } from '@/lib/hooks/use-units'
 import { formatDistance as fmtDist, formatClock, paceParts, type UnitSystem } from '@/lib/utils/units'
 import { toast } from 'sonner'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { getAthleteProfile } from '@/lib/supabase/queries'
 import { useTranslations } from 'next-intl'
 import { useEnumLabels } from '@/lib/i18n/enum-labels'
 import { SplitDialog } from '@/components/calendar/split-dialog'
@@ -914,6 +915,11 @@ export function WorkoutCard({
   const { workoutType: workoutTypeLabel, completionStatus } = useEnumLabels()
   const queryClient = useQueryClient()
 
+  // Reschedule date picker must honour the athlete's first-day-of-week preference
+  // (same ['athlete'] query key as the calendar, so this is a cache hit in practice).
+  const { data: athlete } = useQuery({ queryKey: ['athlete'], queryFn: getAthleteProfile })
+  const weekStartsOn = (athlete?.week_starts_on ?? 0) as 0 | 1 | 2 | 3 | 4 | 5 | 6
+
   const [isEditing, setIsEditing] = useState(isNew)
   const [isSaving, setIsSaving] = useState(false)
   const [editWorkoutType, setEditWorkoutType] = useState<typeof WORKOUT_TYPES[number]>(workout.workout_type)
@@ -1447,6 +1453,7 @@ export function WorkoutCard({
               <PopoverContent className="w-auto p-0" align="start">
                 <CalendarPicker
                   mode="single"
+                  weekStartsOn={weekStartsOn}
                   selected={parseISO(workout.scheduled_date)}
                   onSelect={(date) => date && handleReschedule(date)}
                   initialFocus
@@ -1814,7 +1821,7 @@ export function WorkoutCard({
       )}
       {canUnsplit && (
         <AlertDialog open={isMergeConfirmOpen} onOpenChange={setIsMergeConfirmOpen}>
-          <AlertDialogContent className="md:left-[calc(108px+min(640px,50vw))]">
+          <AlertDialogContent className="lg:left-[calc(108px+min(640px,50vw))]">
             <AlertDialogHeader>
               <AlertDialogTitle>{t('mergeTitle')}</AlertDialogTitle>
               <AlertDialogDescription>

@@ -15,9 +15,12 @@ interface CustomToolbarProps {
     isAutoMatching?: boolean
     runningOnly?: boolean
     onRunningOnlyChange?: (value: boolean) => void
+    /** Mobile agenda only — hides synced activities, leaving just planned workouts. */
+    plannedOnly?: boolean
+    onPlannedOnlyChange?: (value: boolean) => void
 }
 
-export function CustomToolbar({ date, onNavigate, onAutoMatch, isAutoMatching, runningOnly, onRunningOnlyChange }: CustomToolbarProps) {
+export function CustomToolbar({ date, onNavigate, onAutoMatch, isAutoMatching, runningOnly, onRunningOnlyChange, plannedOnly, onPlannedOnlyChange }: CustomToolbarProps) {
     const t = useTranslations('calendar')
     return (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4 px-2">
@@ -80,21 +83,38 @@ export function CustomToolbar({ date, onNavigate, onAutoMatch, isAutoMatching, r
                     {isAutoMatching ? t('matchingStatus') : ''}
                 </div>
             </div>
-            {onRunningOnlyChange && (
-                <div className="flex items-center gap-2">
-                    <Label
-                        htmlFor="running-only"
-                        className="text-xs text-muted-foreground cursor-pointer select-none"
-                    >
-                        {t('runningOnly')}
-                    </Label>
-                    <Switch
-                        id="running-only"
-                        checked={runningOnly}
-                        onCheckedChange={onRunningOnlyChange}
-                    />
-                </div>
-            )}
+            <div className="flex items-center gap-4">
+                {onRunningOnlyChange && (
+                    <div className="flex items-center gap-2">
+                        <Label
+                            htmlFor="running-only"
+                            className="text-xs text-muted-foreground cursor-pointer select-none"
+                        >
+                            {t('runningOnly')}
+                        </Label>
+                        <Switch
+                            id="running-only"
+                            checked={runningOnly}
+                            onCheckedChange={onRunningOnlyChange}
+                        />
+                    </div>
+                )}
+                {onPlannedOnlyChange && (
+                    <div className="flex items-center gap-2">
+                        <Label
+                            htmlFor="planned-only"
+                            className="text-xs text-muted-foreground cursor-pointer select-none"
+                        >
+                            {t('plannedOnly')}
+                        </Label>
+                        <Switch
+                            id="planned-only"
+                            checked={plannedOnly}
+                            onCheckedChange={onPlannedOnlyChange}
+                        />
+                    </div>
+                )}
+            </div>
         </div>
     )
 }
