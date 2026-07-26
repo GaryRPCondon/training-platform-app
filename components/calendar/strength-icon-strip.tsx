@@ -16,7 +16,8 @@ interface StrengthIconStripProps {
   setSuppression: (autoClearMs?: number) => void
 }
 
-function statusClasses(status: StrengthSession['completion_status']): string {
+/** Completion-state colours for a strength chip. Shared with the mobile agenda rows. */
+export function strengthStatusClasses(status: StrengthSession['completion_status']): string {
   switch (status) {
     case 'completed':
       return 'bg-emerald-500/25 text-emerald-700 ring-1 ring-emerald-500/40 dark:bg-emerald-500/30 dark:text-emerald-200 dark:ring-emerald-400/40'
@@ -86,7 +87,7 @@ export function StrengthIconStrip({ sessions, onOpen, onDragStart, onDragEnd, se
                   setSuppression(300)
                   onDragEnd()
                 }}
-                className={`pointer-events-auto inline-flex h-6 w-6 items-center justify-center rounded-md shadow-sm transition-all hover:scale-110 cursor-grab active:cursor-grabbing ${isDragging ? 'opacity-40' : ''} ${statusClasses(session.completion_status)}`}
+                className={`pointer-events-auto inline-flex h-6 w-6 items-center justify-center rounded-md shadow-sm transition-all hover:scale-110 cursor-grab active:cursor-grabbing ${isDragging ? 'opacity-40' : ''} ${strengthStatusClasses(session.completion_status)}`}
                 aria-label={t('ariaSession', { title: session.title })}
               >
                 <Dumbbell className="h-4 w-4" />

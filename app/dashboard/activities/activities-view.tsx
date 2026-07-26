@@ -24,7 +24,7 @@ import {
     TableRow,
 } from '@/components/ui/table'
 import { format, startOfWeek, endOfWeek, isWithinInterval, subDays } from 'date-fns'
-import { Trash2, Loader2, X, Sparkles } from 'lucide-react'
+import { Trash2, Loader2, X, Sparkles, SlidersHorizontal, ChevronDown } from 'lucide-react'
 import { getGarminActivityUrl, getStravaActivityUrl } from '@/lib/utils/activity-links'
 import { GarminIcon, StravaIcon } from '@/components/activities/platform-icons'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -101,6 +101,14 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
+    const [filtersOpen, setFiltersOpen] = useState(false)
+
+    const activeFilterCount = [
+        dateFilter !== 'all',
+        typeFilter !== 'all',
+        sourceFilter !== 'all',
+        nameFilter.trim() !== '',
+    ].filter(Boolean).length
 
     // Extract unique activity types
     const activityTypes = useMemo(() => {
@@ -248,53 +256,51 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
         <div className="space-y-6">
             <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
 
-            {/* Summary Stats */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">{t('statActivities')}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{stats.totalActivities}</div>
-                        <p className="text-xs text-muted-foreground">{selectedYear}</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">{t('statDistance')}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{stats.totalDistance} {distanceLabel()}</div>
-                        <p className="text-xs text-muted-foreground">{selectedYear}</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">{t('statDuration')}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{stats.totalDuration} {t('hrsUnit')}</div>
-                        <p className="text-xs text-muted-foreground">{selectedYear}</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">{t('statThisWeek')}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{stats.thisWeekActivities}</div>
-                        <p className="text-xs text-muted-foreground">{t('statActivities')}</p>
-                    </CardContent>
-                </Card>
+            {/* Summary Stats — 2×2 on phones (four stacked full-width cards pushed the
+                list a whole screen down), 4-across from lg. */}
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+                {[
+                    { key: 'activities', label: t('statActivities'), value: String(stats.totalActivities), sub: String(selectedYear) },
+                    { key: 'distance', label: t('statDistance'), value: `${stats.totalDistance} ${distanceLabel()}`, sub: String(selectedYear) },
+                    { key: 'duration', label: t('statDuration'), value: `${stats.totalDuration} ${t('hrsUnit')}`, sub: String(selectedYear) },
+                    { key: 'thisWeek', label: t('statThisWeek'), value: String(stats.thisWeekActivities), sub: t('statActivities') },
+                ].map(stat => (
+                    <Card key={stat.key} className="gap-1 py-4 lg:gap-2 lg:py-6">
+                        <CardHeader className="px-4 lg:px-6">
+                            <CardTitle className="text-xs font-medium text-muted-foreground lg:text-sm lg:text-foreground">
+                                {stat.label}
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="px-4 lg:px-6">
+                            <div className="text-xl font-bold lg:text-2xl">{stat.value}</div>
+                            <p className="text-xs text-muted-foreground">{stat.sub}</p>
+                        </CardContent>
+                    </Card>
+                ))}
             </div>
 
-            {/* Filters */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>{t('filters')}</CardTitle>
+            {/* Filters — collapsed by default on phones (five stacked controls owned the
+                screen); always expanded from md. */}
+            <Card className="gap-3 py-4 md:gap-6 md:py-6">
+                <CardHeader className="px-4 md:px-6">
+                    <button
+                        type="button"
+                        onClick={() => setFiltersOpen(open => !open)}
+                        aria-expanded={filtersOpen}
+                        className="flex w-full items-center justify-between md:pointer-events-none"
+                    >
+                        <CardTitle className="flex items-center gap-2">
+                            <SlidersHorizontal className="h-4 w-4 md:hidden" />
+                            {t('filters')}
+                            {activeFilterCount > 0 && (
+                                <Badge variant="secondary" className="md:hidden">{activeFilterCount}</Badge>
+                            )}
+                        </CardTitle>
+                        <ChevronDown className={`h-4 w-4 transition-transform md:hidden ${filtersOpen ? 'rotate-180' : ''}`} />
+                    </button>
                 </CardHeader>
-                <CardContent>
-                    <div className="grid gap-4 md:grid-cols-5">
+                <CardContent className={`px-4 md:block md:px-6 ${filtersOpen ? '' : 'hidden'}`}>
+                    <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-5 md:gap-4">
                         <div className="space-y-2">
                             <label className="text-sm font-medium">{t('year')}</label>
                             <select
@@ -307,7 +313,7 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
                                 ))}
                             </select>
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-2 sm:col-span-2 md:col-span-1">
                             <label htmlFor="activity-name-filter" className="text-sm font-medium">{t('searchName')}</label>
                             <Input
                                 id="activity-name-filter"
@@ -363,7 +369,7 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
 
             {/* Selection Toolbar */}
             {selectedInView.size > 0 && (
-                <div className="flex items-center gap-3 rounded-lg border bg-muted/50 px-4 py-3">
+                <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2 sm:gap-3 sm:px-4 sm:py-3">
                     <span className="text-sm font-medium">
                         {t('selectedCount', { count: selectedInView.size })}
                     </span>
@@ -383,11 +389,11 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
             )}
 
             {/* Activities Table */}
-            <Card>
-                <CardHeader>
+            <Card className="gap-3 py-4 md:gap-6 md:py-6">
+                <CardHeader className="px-4 md:px-6">
                     <CardTitle>{t('tableTitle', { count: filteredActivities.length })}</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="px-3 md:px-6">
                     {filteredActivities.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">
                             {t('noActivities')}
@@ -500,51 +506,51 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
                                 </Table>
                             </div>
 
-                            {/* Mobile Card View */}
-                            <div className="grid md:hidden gap-4">
+                            {/* Mobile Card View — one compact card per activity: identity on
+                                line 1, the three metrics on line 2, actions on line 3. */}
+                            <div className="grid gap-2.5 md:hidden">
+                                <label className="flex items-center gap-3 px-1 text-sm text-muted-foreground">
+                                    <Checkbox
+                                        checked={allFilteredSelected ? true : someFilteredSelected ? 'indeterminate' : false}
+                                        onCheckedChange={toggleSelectAll}
+                                        aria-label={t('selectAll')}
+                                    />
+                                    {t('selectAll')}
+                                </label>
                                 {filteredActivities.map((activity) => (
-                                    <Card key={activity.id} className="overflow-hidden">
-                                        <div className="p-4 space-y-3">
-                                            <div className="flex items-start justify-between">
-                                                <div className="flex items-start gap-3">
-                                                    <Checkbox
-                                                        checked={selectedIds.has(activity.id)}
-                                                        onCheckedChange={() => toggleSelect(activity.id)}
-                                                        className="mt-1"
-                                                    />
-                                                    <div>
-                                                        <p className="font-semibold">{activity.activity_name || t('untitled')}</p>
-                                                        <p className="text-sm text-muted-foreground">
-                                                            {format(new Date(activity.start_time), 'EEE, MMM d, yyyy')}
-                                                        </p>
-                                                    </div>
+                                    <Card key={activity.id} className="gap-0 overflow-hidden py-0">
+                                        <div className="space-y-2 p-3">
+                                            <div className="flex items-start gap-2.5">
+                                                <Checkbox
+                                                    checked={selectedIds.has(activity.id)}
+                                                    onCheckedChange={() => toggleSelect(activity.id)}
+                                                    className="mt-0.5 shrink-0"
+                                                    aria-label={t('selectActivity', { name: activity.activity_name || t('activityFallback') })}
+                                                />
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="truncate text-sm font-semibold">{activity.activity_name || t('untitled')}</p>
+                                                    <p className="truncate text-xs text-muted-foreground">
+                                                        {format(new Date(activity.start_time), 'EEE, MMM d')} · {formatActivityType(activity.activity_type, unknownLabel)}
+                                                    </p>
                                                 </div>
-                                                <Badge className={getSourceBadgeColor(activity.source)}>
+                                                <Badge className={`${getSourceBadgeColor(activity.source)} shrink-0 text-[10px]`}>
                                                     {activity.source}
                                                 </Badge>
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-2 text-sm">
-                                                <div>
-                                                    <span className="text-muted-foreground">{t('labelType')}</span>
-                                                    {formatActivityType(activity.activity_type, unknownLabel)}
-                                                </div>
-                                                <div>
-                                                    <span className="text-muted-foreground">{t('labelDistance')}</span>
+                                            <div className="flex items-baseline gap-3 ps-7 text-sm">
+                                                <span className="font-medium">
                                                     {activity.distance_meters ? formatDistance(activity.distance_meters) : '-'}
-                                                </div>
-                                                <div>
-                                                    <span className="text-muted-foreground">{t('labelDuration')}</span>
-                                                    {formatDuration(activity.duration_seconds)}
-                                                </div>
+                                                </span>
+                                                <span className="text-muted-foreground">{formatDuration(activity.duration_seconds)}</span>
                                             </div>
 
-                                            <div className="flex items-center justify-between pt-2 border-t">
+                                            <div className="flex items-center justify-between gap-2 border-t pt-1.5 ps-7">
                                                 <div className="flex items-center gap-3">
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
-                                                        className="text-violet-500 hover:text-violet-600 hover:bg-violet-50 gap-1.5 h-8 px-2"
+                                                        className="h-8 gap-1.5 px-2 text-violet-500 hover:bg-violet-50 hover:text-violet-600"
                                                         aria-label={t('discussWithAI')}
                                                         onClick={() => router.push(`/dashboard/chat?activityId=${activity.id}`)}
                                                     >
@@ -556,10 +562,10 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
                                                             href={getGarminActivityUrl(activity.garmin_id)}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
-                                                            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                                                            aria-label={t('garminConnect')}
+                                                            className="text-muted-foreground transition-colors hover:text-foreground"
                                                         >
-                                                            <GarminIcon size={12} />
-                                                            {t('garminConnect')}
+                                                            <GarminIcon size={14} />
                                                         </a>
                                                     )}
                                                     {activity.strava_id && (
@@ -567,21 +573,21 @@ export function ActivitiesView({ initialActivities, selectedYear, availableYears
                                                             href={getStravaActivityUrl(activity.strava_id)}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
-                                                            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                                                            aria-label={t('strava')}
+                                                            className="text-muted-foreground transition-colors hover:text-foreground"
                                                         >
-                                                            <StravaIcon size={12} />
-                                                            {t('strava')}
+                                                            <StravaIcon size={14} />
                                                         </a>
                                                     )}
                                                 </div>
                                                 <Button
                                                     variant="ghost"
-                                                    size="sm"
-                                                    className="text-muted-foreground hover:text-destructive gap-2 h-8"
+                                                    size="icon"
+                                                    className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
                                                     onClick={() => handleSingleDelete(activity.id)}
+                                                    aria-label={t('deleteActivity')}
                                                 >
                                                     <Trash2 className="h-4 w-4" />
-                                                    {t('delete')}
                                                 </Button>
                                             </div>
                                         </div>

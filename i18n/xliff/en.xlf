@@ -1288,6 +1288,26 @@
         <source>Running only</source>
       </segment>
     </unit>
+    <unit id="plannedOnly">
+      <segment>
+        <source>Planned only</source>
+      </segment>
+    </unit>
+    <unit id="activityLabel">
+      <segment>
+        <source>Activity</source>
+      </segment>
+    </unit>
+    <unit id="nothingScheduled">
+      <segment>
+        <source>Nothing scheduled</source>
+      </segment>
+    </unit>
+    <unit id="durationMin">
+      <segment>
+        <source>~{min, number} min</source>
+      </segment>
+    </unit>
     <unit id="weeklyTotals">
       <segment>
         <source>Weekly Totals</source>
@@ -3004,21 +3024,6 @@ Note: any workouts already sent to Garmin Connect will NOT be removed automatica
     <unit id="delete">
       <segment>
         <source>Delete</source>
-      </segment>
-    </unit>
-    <unit id="labelType">
-      <segment>
-        <source>Type: </source>
-      </segment>
-    </unit>
-    <unit id="labelDistance">
-      <segment>
-        <source>Distance: </source>
-      </segment>
-    </unit>
-    <unit id="labelDuration">
-      <segment>
-        <source>Duration: </source>
       </segment>
     </unit>
     <unit id="deleteDialogTitle">
