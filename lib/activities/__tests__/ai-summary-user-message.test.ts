@@ -249,16 +249,28 @@ describe('buildUserMessage — easy run', () => {
     })
   }
 
-  it('keeps the existing single-target-pace label for easy runs', () => {
+  it('labels the easy pace as a ceiling, not a target', () => {
     const laps = [makeLap(0, { distance_meters: 8000, duration_seconds: 2560, avg_pace: 320, compliance_score: 90 })]
     const msg = buildUserMessage(makeActivity({ distance_meters: 8000, duration_seconds: 2560, moving_duration_seconds: 2560 }), easyWorkout(), laps)
-    expect(msg).toContain('Target pace: 5:20/km')
+    expect(msg).toContain('Easy pace ceiling (slower is fine; faster is the fault): 5:20/km')
     expect(msg).not.toContain('Target pace (work reps only)')
+    // "Target" framing is what made a slower-than-easy run read as a shortfall.
+    expect(msg).not.toContain('Target pace: 5:20/km')
   })
 
   it('does not emit a structure block when main_set is absent', () => {
     const msg = buildUserMessage(makeActivity(), easyWorkout(), [])
     expect(msg).not.toContain('Workout structure')
+  })
+
+  it('tells the model that slower than easy pace is not a fault', () => {
+    // Regression (planned_workout 11656): a 5:38/km run at 115 bpm against a 5:05/km
+    // easy pace was summarised as having "drifted significantly slower than the
+    // target … failed to meet the intent". Easy pace bounds effort from above; only
+    // running faster than it is a fault.
+    const msg = buildUserMessage(makeActivity(), easyWorkout(), [])
+    expect(msg).toContain('CEILING rather than a target')
+    expect(msg).toContain('Running slower than that pace is not a shortfall')
   })
 
   it('does not emit a pace-compliance line for low-intensity workouts', () => {
@@ -279,9 +291,11 @@ describe('buildUserMessage — easy run', () => {
       },
     })
     const msg = buildUserMessage(makeActivity(), plainLong, [])
-    expect(msg).toContain('judge success on overall average pace')
-    expect(msg).toContain('Target pace: 5:09/km')
+    // 'overall' mode: whole-run HR and effort control against a ceiling.
+    expect(msg).toContain('using the easy pace below as a CEILING')
+    expect(msg).toContain('Easy pace ceiling (slower is fine; faster is the fault): 5:09/km')
     expect(msg).not.toContain('MULTI-PACE session')
+    expect(msg).not.toContain('judge success on per-lap pace compliance')
   })
 })
 
