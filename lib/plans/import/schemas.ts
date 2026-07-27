@@ -57,6 +57,17 @@ export type ImportedWeek = z.infer<typeof importedWeekSchema>
 // ---------------------------------------------------------------------------
 // ParsedRunningPlan — the normalized definition persisted in
 // imported_run_plans.definition and re-fitted on each apply.
+/**
+ * A defaulted list at an LLM boundary. `.default()` substitutes for `undefined`
+ * only, so a bare `z.array(...).default([])` rejects an explicit `null` — and
+ * models routinely emit null for "none" rather than omitting the key. This is the
+ * drift that broke strength parsing (see lib/strength/schemas.ts).
+ */
+const llmListWithDefault = z.preprocess(
+  v => (v === null ? undefined : v),
+  z.array(z.string()).default([]),
+)
+
 // ---------------------------------------------------------------------------
 export const parsedRunningPlanSchema = z.object({
   schema_version: z.literal('1.0'),
@@ -65,7 +76,7 @@ export const parsedRunningPlanSchema = z.object({
   distance: z.string().nullable().optional(), // '5k'|'10k'|'half'|'marathon'|'other'
   detected_race_week: z.number().int().min(1).nullable().optional(),
   weeks: z.array(importedWeekSchema).min(1),
-  parse_warnings: z.array(z.string()).default([]),
+  parse_warnings: llmListWithDefault,
 })
 export type ParsedRunningPlan = z.infer<typeof parsedRunningPlanSchema>
 
@@ -75,7 +86,7 @@ export const parseLLMResultSchema = z.object({
   plan: parsedRunningPlanSchema,
   confidence: z.number().min(0).max(1),
   content_type: z.enum(['running', 'other']),
-  warnings: z.array(z.string()).default([]),
+  warnings: llmListWithDefault,
 })
 export type ParseLLMResult = z.infer<typeof parseLLMResultSchema>
 

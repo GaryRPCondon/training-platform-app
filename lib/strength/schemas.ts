@@ -1,16 +1,44 @@
 import { z } from 'zod'
 
+/**
+ * An optional field at an LLM boundary, tolerating `null` as "absent".
+ *
+ * The contract tells the model to omit inapplicable fields, but models routinely
+ * emit an explicit `null` instead — and Zod's `.optional()` accepts `undefined`
+ * only, so a drifting model fails the whole parse. Gemini started returning
+ * `"rest_seconds": null` on rest-less exercises and killed every strength import
+ * with 48 validation errors.
+ *
+ * Normalising to `undefined` rather than merely allowing `null` matters: the
+ * refines below test `!== undefined`, so a raw `null` would satisfy them while
+ * carrying no value downstream.
+ */
+const llmOptional = <T extends z.ZodTypeAny>(schema: T) =>
+  z.preprocess(v => (v === null ? undefined : v), schema.optional())
+
+/**
+ * A defaulted list at an LLM boundary. `.default()` substitutes for `undefined`
+ * only, so a bare `z.array(...).default([])` still rejects an explicit `null` —
+ * the same drift, one level up from {@link llmOptional}.
+ */
+const llmListWithDefault = z.preprocess(
+  v => (v === null ? undefined : v),
+  z.array(z.string()).default([]),
+)
+
 // ---------------------------------------------------------------------------
 // Exercise — one item inside a session's exercises[] JSONB column.
 // ---------------------------------------------------------------------------
 export const exerciseMeasurementSchema = z.object({
   type: z.enum(['reps', 'duration', 'distance']),
   sets: z.number().int().min(1),
-  reps_per_set: z.number().int().min(1).optional(),
-  duration_seconds: z.number().int().min(1).optional(),
-  distance_meters: z.number().int().min(1).optional(),
+  reps_per_set: llmOptional(z.number().int().min(1)),
+  duration_seconds: llmOptional(z.number().int().min(1)),
+  distance_meters: llmOptional(z.number().int().min(1)),
+  // Deliberately still nullable: null is meaningful here (bodyweight / no load),
+  // distinct from "not stated".
   weight_kg: z.number().min(0).nullable().optional(),
-  rest_seconds: z.number().int().min(0).optional(),
+  rest_seconds: llmOptional(z.number().int().min(0)),
 }).refine(
   m => (m.type === 'reps' && m.reps_per_set !== undefined) ||
        (m.type === 'duration' && m.duration_seconds !== undefined) ||
@@ -24,20 +52,20 @@ export const exerciseSchema = z.object({
   user_text: z.string().min(1),
   measurement: exerciseMeasurementSchema,
   garmin_supported: z.boolean(),
-  garmin_unsupported_reason: z.string().optional(),
-  notes: z.string().optional(),
+  garmin_unsupported_reason: llmOptional(z.string()),
+  notes: llmOptional(z.string()),
   // LLM-suggested Garmin enum mapping. Only stamped onto the persisted
   // exercise when garmin_suggested_confidence === 'exact' AND the pair is
   // verbatim-known in the canonical enum (lib/garmin/exercise-enum.ts).
-  garmin_suggested_category: z.string().optional(),
-  garmin_suggested_name: z.string().optional(),
-  garmin_suggested_confidence: z.enum(['exact', 'partial', 'none']).optional(),
+  garmin_suggested_category: llmOptional(z.string()),
+  garmin_suggested_name: llmOptional(z.string()),
+  garmin_suggested_confidence: llmOptional(z.enum(['exact', 'partial', 'none'])),
   // Verified-and-stamped enum (persisted on strength_sessions.exercises).
-  garmin_exercise_category: z.string().optional(),
-  garmin_exercise_name: z.string().optional(),
+  garmin_exercise_category: llmOptional(z.string()),
+  garmin_exercise_name: llmOptional(z.string()),
   // 'exact' = catalog/verbatim match; 'approximate' = partial-confidence or
   // fuzzy/spelling-corrected match. Absent when garmin_supported is false.
-  garmin_match_quality: z.enum(['exact', 'approximate']).optional(),
+  garmin_match_quality: llmOptional(z.enum(['exact', 'approximate'])),
 })
 
 // ---------------------------------------------------------------------------
@@ -58,23 +86,23 @@ export const parsedSessionSchema = z.object({
   session_index: z.number().int().min(1),
   title: z.string().min(1),
   exercises: z.array(exerciseSchema).min(1),
-  estimated_duration_minutes: z.number().int().min(1).optional(),
-  coaching_note: z.string().optional(),
+  estimated_duration_minutes: llmOptional(z.number().int().min(1)),
+  coaching_note: llmOptional(z.string()),
   // Week/day structure parsed from "Week N / Day M" headers. Optional so a
   // free-form single-session list (no week markers) still validates; the
   // week-aware scheduler engages only when every session carries week_index.
-  week_index: z.number().int().min(1).optional(),
-  day_index: z.number().int().min(1).optional(),
-  load_category: loadCategorySchema.optional(),
+  week_index: llmOptional(z.number().int().min(1)),
+  day_index: llmOptional(z.number().int().min(1)),
+  load_category: llmOptional(loadCategorySchema),
 })
 
 export const parsedProgramSchema = z.object({
   schema_version: z.literal('1.0'),
   content_type: z.enum(['strength', 'mobility', 'mixed']),
   name: z.string().min(1),
-  description: z.string().optional(),
+  description: llmOptional(z.string()),
   sessions: z.array(parsedSessionSchema).min(1),
-  parse_warnings: z.array(z.string()).optional(),
+  parse_warnings: llmOptional(z.array(z.string())),
 })
 
 // LLM wraps ParsedProgram + meta in a single response object.
@@ -83,7 +111,7 @@ export const parseLLMResultSchema = z.object({
   confidence: z.number().min(0).max(1),
   // 'other' lets the LLM tell us the input wasn't a strength plan at all.
   content_type: z.enum(['strength', 'mobility', 'mixed', 'other']),
-  warnings: z.array(z.string()).default([]),
+  warnings: llmListWithDefault,
 })
 
 // ---------------------------------------------------------------------------
