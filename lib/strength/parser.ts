@@ -76,9 +76,10 @@ export async function parseStrengthProgram(input: ParseInput): Promise<ParseOutp
       issues: validated.error.flatten(),
       response: raw,
     })
-    // Always surface the field paths, independent of LLM_DEBUG_LOGS. The issue list
-    // is structural (paths + messages), not prompt or athlete content, so it is safe
-    // to log — and without it a schema failure is a bare 422 with nothing to act on.
+    // Always surface the field paths, independent of LLM_DEBUG_LOGS — without this a
+    // schema failure is a bare 422 with nothing to act on. Mostly structural (paths +
+    // messages); note that enum/literal mismatches also echo the received value, which
+    // is LLM-derived text, so this is not a guarantee of zero content leakage.
     console.error(
       '[Strength parse] LLM output failed schema validation:',
       JSON.stringify(validated.error.issues, null, 2),

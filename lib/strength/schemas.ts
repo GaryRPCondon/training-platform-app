@@ -16,6 +16,16 @@ import { z } from 'zod'
 const llmOptional = <T extends z.ZodTypeAny>(schema: T) =>
   z.preprocess(v => (v === null ? undefined : v), schema.optional())
 
+/**
+ * A defaulted list at an LLM boundary. `.default()` substitutes for `undefined`
+ * only, so a bare `z.array(...).default([])` still rejects an explicit `null` —
+ * the same drift, one level up from {@link llmOptional}.
+ */
+const llmListWithDefault = z.preprocess(
+  v => (v === null ? undefined : v),
+  z.array(z.string()).default([]),
+)
+
 // ---------------------------------------------------------------------------
 // Exercise — one item inside a session's exercises[] JSONB column.
 // ---------------------------------------------------------------------------
@@ -101,7 +111,7 @@ export const parseLLMResultSchema = z.object({
   confidence: z.number().min(0).max(1),
   // 'other' lets the LLM tell us the input wasn't a strength plan at all.
   content_type: z.enum(['strength', 'mobility', 'mixed', 'other']),
-  warnings: z.array(z.string()).default([]),
+  warnings: llmListWithDefault,
 })
 
 // ---------------------------------------------------------------------------

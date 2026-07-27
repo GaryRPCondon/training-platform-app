@@ -3,6 +3,7 @@ import {
   exerciseMeasurementSchema,
   parsedSessionSchema,
   parsedProgramSchema,
+  parseLLMResultSchema,
 } from '../schemas'
 
 // Regression: Gemini began emitting `"rest_seconds": null` on rest-less exercises
@@ -69,16 +70,47 @@ describe('strength schemas — null tolerance at the LLM boundary', () => {
       day_index: null,
       load_category: null,
     })
-    expect(session.success).toBe(true)
+    // Narrow before reusing, so a regression here fails on its own assertion rather
+    // than as a confusing nested error in the program parse below.
+    if (!session.success) throw new Error(`session parse failed: ${session.error.message}`)
 
     const program = parsedProgramSchema.safeParse({
       schema_version: '1.0',
       content_type: 'strength',
       name: 'Core programme',
       description: null,
-      sessions: [session.success ? session.data : null],
+      sessions: [session.data],
       parse_warnings: null,
     })
     expect(program.success).toBe(true)
+  })
+
+  it('tolerates a null top-level warnings list and defaults it to empty', () => {
+    // `.default([])` substitutes for undefined only, so `"warnings": null` failed
+    // outright — the same drift one level above the fields fixed above.
+    const result = parseLLMResultSchema.safeParse({
+      program: {
+        schema_version: '1.0',
+        content_type: 'strength',
+        name: 'P',
+        sessions: [{
+          session_index: 1,
+          title: 'S',
+          exercises: [{
+            canonical_name: 'pushup',
+            display_name: 'Push-up',
+            user_text: '3 x 10 pushups',
+            measurement: { type: 'reps', sets: 3, reps_per_set: 10, rest_seconds: null },
+            garmin_supported: false,
+          }],
+        }],
+      },
+      confidence: 0.9,
+      content_type: 'strength',
+      warnings: null,
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.success && result.data.warnings).toEqual([])
   })
 })
