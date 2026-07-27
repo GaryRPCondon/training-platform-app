@@ -76,6 +76,13 @@ export async function parseStrengthProgram(input: ParseInput): Promise<ParseOutp
       issues: validated.error.flatten(),
       response: raw,
     })
+    // Always surface the field paths, independent of LLM_DEBUG_LOGS. The issue list
+    // is structural (paths + messages), not prompt or athlete content, so it is safe
+    // to log — and without it a schema failure is a bare 422 with nothing to act on.
+    console.error(
+      '[Strength parse] LLM output failed schema validation:',
+      JSON.stringify(validated.error.issues, null, 2),
+    )
     throw new ParseFailedError('LLM output did not match expected schema', {
       issues: validated.error.flatten(),
       rawResponse: raw,
