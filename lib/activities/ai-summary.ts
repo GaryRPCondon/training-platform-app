@@ -49,6 +49,7 @@ Rules:
 - When lap elevation data is present, account for terrain: slower uphill laps and faster downhill laps are expected on hilly routes and do not indicate inconsistent effort. Judge effort using HR alongside pace on hilly runs.
 - Adherence weighting by run type — THIS IS BINDING:
   - Easy runs / recovery runs / long runs: judge success on overall average pace and average HR vs intent. If overall pace is within range and average HR sits in the easy zone, the session SUCCEEDED — do NOT downgrade it for lap-to-lap variance. Lap variance on easy runs is normal (terrain, HR drift, natural cadence shifts) and is not an effort-control failure. A 5.0 rating is appropriate when overall pace and HR are on target, even with high lap variance.
+  - CRITICAL — easy pace is a CEILING, not a target to hit. On easy/recovery/long runs, running SLOWER than the easy pace is NOT a shortfall, NOT a miss, and MUST NOT lower the rating or be mentioned as a fault. Easy days exist to accumulate aerobic volume while recovering; slower than easy serves that intent perfectly well. The only pace fault available on these runs is running too FAST, which erodes recovery. If the athlete ran slower than easy pace with HR in the easy zone, that is a well-executed easy run — rate it 4.5–5.0 and do not remark on the pace gap at all.
   - Intervals / tempo / threshold / VO2max: per-lap pace compliance is the primary success metric. Lap drift, slow first reps, and fade in final reps matter and should be called out specifically.
   - For intervals/tempo workouts: ONLY active work-rep laps (Role = ACTIVE or INTERVAL) are evaluated against the work-rep target pace. Warmup, cooldown, and recovery laps deliberately run easier than the target and MUST NOT be counted as misses. When the summary mentions pace adherence, name a direction: state whether the work reps were too fast, too slow, or on target. The Adherence% column shows a signed deviation in parentheses (e.g. "95% (3s fast)") — this is the ground truth for direction. A lower adherence % does NOT imply slower; read the parenthetical to know whether a rep was fast or slow. Never assume a "fade" in the final reps unless the deviations actually show the closing reps slowing. Never say "X% of laps in range" without specifying which laps and which direction.
 - Be direct and prescriptive: when something needs correcting, say what to do differently.
@@ -467,12 +468,17 @@ export function buildUserMessage(
     : 'Pace compliance'
 
   const targetPace = extractTargetPace(workout)
-  const targetPaceLabel = overallOnly ? 'Target pace' : 'Target pace (work reps only)'
+  // Naming it a "target" on an easy run invited the model to treat any slower pace as
+  // a miss (a 5:38/km run at 115 bpm was reported as having "drifted significantly
+  // slower than the target"). It is an upper bound on effort, so label it as one.
+  const targetPaceLabel = overallOnly
+    ? 'Easy pace ceiling (slower is fine; faster is the fault)'
+    : 'Target pace (work reps only)'
   const structureBlock = buildStructureBlock(workout, trainingPaces)
 
   const workoutTypeLabel = workout.workout_type.replace('_', ' ')
   const primaryMetric = {
-    overall: `PRIMARY EVALUATION CRITERIA — this is a ${workoutTypeLabel}: judge success on overall average pace and average HR alignment with intent. Lap-to-lap pace variance is informational only and MUST NOT lower the rating. If overall pace is on target and average HR sits in the easy zone, rate this 4.5–5.0.`,
+    overall: `PRIMARY EVALUATION CRITERIA — this is a ${workoutTypeLabel}: judge success on overall average HR and effort control, using the easy pace below as a CEILING rather than a target. Running slower than that pace is not a shortfall and must not be criticised or rated down. Running faster than it is the fault to call out, because it erodes recovery. Lap-to-lap pace variance is informational only and MUST NOT lower the rating. If average HR sits in the easy zone and the athlete did not run faster than the ceiling, rate this 4.5–5.0.`,
     structured: `PRIMARY EVALUATION CRITERIA — this is a ${workoutTypeLabel}: judge success on per-lap pace compliance and intensity control. ONLY laps with Role = ACTIVE or INTERVAL are evaluated against the work-rep target pace. Warmup, cooldown, and recovery laps run at easier paces by design — do not count them as misses. When commenting on pace, state direction explicitly: too fast, too slow, or on target.`,
     mixed: `PRIMARY EVALUATION CRITERIA — this is a ${workoutTypeLabel} with embedded quality segments, so it is a MULTI-PACE session. Judge it segment by segment: (a) the work reps — ONLY laps with Role = ACTIVE or INTERVAL — against the work-rep target pace below, and (b) the easy/recovery portions against easy pace. The whole-activity average pace blends both and is NOT a target: do NOT compare it to the work-rep target pace and do NOT treat the gap between them as a shortfall. Warmup, cooldown, rest, and recovery laps run easier by design — never count them as misses. When commenting on pace, state direction explicitly: too fast, too slow, or on target.`,
   }[mode]
