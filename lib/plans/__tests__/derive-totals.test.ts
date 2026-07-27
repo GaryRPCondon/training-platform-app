@@ -40,7 +40,7 @@ describe('deriveTotals — duration targets', () => {
     expect(w.distance_meters).toBe(Math.round((5400 / 309) * 1000))
   })
 
-  it('leaves duration_seconds unset on a distance-prescribed workout', () => {
+  it('nulls duration_seconds on a distance-prescribed workout', () => {
     const w = workout({
       type: 'easy_run',
       structured_workout: {
@@ -49,11 +49,44 @@ describe('deriveTotals — duration targets', () => {
     })
     deriveTotals(plan(w), PACES)
 
-    expect(w.duration_seconds).toBeUndefined()
+    expect(w.duration_seconds).toBeNull()
     expect(w.distance_meters).toBe(9654)
   })
 
-  it('leaves duration_seconds unset on a mixed distance/time workout', () => {
+  it('clears a stray LLM-supplied duration on a distance-prescribed workout', () => {
+    // Set-or-null, mirroring distance. Left in place, this would reach
+    // duration_target_seconds and make determineCompletionStatus weigh a duration
+    // the system never derived.
+    const w = workout({
+      type: 'easy_run',
+      duration_seconds: 4200,
+      structured_workout: {
+        main_set: [{ repeat: 1, intervals: [{ role: 'work', intensity: 'easy', distance_meters: 9654 }] }],
+      },
+    })
+    deriveTotals(plan(w), PACES)
+
+    expect(w.duration_seconds).toBeNull()
+  })
+
+  it('overrides an LLM-supplied duration on a time-prescribed workout', () => {
+    // The prompt used to ask for a top-level total "excluding warmup/cooldown", but
+    // duration_target_seconds is compared against the activity's whole elapsed time,
+    // so the derived full-structure total has to win.
+    const w = workout({
+      duration_seconds: 1800,
+      structured_workout: {
+        warmup: { duration_seconds: 600, intensity: 'easy' },
+        main_set: [{ repeat: 1, intervals: [{ role: 'work', intensity: 'easy', duration_seconds: 5400 }] }],
+        cooldown: { duration_seconds: 300, intensity: 'easy' },
+      },
+    })
+    deriveTotals(plan(w), PACES)
+
+    expect(w.duration_seconds).toBe(6300)
+  })
+
+  it('nulls duration_seconds on a mixed distance/time workout', () => {
     // Distance is a real target here — the tempo reps are prescribed in miles.
     const w = workout({
       structured_workout: {
@@ -68,7 +101,7 @@ describe('deriveTotals — duration targets', () => {
     })
     deriveTotals(plan(w), PACES)
 
-    expect(w.duration_seconds).toBeUndefined()
+    expect(w.duration_seconds).toBeNull()
   })
 
   it('still derives weekly volume across mixed workout kinds', () => {

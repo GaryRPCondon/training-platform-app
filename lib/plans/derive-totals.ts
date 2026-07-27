@@ -44,10 +44,17 @@ export function deriveTotals(
       weekMeters += derived
 
       // Time-prescribed sessions are scored on the clock, not on a derived distance.
-      if (isTimePrescribedWorkout(workout.structured_workout)) {
-        const seconds = totalPrescribedSeconds(workout.structured_workout)
-        if (seconds > 0) workout.duration_seconds = seconds
-      }
+      // Set-or-null, mirroring distance: the LLM is told to emit a top-level
+      // duration_seconds for time-based templates, defined as the session total
+      // "excluding warmup/cooldown" — which is NOT what duration_target_seconds is
+      // compared against. determineCompletionStatus weighs it against the activity's
+      // whole elapsed time, so the target must include warmup and cooldown. Deriving
+      // it here from the full structure is the only definition that matches, and
+      // nulling otherwise stops a stray LLM value surviving onto a distance workout.
+      const seconds = isTimePrescribedWorkout(workout.structured_workout)
+        ? totalPrescribedSeconds(workout.structured_workout)
+        : 0
+      workout.duration_seconds = seconds > 0 ? seconds : null
     }
     week.weekly_total_km = Math.round(weekMeters / 100) / 10
   }

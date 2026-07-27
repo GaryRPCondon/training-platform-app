@@ -128,18 +128,25 @@ function isLowIntensity(workoutType: WorkoutType): boolean {
  * average pace against the T-pace stamp — guaranteeing a false "you ran too slow".
  * Judged on structure, not type, so a plain long run keeps the overall-pace path.
  */
-function hasQualitySegments(workout: PlannedWorkout): boolean {
+function segmentMix(workout: PlannedWorkout): { quality: boolean; easy: boolean } {
   const sw = workout.structured_workout as Record<string, unknown> | null
-  if (!sw || !Array.isArray(sw.main_set)) return false
+  if (!sw || !Array.isArray(sw.main_set)) return { quality: false, easy: false }
+
+  let quality = false
+  let easy = false
   for (const group of sw.main_set as Array<{ intervals?: Array<Record<string, unknown>> }>) {
     for (const iv of group.intervals ?? []) {
-      const role = typeof iv.role === 'string' ? iv.role.toLowerCase() : ''
-      if (RECOVERY_ROLES.has(role)) continue
       const intensity = typeof iv.intensity === 'string' ? iv.intensity : ''
-      if (intensity && getIntensityPaceType(intensity) !== 'easy') return true
+      if (!intensity) continue
+      const role = typeof iv.role === 'string' ? iv.role.toLowerCase() : ''
+      if (getIntensityPaceType(intensity) === 'easy') {
+        easy = true
+      } else if (!RECOVERY_ROLES.has(role)) {
+        quality = true
+      }
     }
   }
-  return false
+  return { quality, easy }
 }
 
 /**
@@ -151,7 +158,13 @@ type EvaluationMode = 'structured' | 'overall' | 'mixed'
 
 function resolveEvaluationMode(workout: PlannedWorkout): EvaluationMode {
   if (!isLowIntensity(workout.workout_type)) return 'structured'
-  return hasQualitySegments(workout) ? 'mixed' : 'overall'
+  const { quality, easy } = segmentMix(workout)
+  if (!quality) return 'overall'
+  // Quality work with easy running around it is a genuine blend. Quality work
+  // WITHOUT any easy segment — a marathon-pace long run, say — has no blend: its
+  // whole-activity average is the target, so 'mixed' would wrongly tell the model to
+  // disregard it, and 'overall' would wrongly assert HR should sit in the easy zone.
+  return easy ? 'mixed' : 'structured'
 }
 
 function lapRole(lap: Lap): string {
@@ -315,24 +328,49 @@ type StructuredPart = {
 
 type MainSetEntry = { repeat?: number; intervals?: StructuredPart[] }
 
+/** The workout's generation-time pace stamp, with the intensity it was resolved for. */
+type StampedPace = { paceType: keyof TrainingPaces; secPerKm: number } | null
+
+function extractStampedPace(workout: PlannedWorkout): StampedPace {
+  const sw = workout.structured_workout as Record<string, unknown> | null
+  const secPerKm = sw?.target_pace_sec_per_km
+  const label = sw?.pace_label
+  if (typeof secPerKm !== 'number' || typeof label !== 'string') return null
+  return { paceType: getIntensityPaceType(label), secPerKm }
+}
+
 /**
  * The pace this segment was prescribed at. An athlete-specified custom pace wins;
- * otherwise resolve the intensity against the plan's VDOT paces. Without this the
- * structure block named intensities ("30 min @ easy") but only ever showed a number
- * for custom-pace workouts, leaving the model to infer that every segment shared the
- * single workout-level target pace.
+ * then the workout's own generation-time stamp when the segment shares its intensity;
+ * then the plan's current VDOT paces.
+ *
+ * The stamp has to win over live paces, or the structure block and the "Target pace"
+ * line disagree for the same segment whenever VDOT has moved without a re-pace run —
+ * they already differ in live data (a workout stamped at 305 sec/km inside a plan
+ * whose easy pace is now 309). Showing both invites the model to explain a gap that
+ * does not exist.
  */
-function partPaceSuffix(part: StructuredPart, trainingPaces: TrainingPaces | null): string {
+function partPaceSuffix(
+  part: StructuredPart,
+  trainingPaces: TrainingPaces | null,
+  stamped: StampedPace = null,
+): string {
   if (part.target_pace) return ` (${part.target_pace})`
   if ((part.role ?? '').toLowerCase() === 'rest') return ''
-  if (!part.intensity || !trainingPaces) return ''
-  const pace = trainingPaces[getIntensityPaceType(part.intensity)]
+  if (!part.intensity) return ''
+  const paceType = getIntensityPaceType(part.intensity)
+  if (stamped && stamped.paceType === paceType) return ` (${formatPace(stamped.secPerKm)})`
+  const pace = trainingPaces?.[paceType]
   return pace ? ` (${formatPace(pace)})` : ''
 }
 
-function formatStructuredPart(part: StructuredPart, trainingPaces: TrainingPaces | null = null): string {
+function formatStructuredPart(
+  part: StructuredPart,
+  trainingPaces: TrainingPaces | null = null,
+  stamped: StampedPace = null,
+): string {
   const intensity = part.intensity || 'unspecified'
-  const paceSuffix = partPaceSuffix(part, trainingPaces)
+  const paceSuffix = partPaceSuffix(part, trainingPaces, stamped)
   if (part.distance_meters) {
     const km = part.distance_meters / 1000
     const dist = km >= 1 ? `${km.toFixed(km >= 10 ? 1 : 2)} km` : `${part.distance_meters} m`
@@ -348,10 +386,14 @@ function formatStructuredPart(part: StructuredPart, trainingPaces: TrainingPaces
   return `(open) @ ${intensity}${paceSuffix}`
 }
 
-function formatMainSetEntry(entry: MainSetEntry, trainingPaces: TrainingPaces | null): string | null {
+function formatMainSetEntry(
+  entry: MainSetEntry,
+  trainingPaces: TrainingPaces | null,
+  stamped: StampedPace,
+): string | null {
   const intervals = entry.intervals
   if (!Array.isArray(intervals) || intervals.length === 0) return null
-  const inner = intervals.map(p => formatStructuredPart(p, trainingPaces)).join(' + ')
+  const inner = intervals.map(p => formatStructuredPart(p, trainingPaces, stamped)).join(' + ')
   const repeat = entry.repeat ?? 1
   if (repeat === 1 && intervals.length === 1) return inner
   return `${repeat} × (${inner})`
@@ -375,13 +417,14 @@ function buildStructureBlock(workout: PlannedWorkout, trainingPaces: TrainingPac
 
   const lines: string[] = ['Workout structure (each segment with its own prescribed pace):']
   const warmup = sw.warmup as StructuredPart | undefined
-  if (warmup) lines.push(`  Warmup: ${formatStructuredPart(warmup, trainingPaces)}`)
+  const stamped = extractStampedPace(workout)
+  if (warmup) lines.push(`  Warmup: ${formatStructuredPart(warmup, trainingPaces, stamped)}`)
   const mainLines = mainSet
-    .map(entry => formatMainSetEntry(entry, trainingPaces))
+    .map(entry => formatMainSetEntry(entry, trainingPaces, stamped))
     .filter((s): s is string => s !== null)
   if (mainLines.length > 0) lines.push(`  Main set: ${mainLines.join('; ')}`)
   const cooldown = sw.cooldown as StructuredPart | undefined
-  if (cooldown) lines.push(`  Cooldown: ${formatStructuredPart(cooldown, trainingPaces)}`)
+  if (cooldown) lines.push(`  Cooldown: ${formatStructuredPart(cooldown, trainingPaces, stamped)}`)
   return lines.length > 1 ? lines.join('\n') : null
 }
 

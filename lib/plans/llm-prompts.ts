@@ -196,7 +196,7 @@ Some workouts in the template are prescribed by TIME, not distance. Examples inc
 - Walks or shakeouts by time: "30-60 min walk"
 For these workouts:
 - Set distance_meters to null (NOT 0)
-- Add duration_seconds at the top level (total session duration in seconds, excluding warmup/cooldown)
+- Do NOT output duration_seconds at the workout level — the system derives the session total from your structured_workout steps, exactly as it does distance
 - Include "structured_workout" with duration_seconds (not distance_meters) in interval steps
 The system estimates distance from duration + athlete's pace — do NOT convert time to distance yourself.
 NEVER output distance_meters: 0 — use null when a workout has no meaningful distance.

@@ -366,6 +366,43 @@ describe('buildUserMessage — long run with embedded tempo reps', () => {
     expect(msg).toContain('30 min @ easy (5:09/km)')
   })
 
+  it('prefers the generation-time stamp over drifted live paces for the stamped intensity', () => {
+    // The stamp and the plan's current paces diverge whenever VDOT moves without a
+    // re-pace run. The "Target pace" line reads the stamp, so the structure block has
+    // to as well — otherwise the same segment is quoted two ways and the model is
+    // invited to explain a gap that does not exist.
+    const workout = mixedLongRun()
+    const drifted = { ...paces, tempo: 250 } // live tempo pace has moved off the 242 stamp
+    const msg = buildUserMessage(activity(), workout, mixedLaps(), drifted)
+
+    expect(msg).toContain('Target pace (work reps only): 4:02/km')
+    expect(msg).toContain('1.61 km @ tempo (4:02/km)')
+    expect(msg).not.toContain('1.61 km @ tempo (4:10/km)')
+    // Intensities the stamp does not cover still resolve from the live paces.
+    expect(msg).toContain('30 min @ easy (5:09/km)')
+  })
+
+  it('treats a uniformly quality-paced long run as structured, not mixed', () => {
+    // No easy segment means no blend, so the whole-activity average IS the target —
+    // the mixed prompt would wrongly tell the model to disregard it.
+    const marathonPaceLongRun = makeWorkout({
+      workout_type: 'long_run',
+      description: 'Long 20 km at marathon pace',
+      distance_target_meters: 20000,
+      intensity_target: 'marathon',
+      structured_workout: {
+        main_set: [{ repeat: 1, intervals: [{ role: 'work', intensity: 'marathon', distance_meters: 20000 }] }],
+        pace_label: 'marathon',
+        target_pace_sec_per_km: 256,
+      },
+    })
+    const msg = buildUserMessage(activity(), marathonPaceLongRun, mixedLaps(), paces)
+
+    expect(msg).not.toContain('MULTI-PACE session')
+    expect(msg).not.toContain('blend of easy and work segments')
+    expect(msg).toContain('judge success on per-lap pace compliance')
+  })
+
   it('reports the distance as on-target once the plan distance is sized correctly', () => {
     const msg = buildUserMessage(activity(), mixedLongRun(), mixedLaps(), paces)
     // 19160 m actual vs 18697 m planned = +2.5%, not the -13.1% the inflated

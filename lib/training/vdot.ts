@@ -371,6 +371,13 @@ function partDurationSeconds(part: StructuredPart): number {
  * time-based parts are converted at that part's OWN pace — its explicit target_pace
  * when present, otherwise the training pace for its intensity — so an easy float
  * inside a quality session is sized at E pace, not at the session's hardest pace.
+ *
+ * A part carrying neither target_pace nor intensity falls back to easy pace. That is
+ * a deliberate change from the previous behaviour, which assumed interval pace for
+ * anything not named "recovery": easy is the same fallback
+ * {@link estimateWorkoutDurationSeconds} uses, and having the two functions agree
+ * matters more than matching the old guess. Templates always set intensity, so this
+ * only affects malformed structures.
  */
 function structuredPartDistanceMeters(
   part: StructuredPart | undefined,
@@ -382,7 +389,10 @@ function structuredPartDistanceMeters(
   if (isStandingRest(part)) return 0
   const seconds = partDurationSeconds(part)
   if (!seconds) return 0
+  // A malformed target_pace ("0:00") parses to 0 and would make this Infinity, which
+  // Math.round preserves all the way into distance_target_meters.
   const pace = resolvePartPaceSecPerKm(part, trainingPaces, fallbackPaceSecPerKm)
+  if (pace <= 0) return 0
   return (seconds / pace) * 1000
 }
 

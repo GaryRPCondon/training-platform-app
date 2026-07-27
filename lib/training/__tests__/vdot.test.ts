@@ -111,6 +111,16 @@ describe('calculateTotalWorkoutDistance', () => {
     expect(calculateTotalWorkoutDistance(null, 'intervals', withJog, paces)).toBe(1600 + 4 * 300)
   })
 
+  it('does not emit Infinity when a target_pace parses to zero', () => {
+    const paces = { easy: 300, marathon: 255, tempo: 245, interval: 235, repetition: 220, walk: 600 }
+    const structured = {
+      main_set: [{ repeat: 1, intervals: [{ role: 'work', intensity: 'easy', duration_seconds: 600, target_pace: '0:00' }] }],
+    }
+    const total = calculateTotalWorkoutDistance(null, 'easy_run', structured, paces)
+    expect(Number.isFinite(total)).toBe(true)
+    expect(total).toBe(0)
+  })
+
   it('converts duration_minutes on a main_set interval', () => {
     const paces = { easy: 300, marathon: 255, tempo: 245, interval: 235, repetition: 220, walk: 600 }
     const structured = {
