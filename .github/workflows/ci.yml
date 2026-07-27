@@ -1,0 +1,48 @@
+name: CI
+
+# Mirrors the husky pre-commit hook (.husky/pre-commit) so the same gate is
+# enforced server-side, where it cannot be skipped with --no-verify.
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+
+# A new push to the same PR supersedes the previous run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Typecheck, lint and tests
+    runs-on: ubuntu-latest
+    env:
+      # Git hooks are irrelevant in CI, and `prepare: husky` runs on npm ci.
+      HUSKY: 0
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: i18n externalization gate
+        run: npm run lint:i18n
+
+      # Pseudo-locales and XLIFF are committed artifacts. Regenerate them and fail
+      # if the result differs, i.e. a message key was added without a rebuild.
+      - name: Pseudo-locale and XLIFF freshness
+        run: |
+          npm run i18n:build
+          git diff --exit-code -- messages/en-XA.json messages/en-XB.json i18n/xliff/en.xlf
+
+      - name: Tests
+        run: npx vitest run

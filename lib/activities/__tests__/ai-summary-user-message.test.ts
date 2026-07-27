@@ -147,7 +147,7 @@ describe('buildUserMessage — intervals workout', () => {
 
   it('emits a workout structure block from structured_workout.main_set', () => {
     const msg = buildUserMessage(makeActivity(), makeWorkout(), intervalLaps())
-    expect(msg).toContain('Workout structure:')
+    expect(msg).toContain('Workout structure')
     expect(msg).toContain('Warmup: 3.00 km @ E')
     expect(msg).toContain('Main set: 5 × (1.00 km @ T + 1 min @ E)')
     expect(msg).toContain('Cooldown: 3.00 km @ E')
@@ -258,12 +258,155 @@ describe('buildUserMessage — easy run', () => {
 
   it('does not emit a structure block when main_set is absent', () => {
     const msg = buildUserMessage(makeActivity(), easyWorkout(), [])
-    expect(msg).not.toContain('Workout structure:')
+    expect(msg).not.toContain('Workout structure')
   })
 
   it('does not emit a pace-compliance line for low-intensity workouts', () => {
     const laps = [makeLap(0, { compliance_score: 60 })]
     const msg = buildUserMessage(makeActivity(), easyWorkout(), laps)
     expect(msg).not.toMatch(/Pace compliance:/)
+  })
+
+  it('stays on the overall-pace path for a long run with no quality segments', () => {
+    const plainLong = makeWorkout({
+      workout_type: 'long_run',
+      description: 'Long 18 km easy',
+      distance_target_meters: 18000,
+      intensity_target: 'easy',
+      structured_workout: {
+        main_set: [{ repeat: 1, intervals: [{ role: 'work', intensity: 'easy', distance_meters: 18000 }] }],
+        target_pace_sec_per_km: 309,
+      },
+    })
+    const msg = buildUserMessage(makeActivity(), plainLong, [])
+    expect(msg).toContain('judge success on overall average pace')
+    expect(msg).toContain('Target pace: 5:09/km')
+    expect(msg).not.toContain('MULTI-PACE session')
+  })
+})
+
+// Regression: planned_workout 11668 — "Long 12 mi (19 km) — 2E + 2 × (1T w/1 min
+// rests) + 30 min E + 2 × (1T w/1 min rests) + 2E". Classified on workout_type alone
+// this took the easy-run path, so the model was told to judge the whole-activity
+// average (4:45/km) against the stamped T pace (4:02/km) and reported the tempo reps
+// as "significantly slower" when every rep was in fact faster than target.
+describe('buildUserMessage — long run with embedded tempo reps', () => {
+  const paces = { easy: 309, marathon: 256, tempo: 242, interval: 222, repetition: 208, walk: 600 }
+
+  function mixedLongRun(): PlannedWorkout {
+    return makeWorkout({
+      workout_type: 'long_run',
+      description: 'Long 12 mi. (19 km) — 2E + 2 × (1T w/1 min rests) + 30 min E + 2 × (1T w/1 min rests) + 2E',
+      distance_target_meters: 18697,
+      intensity_target: 'tempo',
+      structured_workout: {
+        main_set: [
+          { repeat: 1, intervals: [{ role: 'warmup', intensity: 'easy', distance_meters: 3218 }] },
+          { repeat: 2, intervals: [
+            { role: 'work', intensity: 'tempo', distance_meters: 1609 },
+            { role: 'rest', intensity: 'rest', duration_seconds: 60 },
+          ] },
+          { repeat: 1, intervals: [{ role: 'recovery', intensity: 'easy', duration_seconds: 1800 }] },
+          { repeat: 2, intervals: [
+            { role: 'work', intensity: 'tempo', distance_meters: 1609 },
+            { role: 'rest', intensity: 'rest', duration_seconds: 60 },
+          ] },
+          { repeat: 1, intervals: [{ role: 'cooldown', intensity: 'easy', distance_meters: 3218 }] },
+        ],
+        pace_label: 'tempo',
+        target_pace_sec_per_km: 242,
+      },
+    })
+  }
+
+  function mixedLaps(): Lap[] {
+    const laps: Lap[] = []
+    let idx = 0
+    for (let i = 0; i < 3; i++) laps.push(makeLap(idx++, { distance_meters: 1000, duration_seconds: 310, avg_pace: 310, intensity_type: 'WARMUP', compliance_score: 55 }))
+    // Work reps run FAST: 3:52/km against a 4:02 target.
+    for (let i = 0; i < 2; i++) {
+      laps.push(makeLap(idx++, { distance_meters: 1609, duration_seconds: 373, avg_pace: 232, intensity_type: 'ACTIVE', compliance_score: 88 }))
+      laps.push(makeLap(idx++, { distance_meters: 100, duration_seconds: 60, avg_pace: 600, intensity_type: 'REST', compliance_score: 26 }))
+    }
+    for (let i = 0; i < 6; i++) laps.push(makeLap(idx++, { distance_meters: 1000, duration_seconds: 303, avg_pace: 303, intensity_type: 'RECOVERY', compliance_score: 50 }))
+    for (let i = 0; i < 2; i++) {
+      laps.push(makeLap(idx++, { distance_meters: 1609, duration_seconds: 373, avg_pace: 232, intensity_type: 'ACTIVE', compliance_score: 88 }))
+      laps.push(makeLap(idx++, { distance_meters: 100, duration_seconds: 60, avg_pace: 600, intensity_type: 'REST', compliance_score: 26 }))
+    }
+    for (let i = 0; i < 3; i++) laps.push(makeLap(idx++, { distance_meters: 1000, duration_seconds: 303, avg_pace: 303, intensity_type: 'COOLDOWN', compliance_score: null }))
+    return laps
+  }
+
+  const activity = () => makeActivity({ distance_meters: 19160, duration_seconds: 6136, moving_duration_seconds: 5469, avg_hr: 128 })
+
+  it('evaluates as multi-pace, not on the whole-activity average', () => {
+    const msg = buildUserMessage(activity(), mixedLongRun(), mixedLaps(), paces)
+    expect(msg).toContain('MULTI-PACE session')
+    expect(msg).not.toContain('judge success on overall average pace')
+  })
+
+  it('labels the target pace as work-reps-only and warns off the blended average', () => {
+    const msg = buildUserMessage(activity(), mixedLongRun(), mixedLaps(), paces)
+    expect(msg).toContain('Target pace (work reps only): 4:02/km')
+    expect(msg).toContain('blend of easy and work segments')
+  })
+
+  it('surfaces per-lap adherence with direction for the work reps', () => {
+    const msg = buildUserMessage(activity(), mixedLongRun(), mixedLaps(), paces)
+    // The reps were 10s/km FASTER than target — the old easy-run path suppressed this
+    // entirely and the model guessed "slower".
+    expect(msg).toContain('88% (10s fast)')
+    expect(msg).toContain('Active-rep pace compliance: 88%')
+  })
+
+  it('gives each structure segment its own resolved pace', () => {
+    const msg = buildUserMessage(activity(), mixedLongRun(), mixedLaps(), paces)
+    expect(msg).toContain('3.22 km @ easy (5:09/km)')
+    expect(msg).toContain('1.61 km @ tempo (4:02/km)')
+    expect(msg).toContain('30 min @ easy (5:09/km)')
+  })
+
+  it('prefers the generation-time stamp over drifted live paces for the stamped intensity', () => {
+    // The stamp and the plan's current paces diverge whenever VDOT moves without a
+    // re-pace run. The "Target pace" line reads the stamp, so the structure block has
+    // to as well — otherwise the same segment is quoted two ways and the model is
+    // invited to explain a gap that does not exist.
+    const workout = mixedLongRun()
+    const drifted = { ...paces, tempo: 250 } // live tempo pace has moved off the 242 stamp
+    const msg = buildUserMessage(activity(), workout, mixedLaps(), drifted)
+
+    expect(msg).toContain('Target pace (work reps only): 4:02/km')
+    expect(msg).toContain('1.61 km @ tempo (4:02/km)')
+    expect(msg).not.toContain('1.61 km @ tempo (4:10/km)')
+    // Intensities the stamp does not cover still resolve from the live paces.
+    expect(msg).toContain('30 min @ easy (5:09/km)')
+  })
+
+  it('treats a uniformly quality-paced long run as structured, not mixed', () => {
+    // No easy segment means no blend, so the whole-activity average IS the target —
+    // the mixed prompt would wrongly tell the model to disregard it.
+    const marathonPaceLongRun = makeWorkout({
+      workout_type: 'long_run',
+      description: 'Long 20 km at marathon pace',
+      distance_target_meters: 20000,
+      intensity_target: 'marathon',
+      structured_workout: {
+        main_set: [{ repeat: 1, intervals: [{ role: 'work', intensity: 'marathon', distance_meters: 20000 }] }],
+        pace_label: 'marathon',
+        target_pace_sec_per_km: 256,
+      },
+    })
+    const msg = buildUserMessage(activity(), marathonPaceLongRun, mixedLaps(), paces)
+
+    expect(msg).not.toContain('MULTI-PACE session')
+    expect(msg).not.toContain('blend of easy and work segments')
+    expect(msg).toContain('judge success on per-lap pace compliance')
+  })
+
+  it('reports the distance as on-target once the plan distance is sized correctly', () => {
+    const msg = buildUserMessage(activity(), mixedLongRun(), mixedLaps(), paces)
+    // 19160 m actual vs 18697 m planned = +2.5%, not the -13.1% the inflated
+    // interval-paced target produced.
+    expect(msg).toContain('Distance variance vs plan: +2.5%')
   })
 })

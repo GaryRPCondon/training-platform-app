@@ -273,6 +273,16 @@ export function computeComplianceScore(
     return { score: 0, lapCount: 0, hasData: false, activeLapAvg: null }
   }
 
+  // Garmin reports directWorkoutComplianceScore = 0 (not null) on every lap of a
+  // free run — there was no structured workout on the watch to compare against, so
+  // there is nothing to score. Taken at face value that surfaced as a red
+  // "Pace Compliance: 0%", implying the athlete missed every lap. A genuinely poor
+  // structured session still scores above zero somewhere, so an all-zero set means
+  // "no data", not "scored nothing".
+  if (scored.every(l => l.compliance_score === 0)) {
+    return { score: 0, lapCount: 0, hasData: false, activeLapAvg: null }
+  }
+
   let weightedSum = 0
   let totalWeight = 0
   let activeSum = 0

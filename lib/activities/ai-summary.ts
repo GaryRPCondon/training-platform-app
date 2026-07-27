@@ -9,6 +9,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Activity, PlannedWorkout, Lap, TrainingPaces } from '@/types/database'
 import { createLLMProvider } from '@/lib/agent/factory'
 import { demoProviderOverride } from '@/lib/demo/demo'
+import { getIntensityPaceType } from '@/lib/training/vdot'
 import { getEffectiveDistance, calculateDistanceDiff, calculateDurationDiff, loadActivePlanPaces } from '@/lib/activities/scoring'
 
 // ---------------------------------------------------------------------------
@@ -44,6 +45,7 @@ Rules:
 - Compare execution to plan intent — was the session's purpose achieved?
 - When a target pace range is provided, use it as the ground truth for pace evaluation. Do not guess or assume pace targets.
 - All pace and duration data is based on moving time (excluding stopped time). Treat it as the true effort metric.
+- Multi-pace sessions (a long run or easy run with embedded tempo/threshold/interval reps) are judged segment by segment. The whole-activity average pace of such a session is an arithmetic blend of easy and work paces — it is NOT a target. NEVER compare the overall average pace against a work-rep target pace, and never call the gap between them a miss or a shortfall. Judge the work reps against the work-rep target, and the easy portions against easy pace, separately.
 - When lap elevation data is present, account for terrain: slower uphill laps and faster downhill laps are expected on hilly routes and do not indicate inconsistent effort. Judge effort using HR alongside pace on hilly runs.
 - Adherence weighting by run type — THIS IS BINDING:
   - Easy runs / recovery runs / long runs: judge success on overall average pace and average HR vs intent. If overall pace is within range and average HR sits in the easy zone, the session SUCCEEDED — do NOT downgrade it for lap-to-lap variance. Lap variance on easy runs is normal (terrain, HR drift, natural cadence shifts) and is not an effort-control failure. A 5.0 rating is appropriate when overall pace and HR are on target, even with high lap variance.
@@ -111,8 +113,58 @@ const LOW_INTENSITY_TYPES: ReadonlySet<WorkoutType> = new Set(['easy_run', 'long
 
 const ACTIVE_LAP_ROLES = new Set(['ACTIVE', 'INTERVAL'])
 
+// Structured-workout interval roles that are not work reps: these deliberately run
+// easier than the work-rep target and must never be judged against it.
+const RECOVERY_ROLES = new Set(['recovery', 'rest', 'warmup', 'cooldown'])
+
 function isLowIntensity(workoutType: WorkoutType): boolean {
   return LOW_INTENSITY_TYPES.has(workoutType)
+}
+
+/**
+ * True when a nominally low-intensity workout embeds quality work — e.g. a long run
+ * built as 2E + 4 × 1T + 30 min E. Classifying on workout_type alone sent these down
+ * the easy-run path, which told the model to judge the session on its whole-activity
+ * average pace against the T-pace stamp — guaranteeing a false "you ran too slow".
+ * Judged on structure, not type, so a plain long run keeps the overall-pace path.
+ */
+function segmentMix(workout: PlannedWorkout): { quality: boolean; easy: boolean } {
+  const sw = workout.structured_workout as Record<string, unknown> | null
+  if (!sw || !Array.isArray(sw.main_set)) return { quality: false, easy: false }
+
+  let quality = false
+  let easy = false
+  for (const group of sw.main_set as Array<{ intervals?: Array<Record<string, unknown>> }>) {
+    for (const iv of group.intervals ?? []) {
+      const intensity = typeof iv.intensity === 'string' ? iv.intensity : ''
+      if (!intensity) continue
+      const role = typeof iv.role === 'string' ? iv.role.toLowerCase() : ''
+      if (getIntensityPaceType(intensity) === 'easy') {
+        easy = true
+      } else if (!RECOVERY_ROLES.has(role)) {
+        quality = true
+      }
+    }
+  }
+  return { quality, easy }
+}
+
+/**
+ * How to evaluate the session: 'structured' judges per-lap work-rep compliance,
+ * 'overall' judges whole-activity average pace and HR, 'mixed' is a low-intensity
+ * session carrying quality reps — per-lap for the reps, overall for the easy parts.
+ */
+type EvaluationMode = 'structured' | 'overall' | 'mixed'
+
+function resolveEvaluationMode(workout: PlannedWorkout): EvaluationMode {
+  if (!isLowIntensity(workout.workout_type)) return 'structured'
+  const { quality, easy } = segmentMix(workout)
+  if (!quality) return 'overall'
+  // Quality work with easy running around it is a genuine blend. Quality work
+  // WITHOUT any easy segment — a marathon-pace long run, say — has no blend: its
+  // whole-activity average is the target, so 'mixed' would wrongly tell the model to
+  // disregard it, and 'overall' would wrongly assert HR should sit in the easy zone.
+  return easy ? 'mixed' : 'structured'
 }
 
 function lapRole(lap: Lap): string {
@@ -195,8 +247,6 @@ function parsePaceBandString(raw: string): TargetPaceBand | null {
   return single != null ? { lower: single, upper: null } : null
 }
 
-const RECOVERY_ROLES = new Set(['recovery', 'rest', 'warmup', 'cooldown'])
-
 /**
  * Derive a work-rep target band from athlete-specified per-interval `target_pace`
  * strings (custom-pace structured workouts store the pace only as a string, not the
@@ -268,6 +318,7 @@ function extractTargetPace(workout: PlannedWorkout): string {
 }
 
 type StructuredPart = {
+  role?: string
   duration_minutes?: number
   duration_seconds?: number
   distance_meters?: number
@@ -277,10 +328,49 @@ type StructuredPart = {
 
 type MainSetEntry = { repeat?: number; intervals?: StructuredPart[] }
 
-function formatStructuredPart(part: StructuredPart): string {
+/** The workout's generation-time pace stamp, with the intensity it was resolved for. */
+type StampedPace = { paceType: keyof TrainingPaces; secPerKm: number } | null
+
+function extractStampedPace(workout: PlannedWorkout): StampedPace {
+  const sw = workout.structured_workout as Record<string, unknown> | null
+  const secPerKm = sw?.target_pace_sec_per_km
+  const label = sw?.pace_label
+  if (typeof secPerKm !== 'number' || typeof label !== 'string') return null
+  return { paceType: getIntensityPaceType(label), secPerKm }
+}
+
+/**
+ * The pace this segment was prescribed at. An athlete-specified custom pace wins;
+ * then the workout's own generation-time stamp when the segment shares its intensity;
+ * then the plan's current VDOT paces.
+ *
+ * The stamp has to win over live paces, or the structure block and the "Target pace"
+ * line disagree for the same segment whenever VDOT has moved without a re-pace run —
+ * they already differ in live data (a workout stamped at 305 sec/km inside a plan
+ * whose easy pace is now 309). Showing both invites the model to explain a gap that
+ * does not exist.
+ */
+function partPaceSuffix(
+  part: StructuredPart,
+  trainingPaces: TrainingPaces | null,
+  stamped: StampedPace = null,
+): string {
+  if (part.target_pace) return ` (${part.target_pace})`
+  if ((part.role ?? '').toLowerCase() === 'rest') return ''
+  if (!part.intensity) return ''
+  const paceType = getIntensityPaceType(part.intensity)
+  if (stamped && stamped.paceType === paceType) return ` (${formatPace(stamped.secPerKm)})`
+  const pace = trainingPaces?.[paceType]
+  return pace ? ` (${formatPace(pace)})` : ''
+}
+
+function formatStructuredPart(
+  part: StructuredPart,
+  trainingPaces: TrainingPaces | null = null,
+  stamped: StampedPace = null,
+): string {
   const intensity = part.intensity || 'unspecified'
-  // Surface an athlete-specified custom pace so the LLM can assess compliance.
-  const paceSuffix = part.target_pace ? ` (${part.target_pace})` : ''
+  const paceSuffix = partPaceSuffix(part, trainingPaces, stamped)
   if (part.distance_meters) {
     const km = part.distance_meters / 1000
     const dist = km >= 1 ? `${km.toFixed(km >= 10 ? 1 : 2)} km` : `${part.distance_meters} m`
@@ -296,10 +386,14 @@ function formatStructuredPart(part: StructuredPart): string {
   return `(open) @ ${intensity}${paceSuffix}`
 }
 
-function formatMainSetEntry(entry: MainSetEntry): string | null {
+function formatMainSetEntry(
+  entry: MainSetEntry,
+  trainingPaces: TrainingPaces | null,
+  stamped: StampedPace,
+): string | null {
   const intervals = entry.intervals
   if (!Array.isArray(intervals) || intervals.length === 0) return null
-  const inner = intervals.map(formatStructuredPart).join(' + ')
+  const inner = intervals.map(p => formatStructuredPart(p, trainingPaces, stamped)).join(' + ')
   const repeat = entry.repeat ?? 1
   if (repeat === 1 && intervals.length === 1) return inner
   return `${repeat} × (${inner})`
@@ -310,7 +404,7 @@ function formatMainSetEntry(entry: MainSetEntry): string | null {
  * so the LLM can see what each lap segment was *supposed* to do. Returns null when
  * the workout has no main_set (simple workouts — no value in adding noise).
  */
-function buildStructureBlock(workout: PlannedWorkout): string | null {
+function buildStructureBlock(workout: PlannedWorkout, trainingPaces: TrainingPaces | null): string | null {
   const sw = workout.structured_workout as Record<string, unknown> | null
   if (!sw) return null
   const mainSetRaw = sw.main_set
@@ -321,13 +415,16 @@ function buildStructureBlock(workout: PlannedWorkout): string | null {
       : []
   if (mainSet.length === 0) return null
 
-  const lines: string[] = ['Workout structure:']
+  const lines: string[] = ['Workout structure (each segment with its own prescribed pace):']
   const warmup = sw.warmup as StructuredPart | undefined
-  if (warmup) lines.push(`  Warmup: ${formatStructuredPart(warmup)}`)
-  const mainLines = mainSet.map(formatMainSetEntry).filter((s): s is string => s !== null)
+  const stamped = extractStampedPace(workout)
+  if (warmup) lines.push(`  Warmup: ${formatStructuredPart(warmup, trainingPaces, stamped)}`)
+  const mainLines = mainSet
+    .map(entry => formatMainSetEntry(entry, trainingPaces, stamped))
+    .filter((s): s is string => s !== null)
   if (mainLines.length > 0) lines.push(`  Main set: ${mainLines.join('; ')}`)
   const cooldown = sw.cooldown as StructuredPart | undefined
-  if (cooldown) lines.push(`  Cooldown: ${formatStructuredPart(cooldown)}`)
+  if (cooldown) lines.push(`  Cooldown: ${formatStructuredPart(cooldown, trainingPaces, stamped)}`)
   return lines.length > 1 ? lines.join('\n') : null
 }
 
@@ -347,13 +444,16 @@ export function buildUserMessage(
     ? (movingSeconds / (activity.distance_meters / 1000))
     : null
 
-  const lowIntensity = isLowIntensity(workout.workout_type)
+  const mode = resolveEvaluationMode(workout)
+  // 'mixed' carries quality reps, so it uses the per-lap machinery like a structured
+  // workout — only 'overall' (a plain easy/long/recovery run) judges on the average.
+  const overallOnly = mode === 'overall'
 
   // Pace compliance headline: for intervals/tempo/threshold, average only ACTIVE
   // work-rep laps so the headline isn't diluted by warmup/recovery/cooldown laps
   // that targeted a different (easier) pace. Falls back to all laps if no lap is
   // tagged ACTIVE/INTERVAL (older activities or non-Garmin sources).
-  const lapsForCompliance = lowIntensity
+  const lapsForCompliance = overallOnly
     ? laps.filter(l => l.compliance_score != null)
     : (() => {
         const active = laps.filter(l => isActiveLap(l) && l.compliance_score != null)
@@ -362,17 +462,20 @@ export function buildUserMessage(
   const paceCompliancePct = lapsForCompliance.length > 0
     ? Math.round(lapsForCompliance.reduce((sum, l) => sum + l.compliance_score!, 0) / lapsForCompliance.length)
     : null
-  const complianceLabel = !lowIntensity && lapsForCompliance.some(isActiveLap)
+  const complianceLabel = !overallOnly && lapsForCompliance.some(isActiveLap)
     ? 'Active-rep pace compliance'
     : 'Pace compliance'
 
   const targetPace = extractTargetPace(workout)
-  const targetPaceLabel = lowIntensity ? 'Target pace' : 'Target pace (work reps only)'
-  const structureBlock = buildStructureBlock(workout)
+  const targetPaceLabel = overallOnly ? 'Target pace' : 'Target pace (work reps only)'
+  const structureBlock = buildStructureBlock(workout, trainingPaces)
 
-  const primaryMetric = lowIntensity
-    ? `PRIMARY EVALUATION CRITERIA — this is a ${workout.workout_type.replace('_', ' ')}: judge success on overall average pace and average HR alignment with intent. Lap-to-lap pace variance is informational only and MUST NOT lower the rating. If overall pace is on target and average HR sits in the easy zone, rate this 4.5–5.0.`
-    : `PRIMARY EVALUATION CRITERIA — this is a ${workout.workout_type.replace('_', ' ')}: judge success on per-lap pace compliance and intensity control. ONLY laps with Role = ACTIVE or INTERVAL are evaluated against the work-rep target pace. Warmup, cooldown, and recovery laps run at easier paces by design — do not count them as misses. When commenting on pace, state direction explicitly: too fast, too slow, or on target.`
+  const workoutTypeLabel = workout.workout_type.replace('_', ' ')
+  const primaryMetric = {
+    overall: `PRIMARY EVALUATION CRITERIA — this is a ${workoutTypeLabel}: judge success on overall average pace and average HR alignment with intent. Lap-to-lap pace variance is informational only and MUST NOT lower the rating. If overall pace is on target and average HR sits in the easy zone, rate this 4.5–5.0.`,
+    structured: `PRIMARY EVALUATION CRITERIA — this is a ${workoutTypeLabel}: judge success on per-lap pace compliance and intensity control. ONLY laps with Role = ACTIVE or INTERVAL are evaluated against the work-rep target pace. Warmup, cooldown, and recovery laps run at easier paces by design — do not count them as misses. When commenting on pace, state direction explicitly: too fast, too slow, or on target.`,
+    mixed: `PRIMARY EVALUATION CRITERIA — this is a ${workoutTypeLabel} with embedded quality segments, so it is a MULTI-PACE session. Judge it segment by segment: (a) the work reps — ONLY laps with Role = ACTIVE or INTERVAL — against the work-rep target pace below, and (b) the easy/recovery portions against easy pace. The whole-activity average pace blends both and is NOT a target: do NOT compare it to the work-rep target pace and do NOT treat the gap between them as a shortfall. Warmup, cooldown, rest, and recovery laps run easier by design — never count them as misses. When commenting on pace, state direction explicitly: too fast, too slow, or on target.`,
+  }[mode]
 
   let msg = `${primaryMetric}
 
@@ -393,18 +496,18 @@ Planned workout:
 Actual activity:
 - Distance: ${activity.distance_meters ? `${(activity.distance_meters / 1000).toFixed(2)} km` : 'N/A'}
 - Moving time: ${formatDuration(movingSeconds)}
-- Average moving pace: ${formatPace(avgPaceSecsPerKm)}
+- Average moving pace: ${formatPace(avgPaceSecsPerKm)}${mode === 'mixed' ? ' (blend of easy and work segments — not a target, do not compare to the work-rep pace)' : ''}
 - Average HR: ${activity.avg_hr ? `${activity.avg_hr} bpm` : 'N/A'}
 - Max HR: ${activity.max_hr ? `${activity.max_hr} bpm` : 'N/A'}
 - Distance variance vs plan: ${distanceVariance !== 0 ? `${distanceVariance > 0 ? '+' : ''}${distanceVariance.toFixed(1)}%` : '0%'}
 - Duration variance vs plan: ${durationVariance !== 0 ? `${durationVariance > 0 ? '+' : ''}${durationVariance.toFixed(1)}%` : '0%'}`
 
-  if (paceCompliancePct != null && !lowIntensity) {
+  if (paceCompliancePct != null && !overallOnly) {
     msg += `\n- ${complianceLabel}: ${paceCompliancePct}%`
   }
 
-  const targetBand = lowIntensity ? null : extractTargetPaceBand(workout)
-  const lapTable = buildLapTable(laps, !lowIntensity, targetBand)
+  const targetBand = overallOnly ? null : extractTargetPaceBand(workout)
+  const lapTable = buildLapTable(laps, !overallOnly, targetBand)
   if (lapTable) {
     msg += `\n${lapTable}`
   }

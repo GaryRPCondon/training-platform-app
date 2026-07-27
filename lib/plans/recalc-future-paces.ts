@@ -39,9 +39,18 @@ export type RecalcSkipReason =
 export interface RecalcResult {
   /** Number of future workouts whose pace stamp was rewritten. */
   repaced: number
+  /** Number of weekly_plans rows whose volume target was rolled forward. */
+  weeksUpdated: number
   /** Non-null when the recalc was a graceful no-op (e.g. imported plan). */
   skipped: RecalcSkipReason | null
 }
+
+/**
+ * weekly_volume_target is stored as km-to-1-decimal × 1000 by the generation path
+ * (deriveTotals → plan-writer), so it is always a multiple of 100 m. Match that
+ * rounding or every roll-forward introduces a remainder generation never wrote.
+ */
+const VOLUME_QUANTUM_METERS = 100
 
 /**
  * Re-stamp future workout paces in the athlete's active plan using its current
@@ -63,18 +72,18 @@ export async function recalcActivePlanFuturePaces(
     .limit(1)
     .maybeSingle()
 
-  if (!plan) return { repaced: 0, skipped: 'no_active_plan' }
-  if (!plan.template_id) return { repaced: 0, skipped: 'no_template' }
-  if (!plan.vdot) return { repaced: 0, skipped: 'no_vdot' }
+  if (!plan) return { repaced: 0, weeksUpdated: 0, skipped: 'no_active_plan' }
+  if (!plan.template_id) return { repaced: 0, weeksUpdated: 0, skipped: 'no_template' }
+  if (!plan.vdot) return { repaced: 0, weeksUpdated: 0, skipped: 'no_vdot' }
 
   let paceTargets
   try {
     const template = await loadFullTemplate(plan.template_id)
     paceTargets = template.pace_targets
   } catch {
-    return { repaced: 0, skipped: 'no_template' }
+    return { repaced: 0, weeksUpdated: 0, skipped: 'no_template' }
   }
-  if (!paceTargets) return { repaced: 0, skipped: 'no_pace_targets' }
+  if (!paceTargets) return { repaced: 0, weeksUpdated: 0, skipped: 'no_pace_targets' }
 
   const athletePaces = {
     ...calculateTrainingPaces(plan.vdot),
@@ -87,26 +96,28 @@ export async function recalcActivePlanFuturePaces(
     .select('id')
     .eq('plan_id', plan.id)
   const phaseIds = (phases ?? []).map((p) => p.id)
-  if (phaseIds.length === 0) return { repaced: 0, skipped: null }
+  if (phaseIds.length === 0) return { repaced: 0, weeksUpdated: 0, skipped: null }
 
   const { data: weeks } = await supabase
     .from('weekly_plans')
-    .select('id')
+    .select('id, weekly_volume_target')
     .in('phase_id', phaseIds)
   const weekIds = (weeks ?? []).map((w) => w.id)
-  if (weekIds.length === 0) return { repaced: 0, skipped: null }
+  if (weekIds.length === 0) return { repaced: 0, weeksUpdated: 0, skipped: null }
 
   // Future, still-scheduled workouts only — never touch past/completed ones.
   const { data: workouts } = await supabase
     .from('planned_workouts')
     .select(
-      'id, workout_type, intensity_target, distance_target_meters, structured_workout, garmin_workout_id, garmin_sync_status'
+      'id, weekly_plan_id, workout_type, intensity_target, distance_target_meters, structured_workout, garmin_workout_id, garmin_sync_status'
     )
     .in('weekly_plan_id', weekIds)
     .gte('scheduled_date', today)
     .eq('status', 'scheduled')
 
   let repaced = 0
+  // Weeks holding at least one re-paced workout — only these can have shifted.
+  const touchedWeekIds = new Set<number>()
 
   for (const w of workouts ?? []) {
     const sw = w.structured_workout as Record<string, unknown> | null
@@ -142,7 +153,60 @@ export async function recalcActivePlanFuturePaces(
     if (error) throw new Error(`Failed to re-pace workout ${w.id}: ${error.message}`)
 
     repaced++
+    if (w.weekly_plan_id != null) touchedWeekIds.add(w.weekly_plan_id)
   }
 
-  return { repaced, skipped: null }
+  const weeksUpdated = await rollForwardWeeklyVolumes(
+    supabase,
+    weeks ?? [],
+    touchedWeekIds
+  )
+
+  return { repaced, weeksUpdated, skipped: null }
+}
+
+/**
+ * Roll corrected workout distances up into weekly_plans.weekly_volume_target.
+ *
+ * Re-pacing rewrites distance_target_meters on future workouts, but the week's
+ * stored total was computed at generation and never moved — so before this, every
+ * VDOT update left the weekly totals drifting further from the sum of their own
+ * workouts (up to 600 m on a 15-week plan).
+ *
+ * Re-reads each touched week's workouts from the database rather than adjusting
+ * in memory: the loop above has already written the new distances, and a week's
+ * total must include its past/completed workouts too, which re-pacing never sees.
+ */
+async function rollForwardWeeklyVolumes(
+  supabase: SupabaseClient,
+  weeks: Array<{ id: number; weekly_volume_target: number | null }>,
+  touchedWeekIds: Set<number>
+): Promise<number> {
+  if (touchedWeekIds.size === 0) return 0
+
+  const { data: rows } = await supabase
+    .from('planned_workouts')
+    .select('weekly_plan_id, distance_target_meters')
+    .in('weekly_plan_id', [...touchedWeekIds])
+
+  const totals = new Map<number, number>()
+  for (const row of rows ?? []) {
+    totals.set(row.weekly_plan_id, (totals.get(row.weekly_plan_id) ?? 0) + (row.distance_target_meters ?? 0))
+  }
+
+  let updated = 0
+  for (const week of weeks) {
+    if (!touchedWeekIds.has(week.id)) continue
+    const total =
+      Math.round((totals.get(week.id) ?? 0) / VOLUME_QUANTUM_METERS) * VOLUME_QUANTUM_METERS
+    if (total === (week.weekly_volume_target ?? 0)) continue
+
+    const { error } = await supabase
+      .from('weekly_plans')
+      .update({ weekly_volume_target: total })
+      .eq('id', week.id)
+    if (error) throw new Error(`Failed to update weekly volume for week ${week.id}: ${error.message}`)
+    updated++
+  }
+  return updated
 }
