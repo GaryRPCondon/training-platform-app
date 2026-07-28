@@ -9,7 +9,20 @@ describe('buildSystemPrompt', () => {
       expect(prompt).toContain('Adherence weighting by run type')
       expect(prompt).toContain('Easy runs / recovery runs / long runs')
       expect(prompt).toContain('Intervals / tempo / threshold / VO2max')
-      expect(prompt).toContain('do NOT downgrade it for lap-to-lap variance')
+      expect(prompt).toContain('do NOT downgrade for it')
+    }
+  })
+
+  it('keeps the evaluation rubric out of the summary prose for every tone', () => {
+    // The ceiling rule is for judging, not for narrating: summaries were coming back
+    // reporting the rule itself ("the overall pace was slower than the easy pace
+    // ceiling, which aligns with the intent of an easy run").
+    const tones: FeedbackTone[] = ['critical', 'balanced', 'positive']
+    for (const tone of tones) {
+      const prompt = buildSystemPrompt(tone)
+      expect(prompt).toContain('internal reasoning, not material for the summary')
+      expect(prompt).toContain('never report that a rule was satisfied')
+      expect(prompt).toContain('do not mention the easy pace at all unless the athlete actually ran faster than it')
     }
   })
 

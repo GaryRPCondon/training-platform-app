@@ -249,13 +249,23 @@ describe('buildUserMessage — easy run', () => {
     })
   }
 
-  it('labels the easy pace as a ceiling, not a target', () => {
+  it('labels the easy pace as an upper limit, not a target', () => {
     const laps = [makeLap(0, { distance_meters: 8000, duration_seconds: 2560, avg_pace: 320, compliance_score: 90 })]
     const msg = buildUserMessage(makeActivity({ distance_meters: 8000, duration_seconds: 2560, moving_duration_seconds: 2560 }), easyWorkout(), laps)
-    expect(msg).toContain('Easy pace ceiling (slower is fine; faster is the fault): 5:20/km')
+    expect(msg).toContain('Easy pace (upper limit): 5:20/km')
     expect(msg).not.toContain('Target pace (work reps only)')
     // "Target" framing is what made a slower-than-easy run read as a shortfall.
     expect(msg).not.toContain('Target pace: 5:20/km')
+  })
+
+  it('keeps the label free of quotable phrasing the model can parrot', () => {
+    // Regression: "Easy pace ceiling (slower is fine; faster is the fault)" came back
+    // out verbatim-ish in summaries ("the overall pace was slower than the easy pace
+    // ceiling, which aligns with the intent of an easy run") — rubric narration, not
+    // coaching. The data label must not hand the model a phrase to quote.
+    const msg = buildUserMessage(makeActivity(), easyWorkout(), [])
+    expect(msg).not.toMatch(/^- .*ceiling/mi)
+    expect(msg).not.toContain('slower is fine')
   })
 
   it('does not emit a structure block when main_set is absent', () => {
@@ -269,8 +279,16 @@ describe('buildUserMessage — easy run', () => {
     // target … failed to meet the intent". Easy pace bounds effort from above; only
     // running faster than it is a fault.
     const msg = buildUserMessage(makeActivity(), easyWorkout(), [])
-    expect(msg).toContain('CEILING rather than a target')
-    expect(msg).toContain('Running slower than that pace is not a shortfall')
+    expect(msg).toContain('an upper limit, not a target')
+    expect(msg).toContain('running slower than it is not a shortfall')
+  })
+
+  it('tells the model to leave pace out of the summary when the run was not too fast', () => {
+    // The rule is for judging, not for narrating: a compliant easy run should read as
+    // coaching, not as a report that the pace rule was satisfied.
+    const msg = buildUserMessage(makeActivity(), easyWorkout(), [])
+    expect(msg).toContain('leave pace out of the summary entirely')
+    expect(msg).toContain('do not name individual laps')
   })
 
   it('does not emit a pace-compliance line for low-intensity workouts', () => {
@@ -291,9 +309,9 @@ describe('buildUserMessage — easy run', () => {
       },
     })
     const msg = buildUserMessage(makeActivity(), plainLong, [])
-    // 'overall' mode: whole-run HR and effort control against a ceiling.
-    expect(msg).toContain('using the easy pace below as a CEILING')
-    expect(msg).toContain('Easy pace ceiling (slower is fine; faster is the fault): 5:09/km')
+    // 'overall' mode: whole-run HR and effort control against an upper limit.
+    expect(msg).toContain('The easy pace below is an upper limit, not a target')
+    expect(msg).toContain('Easy pace (upper limit): 5:09/km')
     expect(msg).not.toContain('MULTI-PACE session')
     expect(msg).not.toContain('judge success on per-lap pace compliance')
   })
