@@ -557,6 +557,44 @@ describe('placeStrengthSessionsWeekAware', () => {
     expect(minGapDays(placements)).toBeGreaterThanOrEqual(2)
   })
 
+  it('puts a loaded session on a hard day rather than next to another loaded session', () => {
+    // Pins the tier precedence: the loaded↔loaded constraint outranks hard-day
+    // avoidance. Week 1's only pre-easy slot is Sunday; week 2's only non-hard
+    // day is the Monday right after it, so the session takes a quality day.
+    const d1 = consecutive('2026-06-01', 7)
+    const restMondayWeek = d1.map((date, i) => ({
+      scheduled_date: date,
+      workout_type: ['rest', 'intervals', 'easy_run', 'tempo', 'easy_run', 'long_run', 'easy_run'][i],
+      description: null,
+    }))
+    const d2 = consecutive('2026-06-08', 7)
+    const oneEasyDayWeek = d2.map((date, i) => ({
+      scheduled_date: date,
+      workout_type: ['easy_run', 'intervals', 'tempo', 'intervals', 'tempo', 'long_run', 'race'][i],
+      description: null,
+    }))
+    const sessions = [mkSession(1, 1, 1, 'loaded'), mkSession(2, 2, 1, 'loaded')]
+    const placements = placeStrengthSessionsWeekAware(
+      sessions,
+      '2026-06-01',
+      [...restMondayWeek, ...oneEasyDayWeek],
+    )
+    expect(placements[0].scheduled_date).toBe('2026-06-07') // Sunday, easy
+    // Monday 06-08 is easy and free, but adjacent to a loaded session.
+    expect(placements[1].scheduled_date).toBe('2026-06-09') // Tuesday, intervals
+    expect(placements[1].placement_rationale).toContain('after your run')
+  })
+
+  it('spreads a no-run week across the whole window at 4 sessions', () => {
+    // floor(7 / 4) = 1 used to bunch these onto Mon/Tue/Wed/Thu.
+    const sessions = [1, 2, 3, 4].map(i => mkSession(i, 1, i, 'loaded'))
+    const placements = placeStrengthSessionsWeekAware(sessions, '2026-06-01', [])
+    expect(placements.map(p => p.scheduled_date)).toEqual([
+      '2026-06-01', '2026-06-03', '2026-06-05', '2026-06-07',
+    ])
+    expect(minGapDays(placements)).toBe(2)
+  })
+
   it('offsets an evenly-spaced no-run week away from the previous week', () => {
     // Week 2 runs past the end of the plan, so it falls to even spacing — which
     // would otherwise start on Monday, right after week 1's Sunday mobility.

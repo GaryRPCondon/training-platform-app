@@ -143,13 +143,22 @@ function addDaysISO(s: string, n: number): string {
 // week's 7 dates are anchored per week, but the day-class map and the set of
 // taken days both span every window plus one trailing day. Without that, Sunday
 // of week N and Monday of week N+1 look unrelated and every boundary produces
-// back-to-back sessions. Two rules come out of it:
-//   - hard: two loaded sessions never land on consecutive days (relaxed only
-//     when a week has no legal day left at all)
+// back-to-back sessions. Two rules come out of it, both applying to weeks that
+// have running scheduled:
+//   - hard: two loaded sessions never land on consecutive days. It outranks
+//     hard-day avoidance — a loaded session goes onto a quality day (lift after
+//     the run) rather than back-to-back with another loaded session. Relaxed
+//     only when a week has no legal day left at all.
 //   - soft: no two sessions of any kind on consecutive days, dropped before
 //     we'd have to stack a loaded session onto a hard run day
 // mobility_recovery keeps the rest day even when that puts it next to a loaded
 // session — that adjacency is benign, and giving up the rest day is not.
+//
+// A week with no running at all has no rest-day signal to honour and takes the
+// evenlySpacedWeek path instead, which enforces neither rule: it uses the
+// widest uniform spacing that fits the window (so never adjacent below 5
+// sessions/week, at which point 7 days make adjacency unavoidable) and looks no
+// further back than the preceding week's last day.
 // ---------------------------------------------------------------------------
 
 const HARD_RUN_TYPES = new Set(['intervals', 'tempo', 'long_run', 'race', 'quality'])
@@ -277,7 +286,12 @@ function evenlySpacedWeek(
   used: Map<string, PlacedKind>,
 ): Placement[] {
   const n = weekSessions.length
-  const spacing = Math.max(1, Math.floor(7 / n))
+  // Don't put sessions on consecutive days while a wider gap still fits in the
+  // window: floor(7 / n) collapses to 1 from n = 4 up, which bunched them at
+  // Mon/Tue/Wed/Thu and left the tail of the week empty. 2 is the narrowest gap
+  // that isn't back-to-back, and it stops fitting at n = 5.
+  const minSpacing = (n - 1) * 2 <= 6 ? 2 : 1
+  const spacing = Math.max(minSpacing, Math.floor(7 / n))
   // Nudge the whole pattern a day when day 1 of the window would sit next to
   // the previous week's last session — but only while the last slot still fits
   // inside the window.
