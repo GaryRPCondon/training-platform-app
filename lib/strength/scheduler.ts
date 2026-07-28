@@ -138,12 +138,38 @@ function addDaysISO(s: string, n: number): string {
 //                         run, spaced ≥1 day apart
 // Classification of each session (the one genuinely fuzzy judgement) was done
 // by the LLM at parse time; here we only apply rules.
+//
+// Adjacency is judged over the whole program, not inside a single window: a
+// week's 7 dates are anchored per week, but the day-class map and the set of
+// taken days both span every window plus one trailing day. Without that, Sunday
+// of week N and Monday of week N+1 look unrelated and every boundary produces
+// back-to-back sessions. Two rules come out of it, both applying to weeks that
+// have running scheduled:
+//   - hard: two loaded sessions never land on consecutive days. It outranks
+//     hard-day avoidance — a loaded session goes onto a quality day (lift after
+//     the run) rather than back-to-back with another loaded session. Relaxed
+//     only when a week has no legal day left at all.
+//   - soft: no two sessions of any kind on consecutive days, dropped before
+//     we'd have to stack a loaded session onto a hard run day
+// mobility_recovery keeps the rest day even when that puts it next to a loaded
+// session — that adjacency is benign, and giving up the rest day is not.
+//
+// A week with no running at all has no rest-day signal to honour and takes the
+// evenlySpacedWeek path instead, which enforces neither rule: it uses the
+// widest uniform spacing that fits the window (so never adjacent below 5
+// sessions/week, at which point 7 days make adjacency unavoidable) and looks no
+// further back than the preceding week's last day.
 // ---------------------------------------------------------------------------
 
 const HARD_RUN_TYPES = new Set(['intervals', 'tempo', 'long_run', 'race', 'quality'])
 const EASY_RUN_TYPES = new Set(['easy_run', 'recovery', 'cross_training'])
 
 type DayClass = 'hard' | 'easy' | 'rest'
+
+// What kind of strength session already occupies a date. Tracked (rather than a
+// bare Set) because the loaded↔loaded constraint is stricter than the general
+// one.
+type PlacedKind = 'loaded' | 'mobility'
 
 function classifyDay(workouts: PlannedWorkoutSummary[] | undefined): DayClass {
   if (!workouts || workouts.length === 0) return 'rest'
@@ -183,6 +209,19 @@ export function placeStrengthSessionsWeekAware(
   }
   const weekNumbers = [...weeks.keys()].sort((a, b) => a - b)
 
+  // One day-class map for the whole program plus one trailing day, so the last
+  // day of a window can see the hard run sitting on the first day of the next.
+  const dayClass = new Map<string, DayClass>()
+  for (let d = 0; d <= weekNumbers.length * 7; d++) {
+    const date = addDaysISO(startDate, d)
+    dayClass.set(date, classifyDay(byDate.get(date)))
+  }
+
+  // Dates already taken, carried across weeks so adjacency reaches over a
+  // boundary. Each week only ever writes dates inside its own window, so this
+  // can't collide within a week.
+  const used = new Map<string, PlacedKind>()
+
   const placements: Placement[] = []
   // Anchor by sequential position (wi), not week number, so a gap in week
   // numbering doesn't open an empty calendar week. Week 1 day 1 == startDate.
@@ -193,10 +232,7 @@ export function placeStrengthSessionsWeekAware(
       .sort((a, b) => (a.day_index ?? a.session_index) - (b.day_index ?? b.session_index))
     const windowStart = addDaysISO(startDate, wi * 7)
     const weekDates = Array.from({ length: 7 }, (_, d) => addDaysISO(windowStart, d))
-    const dayClass = new Map<string, DayClass>(
-      weekDates.map(d => [d, classifyDay(byDate.get(d))]),
-    )
-    placements.push(...placeWeek(weekSessions, weekDates, dayClass, byDate))
+    placements.push(...placeWeek(weekSessions, weekDates, dayClass, byDate, used))
   }
   return placements
 }
@@ -206,14 +242,14 @@ function placeWeek(
   weekDates: string[],
   dayClass: Map<string, DayClass>,
   byDate: Map<string, PlannedWorkoutSummary[]>,
+  used: Map<string, PlacedKind>,
 ): Placement[] {
   // No running at all this week (e.g. weeks past the end of the run plan):
   // there is no rest-day signal to honour, so just spread evenly and keep the
   // user's day order.
   const hasRuns = weekDates.some(d => (byDate.get(d)?.length ?? 0) > 0)
-  if (!hasRuns) return evenlySpacedWeek(weekSessions, weekDates)
+  if (!hasRuns) return evenlySpacedWeek(weekSessions, weekDates, used)
 
-  const used = new Set<string>()
   const placed: Array<{ session: ParsedSession; date: string; rationale: string }> = []
 
   const mobility = weekSessions.filter(s => s.load_category === 'mobility_recovery')
@@ -221,12 +257,12 @@ function placeWeek(
 
   for (const s of mobility) {
     const date = pickMobilityDay(weekDates, dayClass, used)
-    used.add(date)
+    used.set(date, 'mobility')
     placed.push({ session: s, date, rationale: mobilityRationale(dayClass.get(date)) })
   }
   for (const s of loaded) {
     const date = pickLoadedDay(weekDates, dayClass, used)
-    used.add(date)
+    used.set(date, 'loaded')
     placed.push({ session: s, date, rationale: loadedRationale(date, dayClass) })
   }
 
@@ -244,43 +280,80 @@ function placeWeek(
     }))
 }
 
-function evenlySpacedWeek(weekSessions: ParsedSession[], weekDates: string[]): Placement[] {
+function evenlySpacedWeek(
+  weekSessions: ParsedSession[],
+  weekDates: string[],
+  used: Map<string, PlacedKind>,
+): Placement[] {
   const n = weekSessions.length
-  const spacing = Math.max(1, Math.floor(7 / n))
-  return weekSessions.map((s, i) => ({
-    session_index: s.session_index,
-    scheduled_date: weekDates[Math.min(6, i * spacing)],
-    placement_rationale: 'Spaced evenly through the week (no runs scheduled)',
-  }))
+  // Don't put sessions on consecutive days while a wider gap still fits in the
+  // window: floor(7 / n) collapses to 1 from n = 4 up, which bunched them at
+  // Mon/Tue/Wed/Thu and left the tail of the week empty. 2 is the narrowest gap
+  // that isn't back-to-back, and it stops fitting at n = 5.
+  const minSpacing = (n - 1) * 2 <= 6 ? 2 : 1
+  const spacing = Math.max(minSpacing, Math.floor(7 / n))
+  // Nudge the whole pattern a day when day 1 of the window would sit next to
+  // the previous week's last session — but only while the last slot still fits
+  // inside the window.
+  const shift = adjacentToUsed(weekDates[0], used) && (n - 1) * spacing < 6 ? 1 : 0
+  const out: Placement[] = []
+  for (const [i, s] of weekSessions.entries()) {
+    const date = weekDates[Math.min(6, i * spacing + shift)]
+    used.set(date, s.load_category === 'mobility_recovery' ? 'mobility' : 'loaded')
+    out.push({
+      session_index: s.session_index,
+      scheduled_date: date,
+      placement_rationale: 'Spaced evenly through the week (no runs scheduled)',
+    })
+  }
+  return out
 }
 
-function adjacentToUsed(date: string, used: Set<string>): boolean {
+function adjacentToUsed(date: string, used: Map<string, PlacedKind>): boolean {
   return used.has(addDaysISO(date, 1)) || used.has(addDaysISO(date, -1))
+}
+
+function adjacentToLoaded(date: string, used: Map<string, PlacedKind>): boolean {
+  return used.get(addDaysISO(date, 1)) === 'loaded' || used.get(addDaysISO(date, -1)) === 'loaded'
+}
+
+/** First day that isn't next to another strength day, else the first day. */
+function preferSpaced(days: string[], used: Map<string, PlacedKind>): string {
+  return days.find(d => !adjacentToUsed(d, used)) ?? days[0]
 }
 
 function pickMobilityDay(
   weekDates: string[],
   dayClass: Map<string, DayClass>,
-  used: Set<string>,
+  used: Map<string, PlacedKind>,
 ): string {
   const free = weekDates.filter(d => !used.has(d))
+  // The rest day wins outright — spacing only breaks ties within a tier, so
+  // recovery work never gets bumped off the rest day to buy a day's separation.
   const rest = free.filter(d => dayClass.get(d) === 'rest')
-  if (rest.length) return rest[0]
+  if (rest.length) return preferSpaced(rest, used)
   const easy = free.filter(d => dayClass.get(d) === 'easy')
-  if (easy.length) return easy[0]
+  if (easy.length) return preferSpaced(easy, used)
   return free[0] ?? weekDates[0]
 }
 
 function pickLoadedDay(
   weekDates: string[],
   dayClass: Map<string, DayClass>,
-  used: Set<string>,
+  used: Map<string, PlacedKind>,
 ): string {
   const isProtectedEasy = (d: string) =>
     dayClass.get(d) === 'easy' && dayClass.get(addDaysISO(d, 1)) !== 'hard'
 
+  const free = weekDates.filter(d => !used.has(d))
+  // Hard constraint, applied at every tier: never consecutive with another
+  // loaded session. `used` spans the program, so this holds across boundaries.
+  // A week with no legal day at all is the only case that relaxes it.
+  const legal = free.filter(d => !adjacentToLoaded(d, used))
+  const pool = legal.length ? legal : free
+
   // Tier 1: easy, clear of the next hard run, spaced from other strength days.
-  const spaced = weekDates.filter(d => !used.has(d) && !adjacentToUsed(d, used))
+  const spaced = pool.filter(d => !adjacentToUsed(d, used))
   let tier = spaced.filter(isProtectedEasy)
   if (tier.length) return tier[0]
   // Tier 2: any easy day, still spaced (dense week — every easy day is pre-hard).
@@ -289,12 +362,11 @@ function pickLoadedDay(
   // Tier 3: a free rest day, spaced.
   tier = spaced.filter(d => dayClass.get(d) === 'rest')
   if (tier.length) return tier[0]
-  // Tier 4: relax spacing — any non-hard unused day.
-  const free = weekDates.filter(d => !used.has(d))
-  tier = free.filter(d => dayClass.get(d) !== 'hard')
+  // Tier 4: relax spacing — any non-hard day.
+  tier = pool.filter(d => dayClass.get(d) !== 'hard')
   if (tier.length) return tier[0]
   // Tier 5: nothing left but a hard day — stack it (do strength after the run).
-  return free[0] ?? weekDates[0]
+  return pool[0] ?? weekDates[0]
 }
 
 function mobilityRationale(cls: DayClass | undefined): string {
