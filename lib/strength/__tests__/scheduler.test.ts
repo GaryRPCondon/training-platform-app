@@ -13,6 +13,7 @@ import {
   hasWeekStructure,
   SchedulingFailedError,
 } from '../scheduler'
+import type { Placement } from '../scheduler'
 import type { ParsedSession, LoadCategory } from '../schemas'
 
 const mockedCreateProvider = vi.mocked(createLLMProvider)
@@ -457,6 +458,162 @@ describe('placeStrengthSessionsWeekAware', () => {
     const onHard = placements.filter(p => hard.has(p.scheduled_date))
     expect(onHard).toHaveLength(1)
     expect(onHard[0].placement_rationale).toContain('after your run')
+  })
+
+  // --- week-boundary adjacency -------------------------------------------
+  // Sunday of week N is adjacent to Monday of week N+1. Placement is anchored
+  // per 7-day window, so these guard the cross-window view.
+
+  /** Smallest gap in days between consecutive placements, across all weeks. */
+  function minGapDays(placements: Placement[]): number {
+    const days = placements
+      .map(p => Date.parse(p.scheduled_date) / 86_400_000)
+      .sort((a, b) => a - b)
+    return days.slice(1).reduce((min, d, i) => Math.min(min, d - days[i]), Infinity)
+  }
+
+  it('never places two sessions on consecutive days across a week boundary', () => {
+    // The reported case: 2/week for 6 weeks put mobility on Sunday and the next
+    // week's loaded session on Monday, every single boundary.
+    const sessions: ParsedSession[] = []
+    for (let w = 1; w <= 6; w++) {
+      sessions.push(mkSession((w - 1) * 2 + 1, w, 1, 'loaded'))
+      sessions.push(mkSession((w - 1) * 2 + 2, w, 2, 'mobility_recovery'))
+    }
+    const mondays = ['2026-07-27', '2026-08-03', '2026-08-10', '2026-08-17', '2026-08-24', '2026-08-31']
+    const workouts = mondays.flatMap(m => runWeek(m))
+    const placements = placeStrengthSessionsWeekAware(sessions, '2026-07-27', workouts)
+
+    expect(placements).toHaveLength(12)
+    expect(minGapDays(placements)).toBeGreaterThanOrEqual(2)
+    // Mobility still owns each Sunday rest day.
+    for (const p of placements.filter(p => p.session_index % 2 === 0)) {
+      expect(p.placement_rationale).toContain('rest day')
+    }
+  })
+
+  it('never places two loaded sessions on consecutive days across a boundary', () => {
+    // Week 1's rest day is Monday, so its only pre-easy slot is Sunday; week 2
+    // is a classic week whose first easy day is Monday. Both loaded.
+    const d1 = consecutive('2026-07-27', 7)
+    const restMondayWeek = d1.map((date, i) => ({
+      scheduled_date: date,
+      workout_type: ['rest', 'intervals', 'easy_run', 'tempo', 'easy_run', 'long_run', 'easy_run'][i],
+      description: null,
+    }))
+    const sessions = [mkSession(1, 1, 1, 'loaded'), mkSession(2, 2, 1, 'loaded')]
+    const placements = placeStrengthSessionsWeekAware(
+      sessions,
+      '2026-07-27',
+      [...restMondayWeek, ...runWeek('2026-08-03')],
+    )
+    // Week 1 takes Sunday; week 2 must skip Monday rather than stack loads.
+    expect(placements[0].scheduled_date).toBe('2026-08-02')
+    expect(placements.map(p => p.scheduled_date)).not.toContain('2026-08-03')
+    expect(minGapDays(placements)).toBeGreaterThanOrEqual(2)
+  })
+
+  it('sees the hard run on the first day of the next window', () => {
+    // Same rest-Monday week, but the following Monday is an interval session.
+    // Sunday is no longer "clear of your next hard run".
+    const d1 = consecutive('2026-07-27', 7)
+    const restMondayWeek = d1.map((date, i) => ({
+      scheduled_date: date,
+      workout_type: ['rest', 'intervals', 'easy_run', 'tempo', 'easy_run', 'long_run', 'easy_run'][i],
+      description: null,
+    }))
+    const d2 = consecutive('2026-08-03', 7)
+    const hardMondayWeek = d2.map((date, i) => ({
+      scheduled_date: date,
+      workout_type: ['intervals', 'easy_run', 'tempo', 'easy_run', 'easy_run', 'long_run', 'rest'][i],
+      description: null,
+    }))
+    const workouts = [...restMondayWeek, ...hardMondayWeek]
+    const sessions = [mkSession(1, 1, 1, 'loaded'), mkSession(2, 2, 1, 'loaded')]
+    const placements = placeStrengthSessionsWeekAware(sessions, '2026-07-27', workouts)
+
+    // Week 1's loaded session moves off Sunday to Wednesday.
+    expect(placements[0].scheduled_date).toBe('2026-07-29')
+    // And no placement claims to be clear of the next hard run unless it is.
+    const hardTypes = new Set(['intervals', 'tempo', 'long_run', 'race', 'quality'])
+    const byDate = new Map(workouts.map(w => [w.scheduled_date, w.workout_type]))
+    for (const p of placements) {
+      if (!p.placement_rationale.includes('clear of your next hard run')) continue
+      const nextDay = new Date(Date.parse(p.scheduled_date) + 86_400_000).toISOString().slice(0, 10)
+      expect(hardTypes.has(byDate.get(nextDay) ?? '')).toBe(false)
+    }
+  })
+
+  it('keeps sessions off consecutive days at boundaries with 3 sessions/week', () => {
+    const sessions: ParsedSession[] = []
+    for (let w = 1; w <= 3; w++) {
+      sessions.push(mkSession((w - 1) * 3 + 1, w, 1, 'loaded'))
+      sessions.push(mkSession((w - 1) * 3 + 2, w, 2, 'loaded'))
+      sessions.push(mkSession((w - 1) * 3 + 3, w, 3, 'mobility_recovery'))
+    }
+    const workouts = ['2026-07-27', '2026-08-03', '2026-08-10'].flatMap(m => runWeek(m))
+    const placements = placeStrengthSessionsWeekAware(sessions, '2026-07-27', workouts)
+    expect(placements).toHaveLength(9)
+    expect(minGapDays(placements)).toBeGreaterThanOrEqual(2)
+  })
+
+  it('puts a loaded session on a hard day rather than next to another loaded session', () => {
+    // Pins the tier precedence: the loaded↔loaded constraint outranks hard-day
+    // avoidance. Week 1's only pre-easy slot is Sunday; week 2's only non-hard
+    // day is the Monday right after it, so the session takes a quality day.
+    const d1 = consecutive('2026-06-01', 7)
+    const restMondayWeek = d1.map((date, i) => ({
+      scheduled_date: date,
+      workout_type: ['rest', 'intervals', 'easy_run', 'tempo', 'easy_run', 'long_run', 'easy_run'][i],
+      description: null,
+    }))
+    const d2 = consecutive('2026-06-08', 7)
+    const oneEasyDayWeek = d2.map((date, i) => ({
+      scheduled_date: date,
+      workout_type: ['easy_run', 'intervals', 'tempo', 'intervals', 'tempo', 'long_run', 'race'][i],
+      description: null,
+    }))
+    const sessions = [mkSession(1, 1, 1, 'loaded'), mkSession(2, 2, 1, 'loaded')]
+    const placements = placeStrengthSessionsWeekAware(
+      sessions,
+      '2026-06-01',
+      [...restMondayWeek, ...oneEasyDayWeek],
+    )
+    expect(placements[0].scheduled_date).toBe('2026-06-07') // Sunday, easy
+    // Monday 06-08 is easy and free, but adjacent to a loaded session.
+    expect(placements[1].scheduled_date).toBe('2026-06-09') // Tuesday, intervals
+    expect(placements[1].placement_rationale).toContain('after your run')
+  })
+
+  it('spreads a no-run week across the whole window at 4 sessions', () => {
+    // floor(7 / 4) = 1 used to bunch these onto Mon/Tue/Wed/Thu.
+    const sessions = [1, 2, 3, 4].map(i => mkSession(i, 1, i, 'loaded'))
+    const placements = placeStrengthSessionsWeekAware(sessions, '2026-06-01', [])
+    expect(placements.map(p => p.scheduled_date)).toEqual([
+      '2026-06-01', '2026-06-03', '2026-06-05', '2026-06-07',
+    ])
+    expect(minGapDays(placements)).toBe(2)
+  })
+
+  it('offsets an evenly-spaced no-run week away from the previous week', () => {
+    // Week 2 runs past the end of the plan, so it falls to even spacing — which
+    // would otherwise start on Monday, right after week 1's Sunday mobility.
+    const sessions = [
+      mkSession(1, 1, 1, 'loaded'),
+      mkSession(2, 1, 2, 'mobility_recovery'),
+      mkSession(3, 2, 1, 'loaded'),
+      mkSession(4, 2, 2, 'mobility_recovery'),
+    ]
+    const placements = placeStrengthSessionsWeekAware(sessions, '2026-06-01', runWeek('2026-06-01'))
+    const byIndex = new Map(placements.map(p => [p.session_index, p]))
+    expect(byIndex.get(2)!.scheduled_date).toBe('2026-06-07') // Sunday rest day
+    expect(byIndex.get(3)!.scheduled_date).not.toBe('2026-06-08')
+    expect(minGapDays(placements)).toBeGreaterThanOrEqual(2)
+    // Still inside week 2's own window.
+    for (const idx of [3, 4]) {
+      expect(byIndex.get(idx)!.scheduled_date >= '2026-06-08').toBe(true)
+      expect(byIndex.get(idx)!.scheduled_date <= '2026-06-14').toBe(true)
+    }
   })
 
   it('returns exactly one placement per session', () => {
