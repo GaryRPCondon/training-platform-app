@@ -39,6 +39,19 @@ describe('buildSystemPrompt', () => {
     expect(buildSystemPrompt('critical')).toContain('do not invent criticism')
   })
 
+  it('forbids advising a faster pace on easy runs, in any tone', () => {
+    // The model advised "maintain a pace closer to the upper limit … to maximize
+    // recovery benefits" — the inverse of correct coaching, since running slower than
+    // easy pace adds recovery rather than costing it.
+    const tones: FeedbackTone[] = ['critical', 'balanced', 'positive']
+    for (const tone of tones) {
+      const prompt = buildSystemPrompt(tone)
+      expect(prompt).toContain('Easy pace has no lower bound')
+      expect(prompt).toContain('NEVER advise the athlete to speed up')
+      expect(prompt).toContain('Only give "next time" or "consider…" advice when the session actually had a fault')
+    }
+  })
+
   it('lets an easy run reach 5.0 without hitting a pace target', () => {
     // "5.0: Nailed it — distance, pace, intensity all on target" is unsatisfiable for a
     // run deliberately slower than easy pace, so the model hedged to 4.5.

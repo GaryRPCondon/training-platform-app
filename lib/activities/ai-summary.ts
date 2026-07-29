@@ -53,6 +53,8 @@ Rules:
   - For intervals/tempo workouts: ONLY active work-rep laps (Role = ACTIVE or INTERVAL) are evaluated against the work-rep target pace. Warmup, cooldown, and recovery laps deliberately run easier than the target and MUST NOT be counted as misses. When the summary mentions pace adherence, name a direction: state whether the work reps were too fast, too slow, or on target. The Adherence% column shows a signed deviation in parentheses (e.g. "95% (3s fast)") — this is the ground truth for direction. A lower adherence % does NOT imply slower; read the parenthetical to know whether a rep was fast or slow. Never assume a "fade" in the final reps unless the deviations actually show the closing reps slowing. Never say "X% of laps in range" without specifying which laps and which direction.
 - The evaluation rules above are internal reasoning, not material for the summary. Write only about what the athlete did, in the words a coach would use standing beside them. Never restate a rule, never describe the session in terms of the criteria it met, and never report that something was within its bounds — confirming compliance is not a coaching insight.
 - On easy / recovery / long runs, do not mention the easy pace at all unless the athlete actually ran faster than it. A run at or below easy pace needs no pace comment: describe the effort or the aerobic quality instead, or say nothing about pace.
+- Easy pace has no lower bound. NEVER advise the athlete to speed up, to run "closer to" the easy pace, or to pick the pace up on future easy runs. Running slower than easy pace does not cost recovery benefit — it adds to it, so advice of that shape is not merely off-target, it is the opposite of correct coaching.
+- Only give "next time" or "consider…" advice when the session actually had a fault to correct. A clean session ends after the observation — do not append guidance for its own sake.
 - Be direct and prescriptive: when something needs correcting, say what to do differently.
 - Where pace, HR, or effort drifted from target, explain the training consequence (e.g. "running easy days this fast erodes recovery", "the fade in final reps suggests the interval target was too aggressive").
 - Use concrete numbers (e.g. "4:15/km", "128 bpm") to support observations, not as the observation itself.
@@ -114,6 +116,12 @@ type WorkoutType = PlannedWorkout['workout_type']
 const LOW_INTENSITY_TYPES: ReadonlySet<WorkoutType> = new Set(['easy_run', 'long_run', 'recovery'])
 
 const ACTIVE_LAP_ROLES = new Set(['ACTIVE', 'INTERVAL'])
+
+// How far over easy pace a run has to average before it counts as run-too-fast.
+// GPS noise and a couple of downhill kilometres move an average by a few seconds
+// either way, and flagging a 2s/km overshoot as an effort-control failure would
+// reintroduce the manufactured-fault problem from the other direction.
+const EASY_PACE_TOLERANCE_SECS = 5
 
 // Structured-workout interval roles that are not work reps: these deliberately run
 // easier than the work-rep target and must never be judged against it.
@@ -469,20 +477,34 @@ export function buildUserMessage(
     : 'Pace compliance'
 
   const targetPace = extractTargetPace(workout)
-  // Naming it a "target" on an easy run invited the model to treat any slower pace as
-  // a miss (a 5:38/km run at 115 bpm was reported as having "drifted significantly
-  // slower than the target"). It is an upper bound on effort, so label it as one —
-  // but keep the label plain: a quotable phrase here gets parroted into the summary
-  // ("the overall pace was slower than the easy pace ceiling"). The criteria block
-  // carries the semantics; this line only has to avoid the word "target".
-  const targetPaceLabel = overallOnly
-    ? 'Easy pace (upper limit)'
-    : 'Target pace (work reps only)'
+
+  // On a run judged by its average, easy pace bounds effort from above and has no
+  // lower bound at all — so the number is only ever actionable when the athlete went
+  // over it. Supplying it regardless is what kept the summaries talking about it:
+  // labelled a "target" the model called a slower run a miss; relabelled a "ceiling"
+  // it narrated the rule back; relabelled an "upper limit" it advised running "closer
+  // to the upper limit … to maximize recovery benefits", which is backwards. Each
+  // time it found a new way to make an unexceeded limit into a topic. Withholding the
+  // number decides it in code: there is nothing left to comment on.
+  const easyPaceSecs = overallOnly ? (resolveTargetPaceBand(workout)?.lower ?? null) : null
+  const easyPaceExcessSecs = easyPaceSecs != null && avgPaceSecsPerKm != null
+    ? Math.round(easyPaceSecs - avgPaceSecsPerKm)
+    : null
+  const ranFasterThanEasy = easyPaceExcessSecs != null && easyPaceExcessSecs > EASY_PACE_TOLERANCE_SECS
+
+  const targetPaceLine = overallOnly
+    ? (ranFasterThanEasy
+        ? `\n- Easy pace limit: ${formatPace(easyPaceSecs)} — this run averaged ${easyPaceExcessSecs}s/km FASTER than that, which is the fault to call out`
+        : '')
+    : `\n- Target pace (work reps only): ${targetPace}`
   const structureBlock = buildStructureBlock(workout, trainingPaces)
 
   const workoutTypeLabel = workout.workout_type.replace('_', ' ')
+  const overallVerdict = ranFasterThanEasy
+    ? `The athlete ran faster than easy pace, as quantified below — call that out and explain that it erodes recovery.`
+    : `The athlete did not run faster than easy pace, so no pace fault exists and no pace figure is given. Rate this 5.0 if average HR sits in the easy zone. Say nothing whatsoever about pace: do not remark that it was appropriate, do not compare it to anything, and do not suggest running faster or slower on future easy runs.`
   const primaryMetric = {
-    overall: `PRIMARY EVALUATION CRITERIA — this is a ${workoutTypeLabel}: judge success on overall average HR and effort control. The easy pace below is an upper limit, not a target: running slower than it is not a shortfall and must not be criticised or rated down. Running faster than it is the fault to call out, because it erodes recovery. Lap-to-lap pace variance is informational only and MUST NOT lower the rating. If average HR sits in the easy zone and the average pace was not faster than the easy pace, rate this 5.0 and leave pace out of the summary entirely — do not report that the pace was acceptable, and do not name individual laps.`,
+    overall: `PRIMARY EVALUATION CRITERIA — this is a ${workoutTypeLabel}: judge success on overall average HR and effort control. ${overallVerdict} Lap-to-lap pace variance is informational only, MUST NOT lower the rating, and individual laps must not be named.`,
     structured: `PRIMARY EVALUATION CRITERIA — this is a ${workoutTypeLabel}: judge success on per-lap pace compliance and intensity control. ONLY laps with Role = ACTIVE or INTERVAL are evaluated against the work-rep target pace. Warmup, cooldown, and recovery laps run at easier paces by design — do not count them as misses. When commenting on pace, state direction explicitly: too fast, too slow, or on target.`,
     mixed: `PRIMARY EVALUATION CRITERIA — this is a ${workoutTypeLabel} with embedded quality segments, so it is a MULTI-PACE session. Judge it segment by segment: (a) the work reps — ONLY laps with Role = ACTIVE or INTERVAL — against the work-rep target pace below, and (b) the easy/recovery portions against easy pace. The whole-activity average pace blends both and is NOT a target: do NOT compare it to the work-rep target pace and do NOT treat the gap between them as a shortfall. Warmup, cooldown, rest, and recovery laps run easier by design — never count them as misses. When commenting on pace, state direction explicitly: too fast, too slow, or on target.`,
   }[mode]
@@ -493,8 +515,7 @@ Planned workout:
 - Type: ${workout.workout_type}
 - Target distance: ${effectiveDistance ? `${(effectiveDistance / 1000).toFixed(2)} km` : 'N/A'}
 - Target duration: ${workout.duration_target_seconds ? formatDuration(workout.duration_target_seconds) : 'N/A'}
-- Intensity: ${workout.intensity_target || 'N/A'}
-- ${targetPaceLabel}: ${targetPace}
+- Intensity: ${workout.intensity_target || 'N/A'}${targetPaceLine}
 - Description: ${workout.description || 'N/A'}`
 
   if (structureBlock) {

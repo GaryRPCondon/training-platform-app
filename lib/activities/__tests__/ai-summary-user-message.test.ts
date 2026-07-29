@@ -249,46 +249,54 @@ describe('buildUserMessage — easy run', () => {
     })
   }
 
-  it('labels the easy pace as an upper limit, not a target', () => {
+  // Ran the 8 km at exactly the 5:20/km easy pace — at the limit, not over it.
+  const atEasyPace = () => makeActivity({ distance_meters: 8000, duration_seconds: 2560, moving_duration_seconds: 2560 })
+  // 8 km in 37:20 = 4:40/km against a 5:20/km limit — 40s/km too fast.
+  const fasterThanEasy = () => makeActivity({ distance_meters: 8000, duration_seconds: 2240, moving_duration_seconds: 2240 })
+
+  it('withholds the easy pace entirely when the run was not faster than it', () => {
+    // Three labels for this number were tried and each got talked about: "target" made
+    // a slower run a miss, "ceiling" got the rule narrated back, "upper limit" produced
+    // "maintain a pace closer to the upper limit … to maximize recovery benefits" —
+    // advice to run an easy run harder. An unexceeded limit is not actionable, so it
+    // is not supplied.
     const laps = [makeLap(0, { distance_meters: 8000, duration_seconds: 2560, avg_pace: 320, compliance_score: 90 })]
-    const msg = buildUserMessage(makeActivity({ distance_meters: 8000, duration_seconds: 2560, moving_duration_seconds: 2560 }), easyWorkout(), laps)
-    expect(msg).toContain('Easy pace (upper limit): 5:20/km')
+    const msg = buildUserMessage(atEasyPace(), easyWorkout(), laps)
+    // The planned block runs straight from Intensity to Description — no pace line.
+    // (5:20/km still appears as the activity's own average, which is a fact about
+    // what happened, not a bound to be judged against.)
+    expect(msg).toContain('- Intensity: easy\n- Description:')
+    expect(msg).not.toMatch(/easy pace limit/i)
     expect(msg).not.toContain('Target pace (work reps only)')
-    // "Target" framing is what made a slower-than-easy run read as a shortfall.
-    expect(msg).not.toContain('Target pace: 5:20/km')
+    expect(msg).not.toMatch(/ceiling|upper limit/i)
   })
 
-  it('keeps the label free of quotable phrasing the model can parrot', () => {
-    // Regression: "Easy pace ceiling (slower is fine; faster is the fault)" came back
-    // out verbatim-ish in summaries ("the overall pace was slower than the easy pace
-    // ceiling, which aligns with the intent of an easy run") — rubric narration, not
-    // coaching. The data label must not hand the model a phrase to quote.
-    const msg = buildUserMessage(makeActivity(), easyWorkout(), [])
-    expect(msg).not.toMatch(/ceiling/i)
-    expect(msg).not.toContain('slower is fine')
+  it('gives the model an explicit no-pace-fault verdict rather than a number to judge', () => {
+    const msg = buildUserMessage(atEasyPace(), easyWorkout(), [])
+    expect(msg).toContain('The athlete did not run faster than easy pace, so no pace fault exists')
+    expect(msg).toContain('Rate this 5.0 if average HR sits in the easy zone')
+    expect(msg).toContain('do not suggest running faster or slower on future easy runs')
+  })
+
+  it('supplies the easy pace and the overshoot when the run was genuinely too fast', () => {
+    const msg = buildUserMessage(fasterThanEasy(), easyWorkout(), [])
+    expect(msg).toContain('Easy pace limit: 5:20/km — this run averaged 40s/km FASTER than that')
+    expect(msg).toContain('The athlete ran faster than easy pace')
+    expect(msg).toContain('erodes recovery')
+  })
+
+  it('tolerates a few seconds over the limit rather than manufacturing a fault', () => {
+    // 8 km in 42:16 = 5:17/km against 5:20/km. GPS noise and a downhill km move an
+    // average by that much; calling it an effort-control failure is the same
+    // invented-fault problem from the other direction.
+    const msg = buildUserMessage(makeActivity({ distance_meters: 8000, duration_seconds: 2536, moving_duration_seconds: 2536 }), easyWorkout(), [])
+    expect(msg).toContain('did not run faster than easy pace')
+    expect(msg).not.toMatch(/easy pace limit/i)
   })
 
   it('does not emit a structure block when main_set is absent', () => {
     const msg = buildUserMessage(makeActivity(), easyWorkout(), [])
     expect(msg).not.toContain('Workout structure')
-  })
-
-  it('tells the model that slower than easy pace is not a fault', () => {
-    // Regression (planned_workout 11656): a 5:38/km run at 115 bpm against a 5:05/km
-    // easy pace was summarised as having "drifted significantly slower than the
-    // target … failed to meet the intent". Easy pace bounds effort from above; only
-    // running faster than it is a fault.
-    const msg = buildUserMessage(makeActivity(), easyWorkout(), [])
-    expect(msg).toContain('an upper limit, not a target')
-    expect(msg).toContain('running slower than it is not a shortfall')
-  })
-
-  it('tells the model to leave pace out of the summary when the run was not too fast', () => {
-    // The rule is for judging, not for narrating: a compliant easy run should read as
-    // coaching, not as a report that the pace rule was satisfied.
-    const msg = buildUserMessage(makeActivity(), easyWorkout(), [])
-    expect(msg).toContain('leave pace out of the summary entirely')
-    expect(msg).toContain('do not name individual laps')
   })
 
   it('does not emit a pace-compliance line for low-intensity workouts', () => {
@@ -308,10 +316,11 @@ describe('buildUserMessage — easy run', () => {
         target_pace_sec_per_km: 309,
       },
     })
+    // Default fixture runs 5:00/km against a 5:09/km limit — 9s/km over, so this one
+    // does get the number, with the overshoot quantified.
     const msg = buildUserMessage(makeActivity(), plainLong, [])
-    // 'overall' mode: whole-run HR and effort control against an upper limit.
-    expect(msg).toContain('The easy pace below is an upper limit, not a target')
-    expect(msg).toContain('Easy pace (upper limit): 5:09/km')
+    expect(msg).toContain('judge success on overall average HR and effort control')
+    expect(msg).toContain('Easy pace limit: 5:09/km — this run averaged 9s/km FASTER than that')
     expect(msg).not.toContain('MULTI-PACE session')
     expect(msg).not.toContain('judge success on per-lap pace compliance')
   })
