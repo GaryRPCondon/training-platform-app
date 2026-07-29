@@ -264,7 +264,7 @@ describe('buildUserMessage — easy run', () => {
     // ceiling, which aligns with the intent of an easy run") — rubric narration, not
     // coaching. The data label must not hand the model a phrase to quote.
     const msg = buildUserMessage(makeActivity(), easyWorkout(), [])
-    expect(msg).not.toMatch(/^- .*ceiling/mi)
+    expect(msg).not.toMatch(/ceiling/i)
     expect(msg).not.toContain('slower is fine')
   })
 

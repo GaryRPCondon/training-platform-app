@@ -21,9 +21,30 @@ describe('buildSystemPrompt', () => {
     for (const tone of tones) {
       const prompt = buildSystemPrompt(tone)
       expect(prompt).toContain('internal reasoning, not material for the summary')
-      expect(prompt).toContain('never report that a rule was satisfied')
+      expect(prompt).toContain('never report that something was within its bounds')
       expect(prompt).toContain('do not mention the easy pace at all unless the athlete actually ran faster than it')
+      // Naming the words is the same priming that caused the bug — the rule has to
+      // hold without a vocabulary blocklist to quote from.
+      expect(prompt).not.toMatch(/never borrow its vocabulary/)
     }
+  })
+
+  it('does not force a shortfall onto a clean session in any tone', () => {
+    // The balanced clause demanded "equal weight" praise and criticism, so a flawless
+    // easy run got a manufactured second sentence ("some laps exceeded the easy pace
+    // ceiling"). Every tone now has an explicit out.
+    expect(buildSystemPrompt('balanced')).toContain('do not manufacture a shortfall')
+    expect(buildSystemPrompt('balanced')).not.toContain('Equal weight to both')
+    expect(buildSystemPrompt('positive')).toContain('omit them entirely when there are none')
+    expect(buildSystemPrompt('critical')).toContain('do not invent criticism')
+  })
+
+  it('lets an easy run reach 5.0 without hitting a pace target', () => {
+    // "5.0: Nailed it — distance, pace, intensity all on target" is unsatisfiable for a
+    // run deliberately slower than easy pace, so the model hedged to 4.5.
+    const prompt = buildSystemPrompt('balanced')
+    expect(prompt).toContain('however far below it the pace sat')
+    expect(prompt).not.toContain('5.0: Nailed it — distance, pace, intensity all on target')
   })
 
   it('embeds a critical-leaning clause when tone is critical', () => {
