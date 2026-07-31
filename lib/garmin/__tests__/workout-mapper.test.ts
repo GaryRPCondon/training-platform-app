@@ -506,6 +506,112 @@ describe('mapToGarminWorkout — role-driven step type selection', () => {
     expect(children[1].stepType.stepTypeKey).toBe('rest')
   })
 
+  it('sends NO pace target on a rest step, even inside a tempo session', () => {
+    // Regression: "Tempo 11 mi — 5E + 4 × (1T w/1 min rests) + 2E" transmitted the
+    // 1 min rests at 4:00/km in Garmin Connect. The rest carries no resolvable
+    // intensity, so pace resolution fell through pace_targets and the substring
+    // matcher to getWorkoutPaceType('tempo') — the session's own work pace.
+    const result = mapToGarminWorkout(makeWorkout({
+      workout_type: 'tempo',
+      intensity_target: 'T',
+      structured_workout: {
+        warmup: { distance_meters: 8000, intensity: 'E' },
+        main_set: [{
+          repeat: 4,
+          intervals: [
+            { distance_meters: 1600, intensity: 'T', role: 'work' },
+            { duration_seconds: 60, role: 'rest' },
+          ],
+        }],
+        cooldown: { distance_meters: 3200, intensity: 'E' },
+        target_pace_sec_per_km: 253,
+      },
+    }), PACES)
+
+    const repeat = result.workoutSegments[0].workoutSteps[1]
+    const [work, rest] = repeat.workoutSteps as [GarminWorkoutStep, GarminWorkoutStep]
+
+    // The work rep still gets the tempo zone...
+    expect(work.stepType.stepTypeKey).toBe('interval')
+    expect(work.targetType.workoutTargetTypeKey).toBe('pace.zone')
+    expect(work.targetValueOne).toBeCloseTo(1000 / (253 + 15), 2)
+
+    // ...and the rest gets nothing at all.
+    expect(rest.stepType.stepTypeKey).toBe('rest')
+    expect(rest.targetType.workoutTargetTypeKey).toBe('no.target')
+    expect(rest.targetValueOne).toBeNull()
+    expect(rest.targetValueTwo).toBeNull()
+    // The rest is still time-bounded — only the pace is suppressed.
+    expect(rest.endCondition.conditionTypeKey).toBe('time')
+    expect(rest.endConditionValue).toBe(60)
+  })
+
+  it('sends NO pace target when rest is expressed as intensity:"rest" without a role', () => {
+    // Legacy/pre-role data path. isStandingRest() in vdot.ts accepts either
+    // signal, so the mapper must too or the two disagree about the same part.
+    const result = mapToGarminWorkout(makeWorkout({
+      workout_type: 'intervals',
+      intensity_target: 'I',
+      structured_workout: {
+        main_set: [{
+          repeat: 6,
+          intervals: [
+            { duration_seconds: 200, intensity: 'I' },
+            { duration_seconds: 90, intensity: 'rest' },
+          ],
+        }],
+      },
+    }), PACES)
+
+    const children = result.workoutSegments[0].workoutSteps[0].workoutSteps as GarminWorkoutStep[]
+    expect(children[1].targetType.workoutTargetTypeKey).toBe('no.target')
+    expect(children[1].targetValueOne).toBeNull()
+  })
+
+  it('suppresses the pace target on a rest step even if one was explicitly stamped', () => {
+    // vdot.ts counts a standing rest as 0 m covered. Honouring a target_pace here
+    // would mean the watch prescribes a running pace for a part the plan's own
+    // distance maths says covers no ground.
+    const result = mapToGarminWorkout(makeWorkout({
+      workout_type: 'intervals',
+      structured_workout: {
+        main_set: [{
+          repeat: 4,
+          intervals: [
+            { distance_meters: 400, intensity: 'R', role: 'work' },
+            { duration_seconds: 120, role: 'rest', target_pace: '5:30' },
+          ],
+        }],
+      },
+    }), PACES)
+
+    const children = result.workoutSegments[0].workoutSteps[0].workoutSteps as GarminWorkoutStep[]
+    expect(children[1].stepType.stepTypeKey).toBe('rest')
+    expect(children[1].targetType.workoutTargetTypeKey).toBe('no.target')
+  })
+
+  it('leaves recovery jogs untouched — only standing rest loses its pace', () => {
+    // Guard against over-reach: a recovery jog is running and keeps its E pace.
+    const result = mapToGarminWorkout(makeWorkout({
+      workout_type: 'intervals',
+      intensity_target: 'I',
+      structured_workout: {
+        main_set: [{
+          repeat: 8,
+          intervals: [
+            { distance_meters: 400, intensity: 'I', role: 'work' },
+            { distance_meters: 400, intensity: 'easy', role: 'recovery' },
+          ],
+        }],
+      },
+    }), PACES)
+
+    const children = result.workoutSegments[0].workoutSteps[0].workoutSteps as GarminWorkoutStep[]
+    expect(children[1].stepType.stepTypeKey).toBe('recovery')
+    expect(children[1].targetType.workoutTargetTypeKey).toBe('pace.zone')
+    expect(children[1].targetValueOne).toBeCloseTo(1000 / (330 + 15), 2)
+  })
+
   it('legacy fallback: no role + intensity contains "recovery" → recovery step type, with warn', () => {
     // Plans generated before the role contract are still readable. The mapper
     // falls back to a narrow keyword match and emits a console.warn so the

@@ -96,6 +96,18 @@ function buildPaceTarget(centerSecPerKm: number): { targetValueOne: number; targ
 }
 
 /**
+ * A standing rest covers no ground, so it must never carry a pace target.
+ *
+ * Mirrors `isStandingRest()` in lib/training/vdot.ts, which already sizes these
+ * parts at zero distance. The two must agree: without this, the mapper tells the
+ * watch to run a part that our own distance maths counts as 0 m.
+ */
+function isStandingRestPart(part: { role?: string; intensity?: string }): boolean {
+  return (part.role ?? '').toLowerCase() === 'rest' ||
+         (part.intensity ?? '').toLowerCase() === 'rest'
+}
+
+/**
  * Resolve a pace target from an intensity label and/or training paces.
  * Returns null if no pace can be determined.
  *
@@ -173,7 +185,7 @@ function resolvePaceFromIntensity(
 // ============================================================================
 
 function buildExecutableStep(
-  part: { duration_minutes?: number; duration_seconds?: number; distance_meters?: number; intensity?: string },
+  part: { duration_minutes?: number; duration_seconds?: number; distance_meters?: number; intensity?: string; role?: string },
   stepOrder: number,
   childStepId: number | null,
   stepType: keyof typeof STEP_TYPES,
@@ -203,8 +215,19 @@ function buildExecutableStep(
   let targetValueOne: number | null = null
   let targetValueTwo: number | null = null
 
+  // A standing rest gets no pace target of any kind — not from an explicit
+  // target_pace, and not from intensity resolution. This is checked before both
+  // because the resolution chain has no way to answer "no pace at all" for a
+  // rest: `rest` matches nothing in any template's pace_targets and nothing in
+  // the substring matcher, so it falls through to the workout-type default and
+  // the rest is transmitted at the session's work pace (a 1 min rest inside a
+  // tempo session showed as 4:00/km in Garmin Connect).
+  const isRest = stepType === 'rest' || isStandingRestPart(part)
+
   // Explicit pace string takes priority
-  if (targetPaceOverride) {
+  if (isRest) {
+    // leave targetType as noTarget
+  } else if (targetPaceOverride) {
     // Handle "M:SS-M:SS" range format (explicit faster-slower bounds)
     const dashIdx = targetPaceOverride.indexOf('-', 1)
     if (dashIdx > 0) {
@@ -410,6 +433,7 @@ type StructuredPart = {
   distance_meters?: number
   intensity?: string
   target_pace?: string
+  role?: string
 }
 
 type MainSetEntry = {
@@ -421,6 +445,7 @@ type MainSetEntry = {
   distance_meters?: number
   intensity?: string
   target_pace?: string
+  role?: string
 }
 
 type WorkoutStructure = {
