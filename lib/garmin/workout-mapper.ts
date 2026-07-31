@@ -24,6 +24,7 @@ import type {
 } from './types'
 import { getWorkoutPaceType, type AllTrainingPaces } from '@/lib/training/vdot'
 import { resolvePace, formatPaceMinKm, type PaceTarget } from '@/lib/plans/pace-resolver'
+import type { IntervalRole } from '@/lib/plans/structured-workout-builder'
 
 // ============================================================================
 // Constants
@@ -281,7 +282,7 @@ type RepeatChildInterval = {
   duration_seconds?: number
   intensity?: string
   target_pace?: string
-  role?: 'work' | 'recovery' | 'rest' | 'warmup' | 'cooldown'
+  role?: IntervalRole
 }
 
 /**
@@ -433,7 +434,7 @@ type StructuredPart = {
   distance_meters?: number
   intensity?: string
   target_pace?: string
-  role?: string
+  role?: IntervalRole
 }
 
 type MainSetEntry = {
@@ -445,7 +446,7 @@ type MainSetEntry = {
   distance_meters?: number
   intensity?: string
   target_pace?: string
-  role?: string
+  role?: IntervalRole
 }
 
 type WorkoutStructure = {
