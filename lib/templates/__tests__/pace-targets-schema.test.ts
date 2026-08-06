@@ -125,9 +125,9 @@ describe('paceTargetsSchema', () => {
 })
 
 describe('REFERENCE_PACE_KEYS', () => {
-  it('contains exactly the canonical 12 keys (5 training + 6 race + walk)', () => {
+  it('contains exactly the canonical 13 keys (6 training + 6 race + walk)', () => {
     expect(REFERENCE_PACE_KEYS).toEqual([
-      'easy', 'marathon', 'tempo', 'interval', 'repetition', 'walk',
+      'easy', 'recovery', 'marathon', 'tempo', 'interval', 'repetition', 'walk',
       'race_mile', 'race_3k', 'race_5k', 'race_10k', 'race_15k', 'race_half_marathon',
     ])
   })

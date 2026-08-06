@@ -167,8 +167,8 @@ export const OPERATION_TOOLS: ToolDefinition[] = [
         },
         newIntensity: {
           type: 'string',
-          enum: ['easy', 'moderate', 'hard'],
-          description: 'New intensity level'
+          enum: ['recovery', 'easy', 'moderate', 'hard'],
+          description: 'New intensity level. "recovery" is slower than "easy" — use it for a deliberate recovery run, not just a gentle one.'
         }
       },
       required: ['workoutIndex', 'newIntensity'],

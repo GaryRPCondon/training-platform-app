@@ -110,7 +110,7 @@ export function getWorkoutTypeDefaults(
       break
     case 'recovery':
       updates.description = 'Recovery'
-      updates.intensity_target = 'easy'
+      updates.intensity_target = 'recovery'
       break
     case 'progression':
       updates.description = 'Progression run'

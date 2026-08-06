@@ -59,7 +59,12 @@ export function calculateVDOTFromRaceTime(
  * Returns paces in seconds per kilometer
  */
 export interface TrainingPaces {
-  easy: number          // Easy/recovery pace (seconds/km)
+  easy: number          // Easy pace — the standard aerobic run (seconds/km)
+  // Recovery pace (seconds/km) — deliberately slower than easy. Easy is the everyday
+  // aerobic run; recovery is what you jog between reps, or the run whose only job is to
+  // speed recovery from the muscular and physiological damage of a hard session. They
+  // used to share one number, which meant "make this a recovery run" changed nothing.
+  recovery: number
   marathon: number      // Marathon race pace (seconds/km)
   tempo: number         // Threshold/tempo pace (seconds/km)
   interval: number      // VO2max/5K pace (seconds/km)
@@ -74,8 +79,14 @@ export const WALK_PACE_SEC_PER_KM = 600
 export function calculateTrainingPaces(vdot: number): TrainingPaces {
   // Formulas based on Jack Daniels' VDOT tables
 
-  // Easy pace: ~65% of VDOT (conversational, recovery)
+  // Easy pace: ~65% of VDOT (conversational)
   const easyPace = calculatePaceForIntensity(vdot, 0.65)
+
+  // Recovery pace: 59% of VDOT — the bottom of Daniels' Easy range (59-74% VO2max),
+  // where easy sits mid-range at 65%. Deriving it from the same formula rather than
+  // as a fixed offset keeps the gap proportional to fitness (~+25 s/km at VDOT 55,
+  // ~+31 s/km at VDOT 40) instead of penalising faster runners.
+  const recoveryPace = calculatePaceForIntensity(vdot, 0.59)
 
   // Marathon pace: 82% of VDOT
   // percentMax for a ~3h race converges to 0.818, so this is equivalent
@@ -93,6 +104,7 @@ export function calculateTrainingPaces(vdot: number): TrainingPaces {
 
   return {
     easy: Math.round(easyPace),
+    recovery: Math.round(recoveryPace),
     marathon: Math.round(marathonPace),
     tempo: Math.round(tempoPace),
     interval: Math.round(intervalPace),
@@ -315,7 +327,7 @@ export function getWorkoutPaceType(workoutType: string): keyof TrainingPaces {
   // Exact matches for workout types
   if (typeLower === 'intervals') return 'interval'
   if (typeLower === 'tempo') return 'tempo'
-  if (typeLower === 'recovery') return 'easy'
+  if (typeLower === 'recovery') return 'recovery'
   if (typeLower === 'easy_run') return 'easy'
   if (typeLower === 'long_run') return 'easy'
   // 'race' falls through to marathon as a last-resort default. Consumers that
@@ -329,7 +341,7 @@ export function getWorkoutPaceType(workoutType: string): keyof TrainingPaces {
   if (typeLower.includes('tempo') || typeLower.includes('threshold')) return 'tempo'
   if (typeLower.includes('marathon') || typeLower.includes('race')) return 'marathon'
   if (typeLower.includes('repetition') || typeLower.includes('rep')) return 'repetition'
-  if (typeLower.includes('recovery')) return 'easy'
+  if (typeLower.includes('recovery')) return 'recovery'
   if (typeLower.includes('easy')) return 'easy'
   if (typeLower.includes('long')) return 'easy'
 
@@ -526,7 +538,7 @@ function resolvePartPaceSecPerKm(
     if (parsed != null) return parsed
   }
   if (part.intensity && trainingPaces) {
-    const pace = trainingPaces[getIntensityPaceType(part.intensity)]
+    const pace = trainingPaces[resolveIntensityPaceKey(part.intensity)]
     if (pace) return pace
   }
   return fallbackPaceSecPerKm
@@ -580,24 +592,69 @@ export function estimateWorkoutDurationSeconds(
 }
 
 /**
- * Map workout intensity to pace type (fallback method)
- * @deprecated Use getWorkoutPaceType instead
+ * Map a free-text intensity label to the training pace it should be run at.
+ *
+ * This is THE resolver for the intensity axis — the UI card, the Garmin mapper, the
+ * plan importer and the distance/duration math all route through it. Four near-copies
+ * of this logic used to exist side by side and had drifted apart (one sent `hard` to
+ * easy pace; all four collapsed `recovery` onto `easy`), so a recovery run came out
+ * identical to an easy run. Add new vocabulary here, not at the call site.
+ *
+ * Note the ordering: `recovery` must be tested before `easy`, and `repetition`/`stride`
+ * before the bare `rep` alias.
+ *
+ * Callers that need "no pace at all" — a standing rest, a walk step, race day — must
+ * short-circuit before calling this; every recognised label resolves to some pace.
+ *
+ * Returns null for labels it doesn't recognise, so callers with a better fallback
+ * (the Garmin mapper defers to the workout type) can use it instead of a blanket easy.
  */
-export function getIntensityPaceType(intensity: string): keyof TrainingPaces {
-  const intensityLower = intensity.toLowerCase()
+export function matchIntensityPaceKey(intensity: string): keyof TrainingPaces | null {
+  const l = intensity.toLowerCase()
 
-  if (intensityLower.includes('easy') || intensityLower.includes('recovery')) {
-    return 'easy'
-  } else if (intensityLower.includes('marathon') || intensityLower === 'moderate') {
-    return 'marathon'
-  } else if (intensityLower.includes('tempo') || intensityLower.includes('threshold')) {
-    return 'tempo'
-  } else if (intensityLower.includes('interval') || intensityLower.includes('vo2max')) {
-    return 'interval'
-  } else if (intensityLower.includes('repetition') || intensityLower.includes('speed')) {
+  if (l.includes('recovery')) return 'recovery'
+  if (l.includes('walk')) return 'walk'
+  if (l.includes('easy') || l.includes('long')) return 'easy'
+  if (l.includes('marathon') || l.includes('moderate') || l.includes('race')) return 'marathon'
+  if (l.includes('tempo') || l.includes('threshold') || l === 'lt') return 'tempo'
+  if (l.includes('interval') || l.includes('vo2') || l.includes('hard')) return 'interval'
+  if (l.includes('repetition') || l.includes('stride') || l.includes('speed') || l === 'rep') {
     return 'repetition'
   }
 
-  // Default to easy for unknown intensities
-  return 'easy'
+  return null
+}
+
+/** {@link matchIntensityPaceKey} with easy as the default for unrecognised labels. */
+export function resolveIntensityPaceKey(intensity: string): keyof TrainingPaces {
+  return matchIntensityPaceKey(intensity) ?? 'easy'
+}
+
+/** Default half-width of a prescribed pace band, in sec/km. */
+export const PACE_TOLERANCE_SEC_PER_KM = 15
+
+/**
+ * Recovery gets a wider band.
+ *
+ * A recovery run is prescribed by effort, not by hitting a number — the point is to
+ * stay easy, and natural recovery pace wanders. A ±15 band (5:19–5:49 around a 5:34
+ * recovery pace) has the watch nagging a run that is doing exactly what it should.
+ * ±30 (5:04–6:04) leaves room to drift while still warning when the run creeps up
+ * toward easy pace, which is the one fault a recovery run can actually commit.
+ *
+ * Deliberately scoped to recovery: quality work IS prescribed to a number, and
+ * widening its band would stop the watch flagging reps that miss.
+ */
+export const RECOVERY_PACE_TOLERANCE_SEC_PER_KM = 30
+
+/**
+ * Half-width of the pace band for a given intensity label. Shared by the Garmin
+ * mapper and the workout card so the band shown to the athlete is the band sent to
+ * the watch — they drifted apart once already.
+ */
+export function paceToleranceFor(intensity: string | null | undefined): number {
+  if (intensity && matchIntensityPaceKey(intensity) === 'recovery') {
+    return RECOVERY_PACE_TOLERANCE_SEC_PER_KM
+  }
+  return PACE_TOLERANCE_SEC_PER_KM
 }

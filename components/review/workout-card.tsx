@@ -20,7 +20,7 @@ import { format, parseISO } from 'date-fns'
 import { Calendar as CalendarPicker } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Checkbox } from '@/components/ui/checkbox'
-import { getWorkoutPaceType, calculateTotalWorkoutDistance, estimateWorkoutDurationSeconds } from '@/lib/training/vdot'
+import { getWorkoutPaceType, resolveIntensityPaceKey, paceToleranceFor, calculateTotalWorkoutDistance, estimateWorkoutDurationSeconds } from '@/lib/training/vdot'
 import { interpretAccuracyScore } from '@/lib/activities/scoring'
 import { useUnits } from '@/lib/hooks/use-units'
 import { formatDistance as fmtDist, formatClock, paceParts, type UnitSystem } from '@/lib/utils/units'
@@ -192,6 +192,8 @@ function fmtPaceRangeDisplay(
   stampedPaceSec?: number
 ): string {
   let fKm: number | null = null; let sKm: number | null = null
+  // Same half-width the Garmin mapper applies, so the card and the watch agree.
+  const tol = paceToleranceFor(intensity)
   if (targetPace) {
     const dash = targetPace.indexOf('-', 1)
     if (dash > 0) {
@@ -199,31 +201,20 @@ function fmtPaceRangeDisplay(
       sKm = parseSinglePaceSec(targetPace.slice(dash + 1))
     } else {
       const c = parseSinglePaceSec(targetPace)
-      if (c !== null) { fKm = c - 15; sKm = c + 15 }
+      if (c !== null) { fKm = c - tol; sKm = c + tol }
     }
   } else if (stampedPaceSec && intensity && !isRecoveryIntensity(intensity)) {
     // Use methodology-specific stamped pace for work intervals
-    fKm = stampedPaceSec - 15; sKm = stampedPaceSec + 15
+    fKm = stampedPaceSec - tol; sKm = stampedPaceSec + tol
   } else if (trainingPaces && intensity) {
-    const c = trainingPaces[intensityToPaceKey(intensity)]
-    if (c) { fKm = c - 15; sKm = c + 15 }
+    const c = trainingPaces[resolveIntensityPaceKey(intensity)]
+    if (c) { fKm = c - tol; sKm = c + tol }
   }
   if (fKm === null || sKm === null) return ''
   const unit = units === 'imperial' ? '/mi' : '/km'
   const scale = units === 'imperial' ? PACE_SCALE_KM_TO_MI : 1
   const fmt = (sec: number) => formatClock(sec * scale)
   return `${fmt(fKm)}–${fmt(sKm)}${unit}`
-}
-
-function intensityToPaceKey(intensity: string): keyof TrainingPaces {
-  const l = intensity.toLowerCase()
-  if (l.includes('recovery') || l.includes('easy')) return 'easy'
-  if (l.includes('moderate')) return 'marathon'
-  if (l.includes('marathon') || l === 'race') return 'marathon'
-  if (l.includes('tempo') || l.includes('threshold')) return 'tempo'
-  if (l.includes('repetition') || l.includes('speed')) return 'repetition'
-  if (l.includes('interval') || l.includes('hard')) return 'interval'
-  return 'easy'
 }
 
 function fmtCenterPace(secKm: number, units: UnitSystem): string {
@@ -254,6 +245,7 @@ function IntensitySelect({
   onChange: (v: string) => void
 }) {
   const t = useTranslations('workoutCard')
+  const { intensity: intensityLabel } = useEnumLabels()
   return (
     <Select value={value ?? ''} onValueChange={onChange}>
       <SelectTrigger className="h-8 text-xs">
@@ -261,7 +253,7 @@ function IntensitySelect({
       </SelectTrigger>
       <SelectContent>
         {INTENSITY_OPTIONS.map(opt => (
-          <SelectItem key={opt} value={opt} className="text-xs">{opt}</SelectItem>
+          <SelectItem key={opt} value={opt} className="text-xs">{intensityLabel(opt)}</SelectItem>
         ))}
       </SelectContent>
     </Select>
@@ -502,7 +494,7 @@ function IntervalStep({
       return fmtCenterPace(effectiveStampedPace, units)
     }
     if (!trainingPaces) return null
-    const sec = trainingPaces[intensityToPaceKey(interval.intensity)]
+    const sec = trainingPaces[resolveIntensityPaceKey(interval.intensity)]
     return sec ? fmtCenterPace(sec, units) : null
   })()
 
@@ -516,7 +508,7 @@ function IntervalStep({
     }
     // Fallback: derive from VDOT trainingPaces ± 15 sec/km tolerance
     if (trainingPaces && interval.intensity) {
-      const centerSecKm = trainingPaces[intensityToPaceKey(interval.intensity)]
+      const centerSecKm = trainingPaces[resolveIntensityPaceKey(interval.intensity)]
       if (centerSecKm) {
         const toDisplay = (secKm: number) => {
           const sec = units === 'imperial' ? secKm * PACE_SCALE_KM_TO_MI : secKm
@@ -658,7 +650,7 @@ function IntervalStep({
                 // When switching to a non-custom intensity, auto-populate the pace
                 // range inputs from VDOT and clear any explicit target_pace override
                 if (intensity !== 'custom' && trainingPaces) {
-                  const centerSecKm = trainingPaces[intensityToPaceKey(intensity)]
+                  const centerSecKm = trainingPaces[resolveIntensityPaceKey(intensity)]
                   if (centerSecKm) {
                     const toDisplay = (secKm: number) => {
                       const sec = units === 'imperial' ? secKm * PACE_SCALE_KM_TO_MI : secKm
@@ -912,7 +904,7 @@ export function WorkoutCard({
 }: WorkoutCardProps) {
   const { units, formatDistance, formatPace, toDisplayDistance, distanceLabel } = useUnits()
   const t = useTranslations('workoutCard')
-  const { workoutType: workoutTypeLabel, completionStatus } = useEnumLabels()
+  const { workoutType: workoutTypeLabel, completionStatus, intensity: intensityLabel } = useEnumLabels()
   const queryClient = useQueryClient()
 
   // Reschedule date picker must honour the athlete's first-day-of-week preference
@@ -1706,7 +1698,7 @@ export function WorkoutCard({
                   </SelectTrigger>
                   <SelectContent>
                     {INTENSITY_OPTIONS.map(opt => (
-                      <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                      <SelectItem key={opt} value={opt}>{intensityLabel(opt)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

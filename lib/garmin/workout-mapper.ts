@@ -22,7 +22,14 @@ import type {
   GarminEndCondition,
   GarminTargetType,
 } from './types'
-import { getWorkoutPaceType, type AllTrainingPaces } from '@/lib/training/vdot'
+import {
+  getWorkoutPaceType,
+  matchIntensityPaceKey,
+  paceToleranceFor,
+  PACE_TOLERANCE_SEC_PER_KM,
+  RECOVERY_PACE_TOLERANCE_SEC_PER_KM,
+  type AllTrainingPaces,
+} from '@/lib/training/vdot'
 import { resolvePace, formatPaceMinKm, type PaceTarget } from '@/lib/plans/pace-resolver'
 import type { IntervalRole } from '@/lib/plans/structured-workout-builder'
 
@@ -57,8 +64,8 @@ const TARGET_TYPES = {
   paceZone:  { workoutTargetTypeId: 6, workoutTargetTypeKey: 'pace.zone' },
 } as const
 
-// ±15 sec/km tolerance band for pace targets
-const PACE_TOLERANCE_SEC_PER_KM = 15
+// Pace band half-widths live in lib/training/vdot.ts alongside the intensity resolver,
+// so the card and the watch quote the same range.
 
 // ============================================================================
 // Pace conversion utilities
@@ -86,9 +93,12 @@ function parsePaceString(pace: string): number | null {
  * Build Garmin pace target (targetValueOne/Two in m/s) from a center pace in sec/km.
  * targetValueOne = slow end, targetValueTwo = fast end (Garmin convention).
  */
-function buildPaceTarget(centerSecPerKm: number): { targetValueOne: number; targetValueTwo: number } {
-  const slowSecPerKm = centerSecPerKm + PACE_TOLERANCE_SEC_PER_KM
-  const fastSecPerKm = centerSecPerKm - PACE_TOLERANCE_SEC_PER_KM
+function buildPaceTarget(
+  centerSecPerKm: number,
+  toleranceSecPerKm: number = PACE_TOLERANCE_SEC_PER_KM
+): { targetValueOne: number; targetValueTwo: number } {
+  const slowSecPerKm = centerSecPerKm + toleranceSecPerKm
+  const fastSecPerKm = centerSecPerKm - toleranceSecPerKm
 
   return {
     targetValueOne: parseFloat(secPerKmToMps(slowSecPerKm).toFixed(4)),
@@ -143,11 +153,13 @@ function resolvePaceFromIntensity(
           targetValueTwo: parseFloat(secPerKmToMps(resolved.target_pace_sec_per_km).toFixed(4)),
         }
       }
-      return buildPaceTarget(resolved.target_pace_sec_per_km)
+      // Widen off the resolved label, so a template's own recovery target (Hansons
+      // easy+15, Pfitz easy+10) gets the same band as the base recovery pace.
+      return buildPaceTarget(resolved.target_pace_sec_per_km, paceToleranceFor(resolved.pace_label))
     }
   }
 
-  // Map intensity label to a pace type, falling back to workout type
+  // 2. Map the intensity label to a pace key, falling back to the workout type.
   let paceType: keyof TrainingPaces
 
   if (intensity) {
@@ -155,22 +167,10 @@ function resolvePaceFromIntensity(
     if (lower.includes('walk') || lower === 'race') {
       // Walk and race-day get no pace target — race is run on effort, not pace,
       // and a stamped pace would otherwise default to marathon (wrong for 5K/10K).
+      // Checked before the shared resolver, which answers 'walk'/'marathon' for these.
       return null
-    } else if (lower.includes('easy') || lower.includes('recovery')) {
-      paceType = 'easy'
-    } else if (lower.includes('marathon')) {
-      paceType = 'marathon'
-    } else if (lower.includes('tempo') || lower.includes('threshold')) {
-      paceType = 'tempo'
-    } else if (lower.includes('moderate')) {
-      paceType = 'marathon'
-    } else if (lower.includes('interval') || lower.includes('hard')) {
-      paceType = 'interval'
-    } else if (lower.includes('repetition') || lower.includes('speed')) {
-      paceType = 'repetition'
-    } else {
-      paceType = getWorkoutPaceType(workoutType)
     }
+    paceType = matchIntensityPaceKey(lower) ?? getWorkoutPaceType(workoutType)
   } else {
     paceType = getWorkoutPaceType(workoutType)
   }
@@ -178,7 +178,10 @@ function resolvePaceFromIntensity(
   const paceSecPerKm = trainingPaces[paceType]
   if (!paceSecPerKm) return null
 
-  return buildPaceTarget(paceSecPerKm)
+  return buildPaceTarget(
+    paceSecPerKm,
+    paceType === 'recovery' ? RECOVERY_PACE_TOLERANCE_SEC_PER_KM : PACE_TOLERANCE_SEC_PER_KM
+  )
 }
 
 // ============================================================================
@@ -242,7 +245,12 @@ function buildExecutableStep(
     } else {
       const paceSecPerKm = parsePaceString(targetPaceOverride)
       if (paceSecPerKm) {
-        const target = buildPaceTarget(paceSecPerKm)
+        // A single stamped pace on a recovery step still earns the recovery band —
+        // an explicit two-sided "M:SS-M:SS" range is taken verbatim above.
+        const target = buildPaceTarget(
+          paceSecPerKm,
+          paceToleranceFor(intensityOverride ?? part.intensity)
+        )
         targetType = TARGET_TYPES.paceZone
         targetValueOne = target.targetValueOne
         targetValueTwo = target.targetValueTwo
@@ -590,7 +598,7 @@ function buildSimpleSteps(
   let paceTarget: { targetValueOne: number; targetValueTwo: number } | null = null
   if (targetPaceOverride) {
     const secPerKm = parsePaceString(targetPaceOverride)
-    if (secPerKm) paceTarget = buildPaceTarget(secPerKm)
+    if (secPerKm) paceTarget = buildPaceTarget(secPerKm, paceToleranceFor(workout.intensity_target))
   } else {
     paceTarget = resolvePaceFromIntensity(
       workout.intensity_target ?? undefined,

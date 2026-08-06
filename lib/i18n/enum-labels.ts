@@ -29,5 +29,14 @@ export function useEnumLabels() {
       const key = `completionStatus.${status}`
       return t.has(key) ? t(key) : humanize(status)
     },
+    // Intensity is not a closed set — methodology labels (E, T, R10, lactate_threshold)
+    // come from the plan template — so the humanize fallback carries most of the load.
+    // The catalog exists so the app's own vocabulary, above all the easy/recovery pair,
+    // reads as intended words rather than raw enum keys.
+    intensity: (intensity: string | null | undefined): string => {
+      if (!intensity) return ''
+      const key = `intensity.${intensity}`
+      return t.has(key) ? t(key) : humanize(intensity)
+    },
   }
 }

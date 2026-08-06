@@ -1,4 +1,4 @@
-import type { PlannedWorkout, TrainingPhase } from './database'
+import type { PlannedWorkout, TrainingPhase, TrainingPaces } from './database'
 
 // Calendar event for react-big-calendar
 export interface WorkoutEvent {
@@ -40,14 +40,7 @@ export interface PlanReviewContext {
   total_weeks: number
   current_week: number
   vdot: number | null
-  training_paces: {
-    easy: number
-    marathon: number
-    tempo: number
-    interval: number
-    repetition: number
-    walk: number
-  } | null
+  training_paces: TrainingPaces | null
   phases: TrainingPhase[]
   weeks: WeekViewData[]
 }

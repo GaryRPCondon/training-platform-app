@@ -76,6 +76,8 @@ function buildAthleteSection(context: CoachContext): string {
         const p = athlete.training_paces
         const paces = [
             `Easy: ${formatPace(p.easy, athlete.preferred_units)}`,
+            // Snapshots written before recovery became a distinct pace have no such key.
+            ...(p.recovery ? [`Recovery: ${formatPace(p.recovery, athlete.preferred_units)}`] : []),
             `Marathon: ${formatPace(p.marathon, athlete.preferred_units)}`,
             `Tempo: ${formatPace(p.tempo, athlete.preferred_units)}`,
             `Interval: ${formatPace(p.interval, athlete.preferred_units)}`,
@@ -98,6 +100,12 @@ function buildMethodologyPacesSection(context: CoachContext): string {
         'These are your athlete\'s plan-specific intensity labels and their resolved paces. ' +
         'When proposing a workout, use these EXACT labels for `intensity_target` and for every ' +
         'structured_workout intensity (warmup/work/recovery/cooldown) — never generic words or raw pace strings.'
+    )
+    lines.push(
+        'One label is always valid on top of these: `recovery`. Easy is the standard aerobic ' +
+        'run; recovery is deliberately slower — the run whose job is to speed recovery after a ' +
+        'hard session, and the jog between reps. When the athlete is fatigued or asks to back ' +
+        'off, prescribe `recovery`, not `easy`.'
     )
     for (const [label, resolved] of Object.entries(paces)) {
         const lower = formatPace(resolved.target_pace_sec_per_km, units)
@@ -464,11 +472,18 @@ function addDaysSafe(date: Date, days: number): Date {
 function buildToolInstructionsSection(context: CoachContext): string {
     const labels = context.methodologyPaces ? Object.keys(context.methodologyPaces) : []
     const labelGuidance = labels.length > 0
-        ? `\n\nUse the plan's methodology labels (${labels.join(', ')}) for \`intensity_target\` and every structured_workout intensity, and keep a distance_meters or duration_seconds on every interval (including recovery jogs). This keeps proposals consistent with the athlete's generated plan and lets the app resolve and display the correct pace.`
+        ? `\n\nUse the plan's methodology labels (${labels.join(', ')}), or \`recovery\`, for \`intensity_target\` and every structured_workout intensity, and keep a distance_meters or duration_seconds on every interval (including recovery jogs). This keeps proposals consistent with the athlete's generated plan and lets the app resolve and display the correct pace.`
         : ''
     return `## Proposing Workouts
 When your advice leads to a specific workout recommendation, use the \`propose_workout\` tool.
 The workout will render as a card the athlete can apply to their plan, edit, or dismiss.${labelGuidance}
+
+The proposal card is the athlete's only view of what you decided — your prose is not read
+by the app. Two things must therefore land in the tool call itself, not just in your reply:
+- If you are prescribing a recovery run, set \`intensity_target: "recovery"\`. Saying
+  "recovery" in text while sending \`easy\` produces an ordinary easy run.
+- If the athlete named a pace, put it in \`target_pace_sec_per_km\`. Otherwise the card
+  shows the plan's default pace for that intensity and their number is lost.
 
 When proposing multiple alternatives:
 - Mark your top recommendation \`is_preferred: true\`

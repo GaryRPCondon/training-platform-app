@@ -3235,6 +3235,56 @@ Note: any workouts already sent to Garmin Connect will NOT be removed automatica
         <source>Race</source>
       </segment>
     </unit>
+    <unit id="intensity.recovery">
+      <segment>
+        <source>Recovery</source>
+      </segment>
+    </unit>
+    <unit id="intensity.easy">
+      <segment>
+        <source>Easy</source>
+      </segment>
+    </unit>
+    <unit id="intensity.moderate">
+      <segment>
+        <source>Moderate</source>
+      </segment>
+    </unit>
+    <unit id="intensity.marathon">
+      <segment>
+        <source>Marathon</source>
+      </segment>
+    </unit>
+    <unit id="intensity.tempo">
+      <segment>
+        <source>Tempo</source>
+      </segment>
+    </unit>
+    <unit id="intensity.threshold">
+      <segment>
+        <source>Threshold</source>
+      </segment>
+    </unit>
+    <unit id="intensity.interval">
+      <segment>
+        <source>Interval</source>
+      </segment>
+    </unit>
+    <unit id="intensity.repetition">
+      <segment>
+        <source>Repetition</source>
+      </segment>
+    </unit>
+    <unit id="intensity.hard">
+      <segment>
+        <source>Hard</source>
+      </segment>
+    </unit>
+    <unit id="intensity.custom">
+      <segment>
+        <source>Custom</source>
+      </segment>
+    </unit>
     <unit id="completionStatus.pending">
       <segment>
         <source>Pending</source>

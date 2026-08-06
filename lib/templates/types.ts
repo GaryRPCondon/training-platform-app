@@ -148,6 +148,7 @@ export interface WorkoutDetail {
 // Templates whose reference_pace is not in this enum will fail seed-time and runtime validation.
 export const REFERENCE_PACE_KEYS = [
   'easy',
+  'recovery',
   'marathon',
   'tempo',
   'interval',
