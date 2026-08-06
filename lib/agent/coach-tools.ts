@@ -7,12 +7,20 @@
  */
 
 import { ToolDefinition } from './provider-interface'
+import { VALID_ROLES } from '@/lib/plans/structured-workout-builder'
 
 // Generic fallback vocabulary used only when no active-plan methodology labels
 // are available (e.g. athlete has no plan). When a plan IS active, the route
 // passes its template pace-target labels (e.g. E/M/T/I/R/R10) so proposals use
 // the same labels generation does — which lets resolveActivePlanPace stamp them.
 const GENERIC_INTENSITIES = ['easy', 'moderate', 'hard', 'tempo', 'threshold', 'interval', 'recovery']
+
+// Always offered on top of the plan's methodology labels. Most templates (Daniels,
+// Higdon, Magness) have no recovery target, which used to leave the coach with `easy`
+// as the slowest thing it could say — so "make today a recovery run" produced a
+// workout identical to an easy run. `recovery` resolves off the athlete's VDOT paces
+// even when the template never declared it (see lib/plans/pace-resolver.ts).
+const ALWAYS_AVAILABLE_INTENSITY = 'recovery'
 
 /**
  * Build the coach tool list. When `paceLabels` (the active plan's template
@@ -22,10 +30,16 @@ const GENERIC_INTENSITIES = ['easy', 'moderate', 'hard', 'tempo', 'threshold', '
  * methodology vocabulary.
  */
 export function buildCoachTools(paceLabels?: string[]): ToolDefinition[] {
-    const labels = paceLabels && paceLabels.length > 0 ? paceLabels : GENERIC_INTENSITIES
-    const intensityListText = paceLabels && paceLabels.length > 0
-        ? `Use these EXACT methodology labels from the athlete's active plan: ${labels.join(', ')}. These resolve to the athlete's actual paces — do not invent generic words or pace strings.`
-        : `Valid intensity values: ${labels.join(', ')}.`
+    const hasPlanLabels = !!(paceLabels && paceLabels.length > 0)
+    const baseLabels = hasPlanLabels ? paceLabels! : GENERIC_INTENSITIES
+    const labels = baseLabels.includes(ALWAYS_AVAILABLE_INTENSITY)
+        ? baseLabels
+        : [...baseLabels, ALWAYS_AVAILABLE_INTENSITY]
+
+    const recoveryNote = `"recovery" is always available on top of the plan's labels and is genuinely slower than "easy": easy is the standard aerobic run, recovery is the deliberately slower run that speeds recovery after a hard session, and the jog between reps. Use it when the athlete is fatigued or asks to back off — do not substitute "easy".`
+    const intensityListText = hasPlanLabels
+        ? `Use these EXACT methodology labels from the athlete's active plan: ${baseLabels.join(', ')}. These resolve to the athlete's actual paces — do not invent generic words or pace strings. ${recoveryNote}`
+        : `Valid intensity values: ${labels.join(', ')}. ${recoveryNote}`
 
     return [
     {
@@ -73,6 +87,11 @@ Every interval — including recovery/rest jogs — MUST keep a distance_meters 
 duration_seconds; never emit an interval that has only an intensity (that drops it from
 distance and duration totals).
 
+Every interval inside a repeat group MUST also declare a "role": one of
+${VALID_ROLES.join(', ')}. Role is independent of intensity — intensity carries pace,
+role carries function. Use "recovery" for a jog between reps (it gets recovery pace) and
+"rest" for standing still (it gets no pace target at all, and covers no distance).
+
 For optional target_pace fields use "M:SS/km" (single pace) or "M:SS-M:SS/km" (range,
 faster-slower). Only include target_pace when you want to override the intensity-derived pace.
 
@@ -87,8 +106,8 @@ Schema:
       "repeat": 6,
       "skip_last_recovery": true,
       "intervals": [
-        { "distance_meters": 800, "intensity": "interval" },
-        { "duration_seconds": 90, "intensity": "recovery" }
+        { "distance_meters": 800, "intensity": "interval", "role": "work" },
+        { "duration_seconds": 90, "intensity": "recovery", "role": "recovery" }
       ]
     }
   ],
@@ -127,6 +146,7 @@ For easy/long runs, omit structured_workout entirely.`,
                                                 duration_seconds: { type: 'number' },
                                                 duration_minutes: { type: 'number' },
                                                 intensity: { type: 'string' },
+                                                role: { type: 'string', enum: [...VALID_ROLES] },
                                                 target_pace: { type: 'string' }
                                             }
                                         }
@@ -160,7 +180,7 @@ For easy/long runs, omit structured_workout entirely.`,
                 },
                 target_pace_sec_per_km: {
                     type: 'number',
-                    description: 'Athlete-specified target pace in seconds per km. Only use when the athlete explicitly provides a pace number (e.g. "I want to run at 5:00/km" → 300). Do not calculate — transcribe what the athlete says.'
+                    description: 'Athlete-specified target pace in seconds per km. REQUIRED whenever the athlete states a pace for this workout (e.g. "at 5:30/km" → 330); the app has no other way to honour it, and omitting it silently replaces their number with the plan default. Do not calculate — transcribe what the athlete says.'
                 },
                 target_pace_min_sec_per_km: {
                     type: 'number',

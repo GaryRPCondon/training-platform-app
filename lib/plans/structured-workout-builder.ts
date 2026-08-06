@@ -65,7 +65,8 @@ function flattenNestedGroup(group: Record<string, unknown>): MainSetGroup[] {
   return result
 }
 
-const VALID_ROLES: readonly IntervalRole[] = ['work', 'recovery', 'rest', 'warmup', 'cooldown'] as const
+/** The role contract's allowed values — also published to the AI coach's tool schema. */
+export const VALID_ROLES: readonly IntervalRole[] = ['work', 'recovery', 'rest', 'warmup', 'cooldown'] as const
 
 /**
  * Enforce the `role` contract on a repeat group's intervals.

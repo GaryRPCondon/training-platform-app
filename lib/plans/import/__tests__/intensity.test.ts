@@ -7,22 +7,30 @@ import {
 } from '../intensity'
 
 describe('intensityToPaceKey', () => {
-  it('collapses every canonical intensity onto a VDOT pace key', () => {
+  // Pins the whole vocabulary. This function now delegates to the shared resolver in
+  // lib/training/vdot.ts instead of owning an exhaustive switch, so this table is what
+  // guarantees an import token can't silently start resolving to a different pace.
+  const EXPECTED: Record<(typeof RUN_INTENSITIES)[number], string> = {
+    recovery: 'recovery',
+    easy: 'easy',
+    long: 'easy',
+    marathon_pace: 'marathon',
+    race: 'marathon',
+    threshold: 'tempo',
+    vo2max: 'interval',
+    rep: 'repetition',
+    strides: 'repetition',
+  }
+
+  it('maps every canonical intensity to its VDOT pace key', () => {
     for (const intensity of RUN_INTENSITIES) {
-      const key = intensityToPaceKey(intensity)
-      expect(['easy', 'marathon', 'tempo', 'interval', 'repetition']).toContain(key)
+      expect(intensityToPaceKey(intensity)).toBe(EXPECTED[intensity])
     }
   })
 
-  it('maps the obvious families correctly', () => {
-    expect(intensityToPaceKey('recovery')).toBe('easy')
-    expect(intensityToPaceKey('long')).toBe('easy')
-    expect(intensityToPaceKey('marathon_pace')).toBe('marathon')
-    expect(intensityToPaceKey('race')).toBe('marathon')
-    expect(intensityToPaceKey('threshold')).toBe('tempo')
-    expect(intensityToPaceKey('vo2max')).toBe('interval')
-    expect(intensityToPaceKey('rep')).toBe('repetition')
-    expect(intensityToPaceKey('strides')).toBe('repetition')
+  it('keeps recovery distinct from easy', () => {
+    expect(intensityToPaceKey('recovery')).toBe('recovery')
+    expect(intensityToPaceKey('easy')).toBe('easy')
   })
 })
 

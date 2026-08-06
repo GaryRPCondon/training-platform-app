@@ -185,6 +185,7 @@ export interface TrainingPlan {
 
 export interface TrainingPaces {
     easy: number          // seconds per km
+    recovery: number      // slower than easy — see lib/training/vdot.ts for why they differ
     marathon: number
     tempo: number
     interval: number

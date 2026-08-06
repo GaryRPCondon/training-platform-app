@@ -5,6 +5,7 @@ import type { AllTrainingPaces } from '@/lib/training/vdot'
 // VDOT ~50 athlete paces (seconds/km)
 const ATHLETE_PACES: AllTrainingPaces = {
   easy: 330,          // 5:30/km
+  recovery: 356,      // 5:56/km
   marathon: 275,      // 4:35/km
   tempo: 253,         // 4:13/km
   interval: 224,      // 3:44/km
@@ -32,16 +33,44 @@ const PFITZ_TARGETS = {
 } as const satisfies Record<string, PaceTarget>
 
 describe('resolvePace', () => {
-  it('returns null when paceTargets is undefined', () => {
-    expect(resolvePace('easy', undefined, ATHLETE_PACES)).toBeNull()
-  })
-
-  it('returns null when label not found in targets', () => {
+  it('returns null when label not found in targets and is not a base pace', () => {
     expect(resolvePace('unknown', HANSONS_TARGETS, ATHLETE_PACES)).toBeNull()
+    expect(resolvePace('unknown', undefined, ATHLETE_PACES)).toBeNull()
   })
 
   it('returns null when intensity is empty', () => {
     expect(resolvePace('', HANSONS_TARGETS, ATHLETE_PACES)).toBeNull()
+  })
+
+  // A label naming a base VDOT pace resolves with or without a template. This is what
+  // lets the coach prescribe `recovery` on a plan whose methodology never declared it.
+  it('resolves a base pace key with no template targets at all', () => {
+    const result = resolvePace('recovery', undefined, ATHLETE_PACES)!
+    expect(result.target_pace_sec_per_km).toBe(356)
+    expect(result.target_pace_upper_sec_per_km).toBeNull()
+    expect(result.pace_label).toBe('recovery')
+    expect(resolvePace('easy', undefined, ATHLETE_PACES)!.target_pace_sec_per_km).toBe(330)
+  })
+
+  it('resolves a base pace key a template omitted', () => {
+    const targetsWithoutRecovery = { easy: HANSONS_TARGETS.easy }
+    expect(resolvePace('recovery', targetsWithoutRecovery, ATHLETE_PACES)!.target_pace_sec_per_km).toBe(356)
+  })
+
+  // Methodology intent wins: Hansons runs recovery at easy + 15 s, not at the base
+  // recovery pace, and a template that declares the label must keep that offset.
+  it('prefers a template recovery target over the base recovery pace', () => {
+    const targets = {
+      ...HANSONS_TARGETS,
+      recovery: { reference_pace: 'easy', offset_sec_per_km: 15, description: 'Very easy' },
+    } as Record<string, PaceTarget>
+    const result = resolvePace('recovery', targets, ATHLETE_PACES)!
+    expect(result.target_pace_sec_per_km).toBe(345)
+    expect(result.pace_description).toBe('Very easy')
+  })
+
+  it('never resolves walk off the base paces — a walk step gets no target', () => {
+    expect(resolvePace('walk', undefined, ATHLETE_PACES)).toBeNull()
   })
 
   it('resolves Hansons easy to athlete easy pace', () => {

@@ -16,7 +16,7 @@ import {
     differenceInWeeks,
     subDays,
 } from 'date-fns'
-import type { StrengthExercise, Lap } from '@/types/database'
+import type { StrengthExercise, Lap, TrainingPaces } from '@/types/database'
 import { loadFullTemplate } from '@/lib/templates/template-loader'
 import { resolveAllPaces, type ResolvedPace } from '@/lib/plans/pace-resolver'
 import { calculateTrainingPaces, calculateRacePaces } from '@/lib/training/vdot'
@@ -31,14 +31,7 @@ export interface CoachAthleteProfile {
     name: string | null
     preferred_units: 'metric' | 'imperial'
     vdot: number | null
-    training_paces: {
-        easy: number      // seconds per km
-        marathon: number
-        tempo: number
-        interval: number
-        repetition: number
-        walk: number
-    } | null
+    training_paces: TrainingPaces | null
     week_starts_on: number  // 0 = Sunday, 1 = Monday
 }
 

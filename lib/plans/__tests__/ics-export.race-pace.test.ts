@@ -4,6 +4,7 @@ import type { TrainingPaces } from '@/types/database'
 
 const PACES: TrainingPaces = {
   easy: 330,
+  recovery: 355,
   marathon: 259,
   tempo: 240,
   interval: 213,

@@ -64,22 +64,44 @@ export interface ResolvedPace {
 // ============================================================================
 
 /**
+ * Human-readable descriptions for the base VDOT paces, used when a label names a
+ * training pace directly rather than a methodology target.
+ */
+const BASE_PACE_DESCRIPTIONS: Partial<Record<string, string>> = {
+  easy: 'Conversational aerobic pace',
+  recovery: 'Very easy — slower than easy pace, to speed recovery',
+  marathon: 'Marathon race pace',
+  tempo: 'Threshold / comfortably hard',
+  interval: 'VO2max pace',
+  repetition: 'Speed / repetition pace',
+  // Deliberately no `walk`: a walk step gets no pace target unless a template asks for
+  // one (see the walk short-circuit in lib/garmin/workout-mapper.ts).
+}
+
+/**
  * Resolve a methodology-specific intensity label to concrete pace values.
+ *
+ * Templates own the vocabulary, but the base VDOT paces are always available: a label
+ * that names one directly (`recovery`, `easy`, …) resolves off the athlete's paces even
+ * when the template never declared it. That is what lets the AI coach prescribe a
+ * recovery run on a Daniels or Higdon plan, neither of which has a recovery label. A
+ * template that DOES declare the label still wins — Hansons' recovery is easy + 15 s,
+ * Pfitz's is easy + 10 s, and those offsets are the methodology's intent.
  *
  * @param intensityLabel - The intensity label from the LLM/template (e.g. "strength", "lactate_threshold")
  * @param paceTargets - The template's pace_targets mapping
  * @param athletePaces - The athlete's training + race paces from VDOT
- * @returns Resolved pace with numeric values, or null if label not found in targets
+ * @returns Resolved pace with numeric values, or null if the label resolves to nothing
  */
 export function resolvePace(
   intensityLabel: string,
   paceTargets: Record<string, PaceTarget> | undefined,
   athletePaces: AllTrainingPaces
 ): ResolvedPace | null {
-  if (!paceTargets || !intensityLabel) return null
+  if (!intensityLabel) return null
 
-  const target = paceTargets[intensityLabel]
-  if (!target) return null
+  const target = paceTargets?.[intensityLabel]
+  if (!target) return resolveBasePace(intensityLabel, athletePaces)
 
   const basePace = lookupPace(target.reference_pace, athletePaces)
   if (basePace == null) return null
@@ -100,6 +122,30 @@ export function resolvePace(
     target_pace_upper_sec_per_km: upperPace != null ? Math.round(upperPace) : null,
     pace_label: intensityLabel,
     pace_description: target.description,
+    pace_source: 'template',
+  }
+}
+
+/**
+ * Resolve a label that names a base VDOT pace directly (no template target involved).
+ * Returns null for anything that isn't one of the athlete's stored pace keys, so an
+ * unknown methodology label still fails loudly rather than silently picking a pace.
+ */
+function resolveBasePace(
+  intensityLabel: string,
+  athletePaces: AllTrainingPaces
+): ResolvedPace | null {
+  const description = BASE_PACE_DESCRIPTIONS[intensityLabel]
+  if (!description) return null
+
+  const pace = lookupPace(intensityLabel, athletePaces)
+  if (pace == null) return null
+
+  return {
+    target_pace_sec_per_km: Math.round(pace),
+    target_pace_upper_sec_per_km: null,
+    pace_label: intensityLabel,
+    pace_description: description,
     pace_source: 'template',
   }
 }
