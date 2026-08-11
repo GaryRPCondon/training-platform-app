@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { deriveTotals } from '../derive-totals'
 import type { ParsedPlan, ParsedWorkout } from '../response-parser'
 
-const PACES = { easy: 309, marathon: 256, tempo: 242, interval: 222, repetition: 208, walk: 600 }
+const PACES = { easy: 309, recovery: 334, marathon: 256, tempo: 242, interval: 222, repetition: 208, walk: 600 }
 
 function workout(overrides: Partial<ParsedWorkout> = {}): ParsedWorkout {
   return {

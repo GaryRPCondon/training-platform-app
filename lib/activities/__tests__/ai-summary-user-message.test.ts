@@ -323,7 +323,7 @@ describe('buildUserMessage — easy run', () => {
 // average (4:45/km) against the stamped T pace (4:02/km) and reported the tempo reps
 // as "significantly slower" when every rep was in fact faster than target.
 describe('buildUserMessage — long run with embedded tempo reps', () => {
-  const paces = { easy: 309, marathon: 256, tempo: 242, interval: 222, repetition: 208, walk: 600 }
+  const paces = { easy: 309, recovery: 334, marathon: 256, tempo: 242, interval: 222, repetition: 208, walk: 600 }
 
   function mixedLongRun(): PlannedWorkout {
     return makeWorkout({
@@ -433,6 +433,42 @@ describe('buildUserMessage — long run with embedded tempo reps', () => {
     expect(msg).not.toContain('MULTI-PACE session')
     expect(msg).not.toContain('blend of easy and work segments')
     expect(msg).toContain('judge success on per-lap pace compliance')
+  })
+
+  it('does not count a recovery-paced float as quality work', () => {
+    // `recovery` resolves to its own pace key now. Testing "is this segment easy?" by
+    // pace-key equality with 'easy' would classify this float as a work rep and drag a
+    // plain long run onto the per-lap path — the bug the multi-pace work fixed.
+    const easyLongRun = makeWorkout({
+      workout_type: 'long_run',
+      description: 'Long 18 km easy with a recovery float',
+      distance_target_meters: 18000,
+      intensity_target: 'easy',
+      structured_workout: {
+        main_set: [
+          { repeat: 1, intervals: [{ role: 'work', intensity: 'easy', distance_meters: 15000 }] },
+          // Deliberately role-less: legacy data, and what a coach proposal used to emit.
+          { repeat: 1, intervals: [{ intensity: 'recovery', distance_meters: 3000 }] },
+        ],
+        pace_label: 'easy',
+        target_pace_sec_per_km: 309,
+      },
+    })
+    const msg = buildUserMessage(activity(), easyLongRun, mixedLaps(), paces)
+
+    expect(msg).not.toContain('MULTI-PACE session')
+    expect(msg).toContain('judge success on overall average HR and effort control')
+  })
+
+  it('quotes a recovery segment at recovery pace, not easy pace', () => {
+    const withRecoveryJog = mixedLongRun()
+    const sw = withRecoveryJog.structured_workout as Record<string, unknown>
+    const mainSet = sw.main_set as Array<Record<string, unknown>>
+    mainSet[2] = { repeat: 1, intervals: [{ role: 'recovery', intensity: 'recovery', duration_seconds: 1800 }] }
+    const msg = buildUserMessage(activity(), withRecoveryJog, mixedLaps(), paces)
+
+    expect(msg).toContain('30 min @ recovery (5:34/km)')
+    expect(msg).not.toContain('30 min @ recovery (5:09/km)')
   })
 
   it('reports the distance as on-target once the plan distance is sized correctly', () => {

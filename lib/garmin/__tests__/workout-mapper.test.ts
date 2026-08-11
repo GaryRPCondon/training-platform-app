@@ -6,6 +6,7 @@ import type { GarminWorkoutStep } from '../types'
 // VDOT ~50 athlete paces (seconds/km)
 const PACES: TrainingPaces = {
   easy: 330,
+  recovery: 355,
   marathon: 275,
   tempo: 253,
   interval: 224,
@@ -544,6 +545,79 @@ describe('mapToGarminWorkout — role-driven step type selection', () => {
     // The rest is still time-bounded — only the pace is suppressed.
     expect(rest.endCondition.conditionTypeKey).toBe('time')
     expect(rest.endConditionValue).toBe(60)
+  })
+
+  it('sends the recovery pace — not the easy pace — on a recovery jog between reps', () => {
+    // A jog between reps and an easy run used to transmit the identical pace zone,
+    // because every intensity→pace mapper collapsed recovery onto easy.
+    const result = mapToGarminWorkout(makeWorkout({
+      workout_type: 'intervals',
+      intensity_target: 'interval',
+      structured_workout: {
+        main_set: [{
+          repeat: 6,
+          intervals: [
+            { distance_meters: 800, intensity: 'interval', role: 'work' },
+            { duration_seconds: 90, intensity: 'recovery', role: 'recovery' },
+          ],
+        }],
+      },
+    }), PACES)
+
+    const children = result.workoutSegments[0].workoutSteps[0].workoutSteps as [GarminWorkoutStep, GarminWorkoutStep]
+    const jog = children[1]
+    expect(jog.stepType.stepTypeKey).toBe('recovery')
+    expect(jog.targetType.workoutTargetTypeKey).toBe('pace.zone')
+    // Centred on recovery (355), not easy (330), with the wider recovery band.
+    expect(jog.targetValueOne).toBeCloseTo(1000 / (355 + 30), 2)
+    expect(jog.targetValueTwo).toBeCloseTo(1000 / (355 - 30), 2)
+  })
+
+  it('paces a whole recovery run at recovery pace, with a ±30 s/km band', () => {
+    // A ±15 band has the watch nagging a run whose entire purpose is to wander easy.
+    const result = mapToGarminWorkout(makeWorkout({
+      workout_type: 'recovery',
+      intensity_target: 'recovery',
+      distance_target_meters: 9000,
+      structured_workout: null,
+    }), PACES)
+
+    const step = result.workoutSegments[0].workoutSteps[0] as GarminWorkoutStep
+    expect(step.targetType.workoutTargetTypeKey).toBe('pace.zone')
+    expect(step.targetValueOne).toBeCloseTo(1000 / (355 + 30), 2)  // slow bound 6:25
+    expect(step.targetValueTwo).toBeCloseTo(1000 / (355 - 30), 2)  // fast bound 5:25
+  })
+
+  it('keeps the tight ±15 s/km band on quality work', () => {
+    // The wider band is scoped to recovery: widening it here would stop the watch
+    // flagging reps that miss their target.
+    const result = mapToGarminWorkout(makeWorkout({
+      workout_type: 'tempo',
+      intensity_target: 'tempo',
+      distance_target_meters: 10000,
+      structured_workout: null,
+    }), PACES)
+
+    const step = result.workoutSegments[0].workoutSteps[0] as GarminWorkoutStep
+    expect(step.targetValueOne).toBeCloseTo(1000 / (253 + 15), 2)
+    expect(step.targetValueTwo).toBeCloseTo(1000 / (253 - 15), 2)
+  })
+
+  it('applies the recovery band to a template recovery target too', () => {
+    // Hansons runs recovery at easy + 15 s. The offset is the methodology's business;
+    // the band width is ours, and it should not depend on where the pace came from.
+    const result = mapToGarminWorkout(makeWorkout({
+      workout_type: 'recovery',
+      intensity_target: 'recovery',
+      distance_target_meters: 8000,
+      structured_workout: null,
+    }), PACES, {
+      recovery: { reference_pace: 'easy', offset_sec_per_km: 15, description: 'Very easy' },
+    })
+
+    const step = result.workoutSegments[0].workoutSteps[0] as GarminWorkoutStep
+    expect(step.targetValueOne).toBeCloseTo(1000 / (345 + 30), 2)
+    expect(step.targetValueTwo).toBeCloseTo(1000 / (345 - 30), 2)
   })
 
   it('sends NO pace target when rest is expressed as intensity:"rest" without a role', () => {

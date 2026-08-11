@@ -695,6 +695,18 @@
       "recovery": "Recovery",
       "race": "Race"
     },
+    "intensity": {
+      "recovery": "Recovery",
+      "easy": "Easy",
+      "moderate": "Moderate",
+      "marathon": "Marathon",
+      "tempo": "Tempo",
+      "threshold": "Threshold",
+      "interval": "Interval",
+      "repetition": "Repetition",
+      "hard": "Hard",
+      "custom": "Custom"
+    },
     "completionStatus": {
       "pending": "Pending",
       "completed": "Completed",

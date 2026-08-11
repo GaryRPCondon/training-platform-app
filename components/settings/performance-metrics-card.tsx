@@ -178,7 +178,10 @@ export function PerformanceMetricsCard({ initialData }: PerformanceMetricsCardPr
           vdot: newVDOT,
           source: newSource,
           sourceData: newSourceData,
-          recalcFuturePaces: recalcFuture,
+          // Re-check rather than trusting the checkbox state: hiding the control does
+          // not clear it, so a tick made against one VDOT must not ride along on a
+          // later save that leaves the VDOT where it was.
+          recalcFuturePaces: recalcFuture && newVDOT !== currentVDOT,
         }),
       })
 
@@ -207,7 +210,20 @@ export function PerformanceMetricsCard({ initialData }: PerformanceMetricsCardPr
 
   const displayPaces = newPaces || currentPaces
   const displayVDOT = newVDOT || currentVDOT
-  const hasChanges = newVDOT !== null && newVDOT !== currentVDOT
+
+  // Saving is worthwhile whenever it would change something stored — which is not the
+  // same as "the VDOT number changed". The stored paces are a snapshot, so they also go
+  // stale when the pace formulas move (adding `recovery` left every existing snapshot a
+  // key short). Comparing the paces themselves lets an unchanged VDOT be re-saved to
+  // refresh the snapshot, and still leaves Save disabled when there is genuinely nothing
+  // to write. Only the keys we just computed are compared — currentPaces also carries
+  // race-equivalent paces, which this card does not recalculate.
+  const pacesAreStale =
+    !!newPaces &&
+    (!currentPaces ||
+      (Object.keys(newPaces) as Array<keyof typeof newPaces>).some(k => newPaces[k] !== currentPaces[k]))
+  const vdotChanged = newVDOT !== null && newVDOT !== currentVDOT
+  const hasChanges = newVDOT !== null && (vdotChanged || pacesAreStale)
 
   if (loading) {
     return (
@@ -374,8 +390,11 @@ export function PerformanceMetricsCard({ initialData }: PerformanceMetricsCardPr
           )}
         </div>
 
-        {/* Opt-in: re-pace upcoming workouts — only relevant when VDOT changed */}
-        {hasChanges && (
+        {/* Opt-in: re-pace upcoming workouts. Gated on the VDOT itself moving, NOT on
+            hasChanges — a save that only refreshes a stale pace snapshot re-stamps every
+            upcoming workout with the paces it already had, while overwriting any manual
+            pace edits and flipping synced Garmin workouts to stale. All cost, no benefit. */}
+        {vdotChanged && (
           <div className="flex items-start gap-2">
             <Checkbox
               id="perf-recalc-future"

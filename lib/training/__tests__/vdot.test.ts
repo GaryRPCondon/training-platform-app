@@ -6,6 +6,9 @@ import {
   estimateWorkoutDurationSeconds,
   isTimePrescribedWorkout,
   totalPrescribedSeconds,
+  resolveIntensityPaceKey,
+  matchIntensityPaceKey,
+  getWorkoutPaceType,
   formatPace,
   formatTime,
   parseRaceTime
@@ -42,6 +45,69 @@ describe('VDOT Calculations', () => {
     expect(paces.walk).toBe(600) // 10:00/km, fitness-independent
     expect(paces.walk).toBeGreaterThan(paces.easy) // Walking is slower than easy running
   })
+
+  // Recovery used to be an alias for easy, which made "make this a recovery run" a no-op.
+  it('gives recovery its own pace, meaningfully slower than easy', () => {
+    const paces = calculateTrainingPaces(53.4)
+    expect(paces.recovery).toBe(334)  // 5:34/km, vs easy 5:09/km
+    expect(paces.easy).toBe(309)
+    expect(paces.recovery - paces.easy).toBeGreaterThanOrEqual(20)
+  })
+
+  // Derived at 59% of VDOT (bottom of Daniels' Easy range) rather than as a flat
+  // offset, so the gap stays proportional instead of over-penalising fast runners.
+  it('keeps the recovery gap proportional across fitness levels', () => {
+    for (const vdot of [40, 50, 60]) {
+      const p = calculateTrainingPaces(vdot)
+      expect(p.recovery).toBeGreaterThan(p.easy)
+      expect(p.recovery).toBeLessThan(p.walk)
+      const ratio = p.recovery / p.easy
+      expect(ratio).toBeGreaterThan(1.06)
+      expect(ratio).toBeLessThan(1.10)
+    }
+  })
+})
+
+describe('resolveIntensityPaceKey', () => {
+  it('resolves recovery to its own pace, not easy', () => {
+    expect(resolveIntensityPaceKey('recovery')).toBe('recovery')
+    expect(resolveIntensityPaceKey('Recovery jog')).toBe('recovery')
+    expect(resolveIntensityPaceKey('easy')).toBe('easy')
+  })
+
+  it.each([
+    ['easy', 'easy'],
+    ['long', 'easy'],
+    ['moderate', 'marathon'],
+    ['marathon_pace', 'marathon'],
+    ['race', 'marathon'],
+    ['tempo', 'tempo'],
+    ['lactate_threshold', 'tempo'],
+    ['lt', 'tempo'],
+    ['interval', 'interval'],
+    ['vo2max', 'interval'],
+    ['hard', 'interval'],
+    ['repetition', 'repetition'],
+    ['strides', 'repetition'],
+    ['speed', 'repetition'],
+    ['rep', 'repetition'],
+    ['walk', 'walk'],
+  ])('maps %j -> %j', (intensity, key) => {
+    expect(resolveIntensityPaceKey(intensity)).toBe(key)
+  })
+
+  it('defaults unknown labels to easy, but reports them as unmatched', () => {
+    expect(resolveIntensityPaceKey('shakeout')).toBe('easy')
+    expect(matchIntensityPaceKey('shakeout')).toBeNull()
+  })
+})
+
+describe('getWorkoutPaceType', () => {
+  it('paces a recovery workout at recovery, not easy', () => {
+    expect(getWorkoutPaceType('recovery')).toBe('recovery')
+    expect(getWorkoutPaceType('easy_run')).toBe('easy')
+    expect(getWorkoutPaceType('long_run')).toBe('easy')
+  })
 })
 
 describe('calculateTotalWorkoutDistance', () => {
@@ -54,7 +120,7 @@ describe('calculateTotalWorkoutDistance', () => {
   }
 
   it('sizes each time-based segment at its own intensity pace', () => {
-    const paces = { easy: 300, marathon: 255, tempo: 245, interval: 235, repetition: 220, walk: 600 }
+    const paces = { easy: 300, recovery: 325, marathon: 255, tempo: 245, interval: 235, repetition: 220, walk: 600 }
     const total = calculateTotalWorkoutDistance(7500, 'tempo', tempoStructured, paces)
     // warmup 10min@easy(300)=2000 + main 25min@tempo(245)=6122 + cooldown 2000
     expect(total).toBe(2000 + Math.round((1500 / 245) * 1000) + 2000)
@@ -70,7 +136,7 @@ describe('calculateTotalWorkoutDistance', () => {
   it('sizes an easy float inside a quality session at E pace, not the session pace', () => {
     // Regression (workout 11668): a 30 min E block inside a long run with T reps was
     // priced at interval pace, inflating a 12 mi (19 km) long run to 22.1 km.
-    const paces = { easy: 309, marathon: 256, tempo: 242, interval: 222, repetition: 208, walk: 600 }
+    const paces = { easy: 309, recovery: 334, marathon: 256, tempo: 242, interval: 222, repetition: 208, walk: 600 }
     const longRun = {
       main_set: [
         { repeat: 1, intervals: [{ role: 'warmup', intensity: 'easy', distance_meters: 3218 }] },
@@ -94,7 +160,7 @@ describe('calculateTotalWorkoutDistance', () => {
   })
 
   it('treats standing rests as zero distance but keeps jogged recoveries', () => {
-    const paces = { easy: 300, marathon: 255, tempo: 245, interval: 235, repetition: 220, walk: 600 }
+    const paces = { easy: 300, recovery: 325, marathon: 255, tempo: 245, interval: 235, repetition: 220, walk: 600 }
     const withRest = {
       main_set: [{ repeat: 4, intervals: [
         { role: 'work', intensity: 'interval', distance_meters: 400 },
@@ -112,7 +178,7 @@ describe('calculateTotalWorkoutDistance', () => {
   })
 
   it('does not emit Infinity when a target_pace parses to zero', () => {
-    const paces = { easy: 300, marathon: 255, tempo: 245, interval: 235, repetition: 220, walk: 600 }
+    const paces = { easy: 300, recovery: 325, marathon: 255, tempo: 245, interval: 235, repetition: 220, walk: 600 }
     const structured = {
       main_set: [{ repeat: 1, intervals: [{ role: 'work', intensity: 'easy', duration_seconds: 600, target_pace: '0:00' }] }],
     }
@@ -122,7 +188,7 @@ describe('calculateTotalWorkoutDistance', () => {
   })
 
   it('converts duration_minutes on a main_set interval', () => {
-    const paces = { easy: 300, marathon: 255, tempo: 245, interval: 235, repetition: 220, walk: 600 }
+    const paces = { easy: 300, recovery: 325, marathon: 255, tempo: 245, interval: 235, repetition: 220, walk: 600 }
     const structured = {
       main_set: [{ repeat: 1, intervals: [{ role: 'work', intensity: 'easy', duration_minutes: 20 }] }],
     }
@@ -180,7 +246,7 @@ describe('isTimePrescribedWorkout / totalPrescribedSeconds', () => {
 })
 
 describe('estimateWorkoutDurationSeconds', () => {
-  const paces = { easy: 330, marathon: 275, tempo: 253, interval: 224, repetition: 210, walk: 600 }
+  const paces = { easy: 330, recovery: 355, marathon: 275, tempo: 253, interval: 224, repetition: 210, walk: 600 }
 
   it('times a structured interval at its own custom pace, not a workout-type guess', () => {
     // Regression: a custom-pace structured race (10km @ 3:45) showed ~43 min because

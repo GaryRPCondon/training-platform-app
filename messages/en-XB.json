@@ -695,6 +695,18 @@
       "recovery": "‮Ŕéçóṽéŕý‬",
       "race": "‮Ŕáçé‬"
     },
+    "intensity": {
+      "recovery": "‮Ŕéçóṽéŕý‬",
+      "easy": "‮Éášý‬",
+      "moderate": "‮Ṁóðéŕáţé‬",
+      "marathon": "‮Ṁáŕáţĥóñ‬",
+      "tempo": "‮Ţéɱþó‬",
+      "threshold": "‮Ţĥŕéšĥóļð‬",
+      "interval": "‮Íñţéŕṽáļ‬",
+      "repetition": "‮Ŕéþéţíţíóñ‬",
+      "hard": "‮Ĥáŕð‬",
+      "custom": "‮Çúšţóɱ‬"
+    },
     "completionStatus": {
       "pending": "‮Þéñðíñǧ‬",
       "completed": "‮Çóɱþļéţéð‬",

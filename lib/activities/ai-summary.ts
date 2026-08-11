@@ -9,7 +9,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Activity, PlannedWorkout, Lap, TrainingPaces } from '@/types/database'
 import { createLLMProvider } from '@/lib/agent/factory'
 import { demoProviderOverride } from '@/lib/demo/demo'
-import { getIntensityPaceType } from '@/lib/training/vdot'
+import { resolveIntensityPaceKey } from '@/lib/training/vdot'
 import { getEffectiveDistance, calculateDistanceDiff, calculateDurationDiff, loadActivePlanPaces } from '@/lib/activities/scoring'
 
 // ---------------------------------------------------------------------------
@@ -119,6 +119,13 @@ const ACTIVE_LAP_ROLES = new Set(['ACTIVE', 'INTERVAL'])
 // easier than the work-rep target and must never be judged against it.
 const RECOVERY_ROLES = new Set(['recovery', 'rest', 'warmup', 'cooldown'])
 
+// Pace keys that mean "this segment is not quality work". `recovery` is a pace of its
+// own now, so testing `=== 'easy'` here would count a role-less recovery jog as a work
+// rep and flip a plain long run into the mixed/per-lap evaluation path.
+const LOW_INTENSITY_PACE_KEYS: ReadonlySet<keyof TrainingPaces> = new Set([
+  'easy', 'recovery', 'walk',
+])
+
 function isLowIntensity(workoutType: WorkoutType): boolean {
   return LOW_INTENSITY_TYPES.has(workoutType)
 }
@@ -141,7 +148,7 @@ function segmentMix(workout: PlannedWorkout): { quality: boolean; easy: boolean 
       const intensity = typeof iv.intensity === 'string' ? iv.intensity : ''
       if (!intensity) continue
       const role = typeof iv.role === 'string' ? iv.role.toLowerCase() : ''
-      if (getIntensityPaceType(intensity) === 'easy') {
+      if (LOW_INTENSITY_PACE_KEYS.has(resolveIntensityPaceKey(intensity))) {
         easy = true
       } else if (!RECOVERY_ROLES.has(role)) {
         quality = true
@@ -338,7 +345,7 @@ function extractStampedPace(workout: PlannedWorkout): StampedPace {
   const secPerKm = sw?.target_pace_sec_per_km
   const label = sw?.pace_label
   if (typeof secPerKm !== 'number' || typeof label !== 'string') return null
-  return { paceType: getIntensityPaceType(label), secPerKm }
+  return { paceType: resolveIntensityPaceKey(label), secPerKm }
 }
 
 /**
@@ -360,7 +367,7 @@ function partPaceSuffix(
   if (part.target_pace) return ` (${part.target_pace})`
   if ((part.role ?? '').toLowerCase() === 'rest') return ''
   if (!part.intensity) return ''
-  const paceType = getIntensityPaceType(part.intensity)
+  const paceType = resolveIntensityPaceKey(part.intensity)
   if (stamped && stamped.paceType === paceType) return ` (${formatPace(stamped.secPerKm)})`
   const pace = trainingPaces?.[paceType]
   return pace ? ` (${formatPace(pace)})` : ''

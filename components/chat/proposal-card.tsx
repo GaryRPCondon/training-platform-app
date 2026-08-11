@@ -14,6 +14,7 @@ import type { TrainingPaces } from '@/types/database'
 import { calculateTotalWorkoutDistance } from '@/lib/training/vdot'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
+import { useEnumLabels } from '@/lib/i18n/enum-labels'
 
 // ---------------------------------------------------------------------------
 // Structured workout types (mirrors the JSONB schema from coach-tools.ts)
@@ -202,6 +203,7 @@ export function ProposalCard({
     onStatusChange,
 }: ProposalCardProps) {
     const t = useTranslations('proposal')
+    const { intensity: intensityLabel } = useEnumLabels()
     const queryClient = useQueryClient()
     const [status, setStatus] = useState(proposal.proposal_status ?? 'pending')
     const [isApplying, setIsApplying] = useState(false)
@@ -399,7 +401,7 @@ export function ProposalCard({
                     {/* Intensity */}
                     {proposal.intensity_target && !proposal.structured_workout && (
                         <p className="text-xs text-muted-foreground capitalize">
-                            {t('intensity', { value: proposal.intensity_target })}
+                            {t('intensity', { value: intensityLabel(proposal.intensity_target) })}
                         </p>
                     )}
 

@@ -7,12 +7,12 @@
  * these canonical tokens; at materialize time (Phase B) each token resolves to
  * a concrete sec/km target via the athlete's VDOT paces (lib/training/vdot.ts).
  *
- * Tokens deliberately collapse onto the five VDOT TrainingPaces keys
- * (easy/marathon/tempo/interval/repetition) so resolution reuses existing math
- * rather than introducing a parallel pace model.
+ * Tokens deliberately collapse onto the VDOT TrainingPaces keys
+ * (easy/recovery/marathon/tempo/interval/repetition) so resolution reuses existing
+ * math rather than introducing a parallel pace model.
  */
 
-import type { TrainingPaces } from '@/lib/training/vdot'
+import { resolveIntensityPaceKey, type TrainingPaces } from '@/lib/training/vdot'
 
 export const RUN_INTENSITIES = [
   'recovery',
@@ -32,24 +32,13 @@ export type RunIntensity = (typeof RUN_INTENSITIES)[number]
  * Map a canonical intensity token to the VDOT pace key used for resolution.
  * 'race' resolves to marathon as a last resort; presentation callers should
  * special-case race day before reaching here (mirrors getWorkoutPaceType).
+ *
+ * Delegates to the shared resolver so imported plans and generated plans agree on
+ * what a label means. A parity test pins every RUN_INTENSITIES token to its key,
+ * which is what the exhaustive switch here used to buy.
  */
 export function intensityToPaceKey(intensity: RunIntensity): keyof TrainingPaces {
-  switch (intensity) {
-    case 'recovery':
-    case 'easy':
-    case 'long':
-      return 'easy'
-    case 'marathon_pace':
-    case 'race':
-      return 'marathon'
-    case 'threshold':
-      return 'tempo'
-    case 'vo2max':
-      return 'interval'
-    case 'rep':
-    case 'strides':
-      return 'repetition'
-  }
+  return resolveIntensityPaceKey(intensity)
 }
 
 /**

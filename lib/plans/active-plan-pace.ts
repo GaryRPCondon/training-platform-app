@@ -11,7 +11,11 @@
  *
  * Returns null (caller leaves the workout unstamped, falling back to a
  * workout-type pace guess) when there's no active plan, no template/VDOT, or the
- * intensity isn't present in the template's pace_targets.
+ * intensity is neither in the template's pace_targets nor a base VDOT pace.
+ *
+ * Paces are recomputed from the plan's VDOT here rather than read from the stored
+ * training_paces snapshot, so a base-pace label like `recovery` stamps correctly even
+ * on athletes whose snapshot predates it.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -44,7 +48,7 @@ export async function resolveActivePlanPace(
   } catch {
     return null
   }
-  if (!paceTargets) return null
+  // No early return on a template without pace_targets: base pace labels still resolve.
 
   const athletePaces = { ...calculateTrainingPaces(plan.vdot), ...calculateRacePaces(plan.vdot) }
   return resolvePace(intensityLabel, paceTargets, athletePaces)
