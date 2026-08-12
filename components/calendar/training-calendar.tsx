@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
 import { getWorkoutColor, normalizeActivityType, isRunningActivityType } from '@/lib/constants/workout-colors'
-import { toDisplayDistance, distanceLabel, type UnitSystem } from '@/lib/utils/units'
+import { toDisplayDistance, distanceLabel, formatDistance, formatPace, formatHms, type UnitSystem } from '@/lib/utils/units'
 import { WeeklyTotals } from './weekly-totals'
 import { CustomToolbar } from './custom-toolbar'
 import { useMediaQuery } from '@/lib/hooks/use-media-query'
@@ -142,6 +142,19 @@ function formatWorkoutTitle(workout: WorkoutWithDetails, units: UnitSystem = 'me
     }
 
     return `${statusIndicator}${description}`
+}
+
+// What was actually run, for the mobile agenda's nested activity row. The planned
+// row directly above already carries the prescription and the name ("Morning Run")
+// says nothing, so this line is the numbers: distance and pace.
+function formatActivityActuals(activity: Activity, units: UnitSystem): string | null {
+    const meters = activity.distance_meters
+    const seconds = activity.moving_duration_seconds ?? activity.duration_seconds
+    const parts: string[] = []
+    if (meters) parts.push(formatDistance(meters, units, 1))
+    if (meters && seconds) parts.push(formatPace(seconds / (meters / 1000), units))
+    else if (seconds) parts.push(formatHms(seconds))
+    return parts.length ? parts.join(' · ') : null
 }
 
 function makeNewWorkout(date: Date): WorkoutWithDetails {
@@ -694,7 +707,9 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId, tourOpe
     // Each day's rows are ordered planned-workout-first with any activity that is
     // linked to that workout nested underneath it (`nested: true` → indented), so the
     // plan/actual relationship is readable without the desktop side-by-side layout.
-    // Unlinked activities land at the end of the day, un-indented.
+    // Unlinked activities land at the end of the day, un-indented — and are the only
+    // thing `plannedOnly` hides: a matched activity's nested row is the sole way into
+    // the actual result on mobile, since the workout card shows the plan, not the run.
     // Strength sessions get their own row per day (the desktop icon strip has no
     // equivalent here — a list row is a bigger tap target and can show the title).
     const mobileDays = useMemo(() => {
@@ -723,9 +738,7 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId, tourOpe
             .map(key => {
                 const dayEvents = groups.get(key) ?? []
                 const workoutEvents = dayEvents.filter(ev => ev.resource.type === 'workout')
-                const activityEvents = plannedOnly
-                    ? []
-                    : dayEvents.filter(ev => ev.resource.type === 'activity')
+                const activityEvents = dayEvents.filter(ev => ev.resource.type === 'activity')
 
                 const rows: MobileRow[] = []
                 const nestedIds = new Set<string>()
@@ -739,9 +752,11 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId, tourOpe
                         }
                     }
                 }
-                for (const activity of activityEvents) {
-                    if (!nestedIds.has(activity.id)) {
-                        rows.push({ kind: 'event', id: activity.id, event: activity, nested: false })
+                if (!plannedOnly) {
+                    for (const activity of activityEvents) {
+                        if (!nestedIds.has(activity.id)) {
+                            rows.push({ kind: 'event', id: activity.id, event: activity, nested: false })
+                        }
                     }
                 }
                 for (const session of sessionsByDate.get(key) ?? []) {
@@ -1009,6 +1024,13 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId, tourOpe
         }
     }, [queryClient, t])
 
+    // On a tour stop the mobile tour bar is pinned to the bottom of the viewport, so
+    // a card centred on the full viewport would run behind it. `--tour-bar-h` (set by
+    // the bar, absent elsewhere → 0px) shrinks and re-centres the card above it.
+    const tourDialogClass = tourOpen
+        ? 'max-h-[calc(90dvh_-_var(--tour-bar-h,0px))] top-[calc(50%_-_var(--tour-bar-h,0px)_/_2)]'
+        : 'max-h-[90dvh]'
+
     // Hold the first paint until the athlete's week-start preference is known —
     // rendering with the Sunday default first makes the grid visibly re-flow to
     // Monday once the profile query resolves.
@@ -1083,7 +1105,10 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId, tourOpe
                                                 }
                                                 const { event: ev, nested } = row
                                                 const s = eventStyleGetter(ev).style
-                                                const isActivity = ev.resource.type === 'activity'
+                                                const activity = ev.resource.type === 'activity' ? ev.resource.data : null
+                                                // Nested rows read as the plan's "actual", so lead with the
+                                                // numbers; standalone ones still need their name to identify them.
+                                                const actuals = nested && activity ? formatActivityActuals(activity, preferredUnits) : null
                                                 return (
                                                     <button
                                                         key={row.id}
@@ -1091,7 +1116,7 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId, tourOpe
                                                         onClick={() => handleSelectEvent(ev)}
                                                         className={cn(
                                                             'flex w-full items-center gap-1.5 rounded-lg px-3 text-left shadow-sm transition-opacity active:opacity-80',
-                                                            isActivity ? 'py-2 text-xs font-normal' : 'py-2.5 text-sm font-medium',
+                                                            activity ? 'py-2 text-xs font-normal' : 'py-2.5 text-sm font-medium',
                                                             nested && 'ms-6 w-[calc(100%-1.5rem)]'
                                                         )}
                                                         style={{
@@ -1101,13 +1126,13 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId, tourOpe
                                                             color: s.color,
                                                         }}
                                                     >
-                                                        {isActivity && (
+                                                        {activity && (
                                                             <>
                                                                 <ActivityIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                                                                 <span className="sr-only">{t('activityLabel')}</span>
                                                             </>
                                                         )}
-                                                        <span className="min-w-0 truncate">{ev.title}</span>
+                                                        <span className="min-w-0 truncate">{actuals ?? ev.title}</span>
                                                     </button>
                                                 )
                                             })}
@@ -1221,11 +1246,16 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId, tourOpe
             </div>
             )}
 
-            {/* Workout Dialog */}
-            <Dialog open={isWorkoutDialogOpen} onOpenChange={setIsWorkoutDialogOpen}>
+            {/* Workout Dialog.
+                On a demo-tour stop these cards open non-modally: a modal Radix dialog
+                dims and click-blocks everything outside it, which on mobile means the
+                pinned tour bar (its guide text and Back/Next) is unusable. Non-modal
+                drops the overlay entirely, so the card floats over the agenda and the
+                tour stays readable and operable. */}
+            <Dialog open={isWorkoutDialogOpen} onOpenChange={setIsWorkoutDialogOpen} modal={!tourOpen}>
                 {/* max-h + scroll: in mobile landscape the card is taller than the viewport,
                     and without this the header controls and footer buttons are unreachable. */}
-                <DialogContent className="sm:max-w-2xl max-h-[90dvh] overflow-y-auto">
+                <DialogContent className={cn('sm:max-w-2xl overflow-y-auto', tourDialogClass)}>
                     <DialogTitle className="sr-only">{t('workoutDetails')}</DialogTitle>
                     <DialogDescription className="sr-only">{t('workoutDetailsDescription')}</DialogDescription>
                     {selectedWorkout && (
@@ -1292,8 +1322,8 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId, tourOpe
             </Dialog>
 
             {/* Strength Session Dialog */}
-            <Dialog open={isStrengthDialogOpen} onOpenChange={setIsStrengthDialogOpen}>
-                <DialogContent className="sm:max-w-2xl max-h-[90dvh] flex flex-col overflow-hidden">
+            <Dialog open={isStrengthDialogOpen} onOpenChange={setIsStrengthDialogOpen} modal={!tourOpen}>
+                <DialogContent className={cn('sm:max-w-2xl flex flex-col overflow-hidden', tourDialogClass)}>
                     <DialogTitle className="sr-only">{t('strengthSessionDetails')}</DialogTitle>
                     <DialogDescription className="sr-only">{t('strengthSessionDetailsDescription')}</DialogDescription>
                     {selectedStrengthSession && (
@@ -1315,8 +1345,8 @@ export function TrainingCalendar({ openWorkoutId, openStrengthSessionId, tourOpe
 
 
             {/* Activity Dialog */}
-            <Dialog open={isActivityDialogOpen} onOpenChange={setIsActivityDialogOpen}>
-                <DialogContent className="sm:max-w-[595px] max-h-[90dvh] overflow-y-auto">
+            <Dialog open={isActivityDialogOpen} onOpenChange={setIsActivityDialogOpen} modal={!tourOpen}>
+                <DialogContent className={cn('sm:max-w-[595px] overflow-y-auto', tourDialogClass)}>
                     <DialogTitle className="sr-only">{t('activityDetails')}</DialogTitle>
                     <DialogDescription className="sr-only">{t('activityDetailsDescription')}</DialogDescription>
                     {selectedActivity && (

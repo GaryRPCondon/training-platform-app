@@ -6260,9 +6260,19 @@ Week 1 / Tuesday: Easy 8 km
         <source>Demo mode — a shared sandbox. Data resets nightly.</source>
       </segment>
     </unit>
+    <unit id="bannerTextShort">
+      <segment>
+        <source>Demo mode — sandbox</source>
+      </segment>
+    </unit>
     <unit id="bannerCta">
       <segment>
         <source>Request your own account</source>
+      </segment>
+    </unit>
+    <unit id="bannerCtaShort">
+      <segment>
+        <source>Request account</source>
       </segment>
     </unit>
     <unit id="noticeSync">
@@ -6344,7 +6354,7 @@ Week 1 / Tuesday: Easy 8 km
     </unit>
     <unit id="calendarBody">
       <segment>
-        <source>The calendar page highlights the athlete's entire program, training history, and upcoming workouts. Each workout is colour-coded by type, with completed runs matched against the plan. You can drag and drop workouts to re-schedule them, and in the full product, route them to your Garmin watch.</source>
+        <source>The calendar page highlights the athlete's entire program, training history, and upcoming workouts. Each workout is colour-coded by type, with completed runs matched against the plan. You can drag and drop workouts to re-schedule them, and in the full product, route them to your Garmin watch. On a phone, turn it sideways to swap the day-by-day list for the full calendar grid.</source>
       </segment>
     </unit>
     <unit id="runningWorkoutTitle">
