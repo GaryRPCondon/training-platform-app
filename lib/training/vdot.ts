@@ -612,6 +612,18 @@ export function estimateWorkoutDurationSeconds(
 export function matchIntensityPaceKey(intensity: string): keyof TrainingPaces | null {
   const l = intensity.toLowerCase()
 
+  // Daniels' single-letter vocabulary, matched exactly. The substring rules below
+  // cannot see these — "T" contains no "tempo" — so without this they fell through to
+  // whatever default the caller had: easy in the AI summary (which is how easy pace got
+  // stamped onto an E-labelled recovery jog) and the workout-type pace on the watch.
+  switch (l) {
+    case 'e': return 'easy'
+    case 'm': return 'marathon'
+    case 't': return 'tempo'
+    case 'i': return 'interval'
+    case 'r': return 'repetition'
+  }
+
   if (l.includes('recovery')) return 'recovery'
   if (l.includes('walk')) return 'walk'
   if (l.includes('easy') || l.includes('long')) return 'easy'
@@ -628,6 +640,36 @@ export function matchIntensityPaceKey(intensity: string): keyof TrainingPaces | 
 /** {@link matchIntensityPaceKey} with easy as the default for unrecognised labels. */
 export function resolveIntensityPaceKey(intensity: string): keyof TrainingPaces {
   return matchIntensityPaceKey(intensity) ?? 'easy'
+}
+
+/**
+ * Resolve the pace a structured-workout segment should be run at, using its role as
+ * well as its intensity label.
+ *
+ * The intensity axis alone is not enough. Plan generation emits the jog between reps
+ * as `{ role: 'recovery', intensity: 'E' }` — function on the role, pace on the label —
+ * so resolving by label put those jogs on easy pace with the narrow ±15 band. The watch
+ * then nagged "too slow" on a jog doing exactly its job, and the AI summary quoted easy
+ * pace as the recovery target. Role wins for the easy family only: a marathon-pace float
+ * tagged `role: recovery` is still prescribed at marathon pace.
+ *
+ * Callers that need "no pace at all" (a standing rest, a walk step, race day) must still
+ * short-circuit before calling this — see {@link matchIntensityPaceKey}.
+ */
+export function resolveSegmentPaceKey(
+  role: string | null | undefined,
+  intensity: string | null | undefined
+): keyof TrainingPaces | null {
+  const matched = intensity ? matchIntensityPaceKey(intensity) : null
+  const isRecoveryRole = (role ?? '').toLowerCase() === 'recovery'
+  // An absent label under a recovery role is a jog; an unrecognised one is not assumed
+  // to be, so a label this resolver does not know still reaches the caller's fallback
+  // (the template's pace_targets, or the workout type) rather than being quietly
+  // downgraded to a jog pace.
+  if (isRecoveryRole && (!intensity || matched === 'easy' || matched === 'recovery')) {
+    return 'recovery'
+  }
+  return matched
 }
 
 /** Default half-width of a prescribed pace band, in sec/km. */
@@ -653,8 +695,14 @@ export const RECOVERY_PACE_TOLERANCE_SEC_PER_KM = 30
  * the watch — they drifted apart once already.
  */
 export function paceToleranceFor(intensity: string | null | undefined): number {
-  if (intensity && matchIntensityPaceKey(intensity) === 'recovery') {
-    return RECOVERY_PACE_TOLERANCE_SEC_PER_KM
-  }
-  return PACE_TOLERANCE_SEC_PER_KM
+  return paceToleranceForKey(intensity ? matchIntensityPaceKey(intensity) : null)
+}
+
+/**
+ * {@link paceToleranceFor} for callers that have already resolved the pace key — notably
+ * anything going through {@link resolveSegmentPaceKey}, where the recovery verdict comes
+ * from the segment's role and re-deriving it from the label would lose it.
+ */
+export function paceToleranceForKey(paceKey: keyof TrainingPaces | null | undefined): number {
+  return paceKey === 'recovery' ? RECOVERY_PACE_TOLERANCE_SEC_PER_KM : PACE_TOLERANCE_SEC_PER_KM
 }

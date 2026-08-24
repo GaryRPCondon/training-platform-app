@@ -664,8 +664,11 @@ describe('mapToGarminWorkout — role-driven step type selection', () => {
     expect(children[1].targetType.workoutTargetTypeKey).toBe('no.target')
   })
 
-  it('leaves recovery jogs untouched — only standing rest loses its pace', () => {
-    // Guard against over-reach: a recovery jog is running and keeps its E pace.
+  it('sends a recovery jog at recovery pace with the wide band, whatever its label says', () => {
+    // Plan generation writes the jog between reps as { role: 'recovery', intensity: 'E' }
+    // — function on the role, pace on the label. Resolving off the label alone put these
+    // on easy pace (330) with the narrow ±15 band, so the watch nagged "too slow" on a
+    // jog doing exactly its job. Role decides: recovery pace (355) ±30.
     const result = mapToGarminWorkout(makeWorkout({
       workout_type: 'intervals',
       intensity_target: 'I',
@@ -683,7 +686,29 @@ describe('mapToGarminWorkout — role-driven step type selection', () => {
     const children = result.workoutSegments[0].workoutSteps[0].workoutSteps as GarminWorkoutStep[]
     expect(children[1].stepType.stepTypeKey).toBe('recovery')
     expect(children[1].targetType.workoutTargetTypeKey).toBe('pace.zone')
-    expect(children[1].targetValueOne).toBeCloseTo(1000 / (330 + 15), 2)
+    expect(children[1].targetValueOne).toBeCloseTo(1000 / (355 + 30), 2)
+    expect(children[1].targetValueTwo).toBeCloseTo(1000 / (355 - 30), 2)
+  })
+
+  it('keeps a real pace on a recovery-role float that is not easy running', () => {
+    // A marathon-pace float is tagged role:"recovery" but IS prescribed to a number.
+    // Role only overrides the easy family.
+    const result = mapToGarminWorkout(makeWorkout({
+      workout_type: 'intervals',
+      intensity_target: 'T',
+      structured_workout: {
+        main_set: [{
+          repeat: 3,
+          intervals: [
+            { distance_meters: 1600, intensity: 'T', role: 'work' },
+            { distance_meters: 800, intensity: 'marathon', role: 'recovery' },
+          ],
+        }],
+      },
+    }), PACES)
+
+    const children = result.workoutSegments[0].workoutSteps[0].workoutSteps as GarminWorkoutStep[]
+    expect(children[1].targetValueOne).toBeCloseTo(1000 / (275 + 15), 2)
   })
 
   it('legacy fallback: no role + intensity contains "recovery" → recovery step type, with warn', () => {

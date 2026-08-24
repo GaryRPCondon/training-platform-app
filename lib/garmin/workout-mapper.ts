@@ -26,8 +26,9 @@ import {
   getWorkoutPaceType,
   matchIntensityPaceKey,
   paceToleranceFor,
+  paceToleranceForKey,
+  resolveSegmentPaceKey,
   PACE_TOLERANCE_SEC_PER_KM,
-  RECOVERY_PACE_TOLERANCE_SEC_PER_KM,
   type AllTrainingPaces,
 } from '@/lib/training/vdot'
 import { resolvePace, formatPaceMinKm, type PaceTarget } from '@/lib/plans/pace-resolver'
@@ -135,15 +136,24 @@ function resolvePaceFromIntensity(
   intensity: string | undefined,
   workoutType: string,
   trainingPaces: TrainingPaces | null | undefined,
-  paceTargets?: Record<string, PaceTarget>
+  paceTargets?: Record<string, PaceTarget>,
+  role?: string
 ): { targetValueOne: number; targetValueTwo: number } | null {
   if (!trainingPaces) return null
+
+  // A jog between reps is prescribed by function, not by its label: plan generation
+  // emits it as { role: 'recovery', intensity: 'E' }. Resolving off the label alone put
+  // those jogs on easy pace with the narrow band, so the watch nagged "too slow" on a
+  // jog doing exactly its job. Re-label it as recovery before resolution, which also
+  // picks up a template's own recovery target (Hansons easy+15, Pfitz easy+10).
+  const segmentPaceKey = resolveSegmentPaceKey(role, intensity)
+  const effectiveIntensity = segmentPaceKey === 'recovery' ? 'recovery' : intensity
 
   // 1. Template-driven lookup — exact label match against template's pace_targets.
   // The training_paces JSONB blob includes race paces too (see plan generate route)
   // so AllTrainingPaces is the right shape here.
-  if (intensity && paceTargets) {
-    const resolved = resolvePace(intensity, paceTargets, trainingPaces as AllTrainingPaces)
+  if (effectiveIntensity && paceTargets) {
+    const resolved = resolvePace(effectiveIntensity, paceTargets, trainingPaces as AllTrainingPaces)
     if (resolved) {
       // resolvePace returns sec/km; if it has an upper bound, that's the slower
       // bound of a range, otherwise we apply the same ±15 sec/km tolerance.
@@ -162,8 +172,8 @@ function resolvePaceFromIntensity(
   // 2. Map the intensity label to a pace key, falling back to the workout type.
   let paceType: keyof TrainingPaces
 
-  if (intensity) {
-    const lower = intensity.toLowerCase()
+  if (effectiveIntensity) {
+    const lower = effectiveIntensity.toLowerCase()
     if (lower.includes('walk') || lower === 'race') {
       // Walk and race-day get no pace target — race is run on effort, not pace,
       // and a stamped pace would otherwise default to marathon (wrong for 5K/10K).
@@ -178,10 +188,7 @@ function resolvePaceFromIntensity(
   const paceSecPerKm = trainingPaces[paceType]
   if (!paceSecPerKm) return null
 
-  return buildPaceTarget(
-    paceSecPerKm,
-    paceType === 'recovery' ? RECOVERY_PACE_TOLERANCE_SEC_PER_KM : PACE_TOLERANCE_SEC_PER_KM
-  )
+  return buildPaceTarget(paceSecPerKm, paceToleranceForKey(paceType))
 }
 
 // ============================================================================
@@ -249,7 +256,7 @@ function buildExecutableStep(
         // an explicit two-sided "M:SS-M:SS" range is taken verbatim above.
         const target = buildPaceTarget(
           paceSecPerKm,
-          paceToleranceFor(intensityOverride ?? part.intensity)
+          paceToleranceForKey(resolveSegmentPaceKey(part.role, intensityOverride ?? part.intensity))
         )
         targetType = TARGET_TYPES.paceZone
         targetValueOne = target.targetValueOne
@@ -258,7 +265,7 @@ function buildExecutableStep(
     }
   } else {
     const intensityLabel = intensityOverride ?? part.intensity
-    const target = resolvePaceFromIntensity(intensityLabel, workoutType, trainingPaces, paceTargets)
+    const target = resolvePaceFromIntensity(intensityLabel, workoutType, trainingPaces, paceTargets, part.role)
     if (target) {
       targetType = TARGET_TYPES.paceZone
       targetValueOne = target.targetValueOne

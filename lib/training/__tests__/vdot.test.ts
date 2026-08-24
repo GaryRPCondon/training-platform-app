@@ -8,6 +8,10 @@ import {
   totalPrescribedSeconds,
   resolveIntensityPaceKey,
   matchIntensityPaceKey,
+  resolveSegmentPaceKey,
+  paceToleranceForKey,
+  PACE_TOLERANCE_SEC_PER_KM,
+  RECOVERY_PACE_TOLERANCE_SEC_PER_KM,
   getWorkoutPaceType,
   formatPace,
   formatTime,
@@ -292,5 +296,43 @@ describe('Time Parsing & Formatting', () => {
   it('formats time correctly', () => {
     expect(formatTime(2400)).toBe('40:00')
     expect(formatTime(12600)).toBe('3:30:00')
+  })
+})
+
+describe('resolveSegmentPaceKey', () => {
+  it('sends a recovery-role jog to recovery pace even when it is labelled easy', () => {
+    // Plan generation writes the jog between reps as { role: 'recovery', intensity: 'E' }.
+    // Resolving off the label alone put it on easy pace with the narrow band, so the
+    // watch nagged "too slow" on a jog doing exactly its job.
+    expect(resolveSegmentPaceKey('recovery', 'E')).toBe('recovery')
+    expect(resolveSegmentPaceKey('recovery', 'easy')).toBe('recovery')
+    expect(resolveSegmentPaceKey('recovery', 'recovery')).toBe('recovery')
+  })
+
+  it('keeps a real target on a recovery-role segment that is not easy running', () => {
+    // A marathon-pace float is recovery in function but IS prescribed to a number.
+    expect(resolveSegmentPaceKey('recovery', 'marathon')).toBe('marathon')
+    expect(resolveSegmentPaceKey('recovery', 'T')).toBe('tempo')
+  })
+
+  it('falls back to recovery when a recovery-role segment names no intensity', () => {
+    // Better than the caller's workout-type default, which would hand a jog inside a
+    // tempo session the tempo pace.
+    expect(resolveSegmentPaceKey('recovery', undefined)).toBe('recovery')
+  })
+
+  it('defers to the label for every other role', () => {
+    expect(resolveSegmentPaceKey('work', 'E')).toBe('easy')
+    expect(resolveSegmentPaceKey('warmup', 'E')).toBe('easy')
+    expect(resolveSegmentPaceKey(null, 'T')).toBe('tempo')
+    expect(resolveSegmentPaceKey('work', 'nonsense')).toBeNull()
+  })
+})
+
+describe('paceToleranceForKey', () => {
+  it('widens the band for recovery and leaves everything else on the default', () => {
+    expect(paceToleranceForKey('recovery')).toBe(RECOVERY_PACE_TOLERANCE_SEC_PER_KM)
+    expect(paceToleranceForKey('easy')).toBe(PACE_TOLERANCE_SEC_PER_KM)
+    expect(paceToleranceForKey(null)).toBe(PACE_TOLERANCE_SEC_PER_KM)
   })
 })

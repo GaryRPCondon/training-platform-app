@@ -8,6 +8,16 @@ const nextConfig: NextConfig = {
   // harness in WSL) can run on its own `.next-*` without corrupting the primary
   // `.next` a concurrent server is using. Defaults to `.next` for normal runs.
   distDir: process.env.NEXT_DIST_DIR || ".next",
+  // Dev-only: allow LAN hosts (phone on the same wifi) to load /_next/* dev
+  // resources. Extra hosts can be added via NEXT_DEV_ORIGINS (comma-separated).
+  allowedDevOrigins: [
+    "192.168.0.113",
+    "192.168.0.*",
+    "192.168.1.*",
+    ...(process.env.NEXT_DEV_ORIGINS?.split(",")
+      .map((o) => o.trim())
+      .filter(Boolean) ?? []),
+  ],
   async headers() {
     return [
       {

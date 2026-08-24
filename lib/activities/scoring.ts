@@ -10,13 +10,19 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { TrainingPaces } from '@/types/database'
-import { calculateTotalWorkoutDistance } from '@/lib/training/vdot'
+import { calculateTotalWorkoutDistance, calculateTrainingPaces } from '@/lib/training/vdot'
 
 /**
  * Load the athlete's active-plan training paces. Needed to estimate distance for
  * time-based structured segments (warmup/cooldown/tempo); without them
  * {@link calculateTotalWorkoutDistance} falls back to a 6:00/km default and
  * understates the effective target distance.
+ *
+ * Recomputed from the plan's VDOT rather than read from the stored `training_paces`
+ * snapshot, which is written once at plan creation and goes stale whenever the pace
+ * formulas move — adding `recovery` left every existing snapshot a key short, so a
+ * recovery segment resolved to nothing. Mirrors lib/plans/active-plan-pace.ts. Plans
+ * with no VDOT (imported plans carrying their own paces) keep the snapshot.
  */
 export async function loadActivePlanPaces(
   supabase: SupabaseClient,
@@ -24,10 +30,11 @@ export async function loadActivePlanPaces(
 ): Promise<TrainingPaces | null> {
   const { data } = await supabase
     .from('training_plans')
-    .select('training_paces')
+    .select('vdot, training_paces')
     .eq('athlete_id', athleteId)
     .eq('status', 'active')
     .maybeSingle()
+  if (data?.vdot) return calculateTrainingPaces(data.vdot)
   return (data?.training_paces as TrainingPaces | null) ?? null
 }
 
