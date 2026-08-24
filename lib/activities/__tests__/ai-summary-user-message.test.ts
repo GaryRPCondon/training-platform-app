@@ -160,15 +160,16 @@ describe('buildUserMessage — intervals workout', () => {
     expect(msg).not.toContain('Pace compliance: 78%')
   })
 
-  it('shows lap Role column and omits adherence on non-active laps', () => {
+  it('shows lap Role column and says outright that non-active laps have no target', () => {
     const msg = buildUserMessage(makeActivity(), makeWorkout(), intervalLaps())
     expect(msg).toContain('Role | Adherence%')
     // ACTIVE lap row: ends with the lap's compliance score
     expect(msg).toMatch(/\| ACTIVE \| 78%/)
-    // Non-active rows show em-dash for adherence, not the misleading raw score
-    expect(msg).toMatch(/\| WARMUP \| —/)
-    expect(msg).toMatch(/\| RECOVERY \| —/)
-    expect(msg).toMatch(/\| COOLDOWN \| —/)
+    // A bare dash on these rows was an invitation to fill in the blank: the model
+    // compared them to the structure block's easy pace and inverted the direction.
+    expect(msg).toMatch(/\| WARMUP \| no pace target/)
+    expect(msg).toMatch(/\| RECOVERY \| no pace target/)
+    expect(msg).toMatch(/\| COOLDOWN \| no pace target/)
   })
 
   it('renders a Duration column with mm:ss lap times', () => {
@@ -249,13 +250,50 @@ describe('buildUserMessage — easy run', () => {
     })
   }
 
-  it('labels the easy pace as an upper limit, not a target', () => {
+  it('withholds the easy pace entirely when the run was not too fast', () => {
+    // Relabelling this figure failed three times — it was read as a target to hit, then
+    // narrated back as a rule, then used to advise running easy days harder. The number
+    // itself is the trigger, so a compliant run gets no pace figure at all.
     const laps = [makeLap(0, { distance_meters: 8000, duration_seconds: 2560, avg_pace: 320, compliance_score: 90 })]
     const msg = buildUserMessage(makeActivity({ distance_meters: 8000, duration_seconds: 2560, moving_duration_seconds: 2560 }), easyWorkout(), laps)
-    expect(msg).toContain('Easy pace (upper limit): 5:20/km')
-    expect(msg).not.toContain('Target pace (work reps only)')
-    // "Target" framing is what made a slower-than-easy run read as a shortfall.
-    expect(msg).not.toContain('Target pace: 5:20/km')
+    // 5:20/km still appears as the run's ACTUAL average — what must be absent is any
+    // prescribed figure to measure it against.
+    expect(msg).not.toContain('Easy pace')
+    expect(msg).not.toContain('Target pace')
+    expect(msg).not.toContain('- Effort check')
+  })
+
+  it('withholds it for a run slower than easy pace too', () => {
+    // 6:00/km against a 5:20/km limit: slower is never a fault, so there is nothing to
+    // report and no pair of numbers for the model to compare.
+    const msg = buildUserMessage(
+      makeActivity({ distance_meters: 8000, duration_seconds: 2880, moving_duration_seconds: 2880 }),
+      easyWorkout(),
+      [],
+    )
+    expect(msg).not.toContain('5:20/km')
+    expect(msg).not.toContain('- Effort check')
+  })
+
+  it('emits a computed verdict when the athlete ran faster than the easy limit', () => {
+    // 4:50/km against a 5:20/km limit — 30s/km beyond it, well past the ±15 band.
+    const msg = buildUserMessage(
+      makeActivity({ distance_meters: 8000, duration_seconds: 2320, moving_duration_seconds: 2320 }),
+      easyWorkout(),
+      [],
+    )
+    expect(msg).toContain('- Effort check: average pace 4:50/km was 30s/km faster than the 5:20/km easy limit.')
+  })
+
+  it('does not fire the effort check on a trivial overshoot inside the band', () => {
+    // 5:15/km against 5:20/km: 5s/km fast is inside the ±15 band the watch uses, and
+    // narrating it as a fault is exactly the nagging this is meant to avoid.
+    const msg = buildUserMessage(
+      makeActivity({ distance_meters: 8000, duration_seconds: 2520, moving_duration_seconds: 2520 }),
+      easyWorkout(),
+      [],
+    )
+    expect(msg).not.toContain('- Effort check')
   })
 
   it('keeps the label free of quotable phrasing the model can parrot', () => {
@@ -279,8 +317,8 @@ describe('buildUserMessage — easy run', () => {
     // target … failed to meet the intent". Easy pace bounds effort from above; only
     // running faster than it is a fault.
     const msg = buildUserMessage(makeActivity(), easyWorkout(), [])
-    expect(msg).toContain('an upper limit, not a target')
-    expect(msg).toContain('running slower than it is not a shortfall')
+    expect(msg).toContain('There is no pace target')
+    expect(msg).toContain('pace only matters if the athlete ran too fast')
   })
 
   it('tells the model to leave pace out of the summary when the run was not too fast', () => {
@@ -309,9 +347,9 @@ describe('buildUserMessage — easy run', () => {
       },
     })
     const msg = buildUserMessage(makeActivity(), plainLong, [])
-    // 'overall' mode: whole-run HR and effort control against an upper limit.
-    expect(msg).toContain('The easy pace below is an upper limit, not a target')
-    expect(msg).toContain('Easy pace (upper limit): 5:09/km')
+    // 'overall' mode: whole-run HR and effort control, with no pace figure supplied.
+    expect(msg).toContain('judge success on overall average HR and effort control')
+    expect(msg).not.toContain('5:09/km')
     expect(msg).not.toContain('MULTI-PACE session')
     expect(msg).not.toContain('judge success on per-lap pace compliance')
   })
@@ -391,11 +429,15 @@ describe('buildUserMessage — long run with embedded tempo reps', () => {
     expect(msg).toContain('Active-rep pace compliance: 88%')
   })
 
-  it('gives each structure segment its own resolved pace', () => {
+  it('quotes a pace only on the work reps, never on the easy segments around them', () => {
+    // The easy figure stamped on every non-work segment is where "recovery periods were
+    // slightly faster than planned, averaging 6:34/km instead of 5:09/km" came from: a
+    // target the model was never meant to judge, compared in the wrong direction.
     const msg = buildUserMessage(activity(), mixedLongRun(), mixedLaps(), paces)
-    expect(msg).toContain('3.22 km @ easy (5:09/km)')
     expect(msg).toContain('1.61 km @ tempo (4:02/km)')
-    expect(msg).toContain('30 min @ easy (5:09/km)')
+    expect(msg).toContain('3.22 km @ easy')
+    expect(msg).toContain('30 min @ easy')
+    expect(msg).not.toContain('5:09/km')
   })
 
   it('prefers the generation-time stamp over drifted live paces for the stamped intensity', () => {
@@ -410,8 +452,6 @@ describe('buildUserMessage — long run with embedded tempo reps', () => {
     expect(msg).toContain('Target pace (work reps only): 4:02/km')
     expect(msg).toContain('1.61 km @ tempo (4:02/km)')
     expect(msg).not.toContain('1.61 km @ tempo (4:10/km)')
-    // Intensities the stamp does not cover still resolve from the live paces.
-    expect(msg).toContain('30 min @ easy (5:09/km)')
   })
 
   it('treats a uniformly quality-paced long run as structured, not mixed', () => {
@@ -460,15 +500,22 @@ describe('buildUserMessage — long run with embedded tempo reps', () => {
     expect(msg).toContain('judge success on overall average HR and effort control')
   })
 
-  it('quotes a recovery segment at recovery pace, not easy pace', () => {
+  it('quotes no pace at all on a recovery segment', () => {
+    // #27 gave recovery its own pace so the watch and the workout card stop nagging.
+    // The summary model gets neither figure: a recovery jog has no pace to miss, and
+    // supplying one is what produced the inverted "faster than planned" comparison.
     const withRecoveryJog = mixedLongRun()
     const sw = withRecoveryJog.structured_workout as Record<string, unknown>
     const mainSet = sw.main_set as Array<Record<string, unknown>>
     mainSet[2] = { repeat: 1, intervals: [{ role: 'recovery', intensity: 'recovery', duration_seconds: 1800 }] }
     const msg = buildUserMessage(activity(), withRecoveryJog, mixedLaps(), paces)
 
-    expect(msg).toContain('30 min @ recovery (5:34/km)')
-    expect(msg).not.toContain('30 min @ recovery (5:09/km)')
+    expect(msg).toContain('30 min @ recovery;')
+    expect(msg).not.toContain('30 min @ recovery (')
+    // The prescribed figure reaches the model only inside the computed too-fast
+    // verdict, never as a bare number in the structure the model is asked to judge.
+    const structureLine = msg.split('\n').find(l => l.startsWith('  Main set:'))!
+    expect(structureLine).not.toContain('5:34/km')
   })
 
   it('reports the distance as on-target once the plan distance is sized correctly', () => {
@@ -476,5 +523,97 @@ describe('buildUserMessage — long run with embedded tempo reps', () => {
     // 19160 m actual vs 18697 m planned = +2.5%, not the -13.1% the inflated
     // interval-paced target produced.
     expect(msg).toContain('Distance variance vs plan: +2.5%')
+  })
+})
+
+// Regression: "The work intervals were executed with good pace compliance, averaging
+// 3:39/km against a target of 3:42/km. The recovery periods were slightly faster than
+// planned, averaging 6:34/km instead of 5:09/km." — 6:34 is 85s/km SLOWER than 5:09, and
+// the recovery jogs had no target to be faster or slower than in the first place. The
+// 5:09 was easy pace, stamped onto the jogs by the structure block.
+describe('buildUserMessage — recovery jogs between work reps', () => {
+  const paces = { easy: 309, recovery: 334, marathon: 256, tempo: 242, interval: 222, repetition: 208, walk: 600 }
+
+  function repsWithJogs() {
+    return makeWorkout({
+      description: '5 × 1km at T pace, 400m recovery jogs',
+      structured_workout: {
+        warmup: { distance_meters: 3000, intensity: 'E' },
+        main_set: [
+          { repeat: 5, intervals: [
+            { distance_meters: 1000, intensity: 'T', role: 'work' },
+            // How plan generation writes the jog: function on the role, pace on the label.
+            { distance_meters: 400, intensity: 'E', role: 'recovery' },
+          ]},
+        ],
+        cooldown: { distance_meters: 3000, intensity: 'E' },
+        target_pace_sec_per_km: 242,
+      },
+    })
+  }
+
+  function jogLaps(jogPaceSecPerKm: number): Lap[] {
+    const laps: Lap[] = []
+    let idx = 0
+    laps.push(makeLap(idx++, { distance_meters: 3000, duration_seconds: 990, avg_pace: 330, intensity_type: 'WARMUP', compliance_score: 95 }))
+    for (let i = 0; i < 5; i++) {
+      laps.push(makeLap(idx++, { distance_meters: 1000, duration_seconds: 239, avg_pace: 239, intensity_type: 'ACTIVE', compliance_score: 88 }))
+      laps.push(makeLap(idx++, {
+        distance_meters: 400,
+        duration_seconds: Math.round(jogPaceSecPerKm * 0.4),
+        avg_pace: jogPaceSecPerKm,
+        intensity_type: 'RECOVERY',
+        compliance_score: 40,
+      }))
+    }
+    laps.push(makeLap(idx++, { distance_meters: 3000, duration_seconds: 990, avg_pace: 330, intensity_type: 'COOLDOWN', compliance_score: 95 }))
+    return laps
+  }
+
+  it('gives the jogs no pace figure to be judged against', () => {
+    const msg = buildUserMessage(makeActivity(), repsWithJogs(), jogLaps(394), paces)
+    expect(msg).toContain('400 m @ E')
+    expect(msg).not.toContain('400 m @ E (')
+    // Easy pace must not reach the model at all — it is not what these jogs target.
+    expect(msg).not.toContain('5:09/km')
+  })
+
+  it('says nothing when the jogs were run slower than prescribed', () => {
+    // 6:34/km against a 5:34/km recovery pace. Slower is not a fault, so there is no
+    // line, no figure, and nothing for the model to get backwards.
+    const msg = buildUserMessage(makeActivity(), repsWithJogs(), jogLaps(394), paces)
+    expect(msg).not.toContain('Recovery jogs')
+    expect(msg).not.toContain('5:34/km')
+  })
+
+  it('calls out jogs run too fast, with the direction computed', () => {
+    // 4:40/km against 5:34/km — 54s/km beyond the wide ±30 recovery band. Blasting the
+    // recoveries is the one fault a jog can commit.
+    const msg = buildUserMessage(makeActivity(), repsWithJogs(), jogLaps(280), paces)
+    expect(msg).toContain('- Recovery jogs: averaged 4:40/km, 54s/km faster than the 5:34/km prescribed for them.')
+  })
+
+  it('leaves the jogs alone for a drift just inside the wide recovery band', () => {
+    // 5:10/km against 5:34/km is 24s/km fast — inside the ±30 band recovery gets
+    // precisely because a jog's pace is allowed to wander.
+    const msg = buildUserMessage(makeActivity(), repsWithJogs(), jogLaps(310), paces)
+    expect(msg).not.toContain('Recovery jogs')
+  })
+
+  it('states the work-rep average and its direction rather than leaving it to be summed', () => {
+    // Reps at 3:59/km against a 4:02 target. The model wrote this sentence anyway by
+    // adding up the lap column; now it reads the aggregate instead.
+    const msg = buildUserMessage(makeActivity(), repsWithJogs(), jogLaps(394), paces)
+    expect(msg).toContain('- Work-rep average pace: 3:59/km (3s fast vs target)')
+  })
+
+  it('reports a slow set of reps as slow', () => {
+    const slowReps = jogLaps(394).map(l =>
+      l.intensity_type === 'ACTIVE'
+        ? { ...l, duration_seconds: 260, avg_pace: 260 }
+        : l
+    )
+    const msg = buildUserMessage(makeActivity(), repsWithJogs(), slowReps, paces)
+    expect(msg).toContain('- Work-rep average pace: 4:20/km (18s slow vs target)')
   })
 })

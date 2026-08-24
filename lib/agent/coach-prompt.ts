@@ -357,8 +357,11 @@ function buildRecentActivitiesSection(context: CoachContext): string {
                 const paces = active.map(l => l.avg_pace_sec_per_km).filter((v): v is number => v !== null)
                 const hrs = active.map(l => l.avg_hr).filter((v): v is number => v !== null)
                 const complianceVals = active.map(l => l.compliance_score).filter((v): v is number => v !== null)
+                // Label which end is which. In min/km the min is the FASTEST lap and the
+                // max the slowest, while the HR range printed right beside it reads the
+                // other way round — an unlabelled pace range invites reading it as speed.
                 const paceRange = paces.length > 0
-                    ? `${formatPace(Math.min(...paces), athlete.preferred_units)}–${formatPace(Math.max(...paces), athlete.preferred_units)}`
+                    ? `pace ${formatPace(Math.min(...paces), athlete.preferred_units)} fastest → ${formatPace(Math.max(...paces), athlete.preferred_units)} slowest`
                     : null
                 const hrRange = hrs.length > 0 ? `HR ${Math.min(...hrs)}–${Math.max(...hrs)}` : null
                 const compStr = complianceVals.length > 0

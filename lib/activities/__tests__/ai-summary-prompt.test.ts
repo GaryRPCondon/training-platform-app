@@ -22,7 +22,7 @@ describe('buildSystemPrompt', () => {
       const prompt = buildSystemPrompt(tone)
       expect(prompt).toContain('internal reasoning, not material for the summary')
       expect(prompt).toContain('never report that something was within its bounds')
-      expect(prompt).toContain('do not mention the easy pace at all unless the athlete actually ran faster than it')
+      expect(prompt).toContain('mention pace only when an "Effort check" line is present')
       // Naming the words is the same priming that caused the bug — the rule has to
       // hold without a vocabulary blocklist to quote from.
       expect(prompt).not.toMatch(/never borrow its vocabulary/)
@@ -97,5 +97,14 @@ describe('buildSystemPrompt', () => {
   it('requires the summary to state pace direction (too fast / too slow / on target)', () => {
     const prompt = buildSystemPrompt('balanced')
     expect(prompt).toContain('too fast, too slow, or on target')
+  })
+
+  it('states the pace inversion outright and forbids deriving direction by comparison', () => {
+    // A model handed two pace figures and no stated relation will do the arithmetic
+    // itself and get it backwards: 6:34/km was reported as "faster than planned" against
+    // a 5:09/km recovery figure. Every comparison that matters now arrives pre-computed.
+    const prompt = buildSystemPrompt('balanced')
+    expect(prompt).toContain('a LARGER number is slower, a SMALLER number is faster')
+    expect(prompt).toContain('never work it out by comparing two pace figures yourself')
   })
 })

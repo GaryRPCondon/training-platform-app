@@ -9,7 +9,12 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Activity, PlannedWorkout, Lap, TrainingPaces } from '@/types/database'
 import { createLLMProvider } from '@/lib/agent/factory'
 import { demoProviderOverride } from '@/lib/demo/demo'
-import { resolveIntensityPaceKey } from '@/lib/training/vdot'
+import {
+  resolveIntensityPaceKey,
+  resolveSegmentPaceKey,
+  paceToleranceFor,
+  paceToleranceForKey,
+} from '@/lib/training/vdot'
 import { getEffectiveDistance, calculateDistanceDiff, calculateDurationDiff, loadActivePlanPaces } from '@/lib/activities/scoring'
 
 // ---------------------------------------------------------------------------
@@ -45,6 +50,7 @@ Rules:
 - Compare execution to plan intent — was the session's purpose achieved?
 - When a target pace range is provided, use it as the ground truth for pace evaluation. Do not guess or assume pace targets.
 - All pace and duration data is based on moving time (excluding stopped time). Treat it as the true effort metric.
+- Pace is min/km: a LARGER number is slower, a SMALLER number is faster. Where a comparison to a target matters, the data states the direction for you — take it from there, and never work it out by comparing two pace figures yourself.
 - Multi-pace sessions (a long run or easy run with embedded tempo/threshold/interval reps) are judged segment by segment. The whole-activity average pace of such a session is an arithmetic blend of easy and work paces — it is NOT a target. NEVER compare the overall average pace against a work-rep target pace, and never call the gap between them a miss or a shortfall. Judge the work reps against the work-rep target, and the easy portions against easy pace, separately.
 - When lap elevation data is present, account for terrain: slower uphill laps and faster downhill laps are expected on hilly routes and do not indicate inconsistent effort. Judge effort using HR alongside pace on hilly runs.
 - Adherence weighting by run type — THIS IS BINDING:
@@ -52,7 +58,7 @@ Rules:
   - Intervals / tempo / threshold / VO2max: per-lap pace compliance is the primary success metric. Lap drift, slow first reps, and fade in final reps matter and should be called out specifically.
   - For intervals/tempo workouts: ONLY active work-rep laps (Role = ACTIVE or INTERVAL) are evaluated against the work-rep target pace. Warmup, cooldown, and recovery laps deliberately run easier than the target and MUST NOT be counted as misses. When the summary mentions pace adherence, name a direction: state whether the work reps were too fast, too slow, or on target. The Adherence% column shows a signed deviation in parentheses (e.g. "95% (3s fast)") — this is the ground truth for direction. A lower adherence % does NOT imply slower; read the parenthetical to know whether a rep was fast or slow. Never assume a "fade" in the final reps unless the deviations actually show the closing reps slowing. Never say "X% of laps in range" without specifying which laps and which direction.
 - The evaluation rules above are internal reasoning, not material for the summary. Write only about what the athlete did, in the words a coach would use standing beside them. Never restate a rule, never describe the session in terms of the criteria it met, and never report that something was within its bounds — confirming compliance is not a coaching insight.
-- On easy / recovery / long runs, do not mention the easy pace at all unless the athlete actually ran faster than it. A run at or below easy pace needs no pace comment: describe the effort or the aerobic quality instead, or say nothing about pace.
+- On easy / recovery / long runs, mention pace only when an "Effort check" line is present — that line is the only evidence that pace was a fault, and its absence means there is nothing to say. Describe the effort or the aerobic quality instead, or say nothing about pace.
 - Be direct and prescriptive: when something needs correcting, say what to do differently.
 - Where pace, HR, or effort drifted from target, explain the training consequence (e.g. "running easy days this fast erodes recovery", "the fade in final reps suggests the interval target was too aggressive").
 - Use concrete numbers (e.g. "4:15/km", "128 bpm") to support observations, not as the observation itself.
@@ -223,7 +229,7 @@ function buildLapTable(laps: Lap[], showAdherence: boolean, targetBand: TargetPa
     // Only annotate adherence for active work-rep laps — recovery/warmup/cooldown
     // laps deliberately miss the work-rep pace target and shouldn't be judged on it.
     // Append the signed deviation so the LLM reads direction from data, not the score.
-    if (!isActiveLap(lap)) return `${base} | —`
+    if (!isActiveLap(lap)) return `${base} | no pace target`
     const score = lap.compliance_score != null ? `${lap.compliance_score}%` : '—'
     const deviation = targetBand ? activeLapDeviation(lap.avg_pace, targetBand) : null
     const cell = deviation ? `${score} (${deviation})` : score
@@ -363,11 +369,19 @@ function partPaceSuffix(
   part: StructuredPart,
   trainingPaces: TrainingPaces | null,
   stamped: StampedPace = null,
+  roleOverride?: string,
 ): string {
   if (part.target_pace) return ` (${part.target_pace})`
-  if ((part.role ?? '').toLowerCase() === 'rest') return ''
+  const role = (roleOverride ?? part.role ?? '').toLowerCase()
+  if (role === 'rest') return ''
   if (!part.intensity) return ''
-  const paceType = resolveIntensityPaceKey(part.intensity)
+  const paceType = resolveSegmentPaceKey(role, part.intensity) ?? 'easy'
+  // Withhold the figure on everything that is not a work rep prescribed to a number.
+  // A pace in the prompt reads as relevant by construction: the easy pace stamped onto
+  // warmup, cooldown and recovery jogs became a target the model reported the athlete as
+  // missing — and inverted the direction doing it ("6:34/km ... faster than 5:09/km").
+  // Judgement on these segments is computed below and handed over as a verdict instead.
+  if (RECOVERY_ROLES.has(role) || LOW_INTENSITY_PACE_KEYS.has(paceType)) return ''
   if (stamped && stamped.paceType === paceType) return ` (${formatPace(stamped.secPerKm)})`
   const pace = trainingPaces?.[paceType]
   return pace ? ` (${formatPace(pace)})` : ''
@@ -377,9 +391,10 @@ function formatStructuredPart(
   part: StructuredPart,
   trainingPaces: TrainingPaces | null = null,
   stamped: StampedPace = null,
+  roleOverride?: string,
 ): string {
   const intensity = part.intensity || 'unspecified'
-  const paceSuffix = partPaceSuffix(part, trainingPaces, stamped)
+  const paceSuffix = partPaceSuffix(part, trainingPaces, stamped, roleOverride)
   if (part.distance_meters) {
     const km = part.distance_meters / 1000
     const dist = km >= 1 ? `${km.toFixed(km >= 10 ? 1 : 2)} km` : `${part.distance_meters} m`
@@ -424,17 +439,63 @@ function buildStructureBlock(workout: PlannedWorkout, trainingPaces: TrainingPac
       : []
   if (mainSet.length === 0) return null
 
-  const lines: string[] = ['Workout structure (each segment with its own prescribed pace):']
+  const lines: string[] = ['Workout structure (a pace is shown only where the segment has one):']
   const warmup = sw.warmup as StructuredPart | undefined
   const stamped = extractStampedPace(workout)
-  if (warmup) lines.push(`  Warmup: ${formatStructuredPart(warmup, trainingPaces, stamped)}`)
+  if (warmup) lines.push(`  Warmup: ${formatStructuredPart(warmup, trainingPaces, stamped, 'warmup')}`)
   const mainLines = mainSet
     .map(entry => formatMainSetEntry(entry, trainingPaces, stamped))
     .filter((s): s is string => s !== null)
   if (mainLines.length > 0) lines.push(`  Main set: ${mainLines.join('; ')}`)
   const cooldown = sw.cooldown as StructuredPart | undefined
-  if (cooldown) lines.push(`  Cooldown: ${formatStructuredPart(cooldown, trainingPaces, stamped)}`)
+  if (cooldown) lines.push(`  Cooldown: ${formatStructuredPart(cooldown, trainingPaces, stamped, 'cooldown')}`)
   return lines.length > 1 ? lines.join('\n') : null
+}
+
+/**
+ * Aggregate pace over a set of laps: total time over total distance, never a mean of
+ * per-lap means, which would over-weight a short jog against a long rep.
+ */
+function aggregateLapPace(laps: Lap[]): number | null {
+  let meters = 0
+  let seconds = 0
+  for (const lap of laps) {
+    if (!lap.distance_meters || !lap.duration_seconds) continue
+    meters += lap.distance_meters
+    seconds += lap.duration_seconds
+  }
+  if (meters <= 0 || seconds <= 0) return null
+  return seconds / (meters / 1000)
+}
+
+/**
+ * The pace prescribed for this session's recovery jogs, if it has any.
+ *
+ * Resolved through {@link resolveSegmentPaceKey} so a jog written as
+ * `{ role: 'recovery', intensity: 'E' }` lands on the recovery pace rather than easy —
+ * the mismatch that had the summary quoting easy pace as the recovery target.
+ */
+function resolveRecoveryJogPace(
+  workout: PlannedWorkout,
+  trainingPaces: TrainingPaces | null,
+): number | null {
+  if (!trainingPaces) return null
+  const sw = workout.structured_workout as Record<string, unknown> | null
+  if (!sw || !Array.isArray(sw.main_set)) return null
+
+  for (const group of sw.main_set as Array<{ intervals?: StructuredPart[] }>) {
+    for (const iv of group.intervals ?? []) {
+      if ((iv.role ?? '').toLowerCase() !== 'recovery') continue
+      if (iv.target_pace) {
+        const band = parsePaceBandString(iv.target_pace)
+        if (band) return band.lower
+      }
+      const paceKey = resolveSegmentPaceKey('recovery', iv.intensity)
+      const pace = paceKey ? trainingPaces[paceKey] : null
+      if (pace) return pace
+    }
+  }
+  return null
 }
 
 export function buildUserMessage(
@@ -475,23 +536,51 @@ export function buildUserMessage(
     ? 'Active-rep pace compliance'
     : 'Pace compliance'
 
-  const targetPace = extractTargetPace(workout)
-  // Naming it a "target" on an easy run invited the model to treat any slower pace as
-  // a miss (a 5:38/km run at 115 bpm was reported as having "drifted significantly
-  // slower than the target"). It is an upper bound on effort, so label it as one —
-  // but keep the label plain: a quotable phrase here gets parroted into the summary
-  // ("the overall pace was slower than the easy pace ceiling"). The criteria block
-  // carries the semantics; this line only has to avoid the word "target".
-  const targetPaceLabel = overallOnly
-    ? 'Easy pace (upper limit)'
-    : 'Target pace (work reps only)'
+  const targetBand = overallOnly ? null : extractTargetPaceBand(workout)
+
+  // The work-rep average, computed rather than left to the model. It wrote this
+  // sentence anyway ("averaging 3:39/km against a target of 3:42/km") by summing the
+  // lap table itself; handing over the aggregate and its direction removes the last
+  // place in the message where the model does pace arithmetic.
+  const workRepPace = overallOnly ? null : aggregateLapPace(laps.filter(isActiveLap))
+  const workRepDeviation = workRepPace && targetBand
+    ? activeLapDeviation(workRepPace, targetBand)
+    : null
+
+  // Recovery jogs are one-directional: running them too fast is a real fault (it is why
+  // the closing reps fall apart), running them slower than prescribed is not a fault at
+  // all. So the prescribed figure is emitted ONLY when it was beaten — otherwise no
+  // number reaches the model, and there is nothing for it to compare or invert.
+  const recoveryVerdict = (() => {
+    if (overallOnly) return null
+    const prescribed = resolveRecoveryJogPace(workout, trainingPaces)
+    if (!prescribed) return null
+    const actual = aggregateLapPace(laps.filter(l => lapRole(l) === 'RECOVERY'))
+    if (!actual) return null
+    const excess = prescribed - paceToleranceForKey('recovery') - actual
+    if (excess <= 0) return null
+    return `Recovery jogs: averaged ${formatPace(actual)}, ${Math.round(prescribed - actual)}s/km faster than the ${formatPace(prescribed)} prescribed for them.`
+  })()
+
+  // Same treatment for the easy-run limit. Relabelling this figure failed three times
+  // (it was read as a target to hit, then narrated back as a rule, then used to advise
+  // running easy days HARDER) because the number itself is the trigger. Emit a verdict
+  // when the athlete exceeded the limit, and nothing whatsoever when they did not.
+  const easyVerdict = (() => {
+    const limit = overallOnly ? (extractTargetPaceBand(workout)?.lower ?? null) : null
+    if (!limit || !avgPaceSecsPerKm) return null
+    const tolerance = paceToleranceFor(workout.intensity_target ?? '')
+    if (avgPaceSecsPerKm >= limit - tolerance) return null
+    return `Effort check: average pace ${formatPace(avgPaceSecsPerKm)} was ${Math.round(limit - avgPaceSecsPerKm)}s/km faster than the ${formatPace(limit)} easy limit.`
+  })()
+
   const structureBlock = buildStructureBlock(workout, trainingPaces)
 
   const workoutTypeLabel = workout.workout_type.replace('_', ' ')
   const primaryMetric = {
-    overall: `PRIMARY EVALUATION CRITERIA — this is a ${workoutTypeLabel}: judge success on overall average HR and effort control. The easy pace below is an upper limit, not a target: running slower than it is not a shortfall and must not be criticised or rated down. Running faster than it is the fault to call out, because it erodes recovery. Lap-to-lap pace variance is informational only and MUST NOT lower the rating. If average HR sits in the easy zone and the average pace was not faster than the easy pace, rate this 5.0 and leave pace out of the summary entirely — do not report that the pace was acceptable, and do not name individual laps.`,
+    overall: `PRIMARY EVALUATION CRITERIA — this is a ${workoutTypeLabel}: judge success on overall average HR and effort control. There is no pace target: on these runs pace only matters if the athlete ran too fast, and an "Effort check" line will say so when they did. If no such line is present the pace was fine — rate this 5.0 when average HR also sits in the easy zone, leave pace out of the summary entirely, do not report that the pace was acceptable, and do not name individual laps. Lap-to-lap pace variance is informational only and MUST NOT lower the rating.`,
     structured: `PRIMARY EVALUATION CRITERIA — this is a ${workoutTypeLabel}: judge success on per-lap pace compliance and intensity control. ONLY laps with Role = ACTIVE or INTERVAL are evaluated against the work-rep target pace. Warmup, cooldown, and recovery laps run at easier paces by design — do not count them as misses. When commenting on pace, state direction explicitly: too fast, too slow, or on target.`,
-    mixed: `PRIMARY EVALUATION CRITERIA — this is a ${workoutTypeLabel} with embedded quality segments, so it is a MULTI-PACE session. Judge it segment by segment: (a) the work reps — ONLY laps with Role = ACTIVE or INTERVAL — against the work-rep target pace below, and (b) the easy/recovery portions against easy pace. The whole-activity average pace blends both and is NOT a target: do NOT compare it to the work-rep target pace and do NOT treat the gap between them as a shortfall. Warmup, cooldown, rest, and recovery laps run easier by design — never count them as misses. When commenting on pace, state direction explicitly: too fast, too slow, or on target.`,
+    mixed: `PRIMARY EVALUATION CRITERIA — this is a ${workoutTypeLabel} with embedded quality segments, so it is a MULTI-PACE session. Judge it segment by segment: (a) the work reps — ONLY laps with Role = ACTIVE or INTERVAL — against the work-rep target pace below, and (b) the easy/recovery portions on HR and effort control, not against a pace number. The whole-activity average pace blends both and is NOT a target: do NOT compare it to the work-rep target pace and do NOT treat the gap between them as a shortfall. Warmup, cooldown, rest, and recovery laps run easier by design — never count them as misses. When commenting on pace, state direction explicitly: too fast, too slow, or on target.`,
   }[mode]
 
   let msg = `${primaryMetric}
@@ -500,8 +589,8 @@ Planned workout:
 - Type: ${workout.workout_type}
 - Target distance: ${effectiveDistance ? `${(effectiveDistance / 1000).toFixed(2)} km` : 'N/A'}
 - Target duration: ${workout.duration_target_seconds ? formatDuration(workout.duration_target_seconds) : 'N/A'}
-- Intensity: ${workout.intensity_target || 'N/A'}
-- ${targetPaceLabel}: ${targetPace}
+- Intensity: ${workout.intensity_target || 'N/A'}${overallOnly ? '' : `
+- Target pace (work reps only): ${extractTargetPace(workout)}`}
 - Description: ${workout.description || 'N/A'}`
 
   if (structureBlock) {
@@ -523,7 +612,12 @@ Actual activity:
     msg += `\n- ${complianceLabel}: ${paceCompliancePct}%`
   }
 
-  const targetBand = overallOnly ? null : extractTargetPaceBand(workout)
+  if (workRepPace) {
+    msg += `\n- Work-rep average pace: ${formatPace(workRepPace)}${workRepDeviation ? ` (${workRepDeviation} vs target)` : ''}`
+  }
+  if (recoveryVerdict) msg += `\n- ${recoveryVerdict}`
+  if (easyVerdict) msg += `\n- ${easyVerdict}`
+
   const lapTable = buildLapTable(laps, !overallOnly, targetBand)
   if (lapTable) {
     msg += `\n${lapTable}`
