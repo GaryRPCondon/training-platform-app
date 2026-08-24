@@ -385,7 +385,7 @@ STRUCTURED WORKOUT FIDELITY — CRITICAL:
 
 ROLE FIELD ON INTERVALS — REQUIRED:
 Every interval inside a repeat group MUST include a "role" field. Allowed values: "work", "recovery", "rest", "warmup", "cooldown". Role is independent of "intensity" — intensity carries pace, role carries function. Examples:
-- A 400m jog between work reps: { "distance_meters": 400, "intensity": "E", "role": "recovery" }
+- A 400m jog between work reps: { "distance_meters": 400, "intensity": "recovery", "role": "recovery" }
 - A standing rest between hill sprints: { "duration_seconds": 60, "intensity": "rest", "role": "rest" }
 - The work portion of any interval: { "distance_meters": 1000, "intensity": "T", "role": "work" }
 - In a workout with multiple work paces and no recovery (e.g. 6 × (2min @ marathon, 2min @ 10k, 30s @ mile)), ALL THREE intervals are role:"work" — none are recovery.

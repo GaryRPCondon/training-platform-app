@@ -59,3 +59,38 @@ describe('buildCoachSystemPrompt — methodology paces', () => {
     expect(prompt).toContain('- T: 4:05–4:10/km — Threshold')
   })
 })
+
+describe('buildCoachSystemPrompt — recent activity laps', () => {
+  function activityWithLaps() {
+    const lap = (lap_index: number, avg_pace_sec_per_km: number, intensity_type: string) => ({
+      lap_index,
+      distance_km: 1,
+      avg_pace_sec_per_km,
+      avg_hr: 165 + lap_index,
+      intensity_type,
+      compliance_score: 88,
+    })
+    return {
+      ...baseContext,
+      recentActivities: [{
+        id: 1,
+        date: '2026-08-20',
+        name: '5 × 1km',
+        distance_km: 11,
+        duration_minutes: 55,
+        avg_pace_sec_per_km: 300,
+        avg_hr: 155,
+        max_hr: 178,
+        laps: [lap(0, 219, 'ACTIVE'), lap(1, 242, 'ACTIVE')],
+      }],
+    }
+  }
+
+  it('labels which end of the lap pace range is the fast one', () => {
+    // In min/km the min is the FASTEST lap, while the HR range printed beside it reads
+    // the other way round. An unlabelled "3:39–4:02" invites reading it as speed, which
+    // is how a slower recovery got reported as "faster than planned" elsewhere.
+    const prompt = buildCoachSystemPrompt(activityWithLaps())
+    expect(prompt).toContain('pace 3:39 fastest → 4:02 slowest')
+  })
+})

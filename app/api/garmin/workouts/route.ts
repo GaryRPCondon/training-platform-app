@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { GarminClient } from '@/lib/garmin/client'
 import { mapToGarminWorkout } from '@/lib/garmin/workout-mapper'
+import { calculateTrainingPaces, calculateRacePaces } from '@/lib/training/vdot'
 import { z } from 'zod'
 
 const DELAY_BETWEEN_REQUESTS_MS = 500
@@ -113,12 +114,20 @@ export async function POST(request: Request) {
     // Load training paces and template ID from the active plan
     const { data: activePlan } = await supabase
       .from('training_plans')
-      .select('training_paces, template_id')
+      .select('vdot, training_paces, template_id')
       .eq('athlete_id', user.id)
       .eq('status', 'active')
       .maybeSingle()
 
-    const trainingPaces = activePlan?.training_paces ?? null
+    // Recompute from VDOT rather than trusting the stored snapshot. training_paces is
+    // written once at plan creation, so it goes stale whenever the pace formulas move —
+    // adding `recovery` left every existing snapshot a key short, and a recovery step
+    // resolving to `undefined` is sent to the watch with no pace target at all.
+    // lib/plans/active-plan-pace.ts recomputes for the same reason. Falls back to the
+    // snapshot for plans with no VDOT (imported plans carrying paces of their own).
+    const trainingPaces = activePlan?.vdot
+      ? { ...calculateTrainingPaces(activePlan.vdot), ...calculateRacePaces(activePlan.vdot) }
+      : (activePlan?.training_paces ?? null)
 
     // Load the template's pace_targets so the mapper can resolve methodology
     // labels (E/T/I/R, vo2max, lactate_threshold, 5k_pace, etc.) authoritatively
