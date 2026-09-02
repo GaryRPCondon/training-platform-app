@@ -9,6 +9,7 @@
  */
 
 import type { FullPlanContext } from './plan-context-loader'
+import { alignTemplateWeeksForPlan, hasPrescribedPerWeekRows } from '@/lib/plans/align-template-weeks'
 import { formatContextForLLM } from './plan-context-loader'
 
 /**
@@ -181,7 +182,10 @@ Return ONLY the JSON object. No explanatory text before or after.`
  * Shows the template structure, workout patterns, and progression approach.
  * This becomes the authoritative reference for regeneration.
  */
-function formatOriginalTemplate(template: FullPlanContext['template']): string {
+function formatOriginalTemplate(
+  template: FullPlanContext['template'],
+  planWeekCount: number
+): string {
   let output = `**Template**: ${template.name}\n`
   output += `**Author**: ${template.author}\n`
   output += `**Methodology**: ${template.methodology}\n`
@@ -204,16 +208,39 @@ function formatOriginalTemplate(template: FullPlanContext['template']): string {
   }
   output += `\n`
 
-  // Week-by-week structure
-  if (template.weekly_schedule && Array.isArray(template.weekly_schedule) && template.weekly_schedule.length > 0) {
+  // Week-by-week structure.
+  // Templates that carry prescribed per-week rows (JD 2Q) are race-aligned to the
+  // plan's own length, and numbered by `plan_week` — their raw `week` field is a
+  // countdown to race day (18…1), which would list the reference descending against
+  // an ascending plan.
+  const aligned = hasPrescribedPerWeekRows(template)
+    ? alignTemplateWeeksForPlan(template, planWeekCount)
+    : (template.weekly_schedule ?? [])
+  if (Array.isArray(aligned) && aligned.length > 0) {
     output += `**Week-by-Week Structure**:\n\n`
-    for (const weekSched of template.weekly_schedule) {
+    for (const weekSched of aligned) {
       if (!weekSched) continue
 
-      output += `**Week ${weekSched.week || '?'}**${weekSched.phase ? ` (${weekSched.phase})` : ''}\n`
+      output += `**Week ${weekSched.plan_week ?? weekSched.week ?? '?'}**${weekSched.phase ? ` (${weekSched.phase})` : ''}\n`
 
       // Handle different template formats
-      if (weekSched.workouts) {
+      if (weekSched.Q1 || weekSched.Q2) {
+        // Jack Daniels 2Q format (Q1/Q2 quality sessions + easy day distribution)
+        if (weekSched.Q1) {
+          output += `  Q1${weekSched.Q1_type ? ` (${weekSched.Q1_type})` : ''}: ${weekSched.Q1}`
+          output += weekSched.Q1_km !== undefined ? ` - ${weekSched.Q1_km}km\n` : `\n`
+        }
+        if (weekSched.Q2) {
+          output += `  Q2${weekSched.Q2_type ? ` (${weekSched.Q2_type})` : ''}: ${weekSched.Q2}`
+          output += weekSched.Q2_km !== undefined ? ` - ${weekSched.Q2_km}km\n` : `\n`
+        }
+        for (const e of weekSched.E_days_distribution ?? []) {
+          output += `  Easy: ${e.km}km${e.notes ? ` (${e.notes})` : ''}\n`
+        }
+        if (weekSched.total_km !== undefined) {
+          output += `  Weekly total: ${weekSched.total_km}km\n`
+        }
+      } else if (weekSched.workouts) {
         // Hal Higdon / Jack Daniels format (workouts object)
         Object.entries(weekSched.workouts).forEach(([day, workout]) => {
           if (!workout || typeof workout !== 'object') return
@@ -282,7 +309,7 @@ function buildUserPrompt(request: RegenerationRequest): string {
   prompt += `## Original Template (Optional Reference)\n\n`
   prompt += `This template was used to create the plan. Use it for reference on workout types and training philosophy, ` +
             `but DO NOT use it to determine workout counts - use the current plan's structure instead.\n\n`
-  prompt += formatOriginalTemplate(planContext.template)
+  prompt += formatOriginalTemplate(planContext.template, planContext.weeks.length)
   prompt += `\n---\n\n`
 
   // 5. Final instruction

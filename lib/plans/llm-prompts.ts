@@ -1,6 +1,7 @@
 import type { FullTemplate, RaceDistance } from '@/lib/templates/types'
 import type { UserCriteria } from '@/lib/templates/types'
 import { differenceInCalendarDays, addDays, format } from 'date-fns'
+import { alignTemplateWeeksForPlan, hasPrescribedPerWeekRows } from './align-template-weeks'
 
 export interface GenerationContext {
   template: FullTemplate
@@ -49,6 +50,144 @@ interface OutputContractParams {
   goalDateObj: Date
   template: { pace_targets?: FullTemplate['pace_targets'] }
   goal_type: RaceDistance
+}
+
+/**
+ * The distance-based STRUCTURED WORKOUT contract: shape, fidelity rules and the
+ * role field. Extracted so anything that asks a model for a structured_workout
+ * states the same rules the parser, distance math, Garmin mapper and role
+ * validation actually enforce — see lib/plans/build-sessions-from-notation.ts.
+ */
+export function buildStructuredWorkoutContract(): string {
+  return `STRUCTURED WORKOUT:
+Every running workout requires a structured_workout (omit only for type=rest/cross_training/race). The system derives all volume totals by walking warmup + main_set + cooldown — your structured_workout IS the source of truth.
+
+Plain runs (easy_run, recovery, long_run): emit a single main_set entry with one interval covering the prescribed distance.
+Sessions (intervals, tempo): emit warmup + main_set (with the prescribed work) + cooldown when the description includes warm-up/cool-down.
+- Distance-based intervals: use distance_meters in each interval step
+- Time-based quality sessions (tempo by time, hill sprints, fartlek): use duration_seconds in each interval step
+  Do NOT mix distance_meters and duration_seconds within the same main_set.
+CRITICAL: For type "intervals", main_set MUST contain at least one repeat group — never output main_set as an empty array []. Derive the structure from the description (e.g. "6 × 800m w/400m jog" → repeat:6 with {distance_meters:800, role:"work"} + {distance_meters:400, role:"recovery"}).
+
+EXAMPLE — easy run: Template prescribes "Easy 8 mi. (13 km)"
+{
+  "type": "easy_run",
+  "description": "Easy 8 mi. (13 km)",
+  "intensity": "easy",
+  "pace_guidance": "Conversational pace, heart rate zone 2",
+  "structured_workout": {
+    "main_set": [
+      { "repeat": 1, "intervals": [{ "distance_meters": 12875, "intensity": "easy" }] }
+    ]
+  }
+}
+
+EXAMPLE — long run: Template prescribes "Long 16 mi. (26 km)"
+{
+  "type": "long_run",
+  "description": "Long 16 mi. (26 km)",
+  "intensity": "easy",
+  "pace_guidance": "Conversational, sustainable for the full distance",
+  "structured_workout": {
+    "main_set": [
+      { "repeat": 1, "intervals": [{ "distance_meters": 25750, "intensity": "easy" }] }
+    ]
+  }
+}
+
+EXAMPLE — distance-based intervals: Template says "Strength: 3 × 2 mi., 800 recovery"
+{
+  "type": "intervals",
+  "description": "Strength: 3 × 2 mi., 800 recovery",
+  "intensity": "hard",
+  "pace_guidance": "Intervals at 10K effort. Recovery jog at very easy pace.",
+  "notes": "Focus on consistent effort across all repetitions",
+  "structured_workout": {
+    "warmup": { "duration_minutes": 15, "intensity": "easy" },
+    "main_set": [
+      { "repeat": 3, "intervals": [
+        { "distance_meters": 3219, "intensity": "hard", "role": "work" },
+        { "distance_meters": 800, "intensity": "recovery", "role": "recovery" }
+      ]}
+    ],
+    "cooldown": { "duration_minutes": 10, "intensity": "easy" }
+  }
+}
+
+EXAMPLE — time-based tempo: Template says "LT 20min split total"
+{
+  "type": "tempo",
+  "description": "LT Tempo 20 min",
+  "intensity": "lactate_threshold",
+  "pace_guidance": "Comfortably hard — sustainable for 20-60 minutes",
+  "structured_workout": {
+    "warmup": { "duration_minutes": 10, "intensity": "easy" },
+    "main_set": [
+      { "repeat": 1, "intervals": [
+        { "duration_seconds": 1200, "intensity": "lactate_threshold" }
+      ]}
+    ],
+    "cooldown": { "duration_minutes": 10, "intensity": "easy" }
+  }
+}
+
+EXAMPLE — hill sprints: Template says "Hill Sprints 6x10sec"
+{
+  "type": "intervals",
+  "description": "Hill Sprints 6 × 10 sec",
+  "intensity": "speed",
+  "pace_guidance": "Maximum effort uphill sprints with full recovery jog down",
+  "structured_workout": {
+    "warmup": { "duration_minutes": 15, "intensity": "easy" },
+    "main_set": [
+      { "repeat": 6, "intervals": [
+        { "duration_seconds": 10, "intensity": "speed", "role": "work" },
+        { "duration_seconds": 120, "intensity": "recovery", "role": "recovery" }
+      ]}
+    ],
+    "cooldown": { "duration_minutes": 10, "intensity": "easy" }
+  }
+}
+
+STRUCTURED WORKOUT FIDELITY — CRITICAL:
+- For prescribed Q-slots tagged [SESSION], emit structured_workout with warmup + main_set + cooldown covering the prescribed work.
+- When [W/C: included]: main_set covers the FULL description including its leading/trailing easy segments. Do NOT emit separate warmup/cooldown fields around it — those easy bookends ARE the W/C, expressed as easy entries within main_set.
+- When [W/C: add]: emit warmup + main_set + cooldown around the prescribed work.
+- The structured_workout MUST account for the FULL distance/time scope of the description. If the description prescribes a base run distance plus added work (e.g. "9 mi (14 km) easy run + Hill Sprints 8 × 10 sec", "Warmup: 4 miles easy. Main: 6 × 1 mile @ MP."), structured_workout MUST include that base distance — either as a leading easy main_set group or as warmup — never silently dropped.
+- distance_meters values MUST be in METERS. 1 mi = 1609 m, 1 km = 1000 m. NEVER write distance_meters: 9 for "9 mi" — write 14484. NEVER pick the kilometer value when the primary unit in the description is miles (e.g. "9 mi (14 km)" → 14484, not 9000 or 14000).
+
+ROLE FIELD ON INTERVALS — REQUIRED:
+Every interval inside a repeat group MUST include a "role" field. Allowed values: "work", "recovery", "rest", "warmup", "cooldown". Role is independent of "intensity" — intensity carries pace, role carries function. Examples:
+- A 400m jog between work reps: { "distance_meters": 400, "intensity": "recovery", "role": "recovery" }
+- A standing rest between hill sprints: { "duration_seconds": 60, "intensity": "rest", "role": "rest" }
+- The work portion of any interval: { "distance_meters": 1000, "intensity": "T", "role": "work" }
+- In a workout with multiple work paces and no recovery (e.g. 6 × (2min @ marathon, 2min @ 10k, 30s @ mile)), ALL THREE intervals are role:"work" — none are recovery.
+- Under [W/C: included] the leading/trailing easy segments embedded in main_set should be tagged role:"warmup" and role:"cooldown" respectively (e.g. Daniels "5E + 2T + 2E" → three main_set groups: first 5E is role:"warmup", the 2T is role:"work", the trailing 2E is role:"cooldown").
+- For single-interval repeats (e.g. { "repeat": 1, "intervals": [{ ... }] }) the role may be omitted; the system defaults to "work".
+Any other value (e.g. "shakeout", "easy_segment") fails plan validation. The system uses role to send the correct step type to Garmin and to evaluate per-rep adherence in the AI summary.
+
+EXAMPLE — easy run with sprints: Template says "9 mi (14 km) easy run + Hill Sprints 8 × 10 sec"
+{
+  "type": "intervals",
+  "description": "9 mi (14 km) easy run + Hill Sprints 8 × 10 sec",
+  "intensity": "easy",
+  "pace_guidance": "Easy aerobic run with explosive hill sprints near the end",
+  "structured_workout": {
+    "main_set": [
+      { "repeat": 1, "intervals": [{ "distance_meters": 14484, "intensity": "easy" }] },
+      { "repeat": 8, "intervals": [
+        { "duration_seconds": 10, "intensity": "speed", "role": "work" },
+        { "duration_seconds": 120, "intensity": "recovery", "role": "recovery" }
+      ]}
+    ]
+  }
+}
+
+DO NOT INCLUDE:
+- distance_meters or duration_seconds at the workout level — those go inside structured_workout interval steps
+- duration_minutes on intervals (warmup/cooldown only)
+- weekly_total_km on the week — system derives it
+- is_session or warmup_cooldown on the workout — system handles these from template`
 }
 
 /**
@@ -286,135 +425,7 @@ EXAMPLE — continuous run: Template says "5 min warm-up walk, then 25 min runni
 
 DO NOT INCLUDE:
 - distance_meters inside structured_workout interval steps — do NOT convert time to distance
-- Any distance-based interval descriptions (e.g. "8 × 1200m") — use time descriptions from the template` : `STRUCTURED WORKOUT:
-Every running workout requires a structured_workout (omit only for type=rest/cross_training/race). The system derives all volume totals by walking warmup + main_set + cooldown — your structured_workout IS the source of truth.
-
-Plain runs (easy_run, recovery, long_run): emit a single main_set entry with one interval covering the prescribed distance.
-Sessions (intervals, tempo): emit warmup + main_set (with the prescribed work) + cooldown when the description includes warm-up/cool-down.
-- Distance-based intervals: use distance_meters in each interval step
-- Time-based quality sessions (tempo by time, hill sprints, fartlek): use duration_seconds in each interval step
-  Do NOT mix distance_meters and duration_seconds within the same main_set.
-CRITICAL: For type "intervals", main_set MUST contain at least one repeat group — never output main_set as an empty array []. Derive the structure from the description (e.g. "6 × 800m w/400m jog" → repeat:6 with {distance_meters:800, role:"work"} + {distance_meters:400, role:"recovery"}).
-
-EXAMPLE — easy run: Template prescribes "Easy 8 mi. (13 km)"
-{
-  "type": "easy_run",
-  "description": "Easy 8 mi. (13 km)",
-  "intensity": "easy",
-  "pace_guidance": "Conversational pace, heart rate zone 2",
-  "structured_workout": {
-    "main_set": [
-      { "repeat": 1, "intervals": [{ "distance_meters": 12875, "intensity": "easy" }] }
-    ]
-  }
-}
-
-EXAMPLE — long run: Template prescribes "Long 16 mi. (26 km)"
-{
-  "type": "long_run",
-  "description": "Long 16 mi. (26 km)",
-  "intensity": "easy",
-  "pace_guidance": "Conversational, sustainable for the full distance",
-  "structured_workout": {
-    "main_set": [
-      { "repeat": 1, "intervals": [{ "distance_meters": 25750, "intensity": "easy" }] }
-    ]
-  }
-}
-
-EXAMPLE — distance-based intervals: Template says "Strength: 3 × 2 mi., 800 recovery"
-{
-  "type": "intervals",
-  "description": "Strength: 3 × 2 mi., 800 recovery",
-  "intensity": "hard",
-  "pace_guidance": "Intervals at 10K effort. Recovery jog at very easy pace.",
-  "notes": "Focus on consistent effort across all repetitions",
-  "structured_workout": {
-    "warmup": { "duration_minutes": 15, "intensity": "easy" },
-    "main_set": [
-      { "repeat": 3, "intervals": [
-        { "distance_meters": 3219, "intensity": "hard", "role": "work" },
-        { "distance_meters": 800, "intensity": "recovery", "role": "recovery" }
-      ]}
-    ],
-    "cooldown": { "duration_minutes": 10, "intensity": "easy" }
-  }
-}
-
-EXAMPLE — time-based tempo: Template says "LT 20min split total"
-{
-  "type": "tempo",
-  "description": "LT Tempo 20 min",
-  "intensity": "lactate_threshold",
-  "pace_guidance": "Comfortably hard — sustainable for 20-60 minutes",
-  "structured_workout": {
-    "warmup": { "duration_minutes": 10, "intensity": "easy" },
-    "main_set": [
-      { "repeat": 1, "intervals": [
-        { "duration_seconds": 1200, "intensity": "lactate_threshold" }
-      ]}
-    ],
-    "cooldown": { "duration_minutes": 10, "intensity": "easy" }
-  }
-}
-
-EXAMPLE — hill sprints: Template says "Hill Sprints 6x10sec"
-{
-  "type": "intervals",
-  "description": "Hill Sprints 6 × 10 sec",
-  "intensity": "speed",
-  "pace_guidance": "Maximum effort uphill sprints with full recovery jog down",
-  "structured_workout": {
-    "warmup": { "duration_minutes": 15, "intensity": "easy" },
-    "main_set": [
-      { "repeat": 6, "intervals": [
-        { "duration_seconds": 10, "intensity": "speed", "role": "work" },
-        { "duration_seconds": 120, "intensity": "recovery", "role": "recovery" }
-      ]}
-    ],
-    "cooldown": { "duration_minutes": 10, "intensity": "easy" }
-  }
-}
-
-STRUCTURED WORKOUT FIDELITY — CRITICAL:
-- For prescribed Q-slots tagged [SESSION], emit structured_workout with warmup + main_set + cooldown covering the prescribed work.
-- When [W/C: included]: main_set covers the FULL description including its leading/trailing easy segments. Do NOT emit separate warmup/cooldown fields around it — those easy bookends ARE the W/C, expressed as easy entries within main_set.
-- When [W/C: add]: emit warmup + main_set + cooldown around the prescribed work.
-- The structured_workout MUST account for the FULL distance/time scope of the description. If the description prescribes a base run distance plus added work (e.g. "9 mi (14 km) easy run + Hill Sprints 8 × 10 sec", "Warmup: 4 miles easy. Main: 6 × 1 mile @ MP."), structured_workout MUST include that base distance — either as a leading easy main_set group or as warmup — never silently dropped.
-- distance_meters values MUST be in METERS. 1 mi = 1609 m, 1 km = 1000 m. NEVER write distance_meters: 9 for "9 mi" — write 14484. NEVER pick the kilometer value when the primary unit in the description is miles (e.g. "9 mi (14 km)" → 14484, not 9000 or 14000).
-
-ROLE FIELD ON INTERVALS — REQUIRED:
-Every interval inside a repeat group MUST include a "role" field. Allowed values: "work", "recovery", "rest", "warmup", "cooldown". Role is independent of "intensity" — intensity carries pace, role carries function. Examples:
-- A 400m jog between work reps: { "distance_meters": 400, "intensity": "recovery", "role": "recovery" }
-- A standing rest between hill sprints: { "duration_seconds": 60, "intensity": "rest", "role": "rest" }
-- The work portion of any interval: { "distance_meters": 1000, "intensity": "T", "role": "work" }
-- In a workout with multiple work paces and no recovery (e.g. 6 × (2min @ marathon, 2min @ 10k, 30s @ mile)), ALL THREE intervals are role:"work" — none are recovery.
-- Under [W/C: included] the leading/trailing easy segments embedded in main_set should be tagged role:"warmup" and role:"cooldown" respectively (e.g. Daniels "5E + 2T + 2E" → three main_set groups: first 5E is role:"warmup", the 2T is role:"work", the trailing 2E is role:"cooldown").
-- For single-interval repeats (e.g. { "repeat": 1, "intervals": [{ ... }] }) the role may be omitted; the system defaults to "work".
-Any other value (e.g. "shakeout", "easy_segment") fails plan validation. The system uses role to send the correct step type to Garmin and to evaluate per-rep adherence in the AI summary.
-
-EXAMPLE — easy run with sprints: Template says "9 mi (14 km) easy run + Hill Sprints 8 × 10 sec"
-{
-  "type": "intervals",
-  "description": "9 mi (14 km) easy run + Hill Sprints 8 × 10 sec",
-  "intensity": "easy",
-  "pace_guidance": "Easy aerobic run with explosive hill sprints near the end",
-  "structured_workout": {
-    "main_set": [
-      { "repeat": 1, "intervals": [{ "distance_meters": 14484, "intensity": "easy" }] },
-      { "repeat": 8, "intervals": [
-        { "duration_seconds": 10, "intensity": "speed", "role": "work" },
-        { "duration_seconds": 120, "intensity": "recovery", "role": "recovery" }
-      ]}
-    ]
-  }
-}
-
-DO NOT INCLUDE:
-- distance_meters or duration_seconds at the workout level — those go inside structured_workout interval steps
-- duration_minutes on intervals (warmup/cooldown only)
-- weekly_total_km on the week — system derives it
-- is_session or warmup_cooldown on the workout — system handles these from template`}
+- Any distance-based interval descriptions (e.g. "8 × 1200m") — use time descriptions from the template` : buildStructuredWorkoutContract()}
 
 IMPORTANT:
 - Generate EXACTLY ${weeksNeeded} weeks
@@ -478,13 +489,35 @@ Before the structured plan begins, generate ${partialDays} easy ramp-in runs for
   const volumeLine = raceWeek?.volume_pct_of_peak
     ? `\n- Total race-week volume: approximately ${raceWeek.volume_pct_of_peak}% of the peak training week`
     : ''
-  const raceWeekSection = raceWeek ? `
-RACE WEEK GUIDANCE (Week ${weeksNeeded} — from template):
-- Day before race (Week ${weeksNeeded}, Day ${raceDayNumber - 1 > 0 ? raceDayNumber - 1 : 7}): ${raceWeek.day_before_race}${shakeoutSuffix}${volumeLine}
-- ${raceWeek.guidance}
-- No workouts, cross-training, or runs after the race on Day ${raceDayNumber} — every later day MUST be type=rest.
+  // The template's final row prescribes the run-in by days-before-race rather than
+  // by Q slots. Without these concrete lines the model only saw the prose guidance
+  // and invented a race week — in one case a 21km threshold session four days out,
+  // copied from the previous week, where the template asks for 10km easy.
+  const raceDaily = (template.weekly_schedule ?? [])
+    .find(w => Array.isArray(w.daily_schedule) && w.daily_schedule.length > 0)?.daily_schedule
+  const raceDailyLines = (raceDaily ?? [])
+    .slice()
+    .sort((a, b) => b.days_before_race - a.days_before_race)
+    .map(entry => {
+      // Day 1..7 within a week; anything before the final week's Day 1 lands on the
+      // preceding week, which is where a Sunday race pushes the race-week long run.
+      const offset = raceDayNumber - entry.days_before_race
+      const week = offset >= 1 ? weeksNeeded : weeksNeeded - 1
+      const day = offset >= 1 ? offset : offset + 7
+      const dist = entry.mileage !== undefined && entry.km !== undefined
+        ? ` — ${entry.mileage} mi. (${entry.km} km)`
+        : entry.km !== undefined ? ` — ${entry.km} km` : ''
+      return `- Week ${week}, Day ${day} (${entry.days_before_race} days before the race): ${entry.workout}${dist}`
+    })
 
-Apply these rules to Week ${weeksNeeded}. They override the template's generic weekly_schedule when compression forces deviation.
+  const raceWeekSection = raceWeek || raceDailyLines.length > 0 ? `
+RACE WEEK GUIDANCE (from template — BINDING, overrides the per-week prescriptions for these days):
+${raceDailyLines.join('\n')}${raceDailyLines.length > 0 ? '\n' : ''}${raceWeek ? `- Day before race (Week ${weeksNeeded}, Day ${raceDayNumber - 1 > 0 ? raceDayNumber - 1 : 7}): ${raceWeek.day_before_race}${shakeoutSuffix}${volumeLine}
+- ${raceWeek.guidance}
+` : ''}- Do NOT reuse or repeat a Q session from an earlier week in the run-in. Every day above is exactly as prescribed.
+- No workouts, cross-training, or runs after the race on Week ${weeksNeeded}, Day ${raceDayNumber} — every later day MUST be type=rest.
+
+These lines replace whatever the per-week block above says for the same Week/Day.
 ` : ''
 
   // Per-week prescribed workouts — only emit when template provides plan_week + total_km
@@ -492,12 +525,20 @@ Apply these rules to Week ${weeksNeeded}. They override the template's generic w
   // the template author prescribes, including concrete per-day easy volumes from
   // E_days_distribution. The LLM maps these onto the calendar — it does NOT
   // compute or distribute mileage itself.
-  const perWeekRows = (template.weekly_schedule ?? [])
-    .filter(w => typeof w.plan_week === 'number' && typeof w.total_km === 'number')
-    .sort((a, b) => (a.plan_week ?? 0) - (b.plan_week ?? 0))
+  //
+  // The rows are race-aligned to this athlete's runway before rendering, so
+  // "Week N" below always means plan week N. Week `weeksNeeded` always holds the
+  // race, so when the template reserves a race week (either as explicit
+  // `race_week` guidance or as a content-free final row) the prescribed rows
+  // cover weeks 1..weeksNeeded-1 and the race week comes from raceWeekSection.
+  const perWeekRows = alignTemplateWeeksForPlan(template, weeksNeeded)
   const hasPerDay = perWeekRows.some(w => Array.isArray(w.E_days_distribution) && w.E_days_distribution.length > 0)
+  // Anchor Week 1 to the first RETAINED row, not to the template's plan_week=1 —
+  // race-alignment drops leading base weeks on a short runway.
+  const anchorTotalKm = perWeekRows.length > 0 ? perWeekRows[0].total_km : undefined
   const perWeekTargetsSection = perWeekRows.length > 0 ? (hasPerDay ? `
 PER-WEEK PRESCRIBED WORKOUTS (binding — from template author):
+These rows are ALREADY aligned to this athlete's timeline: "Week N" below IS plan Week N. Do not shift, re-order, drop or add weeks.
 For each week, generate exactly these workouts — no more, no less. Map them onto the calendar using the template's typical_week pattern and the user's rest-day preferences. Do NOT add mileage. Do NOT replace easy slots with quality work. Use the Q1/Q2 description verbatim for those workouts; use the prescribed type (in parentheses) as the workout's type field verbatim; use type=easy_run for each easy slot.
 
 For each Q-slot, the tags after the type indicate:
@@ -598,7 +639,7 @@ KEY PRINCIPLES:
 2. Maintain the core workout structure and progression patterns
 3. Adapt phase lengths proportionally to fit ${weeksNeeded} weeks
 4. HARD VOLUME CEILING: No week may exceed ${criteria.comfortable_peak_mileage}km total — not even by 1km
-5. WEEK 1 ANCHOR: Week 1 total must match the template's plan_week=1 total_km if the template provides it (athlete is already at that volume). Otherwise start at or below the athlete's current weekly mileage (${criteria.current_weekly_mileage}km).
+5. WEEK 1 ANCHOR: ${anchorTotalKm !== undefined ? `Week 1 total must be ${anchorTotalKm}km — the Week 1 figure in the per-week block above (the athlete is already at that volume)` : `Start at or below the athlete's current weekly mileage (${criteria.current_weekly_mileage}km)`}.
 6. Schedule workouts on ${criteria.days_per_week} days per week (rest days on others)${criteria.preferred_rest_days && criteria.preferred_rest_days.length > 0 ? `
 7. MANDATORY: Schedule rest days on: ${criteria.preferred_rest_days.map(d => dayNames[d]).join(', ')}
    - These are the athlete's REQUIRED non-training days
@@ -615,8 +656,18 @@ ${buildOutputContractSection({ weeksNeeded, firstDayName, raceDayNumber, raceDay
  * Build user message with full template data
  */
 export function buildGenerationUserMessage(template: FullTemplate): string {
-  // Convert template to clean JSON string
-  const templateJson = JSON.stringify(template, null, 2)
+  // When the system prompt carries a PER-WEEK PRESCRIBED WORKOUTS block, that block
+  // is the aligned, authoritative copy of the week rows. Dumping the raw rows here
+  // too would contradict it: they carry the template's own countdown `week` field
+  // (18…1 for JD 2Q) and a `weekly_schedule_contract` sentence pinning Week 1 to
+  // plan_week=1, both of which are wrong once the rows are race-aligned.
+  // Templates without those rows keep the dump — it is their only week content.
+  const { weekly_schedule: _ws, weekly_schedule_contract: _wsc, ...withoutWeeks } = template
+  const templateJson = JSON.stringify(
+    hasPrescribedPerWeekRows(template) ? withoutWeeks : template,
+    null,
+    2
+  )
 
   return `Here is the complete ${template.name} template to adapt:
 

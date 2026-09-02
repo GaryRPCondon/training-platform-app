@@ -94,6 +94,7 @@ export interface RaceWeekGuidance {
 export interface WeekSchedule {
   week: number
   plan_week?: number  // 1=first training week (chronological) — present when template uses countdown week numbering
+  source_plan_week?: number  // set by alignTemplateWeeks: the plan_week this row was authored as, before race-alignment renumbered it
   phase?: string
   workouts?: Record<string, WorkoutDetail>  // Hal/Jack structure
   monday?: string    // Magness/Hansons/Pfitz structure
@@ -130,6 +131,14 @@ export interface WeekSchedule {
     notes?: string
   }>
   total_km?: number
+  /** Race-week rows prescribe by days-before-race rather than by Q slots. */
+  notes?: string
+  daily_schedule?: Array<{
+    days_before_race: number
+    workout: string
+    mileage?: number
+    km?: number
+  }>
 }
 
 export interface WorkoutDetail {
