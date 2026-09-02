@@ -1,5 +1,6 @@
 import type { ParsedPlan } from './response-parser'
 import type { FullTemplate } from '@/lib/templates/types'
+import { alignTemplateWeeksForPlan, hasPrescribedPerWeekRows } from './align-template-weeks'
 
 const HARD_TYPES = new Set(['intervals', 'tempo', 'long_run', 'race'])
 const HARD_INTENSITIES = new Set([
@@ -17,11 +18,17 @@ function isHard(type: string, intensity: string): boolean {
  * workouts on consecutive days. These weeks are exempt from the back-to-back
  * assertion (the template author intended that pattern).
  */
-function templatePermittedB2BWeeks(template: FullTemplate): Set<number> {
+function templatePermittedB2BWeeks(template: FullTemplate, weeksNeeded: number): Set<number> {
   const exempt = new Set<number>()
   const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const
-  for (let i = 0; i < (template.weekly_schedule ?? []).length; i++) {
-    const w = template.weekly_schedule[i]
+  // Templates with prescribed per-week rows are race-aligned before they reach the
+  // prompt, so the exemption set must be keyed off the SAME aligned week numbers —
+  // otherwise the exempt weeks are offset by however much the plan was compressed.
+  const rows = hasPrescribedPerWeekRows(template)
+    ? alignTemplateWeeksForPlan(template, weeksNeeded)
+    : (template.weekly_schedule ?? [])
+  for (let i = 0; i < rows.length; i++) {
+    const w = rows[i]
     const planWeek = w.plan_week ?? (i + 1)
     let prevHard = false
     for (const d of days) {
@@ -97,10 +104,11 @@ export function assertSessionsHaveMainSet(parsedPlan: ParsedPlan): string[] {
 
 export function assertNoBackToBackHard(
   parsedPlan: ParsedPlan,
-  template: FullTemplate
+  template: FullTemplate,
+  weeksNeeded: number
 ): string[] {
   const failures: string[] = []
-  const exempt = templatePermittedB2BWeeks(template)
+  const exempt = templatePermittedB2BWeeks(template, weeksNeeded)
 
   // Flatten chronologically across week boundaries.
   const timeline: Array<{ week: number; day: number; type: string; intensity: string; index: string }> = []
@@ -140,6 +148,6 @@ export function runStructuralAssertions(
     // B2B-hard is advisory until templates carry `hard_day_pattern` metadata —
     // current heuristic over-flags methodologies (e.g. Pfitz tempo→long_run on Tue/Wed)
     // that legitimately schedule consecutive hard days.
-    advisory: assertNoBackToBackHard(parsedPlan, template),
+    advisory: assertNoBackToBackHard(parsedPlan, template, weeksNeeded),
   }
 }

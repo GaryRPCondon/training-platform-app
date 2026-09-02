@@ -43,13 +43,14 @@ CRITICAL INSTRUCTIONS:
 - Each week has EXACTLY 7 days (numbered 1-7, starting with Sunday)
 - Do NOT create day 8, 9, 10, etc. - only days 1-7 exist per week
 
-RACE WEEK GUIDANCE (Week 18 — from template):
+RACE WEEK GUIDANCE (from template — BINDING, overrides the per-week prescriptions for these days):
 - Day before race (Week 18, Day 7): easy_shakeout (~5000m shakeout at easy pace)
 - Total race-week volume: approximately 50% of the peak training week
 - Short easy shakeout the day before. No workouts after the race.
-- No workouts, cross-training, or runs after the race on Day 1 — every later day MUST be type=rest.
+- Do NOT reuse or repeat a Q session from an earlier week in the run-in. Every day above is exactly as prescribed.
+- No workouts, cross-training, or runs after the race on Week 18, Day 1 — every later day MUST be type=rest.
 
-Apply these rules to Week 18. They override the template's generic weekly_schedule when compression forces deviation.
+These lines replace whatever the per-week block above says for the same Week/Day.
 
 
 KEY PRINCIPLES:
@@ -57,7 +58,7 @@ KEY PRINCIPLES:
 2. Maintain the core workout structure and progression patterns
 3. Adapt phase lengths proportionally to fit 18 weeks
 4. HARD VOLUME CEILING: No week may exceed 88km total — not even by 1km
-5. WEEK 1 ANCHOR: Week 1 total must match the template's plan_week=1 total_km if the template provides it (athlete is already at that volume). Otherwise start at or below the athlete's current weekly mileage (50km).
+5. WEEK 1 ANCHOR: Start at or below the athlete's current weekly mileage (50km).
 6. Schedule workouts on 5 days per week (rest days on others)
 7. Build progressively from the Week 1 base toward the peak, following the template's volume curve
 
@@ -369,13 +370,14 @@ CRITICAL INSTRUCTIONS:
 - Each week has EXACTLY 7 days (numbered 1-7, starting with Monday)
 - Do NOT create day 8, 9, 10, etc. - only days 1-7 exist per week
 
-RACE WEEK GUIDANCE (Week 17 — from template):
+RACE WEEK GUIDANCE (from template — BINDING, overrides the per-week prescriptions for these days):
 - Day before race (Week 17, Day 6): easy_shakeout (~5000m shakeout at easy pace)
 - Total race-week volume: approximately 50% of the peak training week
 - Short easy shakeout the day before. No workouts after the race.
-- No workouts, cross-training, or runs after the race on Day 7 — every later day MUST be type=rest.
+- Do NOT reuse or repeat a Q session from an earlier week in the run-in. Every day above is exactly as prescribed.
+- No workouts, cross-training, or runs after the race on Week 17, Day 7 — every later day MUST be type=rest.
 
-Apply these rules to Week 17. They override the template's generic weekly_schedule when compression forces deviation.
+These lines replace whatever the per-week block above says for the same Week/Day.
 
 
 KEY PRINCIPLES:
@@ -383,7 +385,7 @@ KEY PRINCIPLES:
 2. Maintain the core workout structure and progression patterns
 3. Adapt phase lengths proportionally to fit 17 weeks
 4. HARD VOLUME CEILING: No week may exceed 88km total — not even by 1km
-5. WEEK 1 ANCHOR: Week 1 total must match the template's plan_week=1 total_km if the template provides it (athlete is already at that volume). Otherwise start at or below the athlete's current weekly mileage (50km).
+5. WEEK 1 ANCHOR: Start at or below the athlete's current weekly mileage (50km).
 6. Schedule workouts on 5 days per week (rest days on others)
 7. Build progressively from the Week 1 base toward the peak, following the template's volume curve
 
@@ -695,13 +697,14 @@ CRITICAL INSTRUCTIONS:
 - Each week has EXACTLY 7 days (numbered 1-7, starting with Monday)
 - Do NOT create day 8, 9, 10, etc. - only days 1-7 exist per week
 
-RACE WEEK GUIDANCE (Week 17 — from template):
+RACE WEEK GUIDANCE (from template — BINDING, overrides the per-week prescriptions for these days):
 - Day before race (Week 17, Day 6): easy_shakeout (~5000m shakeout at easy pace)
 - Total race-week volume: approximately 50% of the peak training week
 - Short easy shakeout the day before. No workouts after the race.
-- No workouts, cross-training, or runs after the race on Day 7 — every later day MUST be type=rest.
+- Do NOT reuse or repeat a Q session from an earlier week in the run-in. Every day above is exactly as prescribed.
+- No workouts, cross-training, or runs after the race on Week 17, Day 7 — every later day MUST be type=rest.
 
-Apply these rules to Week 17. They override the template's generic weekly_schedule when compression forces deviation.
+These lines replace whatever the per-week block above says for the same Week/Day.
 
 
 KEY PRINCIPLES:
@@ -709,7 +712,7 @@ KEY PRINCIPLES:
 2. Maintain the core workout structure and progression patterns
 3. Adapt phase lengths proportionally to fit 17 weeks
 4. HARD VOLUME CEILING: No week may exceed 0km total — not even by 1km
-5. WEEK 1 ANCHOR: Week 1 total must match the template's plan_week=1 total_km if the template provides it (athlete is already at that volume). Otherwise start at or below the athlete's current weekly mileage (0km).
+5. WEEK 1 ANCHOR: Start at or below the athlete's current weekly mileage (0km).
 6. Schedule workouts on 3 days per week (rest days on others)
 7. Build progressively from the Week 1 base toward the peak, following the template's volume curve
 

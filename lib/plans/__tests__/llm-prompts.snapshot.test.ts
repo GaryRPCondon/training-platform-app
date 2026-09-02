@@ -249,6 +249,157 @@ describe('buildGenerationSystemPrompt', () => {
     expect(prompt).not.toContain('±10% of the template\'s total_km')
   })
 
+  // Regression: a 15-week runway against an 18-week JD 2Q template used to front-anchor,
+  // running template plan_week 8 in plan week 8 (JD countdown week 11) and dropping
+  // plan_week 15-17 — the sharpening weeks — off the tail. Plan week N must instead be
+  // the row that is N weeks from the race.
+  describe('race-aligns template weeks onto a shorter runway', () => {
+    // Mirrors jack_daniels_2q_41_55_miles_marathon: countdown `week` 18→1, `plan_week`
+    // 1→18, final row content-free. Real Q2 strings at the two weeks under test.
+    const REAL_Q2: Record<number, string> = {
+      8: '8E + 5 × (3 min I w/2 min jg) + 6 × (1 min R w/2 min jg) + 2E',
+      11: '8E + 4 × (4 min I w/3 min recovery jg) + 3E',
+      17: '4E + 1T + 2M + 1E + 1T + 2M + 2E',
+    }
+    const JD_SCHEDULE = [
+      ...Array.from({ length: 17 }, (_, i) => {
+        const planWeek = i + 1
+        return {
+          week: 18 - i,
+          plan_week: planWeek,
+          fraction_of_peak: 0.9,
+          Q1: `Q1 body for plan_week ${planWeek}`,
+          Q1_mileage: 15,
+          Q1_km: 24,
+          Q1_type: 'long_run' as const,
+          Q2: REAL_Q2[planWeek] ?? `Q2 body for plan_week ${planWeek}`,
+          Q2_mileage: 13,
+          Q2_km: 21,
+          Q2_type: 'intervals' as const,
+          E_days_total: 21,
+          E_days_total_km: 34,
+          total_km: 79,
+          E_days_distribution: [{ day: 'Monday', km: 10, mileage: 6, notes: 'Easy recovery' }],
+        }
+      }),
+      { week: 1, plan_week: 18, total_km: 66 },  // race week — content in daily_schedule
+    ]
+
+    const JD_TEMPLATE: FullTemplate = {
+      ...TEST_TEMPLATE,
+      template_id: 'jack_daniels_2q_41_55_miles_marathon',
+      name: 'Jack Daniels 2Q 41-55 miles',
+      weekly_schedule: JD_SCHEDULE,
+    }
+
+    // Jul 13 2026 (Mon) → Oct 25 2026 (Sun) = 15 weeks, the plan that surfaced the bug.
+    const prompt = buildGenerationSystemPrompt({
+      ...BASE_CONTEXT,
+      template: JD_TEMPLATE,
+      start_date: '2026-07-13',
+      goal_date: '2026-10-25',
+    })
+
+    /** The rendered lines for one "Week N (…):" block of PER-WEEK PRESCRIBED WORKOUTS. */
+    const weekBlock = (n: number): string =>
+      prompt.split(`\nWeek ${n} (`)[1]?.split('\n\n')[0] ?? ''
+
+    it('puts the row 8 weeks from the race in plan week 8', () => {
+      expect(weekBlock(8)).toContain(`- Q2 (intervals): 13 mi. (21 km) — "${REAL_Q2[11]}"`)
+      expect(weekBlock(8)).not.toContain(REAL_Q2[8])
+      // The old front-anchored mapping put plan_week 8's session in plan week 8;
+      // race-aligned it belongs three weeks earlier.
+      expect(weekBlock(5)).toContain(REAL_Q2[8])
+    })
+
+    it('keeps the final sharpening week instead of dropping it off the tail', () => {
+      expect(weekBlock(14)).toContain(`- Q2 (intervals): 13 mi. (21 km) — "${REAL_Q2[17]}"`)
+      expect(prompt).toContain('Week 14 (')
+      expect(prompt).not.toContain('Week 15 (')
+    })
+
+    it('drops the leading base weeks rather than the taper', () => {
+      expect(prompt).toContain('Q1 body for plan_week 4')
+      expect(prompt).not.toContain('Q1 body for plan_week 3')
+      expect(prompt).toContain('Q1 body for plan_week 17')
+    })
+
+    it('tells the model the rows are already aligned', () => {
+      expect(prompt).toContain('"Week N" below IS plan Week N')
+    })
+
+    it('never renders a prescribed week as nothing but rest days', () => {
+      const blocks = prompt.split(/\nWeek \d+ \(/).slice(1)
+      expect(blocks.length).toBeGreaterThan(0)
+      for (const block of blocks) {
+        const body = block.split('\n\n')[0]
+        expect(body).toMatch(/- (Q1|Q2|Easy)/)
+      }
+    })
+
+    it('anchors Week 1 to the first retained row, not to the template plan_week=1', () => {
+      expect(prompt).toContain('WEEK 1 ANCHOR: Week 1 total must be 79km')
+    })
+  })
+
+  // Regression: the race week's content lives in `daily_schedule`, which the prompt
+  // builder never read. With only the prose guidance to go on, the model invented a
+  // run-in — a 21km threshold session four days out, copied from the previous week,
+  // where the template prescribes 10km easy.
+  describe('race-week daily schedule', () => {
+    const WITH_DAILY: FullTemplate = {
+      ...TEST_TEMPLATE,
+      weekly_schedule: [
+        ...TEST_TEMPLATE.weekly_schedule,
+        {
+          week: 1,
+          plan_week: 18,
+          total_km: 66,
+          daily_schedule: [
+            { days_before_race: 7, workout: 'Q1 = 90 min E', mileage: 10, km: 16 },
+            { days_before_race: 5, workout: 'Q2 = 2E + 3 × (1T w/2 min rests) + 2E', mileage: 7, km: 11 },
+            { days_before_race: 4, workout: '50 min E', mileage: 6, km: 10 },
+            { days_before_race: 1, workout: '20-30 min E (tomorrow is the race)', mileage: 3, km: 5 },
+          ],
+        },
+      ],
+    }
+    // Jul 13 2026 (Mon) → Oct 25 2026 (Sun): 15 weeks, race on Week 15 Day 7.
+    const prompt = buildGenerationSystemPrompt({
+      ...BASE_CONTEXT,
+      template: WITH_DAILY,
+      start_date: '2026-07-13',
+      goal_date: '2026-10-25',
+    })
+
+    it('places each run-in day by counting back from race day', () => {
+      expect(prompt).toContain('- Week 15, Day 2 (5 days before the race): Q2 = 2E + 3 × (1T w/2 min rests) + 2E — 7 mi. (11 km)')
+      expect(prompt).toContain('- Week 15, Day 3 (4 days before the race): 50 min E — 6 mi. (10 km)')
+      expect(prompt).toContain('- Week 15, Day 6 (1 days before the race): 20-30 min E (tomorrow is the race) — 3 mi. (5 km)')
+    })
+
+    it('spills a day that lands before the final week onto the previous week', () => {
+      // A Sunday race pushes the race-week long run back into Week 14.
+      expect(prompt).toContain('- Week 14, Day 7 (7 days before the race): Q1 = 90 min E — 10 mi. (16 km)')
+    })
+
+    it('orders the run-in from furthest out to closest', () => {
+      const section = prompt.split('RACE WEEK GUIDANCE')[1]
+      const days = [7, 5, 4, 1].map(d => section.indexOf(`(${d} days before the race)`))
+      expect(days).toEqual([...days].sort((a, b) => a - b))
+    })
+
+    it('forbids reusing an earlier week\'s session and states it overrides the per-week block', () => {
+      expect(prompt).toContain('Do NOT reuse or repeat a Q session from an earlier week in the run-in')
+      expect(prompt).toContain('These lines replace whatever the per-week block above says')
+    })
+
+    it('still emits nothing when the template has neither race_week nor a daily schedule', () => {
+      const bare = { ...TEST_TEMPLATE, race_week: undefined } as unknown as FullTemplate
+      expect(buildGenerationSystemPrompt({ ...BASE_CONTEXT, template: bare })).not.toContain('RACE WEEK GUIDANCE')
+    })
+  })
+
   it('renders [SESSION, W/C: …] tags on Q-slots when is_session/warmup_cooldown are set', () => {
     const templateWithSessionTags: FullTemplate = {
       ...TEST_TEMPLATE,
